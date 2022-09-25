@@ -25,3 +25,13 @@ For the beginning I decided to put all staff (core, plugins, shared code) in sam
 We these 2 commands you will build plugin and run core with custom command, that communicate with plugin over rpc.
 1. build plugin: `cd ~/scan-io/plugins/gitlab/ && make build`.
 2. run core: `cd ~/scan-io && go run main.go fetch`.
+You should see:
+```sh
+fetch called
+...
+2022-09-25T11:05:34.152Z [DEBUG] plugin: starting plugin: path=/home/japroc/.scanio/plugins/gitlab args=[/home/japroc/.scanio/plugins/gitlab]
+...
+Hello!
+...
+2022-09-25T11:05:34.160Z [DEBUG] plugin: plugin exited
+```
