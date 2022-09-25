@@ -32,7 +32,7 @@ var pluginMap = map[string]plugin.Plugin{
 	"vcs": &shared.VCSPlugin{},
 }
 
-func listProjects(vcsPluginName string, org string) {
+func listProjects(vcsPluginName string, org string) []string {
 	// Create an hclog.Logger
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:   "plugin-vcs",
@@ -83,16 +83,14 @@ func listProjects(vcsPluginName string, org string) {
 	vcs := raw.(shared.VCS)
 
 	res := vcs.ListProjects(org)
-	fmt.Println(res)
+
+	logger.Info(fmt.Sprintf("'ListProjects' returned %d projects", len(res)))
+
+	return res
+	// fmt.Println(res)
 }
 
-func fetchProjects(vcsPluginName string, projects []string) {
-	// Create an hclog.Logger
-	logger := hclog.New(&hclog.LoggerOptions{
-		Name:   "plugin-vcs",
-		Output: os.Stdout,
-		Level:  hclog.Debug,
-	})
+func fetchProjects(vcsPluginName string, projects []string, threads int) {
 
 	// We're a host! Start by launching the plugin process.
 	home, err := os.UserHomeDir()
@@ -112,31 +110,61 @@ func fetchProjects(vcsPluginName string, projects []string) {
 	// }
 
 	pluginPath := filepath.Join(pluginsFolder, vcsPluginName)
-	client := plugin.NewClient(&plugin.ClientConfig{
-		HandshakeConfig: handshakeConfig,
-		Plugins:         pluginMap,
-		Cmd:             exec.Command(pluginPath),
-		Logger:          logger,
+
+	logger := hclog.New(&hclog.LoggerOptions{
+		Name:   "core",
+		Output: os.Stdout,
+		Level:  hclog.Info,
+		// Level:  hclog.Debug,
 	})
-	defer client.Kill()
+	logger.Info(fmt.Sprintf("Fetching %d projects in total, %d concurrent goroutines", len(projects), threads))
 
-	// Connect via RPC
-	rpcClient, err := client.Client()
-	if err != nil {
-		log.Fatal(err)
+	maxGoroutines := threads
+	guard := make(chan struct{}, maxGoroutines)
+	for i, project := range projects {
+		guard <- struct{}{} // would block if guard channel is already filled
+		go func(i int, project string) {
+
+			// Create an hclog.Logger
+			logger := hclog.New(&hclog.LoggerOptions{
+				Name:   "plugin-vcs",
+				Output: os.Stdout,
+				// Level:  hclog.Info,
+				Level: hclog.Debug,
+			})
+
+			client := plugin.NewClient(&plugin.ClientConfig{
+				HandshakeConfig: handshakeConfig,
+				Plugins:         pluginMap,
+				Cmd:             exec.Command(pluginPath),
+				Logger:          logger,
+			})
+			// defer client.Kill()
+
+			// Connect via RPC
+			rpcClient, err := client.Client()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			// Request the plugin
+			raw, err := rpcClient.Dispense("vcs")
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			// We should have a Greeter now! This feels like a normal interface
+			// implementation but is in fact over an RPC connection.
+			vcs := raw.(shared.VCS)
+
+			logger.Info("Fetching...", "#", i+1, "project", project)
+			res := vcs.Fetch(project)
+			logger.Info("Fetching finished...", "#", i+1, "project", project, "res", res)
+
+			client.Kill()
+			<-guard
+		}(i, project)
 	}
-
-	// Request the plugin
-	raw, err := rpcClient.Dispense("vcs")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// We should have a Greeter now! This feels like a normal interface
-	// implementation but is in fact over an RPC connection.
-	vcs := raw.(shared.VCS)
-	res := vcs.Fetch(projects)
-	fmt.Println(res)
 }
 
 // fetchCmd represents the fetch command
@@ -167,6 +195,10 @@ var fetchCmd = &cobra.Command{
 		if err != nil {
 			panic("get 'org' arg error")
 		}
+		threads, err := cmd.Flags().GetInt("threads")
+		if err != nil {
+			panic("get 'threads' arg error")
+		}
 
 		if len(org) > 0 && len(projects) > 0 {
 			panic("specify only one of 'org' or 'projects'")
@@ -177,11 +209,11 @@ var fetchCmd = &cobra.Command{
 		}
 
 		if len(org) > 0 {
-			listProjects(vcsPluginName, org)
+			projects = listProjects(vcsPluginName, org)
 		}
 
 		if len(projects) > 0 {
-			fetchProjects(vcsPluginName, projects)
+			fetchProjects(vcsPluginName, projects, threads)
 		}
 	},
 }
@@ -200,4 +232,5 @@ func init() {
 	fetchCmd.Flags().String("vcs", "gitlab", "vcs plugin name")
 	fetchCmd.Flags().StringArray("projects", []string{}, "list of projects to fetch")
 	fetchCmd.Flags().String("org", "", "fetch projects from this organization")
+	fetchCmd.Flags().IntP("threads", "j", 1, "number of concurrent goroutines")
 }

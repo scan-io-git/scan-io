@@ -8,18 +8,26 @@ import (
 
 // VCS is the interface that we're exposing as a plugin.
 type VCS interface {
-	Fetch(projects []string) string
-	ListProjects(organization string) string
+	Fetch(project string) bool
+	ListProjects(organization string) []string
+}
+
+type VCSFetchResponse struct {
+	Success bool
+}
+
+type VCSListProjectsResponse struct {
+	Projects []string
 }
 
 // Here is an implementation that talks over RPC
 type VCSRPCClient struct{ client *rpc.Client }
 
-func (g *VCSRPCClient) Fetch(projects []string) string {
-	var resp string
-	// err := g.client.Call("Plugin.Fetch", new(interface{}), &resp)
+func (g *VCSRPCClient) Fetch(project string) bool {
+	var resp VCSFetchResponse
+
 	err := g.client.Call("Plugin.Fetch", map[string]interface{}{
-		"projects": projects,
+		"project": project,
 	}, &resp)
 
 	if err != nil {
@@ -28,11 +36,11 @@ func (g *VCSRPCClient) Fetch(projects []string) string {
 		panic(err)
 	}
 
-	return resp
+	return resp.Success
 }
 
-func (g *VCSRPCClient) ListProjects(organization string) string {
-	var resp string
+func (g *VCSRPCClient) ListProjects(organization string) []string {
+	var resp VCSListProjectsResponse
 
 	err := g.client.Call("Plugin.ListProjects", map[string]interface{}{
 		"organization": organization,
@@ -44,7 +52,7 @@ func (g *VCSRPCClient) ListProjects(organization string) string {
 		panic(err)
 	}
 
-	return resp
+	return resp.Projects
 }
 
 // Here is the RPC server that VCSRPCClient talks to, conforming to
@@ -54,13 +62,13 @@ type VCSRPCServer struct {
 	Impl VCS
 }
 
-func (s *VCSRPCServer) Fetch(args map[string]interface{}, resp *string) error {
-	*resp = s.Impl.Fetch(args["projects"].([]string))
+func (s *VCSRPCServer) Fetch(args map[string]interface{}, resp *VCSFetchResponse) error {
+	resp.Success = s.Impl.Fetch(args["project"].(string))
 	return nil
 }
 
-func (s *VCSRPCServer) ListProjects(args map[string]interface{}, resp *string) error {
-	*resp = s.Impl.ListProjects(args["organization"].(string))
+func (s *VCSRPCServer) ListProjects(args map[string]interface{}, resp *VCSListProjectsResponse) error {
+	resp.Projects = s.Impl.ListProjects(args["organization"].(string))
 	return nil
 }
 

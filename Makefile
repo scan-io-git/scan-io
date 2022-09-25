@@ -8,4 +8,8 @@ runprojects:
 
 .PHONY: runorg
 runorg:
-	go run main.go fetch --vcs github --org bookingcom
+	go run main.go fetch --vcs github --org bookingcom -j 5
+
+.PHONY: clean
+clean:
+	rm -rf ~/.scanio/projects/*
