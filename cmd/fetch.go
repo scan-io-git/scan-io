@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
@@ -31,19 +32,36 @@ var pluginMap = map[string]plugin.Plugin{
 	"vcs": &shared.VCSPlugin{},
 }
 
-func do() {
+func listProjects(vcsPluginName string, org string) {
 	// Create an hclog.Logger
 	logger := hclog.New(&hclog.LoggerOptions{
-		Name:   "plugin",
+		Name:   "plugin-vcs",
 		Output: os.Stdout,
 		Level:  hclog.Debug,
 	})
 
 	// We're a host! Start by launching the plugin process.
+	home, err := os.UserHomeDir()
+	if err != nil {
+		panic("unable to get home folder")
+	}
+	pluginsFolder := filepath.Join(home, "/.scanio/plugins")
+
+	//
+	// useless check?
+	//
+	// if _, err := os.Stat(pluginsFolder); os.IsNotExist(err) {
+	// 	logger.Info("pluginsFolder '%s' does not exists. Creating...", pluginsFolder)
+	// 	if err := os.MkdirAll(pluginsFolder, os.ModePerm); err != nil {
+	// 		panic(err)
+	// 	}
+	// }
+
+	pluginPath := filepath.Join(pluginsFolder, vcsPluginName)
 	client := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig: handshakeConfig,
 		Plugins:         pluginMap,
-		Cmd:             exec.Command("/home/japroc/.scanio/plugins/gitlab"),
+		Cmd:             exec.Command(pluginPath),
 		Logger:          logger,
 	})
 	defer client.Kill()
@@ -63,7 +81,62 @@ func do() {
 	// We should have a Greeter now! This feels like a normal interface
 	// implementation but is in fact over an RPC connection.
 	vcs := raw.(shared.VCS)
-	fmt.Println(vcs.Fetch())
+
+	res := vcs.ListProjects(org)
+	fmt.Println(res)
+}
+
+func fetchProjects(vcsPluginName string, projects []string) {
+	// Create an hclog.Logger
+	logger := hclog.New(&hclog.LoggerOptions{
+		Name:   "plugin-vcs",
+		Output: os.Stdout,
+		Level:  hclog.Debug,
+	})
+
+	// We're a host! Start by launching the plugin process.
+	home, err := os.UserHomeDir()
+	if err != nil {
+		panic("unable to get home folder")
+	}
+	pluginsFolder := filepath.Join(home, "/.scanio/plugins")
+
+	//
+	// useless check?
+	//
+	// if _, err := os.Stat(pluginsFolder); os.IsNotExist(err) {
+	// 	logger.Info("pluginsFolder '%s' does not exists. Creating...", pluginsFolder)
+	// 	if err := os.MkdirAll(pluginsFolder, os.ModePerm); err != nil {
+	// 		panic(err)
+	// 	}
+	// }
+
+	pluginPath := filepath.Join(pluginsFolder, vcsPluginName)
+	client := plugin.NewClient(&plugin.ClientConfig{
+		HandshakeConfig: handshakeConfig,
+		Plugins:         pluginMap,
+		Cmd:             exec.Command(pluginPath),
+		Logger:          logger,
+	})
+	defer client.Kill()
+
+	// Connect via RPC
+	rpcClient, err := client.Client()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Request the plugin
+	raw, err := rpcClient.Dispense("vcs")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// We should have a Greeter now! This feels like a normal interface
+	// implementation but is in fact over an RPC connection.
+	vcs := raw.(shared.VCS)
+	res := vcs.Fetch(projects)
+	fmt.Println(res)
 }
 
 // fetchCmd represents the fetch command
@@ -82,7 +155,34 @@ var fetchCmd = &cobra.Command{
 		if err != nil {
 			panic("parse args error")
 		}
-		do()
+		vcsPluginName, err := cmd.Flags().GetString("vcs")
+		if err != nil {
+			panic("get 'vcs' arg error")
+		}
+		projects, err := cmd.Flags().GetStringArray("projects")
+		if err != nil {
+			panic("get 'projects' arg error")
+		}
+		org, err := cmd.Flags().GetString("org")
+		if err != nil {
+			panic("get 'org' arg error")
+		}
+
+		if len(org) > 0 && len(projects) > 0 {
+			panic("specify only one of 'org' or 'projects'")
+		}
+
+		if len(org) == 0 && len(projects) == 0 {
+			panic("specify at least one project in 'projects' or 'org'")
+		}
+
+		if len(org) > 0 {
+			listProjects(vcsPluginName, org)
+		}
+
+		if len(projects) > 0 {
+			fetchProjects(vcsPluginName, projects)
+		}
 	},
 }
 
@@ -97,5 +197,7 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	fetchCmd.Flags().String("vcs", "", "vcs plugin name")
+	fetchCmd.Flags().String("vcs", "gitlab", "vcs plugin name")
+	fetchCmd.Flags().StringArray("projects", []string{}, "list of projects to fetch")
+	fetchCmd.Flags().String("org", "", "fetch projects from this organization")
 }

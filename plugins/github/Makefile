@@ -1,6 +1,6 @@
-PLAGIN_NAME=gitlab
+PLAGIN_NAME=github
 
-.PHONY: clean
+.PHONY: build
 
 build:
 	mkdir -p ~/.scanio/plugins && go build -o ~/.scanio/plugins/${PLAGIN_NAME}
