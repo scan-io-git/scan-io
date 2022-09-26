@@ -26,4 +26,5 @@ make clean
 make buildplugins
 make runprojects
 make runorg
+make runscan
 ```

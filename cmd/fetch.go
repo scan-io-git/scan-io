@@ -28,7 +28,7 @@ var handshakeConfig = plugin.HandshakeConfig{
 }
 
 // pluginMap is the map of plugins we can dispense.
-var pluginMap = map[string]plugin.Plugin{
+var vcsPluginMap = map[string]plugin.Plugin{
 	"vcs": &shared.VCSPlugin{},
 }
 
@@ -60,7 +60,7 @@ func listProjects(vcsPluginName string, org string) []string {
 	pluginPath := filepath.Join(pluginsFolder, vcsPluginName)
 	client := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig: handshakeConfig,
-		Plugins:         pluginMap,
+		Plugins:         vcsPluginMap,
 		Cmd:             exec.Command(pluginPath),
 		Logger:          logger,
 	})
@@ -135,7 +135,7 @@ func fetchProjects(vcsPluginName string, projects []string, threads int) {
 
 			client := plugin.NewClient(&plugin.ClientConfig{
 				HandshakeConfig: handshakeConfig,
-				Plugins:         pluginMap,
+				Plugins:         vcsPluginMap,
 				Cmd:             exec.Command(pluginPath),
 				Logger:          logger,
 			})

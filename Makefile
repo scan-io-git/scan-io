@@ -1,6 +1,7 @@
 .PHONY: buildplugins
 buildplugins:
-	go build -o ~/.scanio/plugins/github ./plugins/github/
+	go build -o ~/.scanio/plugins/github ./plugins/github/ && \
+	go build -o ~/.scanio/plugins/semgrep ./plugins/semgrep/
 
 .PHONY: runprojects
 runprojects:
@@ -13,3 +14,7 @@ runorg:
 .PHONY: clean
 clean:
 	rm -rf ~/.scanio/projects/*
+
+.PHONE: runscan
+runscan:
+	go run main.go analyse --scanner semgrep --project github.com/bookingcom/telegraf
