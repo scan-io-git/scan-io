@@ -26,3 +26,7 @@ clean:
 .PHONE: runscan
 runscan:
 	go run main.go analyse --scanner semgrep --projects github.com/bookingcom/telegraf,github.com/bookingcom/carbonapi
+
+.PHONE: docker
+docker:
+	docker build -f dockerfiles/Dockerfile -t scanio .
