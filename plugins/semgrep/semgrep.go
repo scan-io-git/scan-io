@@ -57,7 +57,7 @@ func (g *ScannerSemgrep) Scan(project string) bool {
 	cmd.Stdout = os.Stdout
 
 	err = cmd.Run()
-	g.logger.Info("finished", "projectFolder", projectFolder)
+	g.logger.Info("Scan finished", "project", projectFolder, "resultsFile", resultsFile)
 
 	if err != nil {
 		g.logger.Error("semgrep execution error", "err", err, "projectFolder", projectFolder)

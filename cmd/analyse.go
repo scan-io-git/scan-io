@@ -21,7 +21,7 @@ var scannerPluginMap = map[string]plugin.Plugin{
 	"scanner": &shared.ScannerPlugin{},
 }
 
-func scanProject(scannerPluginName string, project string) {
+func scanProject(scannerPluginName string, projects []string) {
 	// Create an hclog.Logger
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:   "plugin-vcs",
@@ -59,9 +59,14 @@ func scanProject(scannerPluginName string, project string) {
 
 	scanner := raw.(shared.Scanner)
 
-	ok := scanner.Scan(project)
+	logger.Info("Scanner plugin initialized. Scan projects", "total", len(projects))
 
-	logger.Info(fmt.Sprintf("'Scan' resulted in %v", ok), "project", project)
+	for i, project := range projects {
+		logger.Info("Run scan", "#", i+1, "project", project)
+		ok := scanner.Scan(project)
+		logger.Info("Scan finished", "#", i+1, "project", project, "statusOK", ok)
+	}
+	logger.Info(fmt.Sprintf("Completed scan of %d projects", len(projects)))
 }
 
 // analyseCmd represents the analyse command
@@ -87,15 +92,19 @@ var analyseCmd = &cobra.Command{
 			panic("get 'scanner' arg error")
 		}
 
-		project, err := cmd.Flags().GetString("project")
+		projects, err := cmd.Flags().GetStringSlice("projects")
 		if err != nil {
-			panic("get 'project' arg error")
+			panic(err)
 		}
-		if len(project) == 0 {
-			panic("'project' must be not empty")
+		if len(projects) == 0 {
+			panic("specify at least one 'project' to scan")
 		}
 
-		scanProject(scannerPluginName, project)
+		fmt.Println(projects)
+		fmt.Println(projects[0])
+		fmt.Println(projects[1])
+
+		scanProject(scannerPluginName, projects)
 	},
 }
 
@@ -113,5 +122,5 @@ func init() {
 	// analyseCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	analyseCmd.Flags().String("scanner", "semgrep", "scanner plugin name")
-	analyseCmd.Flags().String("project", "", "Project to scan")
+	analyseCmd.Flags().StringSlice("projects", []string{}, "Projects to scan")
 }
