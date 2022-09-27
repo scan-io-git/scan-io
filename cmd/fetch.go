@@ -28,7 +28,7 @@ var handshakeConfig = plugin.HandshakeConfig{
 }
 
 // pluginMap is the map of plugins we can dispense.
-var pluginMap = map[string]plugin.Plugin{
+var vcsPluginMap = map[string]plugin.Plugin{
 	"vcs": &shared.VCSPlugin{},
 }
 
@@ -60,7 +60,7 @@ func listProjects(vcsPluginName string, org string) []string {
 	pluginPath := filepath.Join(pluginsFolder, vcsPluginName)
 	client := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig: handshakeConfig,
-		Plugins:         pluginMap,
+		Plugins:         vcsPluginMap,
 		Cmd:             exec.Command(pluginPath),
 		Logger:          logger,
 	})
@@ -135,7 +135,7 @@ func fetchProjects(vcsPluginName string, projects []string, threads int) {
 
 			client := plugin.NewClient(&plugin.ClientConfig{
 				HandshakeConfig: handshakeConfig,
-				Plugins:         pluginMap,
+				Plugins:         vcsPluginMap,
 				Cmd:             exec.Command(pluginPath),
 				Logger:          logger,
 			})
@@ -187,7 +187,7 @@ var fetchCmd = &cobra.Command{
 		if err != nil {
 			panic("get 'vcs' arg error")
 		}
-		projects, err := cmd.Flags().GetStringArray("projects")
+		projects, err := cmd.Flags().GetStringSlice("projects")
 		if err != nil {
 			panic("get 'projects' arg error")
 		}
@@ -230,7 +230,7 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	fetchCmd.Flags().String("vcs", "gitlab", "vcs plugin name")
-	fetchCmd.Flags().StringArray("projects", []string{}, "list of projects to fetch")
+	fetchCmd.Flags().StringSlice("projects", []string{}, "list of projects to fetch")
 	fetchCmd.Flags().String("org", "", "fetch projects from this organization")
 	fetchCmd.Flags().IntP("threads", "j", 1, "number of concurrent goroutines")
 }
