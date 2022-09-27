@@ -8,33 +8,67 @@ import (
 
 // VCS is the interface that we're exposing as a plugin.
 type VCS interface {
-	Fetch() string
+	Fetch(project string) bool
+	ListProjects(organization string) []string
+}
+
+type VCSFetchResponse struct {
+	Success bool
+}
+
+type VCSListProjectsResponse struct {
+	Projects []string
 }
 
 // Here is an implementation that talks over RPC
-type VCSRPC struct{ client *rpc.Client }
+type VCSRPCClient struct{ client *rpc.Client }
 
-func (g *VCSRPC) Fetch() string {
-	var resp string
-	err := g.client.Call("Plugin.Fetch", new(interface{}), &resp)
+func (g *VCSRPCClient) Fetch(project string) bool {
+	var resp VCSFetchResponse
+
+	err := g.client.Call("Plugin.Fetch", map[string]interface{}{
+		"project": project,
+	}, &resp)
+
 	if err != nil {
 		// You usually want your interfaces to return errors. If they don't,
 		// there isn't much other choice here.
 		panic(err)
 	}
 
-	return resp
+	return resp.Success
 }
 
-// Here is the RPC server that VCSRPC talks to, conforming to
+func (g *VCSRPCClient) ListProjects(organization string) []string {
+	var resp VCSListProjectsResponse
+
+	err := g.client.Call("Plugin.ListProjects", map[string]interface{}{
+		"organization": organization,
+	}, &resp)
+
+	if err != nil {
+		// You usually want your interfaces to return errors. If they don't,
+		// there isn't much other choice here.
+		panic(err)
+	}
+
+	return resp.Projects
+}
+
+// Here is the RPC server that VCSRPCClient talks to, conforming to
 // the requirements of net/rpc
 type VCSRPCServer struct {
 	// This is the real implementation
 	Impl VCS
 }
 
-func (s *VCSRPCServer) Fetch(args interface{}, resp *string) error {
-	*resp = s.Impl.Fetch()
+func (s *VCSRPCServer) Fetch(args map[string]interface{}, resp *VCSFetchResponse) error {
+	resp.Success = s.Impl.Fetch(args["project"].(string))
+	return nil
+}
+
+func (s *VCSRPCServer) ListProjects(args map[string]interface{}, resp *VCSListProjectsResponse) error {
+	resp.Projects = s.Impl.ListProjects(args["organization"].(string))
 	return nil
 }
 
@@ -44,7 +78,7 @@ func (s *VCSRPCServer) Fetch(args interface{}, resp *string) error {
 // type. We construct a VCSRPCServer for this.
 //
 // Client must return an implementation of our interface that communicates
-// over an RPC client. We return VCSRPC for this.
+// over an RPC client. We return VCSRPCClient for this.
 //
 // Ignore MuxBroker. That is used to create more multiplexed streams on our
 // plugin connection and is a more advanced use case.
@@ -58,5 +92,5 @@ func (p *VCSPlugin) Server(*plugin.MuxBroker) (interface{}, error) {
 }
 
 func (VCSPlugin) Client(b *plugin.MuxBroker, c *rpc.Client) (interface{}, error) {
-	return &VCSRPC{client: c}, nil
+	return &VCSRPCClient{client: c}, nil
 }
