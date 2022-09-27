@@ -80,7 +80,6 @@ var analyseCmd = &cobra.Command{
 	// This application is a tool to generate the needed files
 	// to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("analyse called")
 
 		err := cmd.Flags().Parse(args)
 		if err != nil {
@@ -99,10 +98,6 @@ var analyseCmd = &cobra.Command{
 		if len(projects) == 0 {
 			panic("specify at least one 'project' to scan")
 		}
-
-		fmt.Println(projects)
-		fmt.Println(projects[0])
-		fmt.Println(projects[1])
 
 		scanProject(scannerPluginName, projects)
 	},
