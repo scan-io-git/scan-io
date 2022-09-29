@@ -4,6 +4,8 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"bufio"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -16,11 +18,13 @@ import (
 )
 
 var (
-	vcs    string
-	vcsUrl string
+	vcs         string
+	vcsUrl      string
+	outputFile  string
+	maxProjects int
 )
 
-func do(vcsPluginName, vcsUrl string) {
+func do() {
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:   "plugin-vcs",
 		Output: os.Stdout,
@@ -33,7 +37,7 @@ func do(vcsPluginName, vcsUrl string) {
 	}
 	pluginsFolder := filepath.Join(home, "/.scanio/plugins")
 
-	pluginPath := filepath.Join(pluginsFolder, vcsPluginName)
+	pluginPath := filepath.Join(pluginsFolder, vcs)
 	client := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig: shared.HandshakeConfig,
 		Plugins:         shared.PluginMap,
@@ -54,7 +58,23 @@ func do(vcsPluginName, vcsUrl string) {
 	}
 
 	vcs := raw.(shared.VCS)
-	_ = vcs.ListProjects(shared.VCSListProjectsRequest{VCSURL: vcsUrl})
+	projects := vcs.ListProjects(shared.VCSListProjectsRequest{VCSURL: vcsUrl, MaxProjects: maxProjects})
+	fmt.Printf("returned %d results\n", len(projects))
+
+	file, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		log.Fatalf("failed creating file: %s", err)
+	}
+
+	datawriter := bufio.NewWriter(file)
+
+	for _, data := range projects {
+		_, _ = datawriter.WriteString(data + "\n")
+	}
+
+	datawriter.Flush()
+	file.Close()
+
 }
 
 // listCmd represents the list command
@@ -69,7 +89,10 @@ var listCmd = &cobra.Command{
 	// to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Flags().Parse(args)
-		do(vcs, vcsUrl)
+		if len(outputFile) == 0 {
+			panic("'outputFile' must be specified")
+		}
+		do()
 	},
 }
 
@@ -86,5 +109,6 @@ func init() {
 	// is called directly, e.g.:
 	listCmd.Flags().StringVar(&vcs, "vcs", "gitlab", "vcs plugin name")
 	listCmd.Flags().StringVar(&vcsUrl, "vcs-url", "gitlab.com", "url to vcs")
-	// listCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	listCmd.Flags().StringVarP(&outputFile, "output", "f", "", "output file")
+	listCmd.Flags().IntVar(&maxProjects, "max", 0, "max projects to list")
 }

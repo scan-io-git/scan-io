@@ -16,6 +16,7 @@ type VCSFetchRequest struct {
 	Project  string
 	AuthType string
 	SSHKey   string
+	VCSURL   string
 }
 
 type VCSFetchResponse struct {
@@ -25,6 +26,7 @@ type VCSFetchResponse struct {
 type VCSListProjectsRequest struct {
 	Organization string
 	VCSURL       string
+	MaxProjects  int
 }
 
 type VCSListProjectsResponse struct {

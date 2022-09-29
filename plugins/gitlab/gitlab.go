@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/gitsight/go-vcsurl"
 	"github.com/go-git/go-git/v5"
@@ -31,11 +32,48 @@ func (g *VCSGitlab) ListProjects(args shared.VCSListProjectsRequest) []string {
 		return []string{}
 	}
 
-	projects, _, err := git.Projects.ListProjects(&gitlab.ListProjectsOptions{})
-	g.logger.Debug("ListProjects", "projects[0]", projects[0])
-	g.logger.Debug("ListProjects", "Path", projects[0].Path, "PathWithNamespace", projects[0].PathWithNamespace)
+	projectsList := []string{}
+	page := 1
+	perPage := 100
+	for {
 
-	return []string{}
+		listOptions := gitlab.ListOptions{
+			Page:    page,
+			PerPage: perPage,
+		}
+		idString := "id"
+		projects, _, err := git.Projects.ListProjects(&gitlab.ListProjectsOptions{ListOptions: listOptions, OrderBy: &idString})
+		if err != nil {
+			g.logger.Warn("gitlab ListProject error", "err", err, "page", page)
+			return []string{}
+		}
+
+		for _, project := range projects {
+			projectsList = append(projectsList, project.PathWithNamespace)
+		}
+
+		if len(projects) < perPage {
+			break
+		}
+
+		if args.MaxProjects != 0 && len(projectsList) >= args.MaxProjects {
+			return projectsList[0:args.MaxProjects]
+		}
+
+		g.logger.Debug("gitlab ListProject call", "page", page, "projects[0].ID", projects[0].ID)
+
+		page += 1
+	}
+
+	return projectsList
+}
+
+func getVCSURLInfo(VCSURL string, project string) (*vcsurl.VCS, error) {
+	if strings.Contains(project, ":") {
+		return vcsurl.Parse(project)
+	}
+
+	return vcsurl.Parse(fmt.Sprintf("https://%s/%s", VCSURL, project))
 }
 
 func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) bool {
@@ -56,9 +94,11 @@ func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) bool {
 		}
 	}
 
-	info, err := vcsurl.Parse(args.Project)
+	// info, err := vcsurl.Parse(args.Project)
+	info, err := getVCSURLInfo(args.VCSURL, args.Project)
+	g.logger.Debug("Parsed vcs url info", "info", info)
 	if err != nil {
-		g.logger.Error("unable to parse project '%s'", args.Project)
+		g.logger.Error("Unable to parse VCS url info", "VCSURL", args.VCSURL, "project", args.Project)
 		panic(err)
 		// return false
 	}
@@ -73,7 +113,7 @@ func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) bool {
 	}
 	gitCloneOptions.URL, _ = info.Remote(vcsurl.HTTPS)
 	if args.AuthType == "ssh" {
-		gitCloneOptions.URL = fmt.Sprintf("git@%s:%s/%s.git", info.Host, info.Username, info.Name)
+		gitCloneOptions.URL = fmt.Sprintf("git@%s:%s.git", info.Host, info.FullName)
 
 		pkCallback, err := ssh.NewSSHAgentAuth("git")
 		if err != nil {

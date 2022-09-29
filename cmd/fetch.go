@@ -4,6 +4,7 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"os"
@@ -33,7 +34,7 @@ import (
 // 	"vcs": &shared.VCSPlugin{},
 // }
 
-func listProjects(vcsPluginName string, org string, authType string, sshKey string) []string {
+func listProjects(vcsPluginName string, vcsUrl string, org string, authType string, sshKey string) []string {
 	// Create an hclog.Logger
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:   "plugin-vcs",
@@ -83,14 +84,14 @@ func listProjects(vcsPluginName string, org string, authType string, sshKey stri
 	// implementation but is in fact over an RPC connection.
 	vcs := raw.(shared.VCS)
 
-	res := vcs.ListProjects(shared.VCSListProjectsRequest{Organization: org})
+	res := vcs.ListProjects(shared.VCSListProjectsRequest{Organization: org, VCSURL: vcsUrl})
 
 	logger.Info(fmt.Sprintf("'ListProjects' returned %d projects", len(res)))
 
 	return res
 }
 
-func fetchProjects(vcsPluginName string, projects []string, threads int, authType string, sshKey string) {
+func fetchProjects(vcsPluginName string, vcsUrl string, projects []string, threads int, authType string, sshKey string) {
 
 	// We're a host! Start by launching the plugin process.
 	home, err := os.UserHomeDir()
@@ -156,6 +157,7 @@ func fetchProjects(vcsPluginName string, projects []string, threads int, authTyp
 				Project:  project,
 				AuthType: authType,
 				SSHKey:   sshKey,
+				VCSURL:   vcsUrl,
 			}
 			res := vcs.Fetch(args)
 			logger.Info("Fetching finished...", "#", i+1, "project", project, "res", res)
@@ -166,6 +168,24 @@ func fetchProjects(vcsPluginName string, projects []string, threads int, authTyp
 	corelogger.Debug("Runned all goruotines, waiting for finishing them all")
 	wg.Wait()
 	corelogger.Debug("All goroutines are finished.")
+}
+
+func readProjectsFromFile(inputFile string) ([]string, error) {
+	readFile, err := os.Open(inputFile)
+	if err != nil {
+		return nil, err
+	}
+	fileScanner := bufio.NewScanner(readFile)
+
+	fileScanner.Split(bufio.ScanLines)
+
+	projects := []string{}
+	for fileScanner.Scan() {
+		projects = append(projects, fileScanner.Text())
+	}
+
+	readFile.Close()
+	return projects, nil
 }
 
 // fetchCmd represents the fetch command
@@ -192,6 +212,10 @@ var fetchCmd = &cobra.Command{
 		if err != nil {
 			panic("get 'projects' arg error")
 		}
+		inputFile, err := cmd.Flags().GetString("input-file")
+		if err != nil {
+			panic("get 'input-file' arg error")
+		}
 		org, err := cmd.Flags().GetString("org")
 		if err != nil {
 			panic("get 'org' arg error")
@@ -208,29 +232,46 @@ var fetchCmd = &cobra.Command{
 		if err != nil {
 			panic("get 'ssh-key' arg error")
 		}
+		vcsUrl, err := cmd.Flags().GetString("vcs-url")
+		if err != nil {
+			panic("get 'vcs-url' arg error")
+		}
 
 		if authType != "none" && authType != "ssh" {
 			panic("unknown auth-type")
 		}
 
-		// if authType == "ssh" && len(sshKey) == 0 {
+		// if len() == "ssh" && len(sshKey) == 0 {
 		// 	panic("specify ssh-key with auth-type 'ssh'")
 		// }
 
-		if len(org) > 0 && len(projects) > 0 {
-			panic("specify only one of 'org' or 'projects'")
-		}
-
-		if len(org) == 0 && len(projects) == 0 {
-			panic("specify at least one project in 'projects' or 'org'")
-		}
-
+		inputCount := 0
 		if len(org) > 0 {
-			projects = listProjects(vcsPluginName, org, authType, sshKey)
+			inputCount += 1
+		}
+		if len(projects) > 0 {
+			inputCount += 1
+		}
+		if len(inputFile) > 0 {
+			inputCount += 1
+		}
+		if inputCount != 1 {
+			panic("you must specify one of 'org', 'projects' or 'input-file")
+		}
+		if len(org) > 0 {
+			projects = listProjects(vcsPluginName, vcsUrl, org, authType, sshKey)
+		}
+
+		if len(inputFile) > 0 {
+			projectFromFile, err := readProjectsFromFile(inputFile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			projects = projectFromFile
 		}
 
 		if len(projects) > 0 {
-			fetchProjects(vcsPluginName, projects, threads, authType, sshKey)
+			fetchProjects(vcsPluginName, vcsUrl, projects, threads, authType, sshKey)
 		}
 	},
 }
@@ -247,7 +288,9 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	fetchCmd.Flags().String("vcs", "gitlab", "vcs plugin name")
+	fetchCmd.Flags().String("vcs-url", "gitlab.com", "vcs url")
 	fetchCmd.Flags().StringSlice("projects", []string{}, "list of projects to fetch")
+	fetchCmd.Flags().StringP("input-file", "f", "", "file with list of projects to fetch")
 	fetchCmd.Flags().String("org", "", "fetch projects from this organization")
 	fetchCmd.Flags().IntP("threads", "j", 1, "number of concurrent goroutines")
 	fetchCmd.Flags().String("auth-type", "none", "Type of authentication: 'none' or 'ssh'")
