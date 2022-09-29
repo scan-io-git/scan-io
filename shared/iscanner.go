@@ -11,7 +11,7 @@ type Scanner interface {
 	Scan(project string) bool
 }
 
-type ScannerFetchResponse struct {
+type ScannerScanResponse struct {
 	Success bool
 }
 
@@ -19,7 +19,7 @@ type ScannerFetchResponse struct {
 type ScannerRPCClient struct{ client *rpc.Client }
 
 func (g *ScannerRPCClient) Scan(project string) bool {
-	var resp ScannerFetchResponse
+	var resp ScannerScanResponse
 
 	err := g.client.Call("Plugin.Scan", map[string]interface{}{
 		"project": project,
@@ -41,7 +41,7 @@ type ScannerRPCServer struct {
 	Impl Scanner
 }
 
-func (s *ScannerRPCServer) Scan(args map[string]interface{}, resp *ScannerFetchResponse) error {
+func (s *ScannerRPCServer) Scan(args map[string]interface{}, resp *ScannerScanResponse) error {
 	resp.Success = s.Impl.Scan(args["project"].(string))
 	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
@@ -21,18 +22,18 @@ import (
 // a plugin and host. If the handshake fails, a user friendly error is shown.
 // This prevents users from executing bad plugins or executing a plugin
 // directory. It is a UX feature, not a security feature.
-var handshakeConfig = plugin.HandshakeConfig{
-	ProtocolVersion:  1,
-	MagicCookieKey:   "BASIC_PLUGIN",
-	MagicCookieValue: "hello",
-}
+// var handshakeConfig = plugin.HandshakeConfig{
+// 	ProtocolVersion:  1,
+// 	MagicCookieKey:   "BASIC_PLUGIN",
+// 	MagicCookieValue: "hello",
+// }
 
 // pluginMap is the map of plugins we can dispense.
-var vcsPluginMap = map[string]plugin.Plugin{
-	"vcs": &shared.VCSPlugin{},
-}
+// var vcsPluginMap = map[string]plugin.Plugin{
+// 	"vcs": &shared.VCSPlugin{},
+// }
 
-func listProjects(vcsPluginName string, org string) []string {
+func listProjects(vcsPluginName string, org string, authType string, sshKey string) []string {
 	// Create an hclog.Logger
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:   "plugin-vcs",
@@ -59,8 +60,8 @@ func listProjects(vcsPluginName string, org string) []string {
 
 	pluginPath := filepath.Join(pluginsFolder, vcsPluginName)
 	client := plugin.NewClient(&plugin.ClientConfig{
-		HandshakeConfig: handshakeConfig,
-		Plugins:         vcsPluginMap,
+		HandshakeConfig: shared.HandshakeConfig,
+		Plugins:         shared.PluginMap,
 		Cmd:             exec.Command(pluginPath),
 		Logger:          logger,
 	})
@@ -82,15 +83,14 @@ func listProjects(vcsPluginName string, org string) []string {
 	// implementation but is in fact over an RPC connection.
 	vcs := raw.(shared.VCS)
 
-	res := vcs.ListProjects(org)
+	res := vcs.ListProjects(shared.VCSListProjectsRequest{Organization: org})
 
 	logger.Info(fmt.Sprintf("'ListProjects' returned %d projects", len(res)))
 
 	return res
-	// fmt.Println(res)
 }
 
-func fetchProjects(vcsPluginName string, projects []string, threads int) {
+func fetchProjects(vcsPluginName string, projects []string, threads int, authType string, sshKey string) {
 
 	// We're a host! Start by launching the plugin process.
 	home, err := os.UserHomeDir()
@@ -98,32 +98,26 @@ func fetchProjects(vcsPluginName string, projects []string, threads int) {
 		panic("unable to get home folder")
 	}
 	pluginsFolder := filepath.Join(home, "/.scanio/plugins")
-
-	//
-	// useless check?
-	//
-	// if _, err := os.Stat(pluginsFolder); os.IsNotExist(err) {
-	// 	logger.Info("pluginsFolder '%s' does not exists. Creating...", pluginsFolder)
-	// 	if err := os.MkdirAll(pluginsFolder, os.ModePerm); err != nil {
-	// 		panic(err)
-	// 	}
-	// }
-
 	pluginPath := filepath.Join(pluginsFolder, vcsPluginName)
 
-	logger := hclog.New(&hclog.LoggerOptions{
+	corelogger := hclog.New(&hclog.LoggerOptions{
 		Name:   "core",
 		Output: os.Stdout,
-		Level:  hclog.Info,
-		// Level:  hclog.Debug,
+		// Level:  hclog.Info,
+		Level: hclog.Debug,
 	})
-	logger.Info(fmt.Sprintf("Fetching %d projects in total, %d concurrent goroutines", len(projects), threads))
+	corelogger.Info(fmt.Sprintf("Fetching %d projects in total, %d concurrent goroutines", len(projects), threads))
 
 	maxGoroutines := threads
 	guard := make(chan struct{}, maxGoroutines)
+	var wg sync.WaitGroup
 	for i, project := range projects {
+		corelogger.Info("Begin fetch project", "#", i+1, "project", project)
 		guard <- struct{}{} // would block if guard channel is already filled
+		wg.Add(1)
 		go func(i int, project string) {
+			defer wg.Done()
+			corelogger.Info("Goroutine started", "#", i+1, "project", project)
 
 			// Create an hclog.Logger
 			logger := hclog.New(&hclog.LoggerOptions{
@@ -134,12 +128,12 @@ func fetchProjects(vcsPluginName string, projects []string, threads int) {
 			})
 
 			client := plugin.NewClient(&plugin.ClientConfig{
-				HandshakeConfig: handshakeConfig,
-				Plugins:         vcsPluginMap,
+				HandshakeConfig: shared.HandshakeConfig,
+				Plugins:         shared.PluginMap,
 				Cmd:             exec.Command(pluginPath),
 				Logger:          logger,
 			})
-			// defer client.Kill()
+			defer client.Kill()
 
 			// Connect via RPC
 			rpcClient, err := client.Client()
@@ -158,13 +152,20 @@ func fetchProjects(vcsPluginName string, projects []string, threads int) {
 			vcs := raw.(shared.VCS)
 
 			logger.Info("Fetching...", "#", i+1, "project", project)
-			res := vcs.Fetch(project)
+			args := shared.VCSFetchRequest{
+				Project:  project,
+				AuthType: authType,
+				SSHKey:   sshKey,
+			}
+			res := vcs.Fetch(args)
 			logger.Info("Fetching finished...", "#", i+1, "project", project, "res", res)
 
-			client.Kill()
 			<-guard
 		}(i, project)
 	}
+	corelogger.Debug("Runned all goruotines, waiting for finishing them all")
+	wg.Wait()
+	corelogger.Debug("All goroutines are finished.")
 }
 
 // fetchCmd represents the fetch command
@@ -199,6 +200,22 @@ var fetchCmd = &cobra.Command{
 		if err != nil {
 			panic("get 'threads' arg error")
 		}
+		authType, err := cmd.Flags().GetString("auth-type")
+		if err != nil {
+			panic("get 'auth-type' arg error")
+		}
+		sshKey, err := cmd.Flags().GetString("ssh-key")
+		if err != nil {
+			panic("get 'ssh-key' arg error")
+		}
+
+		if authType != "none" && authType != "ssh" {
+			panic("unknown auth-type")
+		}
+
+		// if authType == "ssh" && len(sshKey) == 0 {
+		// 	panic("specify ssh-key with auth-type 'ssh'")
+		// }
 
 		if len(org) > 0 && len(projects) > 0 {
 			panic("specify only one of 'org' or 'projects'")
@@ -209,11 +226,11 @@ var fetchCmd = &cobra.Command{
 		}
 
 		if len(org) > 0 {
-			projects = listProjects(vcsPluginName, org)
+			projects = listProjects(vcsPluginName, org, authType, sshKey)
 		}
 
 		if len(projects) > 0 {
-			fetchProjects(vcsPluginName, projects, threads)
+			fetchProjects(vcsPluginName, projects, threads, authType, sshKey)
 		}
 	},
 }
@@ -233,4 +250,6 @@ func init() {
 	fetchCmd.Flags().StringSlice("projects", []string{}, "list of projects to fetch")
 	fetchCmd.Flags().String("org", "", "fetch projects from this organization")
 	fetchCmd.Flags().IntP("threads", "j", 1, "number of concurrent goroutines")
+	fetchCmd.Flags().String("auth-type", "none", "Type of authentication: 'none' or 'ssh'")
+	fetchCmd.Flags().String("ssh-key", "", "Path to ssh key")
 }

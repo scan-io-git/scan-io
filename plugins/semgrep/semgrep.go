@@ -71,11 +71,11 @@ func (g *ScannerSemgrep) Scan(project string) bool {
 // a plugin and host. If the handshake fails, a user friendly error is shown.
 // This prevents users from executing bad plugins or executing a plugin
 // directory. It is a UX feature, not a security feature.
-var handshakeConfig = plugin.HandshakeConfig{
-	ProtocolVersion:  1,
-	MagicCookieKey:   "BASIC_PLUGIN",
-	MagicCookieValue: "hello",
-}
+// var handshakeConfig = plugin.HandshakeConfig{
+// 	ProtocolVersion:  1,
+// 	MagicCookieKey:   "BASIC_PLUGIN",
+// 	MagicCookieValue: "hello",
+// }
 
 func main() {
 	logger := hclog.New(&hclog.LoggerOptions{
@@ -93,7 +93,7 @@ func main() {
 	}
 
 	plugin.Serve(&plugin.ServeConfig{
-		HandshakeConfig: handshakeConfig,
+		HandshakeConfig: shared.HandshakeConfig,
 		Plugins:         pluginMap,
 	})
 }

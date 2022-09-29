@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,39 +9,36 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 
-	"github.com/google/go-github/v47/github"
+	// "github.com/google/go-github/v47/github"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 	"github.com/scan-io-git/scan-io/shared"
+	"github.com/xanzy/go-gitlab"
 )
 
 // Here is a real implementation of VCS
-type VCSGithub struct {
+type VCSGitlab struct {
 	logger hclog.Logger
 }
 
-func (g *VCSGithub) ListProjects(args shared.VCSListProjectsRequest) []string {
+func (g *VCSGitlab) ListProjects(args shared.VCSListProjectsRequest) []string {
 	g.logger.Debug("Entering ListProjects", "organization", args.Organization)
-	client := github.NewClient(nil)
-	opt := &github.RepositoryListByOrgOptions{Type: "public"}
-	repos, _, err := client.Repositories.ListByOrg(context.Background(), args.Organization, opt)
+
+	baseURL := fmt.Sprintf("https://%s/api/v4", args.VCSURL)
+	git, err := gitlab.NewClient(os.Getenv("GITLAB_TOKEN"), gitlab.WithBaseURL(baseURL))
 	if err != nil {
-		g.logger.Error("Error listing projects", "err", err)
-		panic(err)
+		g.logger.Warn("Failed to create gitlab Client", "err", err)
+		return []string{}
 	}
 
-	projects := []string{}
-	for _, repo := range repos {
-		projects = append(projects, *repo.HTMLURL)
-	}
+	projects, _, err := git.Projects.ListProjects(&gitlab.ListProjectsOptions{})
+	g.logger.Debug("ListProjects", "projects[0]", projects[0])
+	g.logger.Debug("ListProjects", "Path", projects[0].Path, "PathWithNamespace", projects[0].PathWithNamespace)
 
-	// g.logger.Debug("repos details", "projects", projects)
-
-	return projects
-	// return strings.Join(projects, ",")
+	return []string{}
 }
 
-func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) bool {
+func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) bool {
 
 	g.logger.Debug("Fetch called", "args", args)
 
@@ -130,7 +126,7 @@ func main() {
 		JSONFormat: true,
 	})
 
-	VCS := &VCSGithub{
+	VCS := &VCSGitlab{
 		logger: logger,
 	}
 	// pluginMap is the map of plugins we can dispense.

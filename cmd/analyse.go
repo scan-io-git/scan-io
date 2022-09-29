@@ -17,14 +17,14 @@ import (
 )
 
 // pluginMap is the map of plugins we can dispense.
-var scannerPluginMap = map[string]plugin.Plugin{
-	"scanner": &shared.ScannerPlugin{},
-}
+// var scannerPluginMap = map[string]plugin.Plugin{
+// 	"scanner": &shared.ScannerPlugin{},
+// }
 
 func scanProject(scannerPluginName string, projects []string) {
 	// Create an hclog.Logger
 	logger := hclog.New(&hclog.LoggerOptions{
-		Name:   "plugin-vcs",
+		Name:   "plugin-scanner",
 		Output: os.Stdout,
 		Level:  hclog.Debug,
 	})
@@ -38,8 +38,8 @@ func scanProject(scannerPluginName string, projects []string) {
 
 	pluginPath := filepath.Join(pluginsFolder, scannerPluginName)
 	client := plugin.NewClient(&plugin.ClientConfig{
-		HandshakeConfig: handshakeConfig,
-		Plugins:         scannerPluginMap,
+		HandshakeConfig: shared.HandshakeConfig,
+		Plugins:         shared.PluginMap,
 		Cmd:             exec.Command(pluginPath),
 		Logger:          logger,
 	})
