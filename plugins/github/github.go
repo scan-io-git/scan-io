@@ -36,10 +36,7 @@ func (g *VCSGithub) ListRepos(args shared.VCSListReposRequest) []string {
 		projects = append(projects, *repo.HTMLURL)
 	}
 
-	// g.logger.Debug("repos details", "projects", projects)
-
 	return projects
-	// return strings.Join(projects, ",")
 }
 
 func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) bool {
@@ -49,14 +46,12 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) bool {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		panic("unable to get home folder")
-		// return false
 	}
 	projectsFolder := filepath.Join(home, "/.scanio/projects")
 	if _, err := os.Stat(projectsFolder); os.IsNotExist(err) {
 		g.logger.Info("projectsFolder '%s' does not exists. Creating...", projectsFolder)
 		if err := os.MkdirAll(projectsFolder, os.ModePerm); err != nil {
 			panic(err)
-			// return false
 		}
 	}
 
@@ -64,7 +59,6 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) bool {
 	if err != nil {
 		g.logger.Error("unable to parse project '%s'", args.Project)
 		panic(err)
-		// return false
 	}
 
 	targetFolder := filepath.Join(projectsFolder, info.ID)
@@ -94,34 +88,8 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) bool {
 		return false
 	}
 
-	// ref, err := r.Head()
-	// if err != nil {
-	// 	g.logger.Info("Error retrieving Head", "err", err)
-	// 	return false
-	// }
-
-	// commit, err := r.CommitObject(ref.Hash())
-	// if err != nil {
-	// 	g.logger.Info("Error getting Commit", "err", err)
-	// 	return false
-	// }
-
-	// g.logger.Info("finished", "remote", gitCloneOptions.URL, "ref", ref, "hash", ref.Hash().String())
-
 	return true
-	// g.logger.Debug("message from VCSHello.Fetch")
-	// return strings.Join(projects, ",")
 }
-
-// handshakeConfigs are used to just do a basic handshake between
-// a plugin and host. If the handshake fails, a user friendly error is shown.
-// This prevents users from executing bad plugins or executing a plugin
-// directory. It is a UX feature, not a security feature.
-// var handshakeConfig = plugin.HandshakeConfig{
-// 	ProtocolVersion:  1,
-// 	MagicCookieKey:   "BASIC_PLUGIN",
-// 	MagicCookieValue: "hello",
-// }
 
 func main() {
 	logger := hclog.New(&hclog.LoggerOptions{
@@ -137,8 +105,6 @@ func main() {
 	var pluginMap = map[string]plugin.Plugin{
 		"vcs": &shared.VCSPlugin{Impl: VCS},
 	}
-
-	// logger.Debug("message from plugin", "foo", "bar")
 
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: shared.HandshakeConfig,

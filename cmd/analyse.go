@@ -14,11 +14,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// pluginMap is the map of plugins we can dispense.
-// var scannerPluginMap = map[string]plugin.Plugin{
-// 	"scanner": &shared.ScannerPlugin{},
-// }
-
 func getVCSURLInfo(VCSURL string, project string) (*vcsurl.VCS, error) {
 	if strings.Contains(project, ":") {
 		return vcsurl.Parse(project)
@@ -26,74 +21,6 @@ func getVCSURLInfo(VCSURL string, project string) (*vcsurl.VCS, error) {
 
 	return vcsurl.Parse(fmt.Sprintf("https://%s/%s", VCSURL, project))
 }
-
-// func scanProject(scannerPluginName string, vcsUrl string, projects []string, threads int) {
-
-// 	// Create an hclog.Logger
-// 	logger := hclog.New(&hclog.LoggerOptions{
-// 		Name:   "plugin-scanner",
-// 		Output: os.Stdout,
-// 		Level:  hclog.Debug,
-// 	})
-
-// 	// We're a host! Start by launching the plugin process.
-// 	home, err := os.UserHomeDir()
-// 	if err != nil {
-// 		panic("unable to get home folder")
-// 	}
-// 	pluginsFolder := filepath.Join(home, "/.scanio/plugins")
-
-// 	pluginPath := filepath.Join(pluginsFolder, scannerPluginName)
-
-// 	logger.Info("Scanner plugin initialized. Scan projects", "total", len(projects))
-
-// 	maxGoroutines := threads
-// 	guard := make(chan struct{}, maxGoroutines)
-// 	var wg sync.WaitGroup
-// 	for i, project := range projects {
-// 		guard <- struct{}{} // would block if guard channel is already filled
-// 		wg.Add(1)
-// 		go func(i int, project string) {
-// 			defer wg.Done()
-
-// 			client := plugin.NewClient(&plugin.ClientConfig{
-// 				HandshakeConfig: shared.HandshakeConfig,
-// 				Plugins:         shared.PluginMap,
-// 				Cmd:             exec.Command(pluginPath),
-// 				Logger:          logger,
-// 			})
-// 			defer client.Kill()
-
-// 			// Connect via RPC
-// 			rpcClient, err := client.Client()
-// 			if err != nil {
-// 				log.Fatal(err)
-// 			}
-
-// 			// Request the plugin
-// 			raw, err := rpcClient.Dispense("scanner")
-// 			if err != nil {
-// 				log.Fatal(err)
-// 			}
-
-// 			scanner := raw.(shared.Scanner)
-
-// 			logger.Info("Run scan", "#", i+1, "project", project)
-// 			info, err := getVCSURLInfo(vcsUrl, project)
-// 			if err != nil {
-// 				log.Fatal(err)
-// 			}
-// 			ok := scanner.Scan(info.ID)
-// 			logger.Info("Scan finished", "#", i+1, "project", project, "statusOK", ok)
-
-// 			<-guard
-// 		}(i, project)
-// 	}
-// 	logger.Info(fmt.Sprintf("Completed scan of %d projects", len(projects)))
-// 	logger.Debug("Runned all goruotines, waiting for finishing them all")
-// 	wg.Wait()
-// 	logger.Debug("All goroutines are finished.")
-// }
 
 func scanProject(scannerPluginName string, vcsUrl string, repos []string, threads int) {
 

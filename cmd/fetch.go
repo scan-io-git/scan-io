@@ -77,24 +77,6 @@ func fetchRepos(vcsPluginName string, vcsUrl string, repos []string, threads int
 	logger.Info("All fetch operations are finished.")
 }
 
-// func readProjectsFromFile(inputFile string) ([]string, error) {
-// 	readFile, err := os.Open(inputFile)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer readFile.Close()
-
-// 	fileScanner := bufio.NewScanner(readFile)
-// 	fileScanner.Split(bufio.ScanLines)
-
-// 	projects := []string{}
-// 	for fileScanner.Scan() {
-// 		projects = append(projects, fileScanner.Text())
-// 	}
-
-// 	return projects, nil
-// }
-
 // fetchCmd represents the fetch command
 var fetchCmd = &cobra.Command{
 	Use:   "fetch",
