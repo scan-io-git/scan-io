@@ -22,7 +22,7 @@ func getVCSURLInfo(VCSURL string, project string) (*vcsurl.VCS, error) {
 	return vcsurl.Parse(fmt.Sprintf("https://%s/%s", VCSURL, project))
 }
 
-func scanProject(scannerPluginName string, vcsUrl string, repos []string, threads int) {
+func scanRepos(scannerPluginName string, vcsUrl string, repos []string, threads int) {
 
 	logger := shared.NewLogger("core")
 	logger.Info("Fetching starting", "total", len(repos), "goroutines", threads)
@@ -102,7 +102,7 @@ var analyseCmd = &cobra.Command{
 			panic("specify at least one 'repos' to scan")
 		}
 
-		scanProject(scannerPluginName, vcsUrl, repos, threads)
+		scanRepos(scannerPluginName, vcsUrl, repos, threads)
 	},
 }
 

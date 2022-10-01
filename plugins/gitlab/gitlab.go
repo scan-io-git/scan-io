@@ -117,7 +117,7 @@ func main() {
 	}
 	// pluginMap is the map of plugins we can dispense.
 	var pluginMap = map[string]plugin.Plugin{
-		"vcs": &shared.VCSPlugin{Impl: VCS},
+		shared.PluginTypeVCS: &shared.VCSPlugin{Impl: VCS},
 	}
 
 	// logger.Debug("message from plugin", "foo", "bar")

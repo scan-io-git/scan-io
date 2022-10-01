@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/gitsight/go-vcsurl"
 	"github.com/go-git/go-git/v5"
@@ -43,25 +42,11 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) bool {
 
 	g.logger.Debug("Fetch called", "args", args)
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		panic("unable to get home folder")
-	}
-	projectsFolder := filepath.Join(home, "/.scanio/projects")
-	if _, err := os.Stat(projectsFolder); os.IsNotExist(err) {
-		g.logger.Info("projectsFolder '%s' does not exists. Creating...", projectsFolder)
-		if err := os.MkdirAll(projectsFolder, os.ModePerm); err != nil {
-			panic(err)
-		}
-	}
-
-	info, err := vcsurl.Parse(args.Project)
+	info, err := vcsurl.Parse(fmt.Sprintf("https://%s/%s", args.VCSURL, args.Project))
 	if err != nil {
 		g.logger.Error("unable to parse project '%s'", args.Project)
 		panic(err)
 	}
-
-	targetFolder := filepath.Join(projectsFolder, info.ID)
 
 	gitCloneOptions := &git.CloneOptions{
 		// Auth:     pkCallback,
@@ -71,7 +56,7 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) bool {
 	}
 	gitCloneOptions.URL, _ = info.Remote(vcsurl.HTTPS)
 	if args.AuthType == "ssh" {
-		gitCloneOptions.URL = fmt.Sprintf("git@%s:%s/%s.git", info.Host, info.Username, info.Name)
+		gitCloneOptions.URL = fmt.Sprintf("git@%s:%s.git", info.Host, info.FullName)
 
 		pkCallback, err := ssh.NewSSHAgentAuth("git")
 		if err != nil {
@@ -81,9 +66,9 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) bool {
 		gitCloneOptions.Auth = pkCallback
 	}
 
-	_, err = git.PlainClone(targetFolder, false, gitCloneOptions)
+	_, err = git.PlainClone(args.TargetFolder, false, gitCloneOptions)
 	if err != nil {
-		g.logger.Info("Error on Clone occured", "err", err, "targetFolder", targetFolder, "remote", gitCloneOptions.URL)
+		g.logger.Info("Error on Clone occured", "err", err, "targetFolder", args.TargetFolder, "remote", gitCloneOptions.URL)
 		// panic(err)
 		return false
 	}
@@ -103,7 +88,7 @@ func main() {
 	}
 	// pluginMap is the map of plugins we can dispense.
 	var pluginMap = map[string]plugin.Plugin{
-		"vcs": &shared.VCSPlugin{Impl: VCS},
+		shared.PluginTypeVCS: &shared.VCSPlugin{Impl: VCS},
 	}
 
 	plugin.Serve(&plugin.ServeConfig{

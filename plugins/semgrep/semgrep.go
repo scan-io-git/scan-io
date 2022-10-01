@@ -43,7 +43,7 @@ func main() {
 	}
 	// pluginMap is the map of plugins we can dispense.
 	var pluginMap = map[string]plugin.Plugin{
-		"scanner": &shared.ScannerPlugin{Impl: Scanner},
+		shared.PluginTypeScanner: &shared.ScannerPlugin{Impl: Scanner},
 	}
 
 	plugin.Serve(&plugin.ServeConfig{
