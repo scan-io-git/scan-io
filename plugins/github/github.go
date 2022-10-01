@@ -21,8 +21,8 @@ type VCSGithub struct {
 	logger hclog.Logger
 }
 
-func (g *VCSGithub) ListProjects(args shared.VCSListProjectsRequest) []string {
-	g.logger.Debug("Entering ListProjects", "organization", args.Organization)
+func (g *VCSGithub) ListRepos(args shared.VCSListReposRequest) []string {
+	g.logger.Debug("Entering ListRepos", "organization", args.Organization)
 	client := github.NewClient(nil)
 	opt := &github.RepositoryListByOrgOptions{Type: "public"}
 	repos, _, err := client.Repositories.ListByOrg(context.Background(), args.Organization, opt)

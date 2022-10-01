@@ -9,27 +9,29 @@ import (
 // VCS is the interface that we're exposing as a plugin.
 type VCS interface {
 	Fetch(req VCSFetchRequest) bool
-	ListProjects(args VCSListProjectsRequest) []string
+	ListRepos(args VCSListReposRequest) []string
+	// ListOrgs(args VCSListReposRequest) []string
 }
 
 type VCSFetchRequest struct {
-	Project  string
-	AuthType string
-	SSHKey   string
-	VCSURL   string
+	Project      string
+	AuthType     string
+	SSHKey       string
+	VCSURL       string
+	TargetFolder string
 }
 
 type VCSFetchResponse struct {
 	Success bool
 }
 
-type VCSListProjectsRequest struct {
+type VCSListReposRequest struct {
 	Organization string
 	VCSURL       string
-	MaxProjects  int
+	Limit        int
 }
 
-type VCSListProjectsResponse struct {
+type VCSListReposResponse struct {
 	Projects []string
 }
 
@@ -50,10 +52,10 @@ func (g *VCSRPCClient) Fetch(req VCSFetchRequest) bool {
 	return resp.Success
 }
 
-func (g *VCSRPCClient) ListProjects(req VCSListProjectsRequest) []string {
-	var resp VCSListProjectsResponse
+func (g *VCSRPCClient) ListRepos(req VCSListReposRequest) []string {
+	var resp VCSListReposResponse
 
-	err := g.client.Call("Plugin.ListProjects", req, &resp)
+	err := g.client.Call("Plugin.ListRepos", req, &resp)
 
 	if err != nil {
 		// You usually want your interfaces to return errors. If they don't,
@@ -76,8 +78,8 @@ func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) error
 	return nil
 }
 
-func (s *VCSRPCServer) ListProjects(args VCSListProjectsRequest, resp *VCSListProjectsResponse) error {
-	resp.Projects = s.Impl.ListProjects(args)
+func (s *VCSRPCServer) ListRepos(args VCSListReposRequest, resp *VCSListReposResponse) error {
+	resp.Projects = s.Impl.ListRepos(args)
 	return nil
 }
 

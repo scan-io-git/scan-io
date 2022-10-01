@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/gitsight/go-vcsurl"
 	"github.com/go-git/go-git/v5"
@@ -22,8 +20,8 @@ type VCSGitlab struct {
 	logger hclog.Logger
 }
 
-func (g *VCSGitlab) ListProjects(args shared.VCSListProjectsRequest) []string {
-	g.logger.Debug("Entering ListProjects", "organization", args.Organization)
+func (g *VCSGitlab) ListRepos(args shared.VCSListReposRequest) []string {
+	g.logger.Debug("Entering ListRepos", "args", args)
 
 	baseURL := fmt.Sprintf("https://%s/api/v4", args.VCSURL)
 	git, err := gitlab.NewClient(os.Getenv("GITLAB_TOKEN"), gitlab.WithBaseURL(baseURL))
@@ -35,6 +33,9 @@ func (g *VCSGitlab) ListProjects(args shared.VCSListProjectsRequest) []string {
 	projectsList := []string{}
 	page := 1
 	perPage := 100
+	if args.Limit != 0 && args.Limit < perPage {
+		perPage = args.Limit
+	}
 	for {
 
 		listOptions := gitlab.ListOptions{
@@ -56,8 +57,9 @@ func (g *VCSGitlab) ListProjects(args shared.VCSListProjectsRequest) []string {
 			break
 		}
 
-		if args.MaxProjects != 0 && len(projectsList) >= args.MaxProjects {
-			return projectsList[0:args.MaxProjects]
+		if args.Limit != 0 && len(projectsList) >= args.Limit {
+			g.logger.Debug("gitlab ListProject call", "len(projectsList)", len(projectsList))
+			return projectsList[0:args.Limit]
 		}
 
 		g.logger.Debug("gitlab ListProject call", "page", page, "projects[0].ID", projects[0].ID)
@@ -68,42 +70,13 @@ func (g *VCSGitlab) ListProjects(args shared.VCSListProjectsRequest) []string {
 	return projectsList
 }
 
-func getVCSURLInfo(VCSURL string, project string) (*vcsurl.VCS, error) {
-	if strings.Contains(project, ":") {
-		return vcsurl.Parse(project)
-	}
-
-	return vcsurl.Parse(fmt.Sprintf("https://%s/%s", VCSURL, project))
-}
-
 func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) bool {
 
-	g.logger.Debug("Fetch called", "args", args)
-
-	home, err := os.UserHomeDir()
-	if err != nil {
-		panic("unable to get home folder")
-		// return false
-	}
-	projectsFolder := filepath.Join(home, "/.scanio/projects")
-	if _, err := os.Stat(projectsFolder); os.IsNotExist(err) {
-		g.logger.Info("projectsFolder '%s' does not exists. Creating...", projectsFolder)
-		if err := os.MkdirAll(projectsFolder, os.ModePerm); err != nil {
-			panic(err)
-			// return false
-		}
-	}
-
-	// info, err := vcsurl.Parse(args.Project)
-	info, err := getVCSURLInfo(args.VCSURL, args.Project)
-	g.logger.Debug("Parsed vcs url info", "info", info)
+	info, err := vcsurl.Parse(fmt.Sprintf("https://%s/%s", args.VCSURL, args.Project))
 	if err != nil {
 		g.logger.Error("Unable to parse VCS url info", "VCSURL", args.VCSURL, "project", args.Project)
 		panic(err)
-		// return false
 	}
-
-	targetFolder := filepath.Join(projectsFolder, info.ID)
 
 	gitCloneOptions := &git.CloneOptions{
 		// Auth:     pkCallback,
@@ -123,41 +96,14 @@ func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) bool {
 		gitCloneOptions.Auth = pkCallback
 	}
 
-	_, err = git.PlainClone(targetFolder, false, gitCloneOptions)
+	_, err = git.PlainClone(args.TargetFolder, false, gitCloneOptions)
 	if err != nil {
-		g.logger.Info("Error on Clone occured", "err", err, "targetFolder", targetFolder, "remote", gitCloneOptions.URL)
-		// panic(err)
+		g.logger.Info("Error on Clone occured", "err", err, "targetFolder", args.TargetFolder, "remote", gitCloneOptions.URL)
 		return false
 	}
 
-	// ref, err := r.Head()
-	// if err != nil {
-	// 	g.logger.Info("Error retrieving Head", "err", err)
-	// 	return false
-	// }
-
-	// commit, err := r.CommitObject(ref.Hash())
-	// if err != nil {
-	// 	g.logger.Info("Error getting Commit", "err", err)
-	// 	return false
-	// }
-
-	// g.logger.Info("finished", "remote", gitCloneOptions.URL, "ref", ref, "hash", ref.Hash().String())
-
 	return true
-	// g.logger.Debug("message from VCSHello.Fetch")
-	// return strings.Join(projects, ",")
 }
-
-// handshakeConfigs are used to just do a basic handshake between
-// a plugin and host. If the handshake fails, a user friendly error is shown.
-// This prevents users from executing bad plugins or executing a plugin
-// directory. It is a UX feature, not a security feature.
-// var handshakeConfig = plugin.HandshakeConfig{
-// 	ProtocolVersion:  1,
-// 	MagicCookieKey:   "BASIC_PLUGIN",
-// 	MagicCookieValue: "hello",
-// }
 
 func main() {
 	logger := hclog.New(&hclog.LoggerOptions{

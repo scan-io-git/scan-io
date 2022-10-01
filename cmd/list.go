@@ -5,76 +5,44 @@ package cmd
 
 import (
 	"bufio"
-	"fmt"
 	"log"
 	"os"
-	"os/exec"
-	"path/filepath"
 
-	hclog "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-plugin"
 	"github.com/scan-io-git/scan-io/shared"
 	"github.com/spf13/cobra"
 )
 
 var (
-	vcs         string
-	vcsUrl      string
-	outputFile  string
-	maxProjects int
+	vcs        string
+	vcsUrl     string
+	outputFile string
+	limit      int
 )
 
 func do() {
-	logger := hclog.New(&hclog.LoggerOptions{
-		Name:   "plugin-vcs",
-		Output: os.Stdout,
-		Level:  hclog.Debug,
+
+	logger := shared.NewLogger("core")
+
+	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, vcs, func(raw interface{}) {
+		vcs := raw.(shared.VCS)
+		projects := vcs.ListRepos(shared.VCSListReposRequest{VCSURL: vcsUrl, Limit: limit})
+		logger.Info("ListRepos finished", "total", len(projects))
+
+		file, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			log.Fatalf("failed creating file: %s", err)
+		}
+		defer file.Close()
+
+		datawriter := bufio.NewWriter(file)
+		defer datawriter.Flush()
+
+		for _, data := range projects {
+			_, _ = datawriter.WriteString(data + "\n")
+		}
+
+		logger.Info("Results saved to file", "filepath", outputFile)
 	})
-
-	home, err := os.UserHomeDir()
-	if err != nil {
-		panic("unable to get home folder")
-	}
-	pluginsFolder := filepath.Join(home, "/.scanio/plugins")
-
-	pluginPath := filepath.Join(pluginsFolder, vcs)
-	client := plugin.NewClient(&plugin.ClientConfig{
-		HandshakeConfig: shared.HandshakeConfig,
-		Plugins:         shared.PluginMap,
-		Cmd:             exec.Command(pluginPath),
-		Logger:          logger,
-	})
-	defer client.Kill()
-
-	rpcClient, err := client.Client()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Request the plugin
-	raw, err := rpcClient.Dispense("vcs")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	vcs := raw.(shared.VCS)
-	projects := vcs.ListProjects(shared.VCSListProjectsRequest{VCSURL: vcsUrl, MaxProjects: maxProjects})
-	fmt.Printf("returned %d results\n", len(projects))
-
-	file, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		log.Fatalf("failed creating file: %s", err)
-	}
-
-	datawriter := bufio.NewWriter(file)
-
-	for _, data := range projects {
-		_, _ = datawriter.WriteString(data + "\n")
-	}
-
-	datawriter.Flush()
-	file.Close()
-
 }
 
 // listCmd represents the list command
@@ -110,5 +78,5 @@ func init() {
 	listCmd.Flags().StringVar(&vcs, "vcs", "gitlab", "vcs plugin name")
 	listCmd.Flags().StringVar(&vcsUrl, "vcs-url", "gitlab.com", "url to vcs")
 	listCmd.Flags().StringVarP(&outputFile, "output", "f", "", "output file")
-	listCmd.Flags().IntVar(&maxProjects, "max", 0, "max projects to list")
+	listCmd.Flags().IntVar(&limit, "limit", 0, "max projects to list")
 }

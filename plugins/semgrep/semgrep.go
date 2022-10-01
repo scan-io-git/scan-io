@@ -1,12 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-
-	"github.com/gitsight/go-vcsurl"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
@@ -18,64 +14,22 @@ type ScannerSemgrep struct {
 	logger hclog.Logger
 }
 
-func (g *ScannerSemgrep) Scan(project string) bool {
+func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) bool {
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		panic("unable to get home folder")
-		// return false
-	}
-	projectsFolder := filepath.Join(home, "/.scanio/projects")
-	if _, err := os.Stat(projectsFolder); os.IsNotExist(err) {
-		g.logger.Info("projectsFolder '%s' does not exists. Creating...", projectsFolder)
-		if err := os.MkdirAll(projectsFolder, os.ModePerm); err != nil {
-			panic(err)
-			// return false
-		}
-	}
-	resultsFolder := filepath.Join(home, "/.scanio/results")
-	if _, err := os.Stat(resultsFolder); os.IsNotExist(err) {
-		g.logger.Info("resultsFolder does not exists. Creating...", "resultsFolder", resultsFolder)
-		if err := os.MkdirAll(resultsFolder, os.ModePerm); err != nil {
-			panic(err)
-			// return false
-		}
-	}
-
-	info, err := vcsurl.Parse(project)
-	if err != nil {
-		g.logger.Error("unable to parse project '%s'", project)
-		panic(err)
-		// return false
-	}
-
-	projectFolder := filepath.Join(projectsFolder, info.ID)
-	resultsFile := filepath.Join(resultsFolder, info.ID, fmt.Sprintf("semgrep.sarif"))
-
-	cmd := exec.Command("semgrep", "--config", "auto", "-o", resultsFile, "--sarif", projectFolder)
+	cmd := exec.Command("semgrep", "--config", "auto", "-o", args.ResultsPath, "--sarif", args.RepoPath)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 
-	err = cmd.Run()
-	g.logger.Info("Scan finished", "project", projectFolder, "resultsFile", resultsFile)
+	err := cmd.Run()
+	g.logger.Info("Scan finished", "project", args.RepoPath, "resultsFile", args.ResultsPath)
 
 	if err != nil {
-		g.logger.Error("semgrep execution error", "err", err, "projectFolder", projectFolder)
+		g.logger.Error("semgrep execution error", "err", err, "projectFolder", args.RepoPath)
 		return false
 	}
 
 	return true
 }
-
-// handshakeConfigs are used to just do a basic handshake between
-// a plugin and host. If the handshake fails, a user friendly error is shown.
-// This prevents users from executing bad plugins or executing a plugin
-// directory. It is a UX feature, not a security feature.
-// var handshakeConfig = plugin.HandshakeConfig{
-// 	ProtocolVersion:  1,
-// 	MagicCookieKey:   "BASIC_PLUGIN",
-// 	MagicCookieValue: "hello",
-// }
 
 func main() {
 	logger := hclog.New(&hclog.LoggerOptions{
