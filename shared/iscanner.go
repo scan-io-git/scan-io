@@ -8,22 +8,25 @@ import (
 
 // Scanner is the interface that we're exposing as a plugin.
 type Scanner interface {
-	Scan(project string) bool
+	Scan(args ScannerScanRequest) bool
 }
 
-type ScannerFetchResponse struct {
+type ScannerScanResponse struct {
 	Success bool
+}
+
+type ScannerScanRequest struct {
+	RepoPath    string
+	ResultsPath string
 }
 
 // Here is an implementation that talks over RPC
 type ScannerRPCClient struct{ client *rpc.Client }
 
-func (g *ScannerRPCClient) Scan(project string) bool {
-	var resp ScannerFetchResponse
+func (g *ScannerRPCClient) Scan(req ScannerScanRequest) bool {
+	var resp ScannerScanResponse
 
-	err := g.client.Call("Plugin.Scan", map[string]interface{}{
-		"project": project,
-	}, &resp)
+	err := g.client.Call("Plugin.Scan", req, &resp)
 
 	if err != nil {
 		// You usually want your interfaces to return errors. If they don't,
@@ -41,8 +44,8 @@ type ScannerRPCServer struct {
 	Impl Scanner
 }
 
-func (s *ScannerRPCServer) Scan(args map[string]interface{}, resp *ScannerFetchResponse) error {
-	resp.Success = s.Impl.Scan(args["project"].(string))
+func (s *ScannerRPCServer) Scan(args ScannerScanRequest, resp *ScannerScanResponse) error {
+	resp.Success = s.Impl.Scan(args)
 	return nil
 }
 
