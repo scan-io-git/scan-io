@@ -4,29 +4,31 @@ import (
 	"context"
 	"encoding/json"
 	"os"
-	"path/filepath"
+	//"path/filepath"
+	"fmt"
 	//"strings"
 	"time"
 
 	bitbucketv1 "github.com/gfleury/go-bitbucket-v1"
+
 	"github.com/gitsight/go-vcsurl"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
+
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 	"github.com/scan-io-git/scan-io/shared"
 	"github.com/scan-io-git/scan-io/utils"
 )
 
-const ()
+// Here is a real implementation of VCS
+type VCSBitbucket struct {
+	logger hclog.Logger
+}
 
 var opts = map[string]interface{}{
 	"limit": 2000,
 	"start": 0,
-}
-
-// Here is a real implementation of VCS
-type VCSBitbucket struct {
-	logger hclog.Logger
 }
 
 func (g *VCSBitbucket) listAllProjects(client *bitbucketv1.APIClient) []utils.BBProject {
@@ -89,8 +91,8 @@ func (g *VCSBitbucket) listOneProject(client *bitbucketv1.APIClient, project str
 	return resultJson
 }
 
-func (g *VCSBitbucket) ListAllRepos(project string) []string {
-	g.logger.Debug("Entering ListAllRepos", "project", project)
+func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) []string {
+	g.logger.Debug("Entering ListAllRepos", "project", args.Organization)
 
 	basicAuth := bitbucketv1.BasicAuth{UserName: "", Password: ""}
 
@@ -107,58 +109,48 @@ func (g *VCSBitbucket) ListAllRepos(project string) []string {
 	g.listAllProjects(client)
 
 	//oneProject := g.listOneProject(client, project)
-	g.listOneProject(client, project)
+	g.listOneProject(client, args.Organization)
 
 	var projects []string
 	return projects
 }
 
-func (g *VCSBitbucket) Fetch(project string) bool {
+func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) bool {
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		panic("unable to get home folder")
-		// return false
-	}
-	projectsFolder := filepath.Join(home, "/.scanio/projects")
-	if _, err := os.Stat(projectsFolder); os.IsNotExist(err) {
-		g.logger.Info("projectsFolder '%s' does not exists. Creating...", projectsFolder)
-		if err := os.MkdirAll(projectsFolder, os.ModePerm); err != nil {
-			panic(err)
-			// return false
-		}
-	}
+	g.logger.Debug("Fetch called", "args", args)
 
-	info, err := vcsurl.Parse(project)
+	info, err := vcsurl.Parse(fmt.Sprintf("https://%s/%s", args.VCSURL, args.Project))
 	if err != nil {
-		g.logger.Error("unable to parse project '%s'", project)
+		g.logger.Error("unable to parse project '%s'", args.Project)
 		panic(err)
-		// return false
 	}
 
-	targetFolder := filepath.Join(projectsFolder, info.ID)
-	remote, _ := info.Remote(vcsurl.HTTPS)
-
-	_, err = git.PlainClone(targetFolder, false, &git.CloneOptions{
-		URL:      remote,
+	gitCloneOptions := &git.CloneOptions{
+		// Auth:     pkCallback,
+		// URL:      remote,
 		Progress: os.Stdout,
 		Depth:    1,
-	})
+	}
+	gitCloneOptions.URL, _ = info.Remote(vcsurl.HTTPS)
+	if args.AuthType == "ssh" {
+		gitCloneOptions.URL = fmt.Sprintf("git@%s:%s.git", info.Host, info.FullName)
+
+		pkCallback, err := ssh.NewSSHAgentAuth("git")
+		if err != nil {
+			g.logger.Info("NewSSHAgentAuth error", "err", err)
+			return false
+		}
+		gitCloneOptions.Auth = pkCallback
+	}
+
+	_, err = git.PlainClone(args.TargetFolder, false, gitCloneOptions)
 	if err != nil {
-		g.logger.Info("Error on Clone occured", "err", err, "targetFolder", targetFolder, "remote", remote)
+		g.logger.Info("Error on Clone occured", "err", err, "targetFolder", args.TargetFolder, "remote", gitCloneOptions.URL)
 		// panic(err)
 		return false
 	}
 
-	g.logger.Info("finished", "remote", remote)
-
 	return true
-}
-
-var handshakeConfig = plugin.HandshakeConfig{
-	ProtocolVersion:  1,
-	MagicCookieKey:   "BASIC_PLUGIN",
-	MagicCookieValue: "hello",
 }
 
 func main() {
@@ -173,13 +165,11 @@ func main() {
 	}
 	// pluginMap is the map of plugins we can dispense.
 	var pluginMap = map[string]plugin.Plugin{
-		"vcs": &shared.VCSPlugin{Impl: VCS},
+		shared.PluginTypeVCS: &shared.VCSPlugin{Impl: VCS},
 	}
 
-	// logger.Debug("message from plugin", "foo", "bar")
-
 	plugin.Serve(&plugin.ServeConfig{
-		HandshakeConfig: handshakeConfig,
+		HandshakeConfig: shared.HandshakeConfig,
 		Plugins:         pluginMap,
 	})
 }

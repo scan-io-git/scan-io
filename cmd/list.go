@@ -16,6 +16,7 @@ var (
 	vcs        string
 	vcsUrl     string
 	outputFile string
+	namespace  string
 	limit      int
 )
 
@@ -75,8 +76,9 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	listCmd.Flags().StringVar(&vcs, "vcs", "gitlab", "vcs plugin name")
+	listCmd.Flags().StringVar(&vcs, "vcs", "", "vcs plugin name")
 	listCmd.Flags().StringVar(&vcsUrl, "vcs-url", "gitlab.com", "url to vcs")
 	listCmd.Flags().StringVarP(&outputFile, "output", "f", "", "output file")
+	listCmd.Flags().StringVar(&namespace, "namespace", "", "list repos in a particular namespace")
 	listCmd.Flags().IntVar(&limit, "limit", 0, "max projects to list")
 }
