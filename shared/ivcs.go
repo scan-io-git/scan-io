@@ -9,14 +9,19 @@ import (
 // VCS is the interface that we're exposing as a plugin.
 type VCS interface {
 	Fetch(project string) bool
-	ListProjects(organization string) []string
+	ListAllRepos(organization string) []string
 }
 
 type VCSFetchResponse struct {
 	Success bool
 }
 
-type VCSListProjectsResponse struct {
+// type VCSListProjectsRequest struct {
+// 	Organization string
+// 	VCSURL       string
+// }
+
+type VCSListAllReposResponse struct {
 	Projects []string
 }
 
@@ -39,10 +44,10 @@ func (g *VCSRPCClient) Fetch(project string) bool {
 	return resp.Success
 }
 
-func (g *VCSRPCClient) ListProjects(organization string) []string {
-	var resp VCSListProjectsResponse
+func (g *VCSRPCClient) ListAllRepos(organization string) []string {
+	var resp VCSListAllReposResponse
 
-	err := g.client.Call("Plugin.ListProjects", map[string]interface{}{
+	err := g.client.Call("Plugin.ListAllRepos", map[string]interface{}{
 		"organization": organization,
 	}, &resp)
 
@@ -67,8 +72,8 @@ func (s *VCSRPCServer) Fetch(args map[string]interface{}, resp *VCSFetchResponse
 	return nil
 }
 
-func (s *VCSRPCServer) ListProjects(args map[string]interface{}, resp *VCSListProjectsResponse) error {
-	resp.Projects = s.Impl.ListProjects(args["organization"].(string))
+func (s *VCSRPCServer) ListAllRepos(args map[string]interface{}, resp *VCSListAllReposResponse) error {
+	resp.Projects = s.Impl.ListAllRepos(args["organization"].(string))
 	return nil
 }
 

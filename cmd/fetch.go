@@ -82,9 +82,9 @@ func listProjects(vcsPluginName string, org string) []string {
 	// implementation but is in fact over an RPC connection.
 	vcs := raw.(shared.VCS)
 
-	res := vcs.ListProjects(org)
+	res := vcs.ListAllRepos(org)
 
-	logger.Info(fmt.Sprintf("'ListProjects' returned %d projects", len(res)))
+	logger.Info(fmt.Sprintf("'ListAllRepos' returned %d projects", len(res)))
 
 	return res
 	// fmt.Println(res)
