@@ -5,166 +5,76 @@ package cmd
 
 import (
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"strings"
 
-	hclog "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-plugin"
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/shared"
 )
 
-// handshakeConfigs are used to just do a basic handshake between
-// a plugin and host. If the handshake fails, a user friendly error is shown.
-// This prevents users from executing bad plugins or executing a plugin
-// directory. It is a UX feature, not a security feature.
-var handshakeConfig = plugin.HandshakeConfig{
-	ProtocolVersion:  1,
-	MagicCookieKey:   "BASIC_PLUGIN",
-	MagicCookieValue: "hello",
-}
+var (
+	RmExts string
+)
 
-// pluginMap is the map of plugins we can dispense.
-var vcsPluginMap = map[string]plugin.Plugin{
-	"vcs": &shared.VCSPlugin{},
-}
-
-func listProjects(vcsPluginName string, org string) []string {
-	// Create an hclog.Logger
-	logger := hclog.New(&hclog.LoggerOptions{
-		Name:   "plugin-vcs",
-		Output: os.Stdout,
-		Level:  hclog.Debug,
-	})
-
-	// We're a host! Start by launching the plugin process.
-	home, err := os.UserHomeDir()
-	if err != nil {
-		panic("unable to get home folder")
-	}
-	pluginsFolder := filepath.Join(home, "/.scanio/plugins")
-
-	//
-	// useless check?
-	//
-	// if _, err := os.Stat(pluginsFolder); os.IsNotExist(err) {
-	// 	logger.Info("pluginsFolder '%s' does not exists. Creating...", pluginsFolder)
-	// 	if err := os.MkdirAll(pluginsFolder, os.ModePerm); err != nil {
-	// 		panic(err)
-	// 	}
-	// }
-
-	pluginPath := filepath.Join(pluginsFolder, vcsPluginName)
-	client := plugin.NewClient(&plugin.ClientConfig{
-		HandshakeConfig: handshakeConfig,
-		Plugins:         vcsPluginMap,
-		Cmd:             exec.Command(pluginPath),
-		Logger:          logger,
-	})
-	defer client.Kill()
-
-	// Connect via RPC
-	rpcClient, err := client.Client()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Request the plugin
-	raw, err := rpcClient.Dispense("vcs")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// We should have a Greeter now! This feels like a normal interface
-	// implementation but is in fact over an RPC connection.
-	vcs := raw.(shared.VCS)
-
-	res := vcs.ListAllRepos(org)
-
-	logger.Info(fmt.Sprintf("'ListAllRepos' returned %d projects", len(res)))
-
-	return res
-	// fmt.Println(res)
-}
-
-func fetchProjects(vcsPluginName string, projects []string, threads int) {
-
-	// We're a host! Start by launching the plugin process.
-	home, err := os.UserHomeDir()
-	if err != nil {
-		panic("unable to get home folder")
-	}
-	pluginsFolder := filepath.Join(home, "/.scanio/plugins")
-
-	//
-	// useless check?
-	//
-	// if _, err := os.Stat(pluginsFolder); os.IsNotExist(err) {
-	// 	logger.Info("pluginsFolder '%s' does not exists. Creating...", pluginsFolder)
-	// 	if err := os.MkdirAll(pluginsFolder, os.ModePerm); err != nil {
-	// 		panic(err)
-	// 	}
-	// }
-
-	pluginPath := filepath.Join(pluginsFolder, vcsPluginName)
-
-	logger := hclog.New(&hclog.LoggerOptions{
-		Name:   "core",
-		Output: os.Stdout,
-		Level:  hclog.Info,
-		// Level:  hclog.Debug,
-	})
-	logger.Info(fmt.Sprintf("Fetching %d projects in total, %d concurrent goroutines", len(projects), threads))
-
-	maxGoroutines := threads
-	guard := make(chan struct{}, maxGoroutines)
-	for i, project := range projects {
-		guard <- struct{}{} // would block if guard channel is already filled
-		go func(i int, project string) {
-
-			// Create an hclog.Logger
-			logger := hclog.New(&hclog.LoggerOptions{
-				Name:   "plugin-vcs",
-				Output: os.Stdout,
-				// Level:  hclog.Info,
-				Level: hclog.Debug,
-			})
-
-			client := plugin.NewClient(&plugin.ClientConfig{
-				HandshakeConfig: handshakeConfig,
-				Plugins:         vcsPluginMap,
-				Cmd:             exec.Command(pluginPath),
-				Logger:          logger,
-			})
-			// defer client.Kill()
-
-			// Connect via RPC
-			rpcClient, err := client.Client()
-			if err != nil {
-				log.Fatal(err)
+func findByExtAndRemove(root string, exts []string) {
+	filepath.WalkDir(root, func(s string, d fs.DirEntry, e error) error {
+		if e != nil {
+			return e
+		}
+		ext := filepath.Ext(d.Name())
+		match := false
+		for _, rmExt := range exts {
+			if fmt.Sprintf(".%s", rmExt) == ext {
+				match = true
+				break
 			}
+		}
+		if !match {
+			return nil
+		}
+		e = os.Remove(s)
+		if e != nil {
+			return e
+		}
+		return nil
+	})
+}
 
-			// Request the plugin
-			raw, err := rpcClient.Dispense("vcs")
-			if err != nil {
-				log.Fatal(err)
-			}
+func fetchRepos(vcsPluginName string, vcsUrl string, repos []string, threads int, authType string, sshKey string) {
 
-			// We should have a Greeter now! This feels like a normal interface
-			// implementation but is in fact over an RPC connection.
+	logger := shared.NewLogger("core")
+	logger.Info("Fetching starting", "total", len(repos), "goroutines", threads)
+
+	shared.ForEveryStringWithBoundedGoroutines(threads, repos, func(i int, project string) {
+		logger.Info("Goroutine started", "#", i+1, "project", project)
+
+		targetFolder := shared.GetRepoPath(vcsUrl, project)
+		ok := false
+
+		shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, vcsPluginName, func(raw interface{}) {
+
 			vcs := raw.(shared.VCS)
+			args := shared.VCSFetchRequest{
+				Project:      project,
+				AuthType:     authType,
+				SSHKey:       sshKey,
+				VCSURL:       vcsUrl,
+				TargetFolder: targetFolder,
+			}
+			ok = vcs.Fetch(args)
+		})
 
-			logger.Info("Fetching...", "#", i+1, "project", project)
-			res := vcs.Fetch(project)
-			logger.Info("Fetching finished...", "#", i+1, "project", project, "res", res)
+		if ok {
+			logger.Debug("Removing files with some extentions", "extentions", RmExts)
+			findByExtAndRemove(targetFolder, strings.Split(RmExts, ","))
+		}
+	})
 
-			client.Kill()
-			<-guard
-		}(i, project)
-	}
+	logger.Info("All fetch operations are finished.")
 }
 
 // fetchCmd represents the fetch command
@@ -187,33 +97,72 @@ var fetchCmd = &cobra.Command{
 		if err != nil {
 			panic("get 'vcs' arg error")
 		}
-		projects, err := cmd.Flags().GetStringSlice("projects")
+		repos, err := cmd.Flags().GetStringSlice("repos")
 		if err != nil {
-			panic("get 'projects' arg error")
+			panic("get 'repos' arg error")
 		}
-		org, err := cmd.Flags().GetString("org")
+		inputFile, err := cmd.Flags().GetString("input-file")
 		if err != nil {
-			panic("get 'org' arg error")
+			panic("get 'input-file' arg error")
 		}
+		// org, err := cmd.Flags().GetString("org")
+		// if err != nil {
+		// 	panic("get 'org' arg error")
+		// }
 		threads, err := cmd.Flags().GetInt("threads")
 		if err != nil {
 			panic("get 'threads' arg error")
 		}
-
-		if len(org) > 0 && len(projects) > 0 {
-			panic("specify only one of 'org' or 'projects'")
+		authType, err := cmd.Flags().GetString("auth-type")
+		if err != nil {
+			panic("get 'auth-type' arg error")
+		}
+		sshKey, err := cmd.Flags().GetString("ssh-key")
+		if err != nil {
+			panic("get 'ssh-key' arg error")
+		}
+		vcsUrl, err := cmd.Flags().GetString("vcs-url")
+		if err != nil {
+			panic("get 'vcs-url' arg error")
 		}
 
-		if len(org) == 0 && len(projects) == 0 {
-			panic("specify at least one project in 'projects' or 'org'")
+		if authType != "none" && authType != "ssh" {
+			panic("unknown auth-type")
 		}
 
-		if len(org) > 0 {
-			projects = listProjects(vcsPluginName, org)
+		// if len() == "ssh" && len(sshKey) == 0 {
+		// 	panic("specify ssh-key with auth-type 'ssh'")
+		// }
+
+		inputCount := 0
+		// if len(org) > 0 {
+		// 	inputCount += 1
+		// }
+		if len(repos) > 0 {
+			inputCount += 1
+		}
+		if len(inputFile) > 0 {
+			inputCount += 1
+		}
+		if inputCount != 1 {
+			panic("you must specify one of 'repos' or 'input-file")
+		}
+		// if len(org) > 0 {
+		// 	repos = ListRepos(vcsPluginName, vcsUrl, org, authType, sshKey)
+		// }
+
+		if len(inputFile) > 0 {
+			reposFromFile, err := shared.ReadFileLines(inputFile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			repos = reposFromFile
 		}
 
-		if len(projects) > 0 {
-			fetchProjects(vcsPluginName, projects, threads)
+		shared.NewLogger("core").Debug("list of repos", "repos", repos)
+
+		if len(repos) > 0 {
+			fetchRepos(vcsPluginName, vcsUrl, repos, threads, authType, sshKey)
 		}
 	},
 }
@@ -230,7 +179,12 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	fetchCmd.Flags().String("vcs", "gitlab", "vcs plugin name")
-	fetchCmd.Flags().StringSlice("projects", []string{}, "list of projects to fetch")
-	fetchCmd.Flags().String("org", "", "fetch projects from this organization")
+	fetchCmd.Flags().String("vcs-url", "gitlab.com", "vcs url")
+	fetchCmd.Flags().StringSlice("repos", []string{}, "list of repos to fetch")
+	fetchCmd.Flags().StringP("input-file", "f", "", "file with list of repos to fetch")
+	// fetchCmd.Flags().String("org", "", "fetch repos from this organization")
 	fetchCmd.Flags().IntP("threads", "j", 1, "number of concurrent goroutines")
+	fetchCmd.Flags().String("auth-type", "none", "Type of authentication: 'none' or 'ssh'")
+	fetchCmd.Flags().String("ssh-key", "", "Path to ssh key")
+	fetchCmd.Flags().StringVar(&RmExts, "rm-ext", "csv,png,ipynb,txt,md,mp4,zip,gif,gz,jpg,jpeg,cache,tar,svg,bin,lock,exe", "Files with extention to remove automatically after checkout")
 }

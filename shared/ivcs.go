@@ -8,32 +8,40 @@ import (
 
 // VCS is the interface that we're exposing as a plugin.
 type VCS interface {
-	Fetch(project string) bool
-	ListAllRepos(organization string) []string
+	Fetch(req VCSFetchRequest) bool
+	ListRepos(args VCSListReposRequest) []string
+	// ListOrgs(args VCSListReposRequest) []string
+}
+
+type VCSFetchRequest struct {
+	Project      string
+	AuthType     string
+	SSHKey       string
+	VCSURL       string
+	TargetFolder string
 }
 
 type VCSFetchResponse struct {
 	Success bool
 }
 
-// type VCSListProjectsRequest struct {
-// 	Organization string
-// 	VCSURL       string
-// }
+type VCSListReposRequest struct {
+	Organization string
+	VCSURL       string
+	Limit        int
+}
 
-type VCSListAllReposResponse struct {
+type VCSListReposResponse struct {
 	Projects []string
 }
 
 // Here is an implementation that talks over RPC
 type VCSRPCClient struct{ client *rpc.Client }
 
-func (g *VCSRPCClient) Fetch(project string) bool {
+func (g *VCSRPCClient) Fetch(req VCSFetchRequest) bool {
 	var resp VCSFetchResponse
 
-	err := g.client.Call("Plugin.Fetch", map[string]interface{}{
-		"project": project,
-	}, &resp)
+	err := g.client.Call("Plugin.Fetch", req, &resp)
 
 	if err != nil {
 		// You usually want your interfaces to return errors. If they don't,
@@ -44,12 +52,10 @@ func (g *VCSRPCClient) Fetch(project string) bool {
 	return resp.Success
 }
 
-func (g *VCSRPCClient) ListAllRepos(organization string) []string {
-	var resp VCSListAllReposResponse
+func (g *VCSRPCClient) ListRepos(req VCSListReposRequest) []string {
+	var resp VCSListReposResponse
 
-	err := g.client.Call("Plugin.ListAllRepos", map[string]interface{}{
-		"organization": organization,
-	}, &resp)
+	err := g.client.Call("Plugin.ListRepos", req, &resp)
 
 	if err != nil {
 		// You usually want your interfaces to return errors. If they don't,
@@ -67,13 +73,13 @@ type VCSRPCServer struct {
 	Impl VCS
 }
 
-func (s *VCSRPCServer) Fetch(args map[string]interface{}, resp *VCSFetchResponse) error {
-	resp.Success = s.Impl.Fetch(args["project"].(string))
+func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) error {
+	resp.Success = s.Impl.Fetch(args)
 	return nil
 }
 
-func (s *VCSRPCServer) ListAllRepos(args map[string]interface{}, resp *VCSListAllReposResponse) error {
-	resp.Projects = s.Impl.ListAllRepos(args["organization"].(string))
+func (s *VCSRPCServer) ListRepos(args VCSListReposRequest, resp *VCSListReposResponse) error {
+	resp.Projects = s.Impl.ListRepos(args)
 	return nil
 }
 

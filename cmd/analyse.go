@@ -6,67 +6,43 @@ package cmd
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/exec"
 	"path/filepath"
+	"strings"
 
-	hclog "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-plugin"
+	"github.com/gitsight/go-vcsurl"
 	"github.com/scan-io-git/scan-io/shared"
 	"github.com/spf13/cobra"
 )
 
-// pluginMap is the map of plugins we can dispense.
-var scannerPluginMap = map[string]plugin.Plugin{
-	"scanner": &shared.ScannerPlugin{},
+func getVCSURLInfo(VCSURL string, project string) (*vcsurl.VCS, error) {
+	if strings.Contains(project, ":") {
+		return vcsurl.Parse(project)
+	}
+
+	return vcsurl.Parse(fmt.Sprintf("https://%s/%s", VCSURL, project))
 }
 
-func scanProject(scannerPluginName string, projects []string) {
-	// Create an hclog.Logger
-	logger := hclog.New(&hclog.LoggerOptions{
-		Name:   "plugin-vcs",
-		Output: os.Stdout,
-		Level:  hclog.Debug,
+func scanRepos(scannerPluginName string, vcsUrl string, repos []string, threads int) {
+
+	logger := shared.NewLogger("core")
+	logger.Info("Fetching starting", "total", len(repos), "goroutines", threads)
+
+	shared.ForEveryStringWithBoundedGoroutines(threads, repos, func(i int, repo string) {
+		logger.Info("Goroutine started", "#", i+1, "project", repo)
+
+		repoPath := filepath.Join(shared.GetProjectsHome(), repo)
+		resultsPath := filepath.Join(shared.GetPluginsHome(), repo)
+
+		shared.WithPlugin("plugin-scanner", shared.PluginTypeScanner, scannerPluginName, func(raw interface{}) {
+			ok := raw.(shared.Scanner).Scan(shared.ScannerScanRequest{
+				RepoPath:    repoPath,
+				ResultsPath: resultsPath,
+			})
+			logger.Info("Scan finished", "#", i+1, "repo", repo, "results", resultsPath, "statusOK", ok)
+		})
 	})
 
-	// We're a host! Start by launching the plugin process.
-	home, err := os.UserHomeDir()
-	if err != nil {
-		panic("unable to get home folder")
-	}
-	pluginsFolder := filepath.Join(home, "/.scanio/plugins")
-
-	pluginPath := filepath.Join(pluginsFolder, scannerPluginName)
-	client := plugin.NewClient(&plugin.ClientConfig{
-		HandshakeConfig: handshakeConfig,
-		Plugins:         scannerPluginMap,
-		Cmd:             exec.Command(pluginPath),
-		Logger:          logger,
-	})
-	defer client.Kill()
-
-	// Connect via RPC
-	rpcClient, err := client.Client()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Request the plugin
-	raw, err := rpcClient.Dispense("scanner")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	scanner := raw.(shared.Scanner)
-
-	logger.Info("Scanner plugin initialized. Scan projects", "total", len(projects))
-
-	for i, project := range projects {
-		logger.Info("Run scan", "#", i+1, "project", project)
-		ok := scanner.Scan(project)
-		logger.Info("Scan finished", "#", i+1, "project", project, "statusOK", ok)
-	}
-	logger.Info(fmt.Sprintf("Completed scan of %d projects", len(projects)))
+	logger.Debug("All goroutines are finished.")
 }
 
 // analyseCmd represents the analyse command
@@ -90,16 +66,43 @@ var analyseCmd = &cobra.Command{
 		if err != nil {
 			panic("get 'scanner' arg error")
 		}
+		threads, err := cmd.Flags().GetInt("threads")
+		if err != nil {
+			panic("get 'threads' arg error")
+		}
 
-		projects, err := cmd.Flags().GetStringSlice("projects")
+		repos, err := cmd.Flags().GetStringSlice("repos")
 		if err != nil {
 			panic(err)
 		}
-		if len(projects) == 0 {
-			panic("specify at least one 'project' to scan")
+		inputFile, err := cmd.Flags().GetString("input-file")
+		if err != nil {
+			panic("get 'input-file' arg error")
 		}
 
-		scanProject(scannerPluginName, projects)
+		inputCount := 0
+		if len(repos) > 0 {
+			inputCount += 1
+		}
+		if len(inputFile) > 0 {
+			inputCount += 1
+		}
+		if inputCount != 1 {
+			panic("you must specify one of 'repos' or 'input-file")
+		}
+
+		if len(inputFile) > 0 {
+			reposFromFile, err := shared.ReadFileLines(inputFile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			repos = reposFromFile
+		}
+		if len(repos) == 0 {
+			panic("specify at least one 'repos' to scan")
+		}
+
+		scanRepos(scannerPluginName, vcsUrl, repos, threads)
 	},
 }
 
@@ -117,5 +120,8 @@ func init() {
 	// analyseCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	analyseCmd.Flags().String("scanner", "semgrep", "scanner plugin name")
-	analyseCmd.Flags().StringSlice("projects", []string{}, "Projects to scan")
+	// analyseCmd.Flags().String("vcs-url", "gitlab.com", "vcs url")
+	analyseCmd.Flags().StringSlice("repos", []string{}, "Repos to scan")
+	analyseCmd.Flags().StringP("input-file", "f", "", "file with list of repos to fetch")
+	analyseCmd.Flags().IntP("threads", "j", 1, "number of concurrent goroutines")
 }
