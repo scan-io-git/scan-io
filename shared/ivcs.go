@@ -26,9 +26,9 @@ type VCSFetchResponse struct {
 }
 
 type VCSListReposRequest struct {
-	Organization string
-	VCSURL       string
-	Limit        int
+	Namespace string
+	VCSURL    string
+	Limit     int
 }
 
 type VCSListReposResponse struct {

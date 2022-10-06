@@ -178,10 +178,11 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	fetchCmd.Flags().String("vcs", "gitlab", "vcs plugin name")
-	fetchCmd.Flags().String("vcs-url", "gitlab.com", "vcs url")
-	fetchCmd.Flags().StringSlice("repos", []string{}, "list of repos to fetch")
+	fetchCmd.Flags().String("vcs", "", "vcs plugin name")
+	fetchCmd.Flags().String("vcs-url", "", "url to VCS - github.com")
+	fetchCmd.Flags().StringSlice("repos", []string{}, "list of repos to fetch - full path format. Bitbucket V1 API format - /project/reponame")
 	fetchCmd.Flags().StringP("input-file", "f", "", "file with list of repos to fetch")
+	//fetchCmd.Flags().Bool("cache-checking", false, "Cheking existing repos varsion on a disk ")
 	// fetchCmd.Flags().String("org", "", "fetch repos from this organization")
 	fetchCmd.Flags().IntP("threads", "j", 1, "number of concurrent goroutines")
 	fetchCmd.Flags().String("auth-type", "none", "Type of authentication: 'none' or 'ssh'")
