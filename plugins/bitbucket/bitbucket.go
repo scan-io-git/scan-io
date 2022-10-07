@@ -26,7 +26,7 @@ import (
 
 // Glogal variables for the plugin
 var (
-	username, token, vcsPort string
+	username, token, vcsPort, sshKeyPassword string
 )
 
 // Here is a real implementation of VCS
@@ -55,9 +55,14 @@ func (g *VCSBitbucket) init(command string) {
 	if command == "fetch" {
 		portPointer := &vcsPort
 		*portPointer = os.Getenv("BITBUCKET_SSH_PORT")
+		sshKeyPassword := os.Getenv("BITBUCKET_SSH_KEY_PASSOWRD")
+
 		if len(vcsPort) == 0 {
 			g.logger.Warn("BITBUCKET_SSH_PORT is not provided in an environment. Using default 22 ssh port")
 			*portPointer = "22"
+		}
+		if len(sshKeyPassword) == 0 {
+			g.logger.Warn("BITBUCKET_SSH_KEY_PASSOWRD is empty or not provided.")
 		}
 	}
 }
@@ -209,7 +214,7 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) bool {
 			panic(err)
 		}
 		//todo add known hosts
-		publicKeys, err := ssh.NewPublicKeysFromFile("git", args.SSHKey, "asdQWE123")
+		publicKeys, err := ssh.NewPublicKeysFromFile("git", args.SSHKey, sshKeyPassword)
 		if err != nil {
 			g.logger.Error("generate publickeys failed: %s\n", err.Error())
 			panic(err)
