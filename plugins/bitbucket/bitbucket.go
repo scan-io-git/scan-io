@@ -42,10 +42,8 @@ var opts = map[string]interface{}{
 
 // Init function for checking an environment
 func (g *VCSBitbucket) init(command string) {
-	usernamePointer := &username
-	*usernamePointer = os.Getenv("BITBUCKET_USERNAME")
-	tokenPointer := &token
-	*tokenPointer = os.Getenv("BITBUCKET_TOKEN")
+	username := os.Getenv("BITBUCKET_USERNAME")
+	token := os.Getenv("BITBUCKET_USERNAME")
 
 	if len(username) == 0 {
 		g.logger.Error("BITBUCKET_USERNAME or BITBUCKET_TOKEN is not provided in an environment.")
