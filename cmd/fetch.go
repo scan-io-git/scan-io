@@ -186,5 +186,5 @@ func init() {
 	fetchCmd.Flags().IntP("threads", "j", 1, "number of concurrent goroutines")
 	fetchCmd.Flags().String("auth-type", "none", "Type of authentication: 'none' or 'ssh'")
 	fetchCmd.Flags().String("ssh-key", "", "Path to ssh key")
-	fetchCmd.Flags().StringVar(&RmExts, "rm-ext", "csv,png,ipynb,txt,md,mp4,zip,gif,gz,jpg,jpeg,cache,tar,svg,bin,lock,exe", "Files with extention to remove automatically after checkout")
+	fetchCmd.Flags().StringVar(&RmExts, "rm-ext", "csv,png,ipynb,txt,md,mp4,zip,gif,gz,jpg,jpeg,cache,tar,svg,bin,lock,exe,stpd,pkl,tgz,mov,tsv,patch,log,pcap,pdf,dll,tiff,mp4,xlsx,so,pptx,docx,model,deb,webm,bz2,vec,msi,ttf", "Files with extention to remove automatically after checkout")
 }

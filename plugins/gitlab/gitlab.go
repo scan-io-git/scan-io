@@ -24,50 +24,84 @@ func (g *VCSGitlab) ListRepos(args shared.VCSListReposRequest) []string {
 	g.logger.Debug("Entering ListRepos", "args", args)
 
 	baseURL := fmt.Sprintf("https://%s/api/v4", args.VCSURL)
-	git, err := gitlab.NewClient(os.Getenv("GITLAB_TOKEN"), gitlab.WithBaseURL(baseURL))
+	gitlabClient, err := gitlab.NewClient(os.Getenv("GITLAB_TOKEN"), gitlab.WithBaseURL(baseURL))
 	if err != nil {
 		g.logger.Warn("Failed to create gitlab Client", "err", err)
 		return []string{}
 	}
 
-	projectsList := []string{}
+	allGroups := []int{}
 	page := 1
 	perPage := 100
-	if args.Limit != 0 && args.Limit < perPage {
-		perPage = args.Limit
-	}
 	for {
-
-		listOptions := gitlab.ListOptions{
-			Page:    page,
-			PerPage: perPage,
-		}
-		idString := "id"
-		projects, _, err := git.Projects.ListProjects(&gitlab.ListProjectsOptions{ListOptions: listOptions, OrderBy: &idString})
+		groups, _, err := gitlabClient.Groups.ListGroups(&gitlab.ListGroupsOptions{
+			ListOptions: gitlab.ListOptions{
+				Page:    page,
+				PerPage: perPage,
+			},
+			OrderBy:      gitlab.String("id"),
+			Sort:         gitlab.String("asc"),
+			AllAvailable: gitlab.Bool(true),
+		})
 		if err != nil {
-			g.logger.Warn("gitlab ListProject error", "err", err, "page", page)
+			g.logger.Warn("gitlab ListGroups error", "err", err, "page", page)
 			return []string{}
 		}
 
-		for _, project := range projects {
-			projectsList = append(projectsList, project.PathWithNamespace)
+		for _, group := range groups {
+			allGroups = append(allGroups, group.ID)
 		}
 
-		if len(projects) < perPage {
+		if len(groups) < perPage {
 			break
 		}
-
-		if args.Limit != 0 && len(projectsList) >= args.Limit {
-			g.logger.Debug("gitlab ListProject call", "len(projectsList)", len(projectsList))
-			return projectsList[0:args.Limit]
-		}
-
-		g.logger.Debug("gitlab ListProject call", "page", page, "projects[0].ID", projects[0].ID)
 
 		page += 1
 	}
 
-	return projectsList
+	g.logger.Debug("Collected groups", "total", len(allGroups))
+
+	repos := []string{}
+
+	for i, groupID := range allGroups {
+		g.logger.Debug("Getting list of projects for a group", "#", i+1, "groupID", groupID)
+
+		page = 1
+		perPage = 100
+		if args.Limit > 0 && args.Limit < perPage {
+			perPage = args.Limit
+		}
+		for {
+			projects, _, err := gitlabClient.Groups.ListGroupProjects(groupID, &gitlab.ListGroupProjectsOptions{
+				ListOptions: gitlab.ListOptions{
+					Page:    page,
+					PerPage: perPage,
+				},
+				OrderBy: gitlab.String("id"),
+				Sort:    gitlab.String("asc"),
+			})
+			if err != nil {
+				g.logger.Warn("gitlab ListGroups error", "err", err, "page", page)
+				return []string{}
+			}
+
+			for _, project := range projects {
+				repos = append(repos, project.PathWithNamespace)
+			}
+
+			if len(projects) < perPage {
+				break
+			}
+
+			if args.Limit > 0 && len(repos) >= args.Limit {
+				return repos[0:args.Limit]
+			}
+
+			page += 1
+		}
+	}
+
+	return repos
 }
 
 func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) bool {
