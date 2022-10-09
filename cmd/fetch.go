@@ -131,7 +131,7 @@ var fetchCmd = &cobra.Command{
 		}
 
 		if authType == "ssh-key" && len(sshKey) == 0 {
-			panic("specify ssh-key with auth-type 'ssh'")
+			panic("specify ssh-key with auth-type 'ssh-key'")
 		}
 
 		inputCount := 0
