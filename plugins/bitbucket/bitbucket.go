@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	crssh "golang.org/x/crypto/ssh"
 
 	bitbucketv1 "github.com/gfleury/go-bitbucket-v1"
 	//bitbucketv2 "github.com/ktrysmt/go-bitbucket"
@@ -17,21 +20,31 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
+	"github.com/mitchellh/mapstructure"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 	"github.com/scan-io-git/scan-io/shared"
-	"github.com/scan-io-git/scan-io/utils"
 )
 
-// Glogal variables for the plugin
+// Global variables for the plugin
 var (
 	username, token, vcsPort, sshKeyPassword string
 )
 
-// Here is a real implementation of VCS
 type VCSBitbucket struct {
 	logger hclog.Logger
+}
+
+type BBReposLinks struct {
+	Name     string
+	HttpLink string
+	SshLink  string
+}
+
+type BBProject struct {
+	Key  string
+	Link string
 }
 
 // Limit for Bitbucket v1 API page resonse
@@ -40,10 +53,16 @@ var opts = map[string]interface{}{
 	"start": 0,
 }
 
+func getProjectsResponse(r *bitbucketv1.APIResponse) ([]bitbucketv1.Project, error) {
+	var m []bitbucketv1.Project
+	err := mapstructure.Decode(r.Values["values"], &m)
+	return m, err
+}
+
 // Init function for checking an environment
 func (g *VCSBitbucket) init(command string) {
-	username := os.Getenv("BITBUCKET_USERNAME")
-	token := os.Getenv("BITBUCKET_USERNAME")
+	username = os.Getenv("BITBUCKET_USERNAME")
+	token = os.Getenv("BITBUCKET_TOKEN")
 
 	if len(username) == 0 {
 		g.logger.Error("BITBUCKET_USERNAME or BITBUCKET_TOKEN is not provided in an environment.")
@@ -53,13 +72,12 @@ func (g *VCSBitbucket) init(command string) {
 		panic("Env problems")
 	}
 	if command == "fetch" {
-		portPointer := &vcsPort
-		*portPointer = os.Getenv("BITBUCKET_SSH_PORT")
-		sshKeyPassword := os.Getenv("BITBUCKET_SSH_KEY_PASSOWRD")
+		vcsPort = os.Getenv("BITBUCKET_SSH_PORT")
+		sshKeyPassword = os.Getenv("BITBUCKET_SSH_KEY_PASSWORD")
 
 		if len(vcsPort) == 0 {
 			g.logger.Warn("BITBUCKET_SSH_PORT is not provided in an environment. Using default 22 ssh port")
-			*portPointer = "22"
+			vcsPort = "22"
 		}
 		if len(sshKeyPassword) == 0 {
 			g.logger.Warn("BITBUCKET_SSH_KEY_PASSOWRD is empty or not provided.")
@@ -68,7 +86,7 @@ func (g *VCSBitbucket) init(command string) {
 }
 
 // Listing all project in Bitbucket v1 API
-func (g *VCSBitbucket) listAllProjects(client *bitbucketv1.APIClient) []utils.BBProject {
+func (g *VCSBitbucket) listAllProjects(client *bitbucketv1.APIClient) []BBProject {
 	g.logger.Debug("Listing all projects")
 	response, err := client.DefaultApi.GetProjects(opts)
 	if err != nil {
@@ -77,15 +95,15 @@ func (g *VCSBitbucket) listAllProjects(client *bitbucketv1.APIClient) []utils.BB
 	}
 
 	g.logger.Debug("Projects is listed")
-	res, err := utils.GetProjectsResponse(response)
+	res, err := getProjectsResponse(response)
 	if err != nil {
 		g.logger.Error("Response parsing is failed")
 		panic(err.Error())
 	}
 
-	var projectsList []utils.BBProject
+	var projectsList []BBProject
 	for _, bitbucketRepo := range res {
-		projectsList = append(projectsList, utils.BBProject{Key: bitbucketRepo.Key, Link: bitbucketRepo.Links.Self[0].Href})
+		projectsList = append(projectsList, BBProject{Key: bitbucketRepo.Key, Link: bitbucketRepo.Links.Self[0].Href})
 
 	}
 
@@ -97,7 +115,7 @@ func (g *VCSBitbucket) listAllProjects(client *bitbucketv1.APIClient) []utils.BB
 }
 
 // Resolving information about all repositories in a one project from Bitbucket v1 API
-func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project string) []utils.BBReposLinks {
+func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project string) []BBReposLinks {
 	g.logger.Debug("Resolving a particular project", "project", project)
 	response, err := client.DefaultApi.GetRepositoriesWithOptions(project, opts)
 	if err != nil {
@@ -112,7 +130,7 @@ func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project 
 		panic(err.Error())
 	}
 
-	var resultList []utils.BBReposLinks
+	var resultList []BBReposLinks
 	for _, repo := range result {
 		var http_link string
 		var ssh_link string
@@ -128,7 +146,7 @@ func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project 
 			}
 		}
 
-		resultList = append(resultList, utils.BBReposLinks{Name: repo.Name, HttpLink: http_link, SshLink: ssh_link})
+		resultList = append(resultList, BBReposLinks{Name: repo.Name, HttpLink: http_link, SshLink: ssh_link})
 	}
 
 	g.logger.Info("List of repositories is ready.")
@@ -142,7 +160,7 @@ func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) []string {
 	g.logger.Debug("Entering ListRepos", "args", args)
 	g.init("list")
 
-	baseURL := fmt.Sprintf("https://%s", args.VCSURL)
+	baseURL := fmt.Sprintf("https://%s/rest", args.VCSURL)
 	basicAuth := bitbucketv1.BasicAuth{UserName: username, Password: token}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
@@ -202,44 +220,56 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) bool {
 		Depth:    1,
 	}
 
-	gitCloneOptions.URL, _ = info.Remote(vcsurl.HTTPS)
+	gitCloneOptions.URL = fmt.Sprintf("git@%s:%s%s.git", info.Host, vcsPort, info.FullName)
 
-	if args.AuthType == "ssh" {
-		//what with 22 port using?
-		gitCloneOptions.URL = fmt.Sprintf("git@%s:%s%s.git", info.Host, vcsPort, info.FullName)
-
+	if args.AuthType == "ssh-key" {
+		g.logger.Info("Making arrangements for ssh-key fetching", "repo", args.Project)
 		_, err := os.Stat(args.SSHKey)
 		if err != nil {
 			g.logger.Error("read file %s failed %s\n", args.SSHKey, err.Error())
 			panic(err)
 		}
-		//todo add known hosts
-		publicKeys, err := ssh.NewPublicKeysFromFile("git", args.SSHKey, sshKeyPassword)
+
+		pkCallback, err := ssh.NewPublicKeysFromFile("git", args.SSHKey, sshKeyPassword)
 		if err != nil {
 			g.logger.Error("generate publickeys failed: %s\n", err.Error())
 			panic(err)
 		}
 
-		gitCloneOptions.Auth = publicKeys
+		pkCallback.HostKeyCallbackHelper = ssh.HostKeyCallbackHelper{
+			HostKeyCallback: crssh.InsecureIgnoreHostKey(),
+		}
 
-		//todo add via agent
-		// pkCallback, err := ssh.NewSSHAgentAuth("git")
-		// if err != nil {
-		// 	g.logger.Info("NewSSHAgentAuth error", "err", err)
-		// 	return false
-		// }
+		gitCloneOptions.Auth = pkCallback
+	} else if args.AuthType == "ssh-agent" {
+		g.logger.Info("Making arrangements for ssh-agent fetching", "repo", args.Project)
+		pkCallback, err := ssh.NewSSHAgentAuth("git")
+		if err != nil {
+			g.logger.Error("NewSSHAgentAuth error", "err", err)
+			panic(err)
+		}
 
-	} else {
-		//format for BB https://bitbucket.com/scm/project/name.git
-		gitCloneOptions.URL = fmt.Sprintf("https://%s/scm%s.git", info.Host, vcsPort, info.FullName)
-		//g.logger.Debug(fmt.Sprintf("%#v", gitCloneOptions))
+		pkCallback.HostKeyCallbackHelper = ssh.HostKeyCallbackHelper{
+			HostKeyCallback: crssh.InsecureIgnoreHostKey(),
+		}
+
+		gitCloneOptions.Auth = pkCallback
+
+	} else if args.AuthType == "http" {
+		//gitCloneOptions.URL, _ = info.Remote(vcsurl.HTTPS)
+		gitCloneOptions.URL = fmt.Sprintf("https://%s/scm%s.git", info.Host, info.FullName)
+
 		gitCloneOptions.Auth = &http.BasicAuth{
 			Username: username,
 			Password: token,
 		}
-
+	} else {
+		g.logger.Debug("Unknown auth type")
+		panic("Unknown auth type")
 	}
+
 	//TODO add logging from go-git
+	g.logger.Info("Fetching repo", "repo", args.Project)
 	_, err = git.PlainClone(args.TargetFolder, false, gitCloneOptions)
 
 	if err != nil {
@@ -247,6 +277,7 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) bool {
 		return false
 	}
 
+	g.logger.Info("Fetch's ended", "repo", args.Project)
 	return true
 }
 
@@ -260,7 +291,7 @@ func main() {
 	VCS := &VCSBitbucket{
 		logger: logger,
 	}
-	// pluginMap is the map of plugins we can dispense.
+
 	var pluginMap = map[string]plugin.Plugin{
 		shared.PluginTypeVCS: &shared.VCSPlugin{Impl: VCS},
 	}
