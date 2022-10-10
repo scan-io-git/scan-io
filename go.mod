@@ -3,12 +3,16 @@ module github.com/scan-io-git/scan-io
 go 1.19
 
 require (
+	github.com/gfleury/go-bitbucket-v1 v0.0.0-20220418082332-711d7d5e805f
 	github.com/gitsight/go-vcsurl v1.0.0
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/google/go-github/v47 v47.1.1-0.20220922183808-8a4bdb5e400f
 	github.com/hashicorp/go-hclog v0.14.1
 	github.com/hashicorp/go-plugin v1.4.5
+	github.com/mitchellh/mapstructure v1.1.2
 	github.com/spf13/cobra v1.5.0
+	github.com/xanzy/go-gitlab v0.73.1
+	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 )
 
 require (
@@ -35,10 +39,7 @@ require (
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/testify v1.8.0 // indirect
-	github.com/xanzy/go-gitlab v0.73.1 // indirect
 	github.com/xanzy/ssh-agent v0.3.0 // indirect
-	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
 	golang.org/x/net v0.0.0-20220805013720-a33c5aa5df48 // indirect
 	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c // indirect
 	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect

@@ -6,6 +6,7 @@ build: buildcli buildplugins
 buildplugins:
 	go build -o ~/.scanio/plugins/gitlab ./plugins/gitlab/ && \
 	go build -o ~/.scanio/plugins/github ./plugins/github/ && \
+	go build -o ~/.scanio/plugins/bitbucket ./plugins/bitbucket/ && \
 	go build -o ~/.scanio/plugins/semgrep ./plugins/semgrep/
 
 .PHONY: buildcli

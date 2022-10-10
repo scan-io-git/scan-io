@@ -1,4 +1,4 @@
-PLUGIN_NAME=github
+PLUGIN_NAME=bitbucket
 
 .PHONY: build
 

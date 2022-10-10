@@ -21,10 +21,10 @@ type VCSGithub struct {
 }
 
 func (g *VCSGithub) ListRepos(args shared.VCSListReposRequest) []string {
-	g.logger.Debug("Entering ListRepos", "organization", args.Organization)
+	g.logger.Debug("Entering ListRepos", "organization", args.Namespace)
 	client := github.NewClient(nil)
 	opt := &github.RepositoryListByOrgOptions{Type: "public"}
-	repos, _, err := client.Repositories.ListByOrg(context.Background(), args.Organization, opt)
+	repos, _, err := client.Repositories.ListByOrg(context.Background(), args.Namespace, opt)
 	if err != nil {
 		g.logger.Error("Error listing projects", "err", err)
 		panic(err)

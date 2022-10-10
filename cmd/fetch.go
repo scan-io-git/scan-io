@@ -126,13 +126,13 @@ var fetchCmd = &cobra.Command{
 			panic("get 'vcs-url' arg error")
 		}
 
-		if authType != "none" && authType != "ssh" {
+		if authType != "http" && authType != "ssh-key" && authType != "ssh-agent" {
 			panic("unknown auth-type")
 		}
 
-		// if len() == "ssh" && len(sshKey) == 0 {
-		// 	panic("specify ssh-key with auth-type 'ssh'")
-		// }
+		if authType == "ssh-key" && len(sshKey) == 0 {
+			panic("specify ssh-key with auth-type 'ssh-key'")
+		}
 
 		inputCount := 0
 		// if len(org) > 0 {
@@ -178,13 +178,14 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	fetchCmd.Flags().String("vcs", "gitlab", "vcs plugin name")
-	fetchCmd.Flags().String("vcs-url", "gitlab.com", "vcs url")
-	fetchCmd.Flags().StringSlice("repos", []string{}, "list of repos to fetch")
+	fetchCmd.Flags().String("vcs", "", "vcs plugin name")
+	fetchCmd.Flags().String("vcs-url", "", "url to VCS - github.com")
+	fetchCmd.Flags().StringSlice("repos", []string{}, "list of repos to fetch - full path format. Bitbucket V1 API format - /project/reponame")
 	fetchCmd.Flags().StringP("input-file", "f", "", "file with list of repos to fetch")
+	//fetchCmd.Flags().Bool("cache-checking", false, "Cheking existing repos varsion on a disk ")
 	// fetchCmd.Flags().String("org", "", "fetch repos from this organization")
 	fetchCmd.Flags().IntP("threads", "j", 1, "number of concurrent goroutines")
-	fetchCmd.Flags().String("auth-type", "none", "Type of authentication: 'none' or 'ssh'")
+	fetchCmd.Flags().String("auth-type", "http", "Type of authentication: 'http', 'ssh-agent' or 'ssh-key'")
 	fetchCmd.Flags().String("ssh-key", "", "Path to ssh key")
 	fetchCmd.Flags().StringVar(&RmExts, "rm-ext", "csv,png,ipynb,txt,md,mp4,zip,gif,gz,jpg,jpeg,cache,tar,svg,bin,lock,exe", "Files with extention to remove automatically after checkout")
 }
