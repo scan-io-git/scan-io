@@ -17,6 +17,7 @@ var (
 	vcsUrl     string
 	outputFile string
 	limit      int
+	org        string
 )
 
 func do() {
@@ -25,7 +26,7 @@ func do() {
 
 	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, vcs, func(raw interface{}) {
 		vcs := raw.(shared.VCS)
-		projects := vcs.ListRepos(shared.VCSListReposRequest{VCSURL: vcsUrl, Limit: limit})
+		projects := vcs.ListRepos(shared.VCSListReposRequest{VCSURL: vcsUrl, Limit: limit, Organization: org})
 		logger.Info("ListRepos finished", "total", len(projects))
 
 		file, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
@@ -76,7 +77,8 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	listCmd.Flags().StringVar(&vcs, "vcs", "gitlab", "vcs plugin name")
+	listCmd.Flags().StringVar(&org, "org", "", "org")
 	listCmd.Flags().StringVar(&vcsUrl, "vcs-url", "gitlab.com", "url to vcs")
-	listCmd.Flags().StringVarP(&outputFile, "output", "f", "", "output file")
+	listCmd.Flags().StringVarP(&outputFile, "output", "o", "", "output file")
 	listCmd.Flags().IntVar(&limit, "limit", 0, "max projects to list")
 }
