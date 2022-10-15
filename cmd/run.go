@@ -201,16 +201,6 @@ func getPodSpec(jobID string, repo string) *batchv1.Job {
 										},
 									},
 								},
-								// {
-								// 	Name: "AWS_ACCESS_KEY",
-								// 	ValueFrom: &apiv1.EnvVarSource{
-								// 		SecretKeyRef: &apiv1.SecretKeySelector{
-								// 			LocalObjectReference: apiv1.LocalObjectReference{Name: "s3"},
-								// 			Key:                  "ACCESS_KEY_ID",
-								// 			Optional:             pointer.Bool(false),
-								// 		},
-								// 	},
-								// },
 								{
 									Name: "AWS_SECRET_ACCESS_KEY",
 									ValueFrom: &apiv1.EnvVarSource{
@@ -221,24 +211,6 @@ func getPodSpec(jobID string, repo string) *batchv1.Job {
 										},
 									},
 								},
-								// {
-								// 	Name: "AWS_SECRET_KEY",
-								// 	ValueFrom: &apiv1.EnvVarSource{
-								// 		SecretKeyRef: &apiv1.SecretKeySelector{
-								// 			LocalObjectReference: apiv1.LocalObjectReference{Name: "s3"},
-								// 			Key:                  "SECRET_ACCESS_KEY",
-								// 			Optional:             pointer.Bool(false),
-								// 		},
-								// 	},
-								// },
-								// {
-								// 	Name:  "AWS_REGION",
-								// 	Value: AWS_DEFAULT_REGION,
-								// },
-								// {
-								// 	Name:  "AWS_DEFAULT_REGION",
-								// 	Value: AWS_DEFAULT_REGION,
-								// },
 							},
 						},
 					},
