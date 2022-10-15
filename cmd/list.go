@@ -4,12 +4,6 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"bufio"
-	"encoding/json"
-	"log"
-	"os"
-
-	"github.com/hashicorp/go-hclog"
 	"github.com/scan-io-git/scan-io/libs/vcs"
 	"github.com/scan-io-git/scan-io/shared"
 	"github.com/spf13/cobra"
@@ -20,22 +14,6 @@ var (
 	limit                                  int
 	resultVCS                              vcs.ListFuncResult
 )
-
-func writeFile(data vcs.ListFuncResult, logger hclog.Logger) {
-	file, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		log.Fatalf("failed creating file: %s", err)
-	}
-	defer file.Close()
-
-	datawriter := bufio.NewWriter(file)
-	defer datawriter.Flush()
-
-	resultJson, _ := json.MarshalIndent(data, "", "    ")
-	datawriter.Write(resultJson)
-	logger.Info("Results saved to file", outputFile)
-
-}
 
 func do() {
 	logger := shared.NewLogger("core")
@@ -54,7 +32,7 @@ func do() {
 			logger.Info("Amount of repositories", len(projects))
 		}
 
-		writeFile(resultVCS, logger)
+		vcs.WriteFile(resultVCS, outputFile, logger)
 	})
 }
 

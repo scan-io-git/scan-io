@@ -25,6 +25,10 @@ type ListFuncResult struct {
 	Message string
 }
 
+type EvnVariables struct {
+	Username, Token, VcsPort, SshKeyPassword string
+}
+
 type VCS interface {
 	Fetch(req VCSFetchRequest) bool
 	ListRepos(args VCSListReposRequest) ([]RepositoryParams, error)
