@@ -4,12 +4,13 @@ import (
 	"net/rpc"
 
 	"github.com/hashicorp/go-plugin"
+	"github.com/scan-io-git/scan-io/library/vcs"
 )
 
 // VCS is the interface that we're exposing as a plugin.
 type VCS interface {
 	Fetch(req VCSFetchRequest) bool
-	ListRepos(args VCSListReposRequest) []string
+	ListRepos(args VCSListReposRequest) vcs.ListFuncResult
 	// ListOrgs(args VCSListReposRequest) []string
 }
 
@@ -32,7 +33,7 @@ type VCSListReposRequest struct {
 }
 
 type VCSListReposResponse struct {
-	Projects []string
+	Projects vcs.ListFuncResult
 }
 
 // Here is an implementation that talks over RPC
@@ -52,7 +53,7 @@ func (g *VCSRPCClient) Fetch(req VCSFetchRequest) bool {
 	return resp.Success
 }
 
-func (g *VCSRPCClient) ListRepos(req VCSListReposRequest) []string {
+func (g *VCSRPCClient) ListRepos(req VCSListReposRequest) vcs.ListFuncResult {
 	var resp VCSListReposResponse
 
 	err := g.client.Call("Plugin.ListRepos", req, &resp)
@@ -73,9 +74,9 @@ type VCSRPCServer struct {
 	Impl VCS
 }
 
-func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) error {
+func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) string {
 	resp.Success = s.Impl.Fetch(args)
-	return nil
+	return "asdf"
 }
 
 func (s *VCSRPCServer) ListRepos(args VCSListReposRequest, resp *VCSListReposResponse) error {

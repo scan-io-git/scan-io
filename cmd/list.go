@@ -26,8 +26,9 @@ func do() {
 
 	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, vcs, func(raw interface{}) {
 		vcs := raw.(shared.VCS)
-		projects := vcs.ListRepos(shared.VCSListReposRequest{VCSURL: vcsUrl, Limit: limit, Namespace: namespace})
-		logger.Info("ListRepos finished", "total", len(projects))
+		vcs.ListRepos(shared.VCSListReposRequest{VCSURL: vcsUrl, Limit: limit, Namespace: namespace})
+		//projects := vcs.ListRepos(shared.VCSListReposRequest{VCSURL: vcsUrl, Limit: limit, Namespace: namespace})
+		//logger.Info("ListRepos finished", "total", len(projects))
 
 		file, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
@@ -38,9 +39,9 @@ func do() {
 		datawriter := bufio.NewWriter(file)
 		defer datawriter.Flush()
 
-		for _, data := range projects {
-			_, _ = datawriter.WriteString(data + "\n")
-		}
+		// for _, data := range projects {
+		// 	_, _ = datawriter.WriteString(data + "\n")
+		// }
 
 		logger.Info("Results saved to file", "filepath", outputFile)
 	})

@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"net/url"
+	//"net/url"
 	"os"
-	"path/filepath"
-	"strings"
+	//"path/filepath"
+	//"strings"
 	"time"
 
 	crssh "golang.org/x/crypto/ssh"
@@ -24,6 +24,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
+	"github.com/scan-io-git/scan-io/library/vcs"
 	"github.com/scan-io-git/scan-io/shared"
 )
 
@@ -34,17 +35,6 @@ var (
 
 type VCSBitbucket struct {
 	logger hclog.Logger
-}
-
-type BBReposLinks struct {
-	Name     string
-	HttpLink string
-	SshLink  string
-}
-
-type BBProject struct {
-	Key  string
-	Link string
 }
 
 // Limit for Bitbucket v1 API page resonse
@@ -86,12 +76,13 @@ func (g *VCSBitbucket) init(command string) {
 }
 
 // Listing all project in Bitbucket v1 API
-func (g *VCSBitbucket) listAllProjects(client *bitbucketv1.APIClient) []BBProject {
+func (g *VCSBitbucket) listAllProjects(client *bitbucketv1.APIClient) ([]vcs.ProjectParams, error) {
 	g.logger.Debug("Listing all projects")
 	response, err := client.DefaultApi.GetProjects(opts)
 	if err != nil {
 		g.logger.Error("Listing projects is failed")
-		panic(err.Error())
+		g.logger.Error("Listing projects error", "err", err)
+		return nil, err
 	}
 
 	g.logger.Debug("Projects is listed")
@@ -101,9 +92,9 @@ func (g *VCSBitbucket) listAllProjects(client *bitbucketv1.APIClient) []BBProjec
 		panic(err.Error())
 	}
 
-	var projectsList []BBProject
+	var projectsList []vcs.ProjectParams
 	for _, bitbucketRepo := range res {
-		projectsList = append(projectsList, BBProject{Key: bitbucketRepo.Key, Link: bitbucketRepo.Links.Self[0].Href})
+		projectsList = append(projectsList, vcs.ProjectParams{Key: bitbucketRepo.Key, Name: bitbucketRepo.Name, Link: bitbucketRepo.Links.Self[0].Href})
 
 	}
 
@@ -111,11 +102,11 @@ func (g *VCSBitbucket) listAllProjects(client *bitbucketv1.APIClient) []BBProjec
 	resultJson, _ := json.MarshalIndent(projectsList, "", "    ")
 	g.logger.Debug(string(resultJson))
 
-	return projectsList
+	return projectsList, nil
 }
 
 // Resolving information about all repositories in a one project from Bitbucket v1 API
-func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project string) []BBReposLinks {
+func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project string) []vcs.RepositoryParams {
 	g.logger.Debug("Resolving a particular project", "project", project)
 	response, err := client.DefaultApi.GetRepositoriesWithOptions(project, opts)
 	if err != nil {
@@ -130,7 +121,7 @@ func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project 
 		panic(err.Error())
 	}
 
-	var resultList []BBReposLinks
+	var resultList []vcs.RepositoryParams
 	for _, repo := range result {
 		var http_link string
 		var ssh_link string
@@ -146,7 +137,7 @@ func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project 
 			}
 		}
 
-		resultList = append(resultList, BBReposLinks{Name: repo.Name, HttpLink: http_link, SshLink: ssh_link})
+		resultList = append(resultList, vcs.RepositoryParams{Name: repo.Name, HttpLink: http_link, SshLink: ssh_link})
 	}
 
 	g.logger.Info("List of repositories is ready.")
@@ -156,7 +147,7 @@ func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project 
 	return resultList
 }
 
-func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) []string {
+func (g *VCSBitbucket) ListReposRunner(args shared.VCSListReposRequest) ([]vcs.RepositoryParams, error) {
 	g.logger.Debug("Entering ListRepos", "args", args)
 	g.init("list")
 
@@ -172,38 +163,61 @@ func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) []string {
 		bitbucketv1.NewConfiguration(baseURL),
 	)
 
-	var repositories []string
+	var repositories []vcs.RepositoryParams
 	if len(args.Namespace) != 0 {
 		g.logger.Info("Resolving a project")
 		oneProjectData := g.resolveOneProject(client, args.Namespace)
 		for _, repo := range oneProjectData {
-			parsedUrl, err := url.Parse(repo.SshLink)
-			if err != nil {
-				panic(err)
-			}
-			path := strings.TrimSuffix(parsedUrl.Path, filepath.Ext(parsedUrl.Path))
-			repositories = append(repositories, path)
+			// parsedUrl, err := url.Parse(repo.SshLink)
+			// if err != nil {
+			// 	panic(err)
+			// }
+			// path := strings.TrimSuffix(parsedUrl.Path, filepath.Ext(parsedUrl.Path))
+			repositories = append(repositories, repo)
 		}
 
 	} else {
 		g.logger.Info("Listing all repos in all projects")
-		projectsList := g.listAllProjects(client)
+		projectsList, err := g.listAllProjects(client)
+		if err != nil {
+			g.logger.Error("222222222")
+			g.logger.Error("Listing all repos error", "err", err)
+			return nil, err
+		}
 
 		for _, projectName := range projectsList {
 			oneProjectData := g.resolveOneProject(client, projectName.Key)
 			for _, repo := range oneProjectData {
-				parsedUrl, err := url.Parse(repo.SshLink)
-				if err != nil {
-					panic(err)
-				}
-				path := strings.TrimSuffix(parsedUrl.Path, filepath.Ext(parsedUrl.Path))
-				repositories = append(repositories, path)
+				// parsedUrl, err := url.Parse(repo.SshLink)
+				// if err != nil {
+				// 	panic(err)
+				// }
+				// path := strings.TrimSuffix(parsedUrl.Path, filepath.Ext(parsedUrl.Path))
+
+				repositories = append(repositories, repo)
 			}
 		}
 
 	}
 
-	return repositories
+	return repositories, nil
+}
+
+func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) vcs.ListFuncResult {
+	g.logger.Debug("Entering ListRepos", "args", args)
+	g.init("list")
+
+	repositories, err := g.ListReposRunner(args)
+	if err != nil {
+		g.logger.Debug("Cal")
+		return vcs.ListFuncResult{Result: nil, Status: "FAILED", Message: err}
+	}
+
+	// g.logger.Info("End")
+	// resultJson, _ := json.MarshalIndent(result, "", "    ")
+	// g.logger.Debug(string(resultJson))
+
+	return vcs.ListFuncResult{Result: repositories, Status: "OK", Message: nil}
 }
 
 func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) bool {
