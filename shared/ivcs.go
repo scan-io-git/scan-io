@@ -10,7 +10,7 @@ import (
 // VCS is the interface that we're exposing as a plugin.
 type VCS interface {
 	Fetch(req VCSFetchRequest) bool
-	ListRepos(args VCSListReposRequest) (vcs.ListFuncResult, error)
+	ListRepos(args VCSListReposRequest) ([]vcs.RepositoryParams, error)
 	// ListOrgs(args VCSListReposRequest) []string
 }
 
@@ -33,7 +33,7 @@ type VCSListReposRequest struct {
 }
 
 type VCSListReposResponse struct {
-	Projects vcs.ListFuncResult
+	Projects []vcs.RepositoryParams
 }
 
 // Here is an implementation that talks over RPC
@@ -53,7 +53,7 @@ func (g *VCSRPCClient) Fetch(req VCSFetchRequest) bool {
 	return resp.Success
 }
 
-func (g *VCSRPCClient) ListRepos(req VCSListReposRequest) vcs.ListFuncResult {
+func (g *VCSRPCClient) ListRepos(req VCSListReposRequest) ([]vcs.RepositoryParams, error) {
 	var resp VCSListReposResponse
 
 	err := g.client.Call("Plugin.ListRepos", req, &resp)
@@ -61,10 +61,11 @@ func (g *VCSRPCClient) ListRepos(req VCSListReposRequest) vcs.ListFuncResult {
 	if err != nil {
 		// You usually want your interfaces to return errors. If they don't,
 		// there isn't much other choice here.
-		panic(err)
+		//panic(err)
+		return resp.Projects, err
 	}
 
-	return resp.Projects
+	return resp.Projects, nil
 }
 
 // Here is the RPC server that VCSRPCClient talks to, conforming to

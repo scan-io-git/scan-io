@@ -148,7 +148,7 @@ func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project 
 	return resultList, nil
 }
 
-func (g *VCSBitbucket) ListReposRunner(args shared.VCSListReposRequest) ([]vcs.RepositoryParams, error) {
+func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) ([]vcs.RepositoryParams, error) {
 	g.logger.Debug("Entering ListRepos", "args", args)
 	g.init("list")
 
@@ -214,22 +214,22 @@ func (g *VCSBitbucket) ListReposRunner(args shared.VCSListReposRequest) ([]vcs.R
 	return repositories, nil
 }
 
-func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) vcs.ListFuncResult {
-	g.logger.Debug("Entering ListRepos", "args", args)
-	g.init("list")
+// func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) (vcs.ListFuncResult, error) {
+// 	g.logger.Debug("Entering ListRepos", "args", args)
+// 	g.init("list")
 
-	repositories, err := g.ListReposRunner(args)
-	if err != nil {
-		g.logger.Debug("Cal")
-		return vcs.ListFuncResult{Result: nil, Status: "FAILED", Message: err.Error()}
-	}
+// 	repositories, err := g.ListReposRunner(args)
+// 	if err != nil {
+// 		g.logger.Debug("Cal")
+// 		return vcs.ListFuncResult{Result: nil, Status: "FAILED", Message: err.Error()}, err
+// 	}
 
-	// g.logger.Info("End")
-	// resultJson, _ := json.MarshalIndent(result, "", "    ")
-	// g.logger.Debug(string(resultJson))
+// 	// g.logger.Info("End")
+// 	// resultJson, _ := json.MarshalIndent(result, "", "    ")
+// 	// g.logger.Debug(string(resultJson))
 
-	return vcs.ListFuncResult{Result: repositories, Status: "OK", Message: ""}
-}
+// 	return vcs.ListFuncResult{Result: repositories, Status: "OK", Message: ""}, nil
+// }
 
 func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) bool {
 	g.init("fetch")

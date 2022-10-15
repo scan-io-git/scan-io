@@ -9,6 +9,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/hashicorp/go-hclog"
+	vcslib "github.com/scan-io-git/scan-io/library/vcs"
 	"github.com/scan-io-git/scan-io/shared"
 	"github.com/spf13/cobra"
 )
@@ -21,32 +23,37 @@ var (
 	limit      int
 )
 
-func do() {
+func writeFile(data vcslib.ListFuncResult, logger hclog.Logger) {
+	file, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		log.Fatalf("failed creating file: %s", err)
+	}
+	defer file.Close()
 
+	datawriter := bufio.NewWriter(file)
+	defer datawriter.Flush()
+
+	resultJson, _ := json.MarshalIndent(data, "", "    ")
+	datawriter.Write(resultJson)
+	logger.Info("Results saved to file", "filepath", outputFile)
+
+}
+
+func do() {
 	logger := shared.NewLogger("core")
 
 	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, vcs, func(raw interface{}) {
 		vcs := raw.(shared.VCS)
 		//vcs.ListRepos(shared.VCSListReposRequest{VCSURL: vcsUrl, Limit: limit, Namespace: namespace})
-		projects := vcs.ListRepos(shared.VCSListReposRequest{VCSURL: vcsUrl, Limit: limit, Namespace: namespace})
+		projects, err := vcs.ListRepos(shared.VCSListReposRequest{VCSURL: vcsUrl, Limit: limit, Namespace: namespace})
 		//logger.Info("ListRepos finished", "total", len(projects))
-
-		file, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		result := vcslib.ListFuncResult{Result: projects, Status: "OK", Message: ""}
 		if err != nil {
-			log.Fatalf("failed creating file: %s", err)
+			result := vcslib.ListFuncResult{Result: projects, Status: "Faild", Message: err.Error()}
+			logger.Error("Failed", "error", result)
 		}
-		defer file.Close()
 
-		datawriter := bufio.NewWriter(file)
-		defer datawriter.Flush()
-
-		// for _, data := range projects {
-		// 	_, _ = datawriter.WriteString(data + "\n")
-		// }
-
-		resultJson, _ := json.MarshalIndent(projects, "", "    ")
-		datawriter.Write(resultJson)
-		logger.Info("Results saved to file", "filepath", outputFile)
+		writeFile(result, logger)
 	})
 }
 
