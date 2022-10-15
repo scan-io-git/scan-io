@@ -13,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/scan-io-git/scan-io/libs/vcs"
 	"github.com/scan-io-git/scan-io/shared"
 )
 
@@ -57,15 +58,15 @@ func fetchRepos(vcsPluginName string, vcsUrl string, repos []string, threads int
 
 		shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, vcsPluginName, func(raw interface{}) {
 
-			vcs := raw.(shared.VCS)
-			args := shared.VCSFetchRequest{
+			vcsName := raw.(vcs.VCS)
+			args := vcs.VCSFetchRequest{
 				Project:      project,
 				AuthType:     authType,
 				SSHKey:       sshKey,
 				VCSURL:       vcsUrl,
 				TargetFolder: targetFolder,
 			}
-			ok = vcs.Fetch(args)
+			ok = vcsName.Fetch(args)
 		})
 
 		if ok {

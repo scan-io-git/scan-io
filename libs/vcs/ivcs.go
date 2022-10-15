@@ -1,17 +1,33 @@
-package shared
+package vcs
 
 import (
-	"net/rpc"
-
 	"github.com/hashicorp/go-plugin"
-	"github.com/scan-io-git/scan-io/library/vcs"
+	"net/rpc"
 )
 
-// VCS is the interface that we're exposing as a plugin.
+type RepositoryParams struct {
+	Namespace string
+	RepoName  string
+	HttpLink  string
+	SshLink   string
+}
+
+type ProjectParams struct {
+	Key  string
+	Name string
+	Link string
+}
+
+type ListFuncResult struct {
+	Args    VCSListReposRequest
+	Result  []RepositoryParams
+	Status  string
+	Message string
+}
+
 type VCS interface {
 	Fetch(req VCSFetchRequest) bool
-	ListRepos(args VCSListReposRequest) ([]vcs.RepositoryParams, error)
-	// ListOrgs(args VCSListReposRequest) []string
+	ListRepos(args VCSListReposRequest) ([]RepositoryParams, error)
 }
 
 type VCSFetchRequest struct {
@@ -33,10 +49,9 @@ type VCSListReposRequest struct {
 }
 
 type VCSListReposResponse struct {
-	Projects []vcs.RepositoryParams
+	Repositories []RepositoryParams
 }
 
-// Here is an implementation that talks over RPC
 type VCSRPCClient struct{ client *rpc.Client }
 
 func (g *VCSRPCClient) Fetch(req VCSFetchRequest) bool {
@@ -45,33 +60,25 @@ func (g *VCSRPCClient) Fetch(req VCSFetchRequest) bool {
 	err := g.client.Call("Plugin.Fetch", req, &resp)
 
 	if err != nil {
-		// You usually want your interfaces to return errors. If they don't,
-		// there isn't much other choice here.
 		panic(err)
 	}
 
 	return resp.Success
 }
 
-func (g *VCSRPCClient) ListRepos(req VCSListReposRequest) ([]vcs.RepositoryParams, error) {
+func (g *VCSRPCClient) ListRepos(req VCSListReposRequest) ([]RepositoryParams, error) {
 	var resp VCSListReposResponse
 
 	err := g.client.Call("Plugin.ListRepos", req, &resp)
 
 	if err != nil {
-		// You usually want your interfaces to return errors. If they don't,
-		// there isn't much other choice here.
-		//panic(err)
-		return resp.Projects, err
+		return resp.Repositories, err
 	}
 
-	return resp.Projects, nil
+	return resp.Repositories, nil
 }
 
-// Here is the RPC server that VCSRPCClient talks to, conforming to
-// the requirements of net/rpc
 type VCSRPCServer struct {
-	// This is the real implementation
 	Impl VCS
 }
 
@@ -82,22 +89,11 @@ func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) strin
 
 func (s *VCSRPCServer) ListRepos(args VCSListReposRequest, resp *VCSListReposResponse) error {
 	projects, err := s.Impl.ListRepos(args)
-	resp.Projects = projects
+	resp.Repositories = projects
 	return err
 }
 
-// This is the implementation of plugin.Plugin so we can serve/consume this
-//
-// This has two methods: Server must return an RPC server for this plugin
-// type. We construct a VCSRPCServer for this.
-//
-// Client must return an implementation of our interface that communicates
-// over an RPC client. We return VCSRPCClient for this.
-//
-// Ignore MuxBroker. That is used to create more multiplexed streams on our
-// plugin connection and is a more advanced use case.
 type VCSPlugin struct {
-	// Impl Injection
 	Impl VCS
 }
 
