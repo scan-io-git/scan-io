@@ -15,7 +15,7 @@ type ProjectParams struct {
 type ListFuncResult struct {
 	Result  []RepositoryParams
 	Status  string
-	Message error
+	Message string
 }
 
 // type error interface {

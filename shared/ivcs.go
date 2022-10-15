@@ -10,7 +10,7 @@ import (
 // VCS is the interface that we're exposing as a plugin.
 type VCS interface {
 	Fetch(req VCSFetchRequest) bool
-	ListRepos(args VCSListReposRequest) vcs.ListFuncResult
+	ListRepos(args VCSListReposRequest) (vcs.ListFuncResult, error)
 	// ListOrgs(args VCSListReposRequest) []string
 }
 
@@ -80,8 +80,9 @@ func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) strin
 }
 
 func (s *VCSRPCServer) ListRepos(args VCSListReposRequest, resp *VCSListReposResponse) error {
-	resp.Projects = s.Impl.ListRepos(args)
-	return nil
+	projects, err := s.Impl.ListRepos(args)
+	resp.Projects = projects
+	return err
 }
 
 // This is the implementation of plugin.Plugin so we can serve/consume this

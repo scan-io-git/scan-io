@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/json"
 	"log"
 	"os"
 
@@ -26,8 +27,8 @@ func do() {
 
 	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, vcs, func(raw interface{}) {
 		vcs := raw.(shared.VCS)
-		vcs.ListRepos(shared.VCSListReposRequest{VCSURL: vcsUrl, Limit: limit, Namespace: namespace})
-		//projects := vcs.ListRepos(shared.VCSListReposRequest{VCSURL: vcsUrl, Limit: limit, Namespace: namespace})
+		//vcs.ListRepos(shared.VCSListReposRequest{VCSURL: vcsUrl, Limit: limit, Namespace: namespace})
+		projects := vcs.ListRepos(shared.VCSListReposRequest{VCSURL: vcsUrl, Limit: limit, Namespace: namespace})
 		//logger.Info("ListRepos finished", "total", len(projects))
 
 		file, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
@@ -43,6 +44,8 @@ func do() {
 		// 	_, _ = datawriter.WriteString(data + "\n")
 		// }
 
+		resultJson, _ := json.MarshalIndent(projects, "", "    ")
+		datawriter.Write(resultJson)
 		logger.Info("Results saved to file", "filepath", outputFile)
 	})
 }
