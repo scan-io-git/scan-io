@@ -30,9 +30,7 @@ type VCSFetchRequest struct {
 	AuthType     string
 	SSHKey       string
 	VCSURL       string
-	InputFile    string
 	TargetFolder string
-	RmExt        string
 }
 
 type ListFuncResult struct {

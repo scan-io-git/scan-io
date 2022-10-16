@@ -189,14 +189,14 @@ var fetchCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(fetchCmd)
 
-	fetchCmd.Flags().String(&allArgumentsFetch.VCSPlugName, "", "vcs plugin name")
-	fetchCmd.Flags().String(&allArgumentsFetch.VCSURL, "", "url to VCS - github.com")
+	fetchCmd.Flags().StringVar(&allArgumentsFetch.VCSPlugName, "", "vcs plugin name")
+	fetchCmd.Flags().StringVar(&allArgumentsFetch.VCSURL, "", "url to VCS - github.com")
 	fetchCmd.Flags().StringSlice("repos", []string{}, "list of repos to fetch - full path format. Bitbucket V1 API format - /project/reponame")
 	fetchCmd.Flags().StringP("input-file", "f", "", "file with list of repos to fetch")
 	//fetchCmd.Flags().Bool("cache-checking", false, "Cheking existing repos varsion on a disk ")
 	// fetchCmd.Flags().String("org", "", "fetch repos from this organization")
 	fetchCmd.Flags().IntP("threads", "j", 1, "number of concurrent goroutines")
-	fetchCmd.Flags().String(&allArgumentsFetch.AuthType, "http", "Type of authentication: 'http', 'ssh-agent' or 'ssh-key'")
-	fetchCmd.Flags().String(&allArgumentsFetch.SSHKey, "", "Path to ssh key")
+	fetchCmd.Flags().StringVar(&allArgumentsFetch.AuthType, "http", "Type of authentication: 'http', 'ssh-agent' or 'ssh-key'")
+	fetchCmd.Flags().StringVar(&allArgumentsFetch.SSHKey, "", "Path to ssh key")
 	fetchCmd.Flags().StringVar(&RmExts, "rm-ext", "csv,png,ipynb,txt,md,mp4,zip,gif,gz,jpg,jpeg,cache,tar,svg,bin,lock,exe", "Files with extention to remove automatically after checkout")
 }
