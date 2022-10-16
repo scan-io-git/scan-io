@@ -70,10 +70,10 @@ func fetchRepos(vcsPluginName string, vcsUrl string, repos []string, threads int
 
 			vcsName := raw.(vcs.VCS)
 			args := vcs.VCSFetchRequest{
-				Repository:   repository,
-				AuthType:     authType,
-				SSHKey:       sshKey,
-				VCSURL:       vcsUrl,
+				Repository:   allArgumentsFetch.Repository,
+				AuthType:     allArgumentsFetch.AuthType,
+				SSHKey:       allArgumentsFetch.SSHKey,
+				VCSURL:       allArgumentsFetch.VCSURL,
 				TargetFolder: targetFolder,
 			}
 
@@ -189,14 +189,14 @@ var fetchCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(fetchCmd)
 
-	fetchCmd.Flags().StringVar(&allArgumentsFetch.VCSPlugName, "", "vcs plugin name")
-	fetchCmd.Flags().StringVar(&allArgumentsFetch.VCSURL, "", "url to VCS - github.com")
+	fetchCmd.Flags().StringVar(&allArgumentsFetch.VCSPlugName, "vcs", "", "vcs plugin name")
+	fetchCmd.Flags().StringVar(&allArgumentsFetch.VCSURL, "vcs-url", "", "url to VCS - github.com")
 	fetchCmd.Flags().StringSlice("repos", []string{}, "list of repos to fetch - full path format. Bitbucket V1 API format - /project/reponame")
 	fetchCmd.Flags().StringP("input-file", "f", "", "file with list of repos to fetch")
 	//fetchCmd.Flags().Bool("cache-checking", false, "Cheking existing repos varsion on a disk ")
 	// fetchCmd.Flags().String("org", "", "fetch repos from this organization")
 	fetchCmd.Flags().IntP("threads", "j", 1, "number of concurrent goroutines")
-	fetchCmd.Flags().StringVar(&allArgumentsFetch.AuthType, "http", "Type of authentication: 'http', 'ssh-agent' or 'ssh-key'")
-	fetchCmd.Flags().StringVar(&allArgumentsFetch.SSHKey, "", "Path to ssh key")
+	fetchCmd.Flags().StringVar(&allArgumentsFetch.AuthType, "auth-type", "http", "Type of authentication: 'http', 'ssh-agent' or 'ssh-key'")
+	fetchCmd.Flags().StringVar(&allArgumentsFetch.SSHKey, "ssh-key", "", "Path to ssh key")
 	fetchCmd.Flags().StringVar(&RmExts, "rm-ext", "csv,png,ipynb,txt,md,mp4,zip,gif,gz,jpg,jpeg,cache,tar,svg,bin,lock,exe", "Files with extention to remove automatically after checkout")
 }
