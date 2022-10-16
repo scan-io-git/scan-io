@@ -16,7 +16,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 )
 
-func WriteFile(data ListFuncResult, outputFile string, logger hclog.Logger) {
+func WriteJsonFile(data ListFuncResult, outputFile string, logger hclog.Logger) {
 	file, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Fatalf("failed creating file: %s", err)

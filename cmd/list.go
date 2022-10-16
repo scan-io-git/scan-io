@@ -32,7 +32,7 @@ func do() {
 			logger.Info("Amount of repositories", len(projects))
 		}
 
-		vcs.WriteFile(resultVCS, outputFile, logger)
+		vcs.WriteJsonFile(resultVCS, outputFile, logger)
 	})
 }
 
