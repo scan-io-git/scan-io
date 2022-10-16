@@ -46,14 +46,14 @@ func (g *VCSGithub) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryPar
 	return reposParams, nil
 }
 
-func (g *VCSGithub) Fetch(args vcs.VCSFetchRequest) bool {
+func (g *VCSGithub) Fetch(args vcs.VCSFetchRequest) error {
 
 	g.logger.Debug("Fetch called", "args", args)
 
-	info, err := vcsurl.Parse(fmt.Sprintf("https://%s/%s", args.VCSURL, args.Project))
+	info, err := vcsurl.Parse(fmt.Sprintf("https://%s/%s", args.VCSURL, args.Repository))
 	if err != nil {
-		g.logger.Error("unable to parse project '%s'", args.Project)
-		panic(err)
+		g.logger.Error("unable to parse project '%s'", args.Repository)
+		return err
 	}
 
 	gitCloneOptions := &git.CloneOptions{
@@ -69,7 +69,7 @@ func (g *VCSGithub) Fetch(args vcs.VCSFetchRequest) bool {
 		pkCallback, err := ssh.NewSSHAgentAuth("git")
 		if err != nil {
 			g.logger.Info("NewSSHAgentAuth error", "err", err)
-			return false
+			return err
 		}
 		gitCloneOptions.Auth = pkCallback
 	}
@@ -77,11 +77,10 @@ func (g *VCSGithub) Fetch(args vcs.VCSFetchRequest) bool {
 	_, err = git.PlainClone(args.TargetFolder, false, gitCloneOptions)
 	if err != nil {
 		g.logger.Info("Error on Clone occured", "err", err, "targetFolder", args.TargetFolder, "remote", gitCloneOptions.URL)
-		// panic(err)
-		return false
+		return err
 	}
 
-	return true
+	return nil
 }
 
 func main() {

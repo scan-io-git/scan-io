@@ -71,18 +71,6 @@ func (g *VCSGitlab) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryPar
 		return nil, err
 	}
 
-	// //////////////
-
-	// g.logger.Debug("trying to find specific repo", "args", args)
-	// group, _, err := gitlabClient.Groups.GetGroup(args.Namespace, &gitlab.GetGroupOptions{})
-	// g.logger.Debug("result of finding specific group", "group", group, "err", err)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// //////////////
-
-	// g.logger.Warn("Calling getGitlabGroups", "namespace", args.Namespace)
 	allGroups, err := g.getGitlabGroups(gitlabClient, args.Namespace)
 	if err != nil {
 		g.logger.Warn("Failed to get list of Gitlab groups", "err", err)
@@ -99,9 +87,6 @@ func (g *VCSGitlab) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryPar
 
 		page = 1
 		perPage = 100
-		if args.Limit > 0 && args.Limit < perPage {
-			perPage = args.Limit
-		}
 		for {
 			projects, _, err := gitlabClient.Groups.ListGroupProjects(groupID, &gitlab.ListGroupProjectsOptions{
 				ListOptions: gitlab.ListOptions{
@@ -129,10 +114,6 @@ func (g *VCSGitlab) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryPar
 				break
 			}
 
-			if args.Limit > 0 && len(reposParams) >= args.Limit {
-				return reposParams[0:args.Limit], nil
-			}
-
 			page += 1
 		}
 	}
@@ -140,11 +121,11 @@ func (g *VCSGitlab) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryPar
 	return reposParams, nil
 }
 
-func (g *VCSGitlab) Fetch(args vcs.VCSFetchRequest) bool {
+func (g *VCSGitlab) Fetch(args vcs.VCSFetchRequest) error {
 
-	info, err := vcsurl.Parse(fmt.Sprintf("https://%s%s", args.VCSURL, args.Project))
+	info, err := vcsurl.Parse(fmt.Sprintf("https://%s%s", args.VCSURL, args.Repository))
 	if err != nil {
-		g.logger.Error("Unable to parse VCS url info", "VCSURL", args.VCSURL, "project", args.Project)
+		g.logger.Error("Unable to parse VCS url info", "VCSURL", args.VCSURL, "Repository", args.Repository)
 		panic(err)
 	}
 
@@ -161,7 +142,7 @@ func (g *VCSGitlab) Fetch(args vcs.VCSFetchRequest) bool {
 		pkCallback, err := ssh.NewSSHAgentAuth("git")
 		if err != nil {
 			g.logger.Info("NewSSHAgentAuth error", "err", err)
-			return false
+			return err
 		}
 		gitCloneOptions.Auth = pkCallback
 	}
@@ -169,10 +150,10 @@ func (g *VCSGitlab) Fetch(args vcs.VCSFetchRequest) bool {
 	_, err = git.PlainClone(args.TargetFolder, false, gitCloneOptions)
 	if err != nil {
 		g.logger.Info("Error on Clone occured", "err", err, "targetFolder", args.TargetFolder, "remote", gitCloneOptions.URL)
-		return false
+		return err
 	}
 
-	return true
+	return nil
 }
 
 func main() {
