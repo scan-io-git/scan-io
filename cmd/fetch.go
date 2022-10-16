@@ -85,7 +85,7 @@ func fetchRepos(repos []string) {
 				logger.Debug("Failed", "debug_fetch_res", resultFetch)
 			} else {
 				resultFetch = vcs.FetchFuncResult{Args: args, Result: nil, Status: "OK", Message: ""}
-				logger.Info("Fetch fuctions is finished with status", "status", resultVCS.Status)
+				logger.Info("Fetch fuctions is finished with status", "status", resultFetch.Status)
 				logger.Debug("Success", "debug_fetch_res", resultFetch)
 
 				logger.Info("Removing files with some extentions", "extentions", allArgumentsFetch.RmExts)
@@ -172,7 +172,6 @@ func init() {
 	fetchCmd.Flags().StringSlice("repos", []string{}, "list of repos to fetch - full path format. Bitbucket V1 API format - /project/reponame")
 	fetchCmd.Flags().StringP("input-file", "f", "", "file with list of repos to fetch")
 	//fetchCmd.Flags().Bool("cache-checking", false, "Cheking existing repos varsion on a disk ")
-	// fetchCmd.Flags().String("org", "", "fetch repos from this organization")
 	fetchCmd.Flags().IntVarP(&allArgumentsFetch.Threads, "threads", "j", 1, "number of concurrent goroutines")
 	fetchCmd.Flags().StringVar(&allArgumentsFetch.AuthType, "auth-type", "http", "Type of authentication: 'http', 'ssh-agent' or 'ssh-key'")
 	fetchCmd.Flags().StringVar(&allArgumentsFetch.SSHKey, "ssh-key", "", "Path to ssh key")

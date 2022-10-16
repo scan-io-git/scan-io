@@ -4,6 +4,7 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"fmt"
 	"log"
 	"path/filepath"
 
@@ -29,7 +30,7 @@ func scanRepos(scannerPluginName string, repos []string, threads int) {
 		logger.Info("Goroutine started", "#", i+1, "project", repo)
 
 		repoPath := filepath.Join(shared.GetProjectsHome(), repo)
-		resultsPath := filepath.Join(shared.GetPluginsHome(), repo)
+		resultsPath := filepath.Join(shared.GetResultsHome(), repo, fmt.Sprintf("%s.raw", scannerPluginName))
 
 		shared.WithPlugin("plugin-scanner", shared.PluginTypeScanner, scannerPluginName, func(raw interface{}) {
 			ok := raw.(shared.Scanner).Scan(shared.ScannerScanRequest{

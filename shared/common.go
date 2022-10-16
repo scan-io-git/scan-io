@@ -33,7 +33,8 @@ func NewLogger(name string) hclog.Logger {
 	return hclog.New(&hclog.LoggerOptions{
 		Name:   name,
 		Output: os.Stdout,
-		Level:  hclog.Debug,
+		Level:  hclog.Info,
+		// Level:  hclog.Debug,
 	})
 }
 
@@ -99,19 +100,19 @@ func GetProjectsHome() string {
 	return projectsFolder
 }
 
-func GetPluginsHome() string {
+func GetResultsHome() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		panic("unable to get home folder")
 	}
-	pluginsFolder := filepath.Join(home, "/.scanio/plugins")
-	if _, err := os.Stat(pluginsFolder); os.IsNotExist(err) {
-		NewLogger("core").Info("pluginsFolder does not exists. Creating...", "pluginsFolder", pluginsFolder)
-		if err := os.MkdirAll(pluginsFolder, os.ModePerm); err != nil {
+	resultsFolder := filepath.Join(home, "/.scanio/results")
+	if _, err := os.Stat(resultsFolder); os.IsNotExist(err) {
+		NewLogger("core").Info("resultsFolder does not exists. Creating...", "resultsFolder", resultsFolder)
+		if err := os.MkdirAll(resultsFolder, os.ModePerm); err != nil {
 			panic(err)
 		}
 	}
-	return pluginsFolder
+	return resultsFolder
 }
 
 func GetRepoPath(VCSURL, repoWithNamespace string) string {

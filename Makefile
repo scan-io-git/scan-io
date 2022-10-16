@@ -8,6 +8,7 @@ buildplugins:
 	go build -o ~/.scanio/plugins/github ./plugins/github/
 	go build -o ~/.scanio/plugins/bitbucket ./plugins/bitbucket/
 	go build -o ~/.scanio/plugins/semgrep ./plugins/semgrep/
+	go build -o ~/.scanio/plugins/bandit ./plugins/bandit/
 
 .PHONY: buildcli
 buildcli:
