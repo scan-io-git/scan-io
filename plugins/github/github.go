@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/gitsight/go-vcsurl"
 	"github.com/go-git/go-git/v5"
@@ -12,6 +13,7 @@ import (
 	"github.com/google/go-github/v47/github"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
+	"github.com/scan-io-git/scan-io/libs/vcs"
 	"github.com/scan-io-git/scan-io/shared"
 )
 
@@ -20,32 +22,38 @@ type VCSGithub struct {
 	logger hclog.Logger
 }
 
-func (g *VCSGithub) ListRepos(args shared.VCSListReposRequest) []string {
+func (g *VCSGithub) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryParams, error) {
 	g.logger.Debug("Entering ListRepos", "organization", args.Namespace)
 	client := github.NewClient(nil)
 	opt := &github.RepositoryListByOrgOptions{Type: "public"}
 	repos, _, err := client.Repositories.ListByOrg(context.Background(), args.Namespace, opt)
 	if err != nil {
 		g.logger.Error("Error listing projects", "err", err)
-		panic(err)
+		return nil, err
 	}
 
-	projects := []string{}
-	for _, repo := range repos {
-		projects = append(projects, *repo.HTMLURL)
+	reposParams := make([]vcs.RepositoryParams, len(repos))
+	for i, repo := range repos {
+		parts := strings.Split(*repo.FullName, "/")
+		reposParams[i] = vcs.RepositoryParams{
+			Namespace: strings.Join(parts[:len(parts)-1], "/"),
+			RepoName:  *repo.Name,
+			SshLink:   *repo.SSHURL,
+			HttpLink:  *repo.CloneURL,
+		}
 	}
 
-	return projects
+	return reposParams, nil
 }
 
-func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) bool {
+func (g *VCSGithub) Fetch(args vcs.VCSFetchRequest) error {
 
 	g.logger.Debug("Fetch called", "args", args)
 
-	info, err := vcsurl.Parse(fmt.Sprintf("https://%s/%s", args.VCSURL, args.Project))
+	info, err := vcsurl.Parse(fmt.Sprintf("https://%s/%s", args.VCSURL, args.Repository))
 	if err != nil {
-		g.logger.Error("unable to parse project '%s'", args.Project)
-		panic(err)
+		g.logger.Error("unable to parse project '%s'", args.Repository)
+		return err
 	}
 
 	gitCloneOptions := &git.CloneOptions{
@@ -61,7 +69,7 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) bool {
 		pkCallback, err := ssh.NewSSHAgentAuth("git")
 		if err != nil {
 			g.logger.Info("NewSSHAgentAuth error", "err", err)
-			return false
+			return err
 		}
 		gitCloneOptions.Auth = pkCallback
 	}
@@ -69,11 +77,10 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) bool {
 	_, err = git.PlainClone(args.TargetFolder, false, gitCloneOptions)
 	if err != nil {
 		g.logger.Info("Error on Clone occured", "err", err, "targetFolder", args.TargetFolder, "remote", gitCloneOptions.URL)
-		// panic(err)
-		return false
+		return err
 	}
 
-	return true
+	return nil
 }
 
 func main() {
@@ -88,7 +95,7 @@ func main() {
 	}
 	// pluginMap is the map of plugins we can dispense.
 	var pluginMap = map[string]plugin.Plugin{
-		shared.PluginTypeVCS: &shared.VCSPlugin{Impl: VCS},
+		shared.PluginTypeVCS: &vcs.VCSPlugin{Impl: VCS},
 	}
 
 	plugin.Serve(&plugin.ServeConfig{

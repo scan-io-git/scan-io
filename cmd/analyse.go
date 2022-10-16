@@ -7,22 +7,21 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
-	"strings"
 
-	"github.com/gitsight/go-vcsurl"
+	// "github.com/gitsight/go-vcsurl"
 	"github.com/scan-io-git/scan-io/shared"
 	"github.com/spf13/cobra"
 )
 
-func getVCSURLInfo(VCSURL string, project string) (*vcsurl.VCS, error) {
-	if strings.Contains(project, ":") {
-		return vcsurl.Parse(project)
-	}
+// func getVCSURLInfo(VCSURL string, project string) (*vcsurl.VCS, error) {
+// 	if strings.Contains(project, ":") {
+// 		return vcsurl.Parse(project)
+// 	}
 
-	return vcsurl.Parse(fmt.Sprintf("https://%s/%s", VCSURL, project))
-}
+// 	return vcsurl.Parse(fmt.Sprintf("https://%s/%s", VCSURL, project))
+// }
 
-func scanRepos(scannerPluginName string, vcsUrl string, repos []string, threads int) {
+func scanRepos(scannerPluginName string, repos []string, threads int) {
 
 	logger := shared.NewLogger("core")
 	logger.Info("Fetching starting", "total", len(repos), "goroutines", threads)
@@ -102,7 +101,7 @@ var analyseCmd = &cobra.Command{
 			panic("specify at least one 'repos' to scan")
 		}
 
-		scanRepos(scannerPluginName, vcsUrl, repos, threads)
+		scanRepos(scannerPluginName, repos, threads)
 	},
 }
 

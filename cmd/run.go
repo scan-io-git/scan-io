@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	ivcs "github.com/scan-io-git/scan-io/libs/vcs"
 	"github.com/scan-io-git/scan-io/shared"
 	"github.com/spf13/cobra"
 
@@ -74,23 +75,23 @@ func fetch(repo string) {
 	logger.Info("Fetching starting", "VCSURL", o.VCSURL, "repo", repo)
 
 	targetFolder := shared.GetRepoPath(o.VCSURL, repo)
-	ok := false
 
 	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, o.VCSPlugin, func(raw interface{}) {
 
-		vcs := raw.(shared.VCS)
-		args := shared.VCSFetchRequest{
-			Project:      repo,
+		vcs := raw.(ivcs.VCS)
+		args := ivcs.VCSFetchRequest{
+			Repository:   repo,
 			VCSURL:       o.VCSURL,
 			TargetFolder: targetFolder,
 		}
-		ok = vcs.Fetch(args)
+		err := vcs.Fetch(args)
+		if err != nil {
+			logger.Debug("Fetch error", "err", err)
+		} else {
+			logger.Debug("Removing files with some extentions", "extentions", o.RmExts)
+			findByExtAndRemove(targetFolder, o.RmExts)
+		}
 	})
-
-	if ok {
-		logger.Debug("Removing files with some extentions", "extentions", o.RmExts)
-		findByExtAndRemove(targetFolder, o.RmExts)
-	}
 
 	logger.Info("All fetch operations are finished.")
 }

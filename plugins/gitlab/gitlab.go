@@ -11,6 +11,7 @@ import (
 	// "github.com/google/go-github/v47/github"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
+	"github.com/scan-io-git/scan-io/libs/vcs"
 	"github.com/scan-io-git/scan-io/shared"
 	"github.com/xanzy/go-gitlab"
 )
@@ -20,15 +21,12 @@ type VCSGitlab struct {
 	logger hclog.Logger
 }
 
-func (g *VCSGitlab) ListRepos(args shared.VCSListReposRequest) []string {
-	g.logger.Debug("Entering ListRepos", "args", args)
+func getGitlabClient(vcsBaseURL string) (*gitlab.Client, error) {
+	baseURL := fmt.Sprintf("https://%s/api/v4", vcsBaseURL)
+	return gitlab.NewClient(os.Getenv("GITLAB_TOKEN"), gitlab.WithBaseURL(baseURL))
+}
 
-	baseURL := fmt.Sprintf("https://%s/api/v4", args.VCSURL)
-	gitlabClient, err := gitlab.NewClient(os.Getenv("GITLAB_TOKEN"), gitlab.WithBaseURL(baseURL))
-	if err != nil {
-		g.logger.Warn("Failed to create gitlab Client", "err", err)
-		return []string{}
-	}
+func (g VCSGitlab) getGitlabGroups(gitlabClient *gitlab.Client, searchNamespace string) ([]int, error) {
 
 	allGroups := []int{}
 	page := 1
@@ -42,14 +40,17 @@ func (g *VCSGitlab) ListRepos(args shared.VCSListReposRequest) []string {
 			OrderBy:      gitlab.String("id"),
 			Sort:         gitlab.String("asc"),
 			AllAvailable: gitlab.Bool(true),
+			Search:       &searchNamespace,
 		})
 		if err != nil {
 			g.logger.Warn("gitlab ListGroups error", "err", err, "page", page)
-			return []string{}
+			return nil, err
 		}
 
 		for _, group := range groups {
-			allGroups = append(allGroups, group.ID)
+			if len(searchNamespace) == 0 || group.FullPath == searchNamespace {
+				allGroups = append(allGroups, group.ID)
+			}
 		}
 
 		if len(groups) < perPage {
@@ -59,18 +60,35 @@ func (g *VCSGitlab) ListRepos(args shared.VCSListReposRequest) []string {
 		page += 1
 	}
 
+	return allGroups, nil
+
+}
+
+func (g *VCSGitlab) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryParams, error) {
+	g.logger.Debug("Entering ListRepos 2", "args", args)
+
+	gitlabClient, err := getGitlabClient(args.VCSURL)
+	if err != nil {
+		g.logger.Warn("Failed to create gitlab Client", "err", err)
+		return nil, err
+	}
+
+	allGroups, err := g.getGitlabGroups(gitlabClient, args.Namespace)
+	if err != nil {
+		g.logger.Warn("Failed to get list of Gitlab groups", "err", err)
+		return nil, err
+	}
 	g.logger.Debug("Collected groups", "total", len(allGroups))
 
-	repos := []string{}
+	reposParams := []vcs.RepositoryParams{}
 
+	page := 1
+	perPage := 100
 	for i, groupID := range allGroups {
 		g.logger.Debug("Getting list of projects for a group", "#", i+1, "groupID", groupID)
 
 		page = 1
 		perPage = 100
-		if args.Limit > 0 && args.Limit < perPage {
-			perPage = args.Limit
-		}
 		for {
 			projects, _, err := gitlabClient.Groups.ListGroupProjects(groupID, &gitlab.ListGroupProjectsOptions{
 				ListOptions: gitlab.ListOptions{
@@ -82,33 +100,36 @@ func (g *VCSGitlab) ListRepos(args shared.VCSListReposRequest) []string {
 			})
 			if err != nil {
 				g.logger.Warn("gitlab ListGroups error", "err", err, "page", page)
-				return []string{}
+				return nil, err
 			}
 
 			for _, project := range projects {
-				repos = append(repos, project.PathWithNamespace)
+				reposParams = append(reposParams, vcs.RepositoryParams{
+					Namespace: project.Namespace.FullPath,
+					RepoName:  project.Name,
+					HttpLink:  project.HTTPURLToRepo,
+					SshLink:   project.SSHURLToRepo,
+				})
 			}
 
 			if len(projects) < perPage {
 				break
 			}
 
-			if args.Limit > 0 && len(repos) >= args.Limit {
-				return repos[0:args.Limit]
-			}
-
 			page += 1
 		}
 	}
 
-	return repos
+	return reposParams, nil
 }
 
-func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) bool {
+func (g *VCSGitlab) Fetch(args vcs.VCSFetchRequest) error {
 
-	info, err := vcsurl.Parse(fmt.Sprintf("https://%s%s", args.VCSURL, args.Project))
+	url := fmt.Sprintf("https://%s/%s", args.VCSURL, args.Repository)
+	g.logger.Debug("Fetch", "url", url)
+	info, err := vcsurl.Parse(url)
 	if err != nil {
-		g.logger.Error("Unable to parse VCS url info", "VCSURL", args.VCSURL, "project", args.Project)
+		g.logger.Error("Unable to parse VCS url info", "VCSURL", args.VCSURL, "Repository", args.Repository)
 		panic(err)
 	}
 
@@ -125,7 +146,7 @@ func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) bool {
 		pkCallback, err := ssh.NewSSHAgentAuth("git")
 		if err != nil {
 			g.logger.Info("NewSSHAgentAuth error", "err", err)
-			return false
+			return err
 		}
 		gitCloneOptions.Auth = pkCallback
 	}
@@ -133,10 +154,10 @@ func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) bool {
 	_, err = git.PlainClone(args.TargetFolder, false, gitCloneOptions)
 	if err != nil {
 		g.logger.Info("Error on Clone occured", "err", err, "targetFolder", args.TargetFolder, "remote", gitCloneOptions.URL)
-		return false
+		return err
 	}
 
-	return true
+	return nil
 }
 
 func main() {
@@ -151,7 +172,7 @@ func main() {
 	}
 	// pluginMap is the map of plugins we can dispense.
 	var pluginMap = map[string]plugin.Plugin{
-		shared.PluginTypeVCS: &shared.VCSPlugin{Impl: VCS},
+		shared.PluginTypeVCS: &vcs.VCSPlugin{Impl: VCS},
 	}
 
 	// logger.Debug("message from plugin", "foo", "bar")

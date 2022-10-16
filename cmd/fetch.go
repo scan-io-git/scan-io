@@ -13,11 +13,24 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/scan-io-git/scan-io/libs/vcs"
 	"github.com/scan-io-git/scan-io/shared"
 )
 
+type RunOptionsFetch struct {
+	VCSPlugName  string
+	VCSURL       string
+	Repository   string
+	AuthType     string
+	SSHKey       string
+	TargetFolder string
+	RmExts       string
+	Threads      int
+}
+
 var (
-	RmExts string
+	allArgumentsFetch RunOptionsFetch
+	resultFetch       vcs.FetchFuncResult
 )
 
 func findByExtAndRemove(root string, exts []string) {
@@ -44,37 +57,44 @@ func findByExtAndRemove(root string, exts []string) {
 	})
 }
 
-func fetchRepos(vcsPluginName string, vcsUrl string, repos []string, threads int, authType string, sshKey string) {
+func fetchRepos(repos []string) {
 
 	logger := shared.NewLogger("core")
-	logger.Info("Fetching starting", "total", len(repos), "goroutines", threads)
+	logger.Info("Fetching starting", "total", len(repos), "goroutines", allArgumentsFetch.Threads)
 
-	shared.ForEveryStringWithBoundedGoroutines(threads, repos, func(i int, project string) {
-		logger.Info("Goroutine started", "#", i+1, "project", project)
+	shared.ForEveryStringWithBoundedGoroutines(allArgumentsFetch.Threads, repos, func(i int, repository string) {
+		logger.Info("Goroutine started", "#", i+1, "project", repository)
 
-		targetFolder := shared.GetRepoPath(vcsUrl, project)
-		ok := false
+		targetFolder := shared.GetRepoPath(allArgumentsFetch.VCSURL, repository)
 
-		shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, vcsPluginName, func(raw interface{}) {
+		shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsFetch.VCSPlugName, func(raw interface{}) {
 
-			vcs := raw.(shared.VCS)
-			args := shared.VCSFetchRequest{
-				Project:      project,
-				AuthType:     authType,
-				SSHKey:       sshKey,
-				VCSURL:       vcsUrl,
+			vcsName := raw.(vcs.VCS)
+			args := vcs.VCSFetchRequest{
+				Repository:   repository,
+				AuthType:     allArgumentsFetch.AuthType,
+				SSHKey:       allArgumentsFetch.SSHKey,
+				VCSURL:       allArgumentsFetch.VCSURL,
 				TargetFolder: targetFolder,
 			}
-			ok = vcs.Fetch(args)
-		})
 
-		if ok {
-			logger.Debug("Removing files with some extentions", "extentions", RmExts)
-			findByExtAndRemove(targetFolder, strings.Split(RmExts, ","))
-		}
+			err := vcsName.Fetch(args)
+			if err != nil {
+				resultFetch = vcs.FetchFuncResult{Args: args, Result: nil, Status: "FAILED", Message: err.Error()}
+				logger.Error("Failed", "error", resultFetch.Message)
+				logger.Debug("Failed", "debug_fetch_res", resultFetch)
+			} else {
+				resultFetch = vcs.FetchFuncResult{Args: args, Result: nil, Status: "OK", Message: ""}
+				logger.Info("Fetch fuctions is finished with status", "status", resultFetch.Status)
+				logger.Debug("Success", "debug_fetch_res", resultFetch)
+
+				logger.Info("Removing files with some extentions", "extentions", allArgumentsFetch.RmExts)
+				findByExtAndRemove(targetFolder, strings.Split(allArgumentsFetch.RmExts, ","))
+			}
+		})
 	})
 
-	logger.Info("All fetch operations are finished.")
+	logger.Info("All fetch operations are finished")
 }
 
 // fetchCmd represents the fetch command
@@ -93,10 +113,7 @@ var fetchCmd = &cobra.Command{
 		if err != nil {
 			panic("parse args error")
 		}
-		vcsPluginName, err := cmd.Flags().GetString("vcs")
-		if err != nil {
-			panic("get 'vcs' arg error")
-		}
+
 		repos, err := cmd.Flags().GetStringSlice("repos")
 		if err != nil {
 			panic("get 'repos' arg error")
@@ -105,32 +122,12 @@ var fetchCmd = &cobra.Command{
 		if err != nil {
 			panic("get 'input-file' arg error")
 		}
-		// org, err := cmd.Flags().GetString("org")
-		// if err != nil {
-		// 	panic("get 'org' arg error")
-		// }
-		threads, err := cmd.Flags().GetInt("threads")
-		if err != nil {
-			panic("get 'threads' arg error")
-		}
-		authType, err := cmd.Flags().GetString("auth-type")
-		if err != nil {
-			panic("get 'auth-type' arg error")
-		}
-		sshKey, err := cmd.Flags().GetString("ssh-key")
-		if err != nil {
-			panic("get 'ssh-key' arg error")
-		}
-		vcsUrl, err := cmd.Flags().GetString("vcs-url")
-		if err != nil {
-			panic("get 'vcs-url' arg error")
-		}
 
+		authType := allArgumentsFetch.AuthType
 		if authType != "http" && authType != "ssh-key" && authType != "ssh-agent" {
 			panic("unknown auth-type")
 		}
-
-		if authType == "ssh-key" && len(sshKey) == 0 {
+		if authType == "ssh-key" && len(allArgumentsFetch.SSHKey) == 0 {
 			panic("specify ssh-key with auth-type 'ssh-key'")
 		}
 
@@ -162,7 +159,7 @@ var fetchCmd = &cobra.Command{
 		shared.NewLogger("core").Debug("list of repos", "repos", repos)
 
 		if len(repos) > 0 {
-			fetchRepos(vcsPluginName, vcsUrl, repos, threads, authType, sshKey)
+			fetchRepos(repos)
 		}
 	},
 }
@@ -170,22 +167,13 @@ var fetchCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(fetchCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// fetchCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	fetchCmd.Flags().String("vcs", "", "vcs plugin name")
-	fetchCmd.Flags().String("vcs-url", "", "url to VCS - github.com")
+	fetchCmd.Flags().StringVar(&allArgumentsFetch.VCSPlugName, "vcs", "", "vcs plugin name")
+	fetchCmd.Flags().StringVar(&allArgumentsFetch.VCSURL, "vcs-url", "", "url to VCS - github.com")
 	fetchCmd.Flags().StringSlice("repos", []string{}, "list of repos to fetch - full path format. Bitbucket V1 API format - /project/reponame")
 	fetchCmd.Flags().StringP("input-file", "f", "", "file with list of repos to fetch")
 	//fetchCmd.Flags().Bool("cache-checking", false, "Cheking existing repos varsion on a disk ")
-	// fetchCmd.Flags().String("org", "", "fetch repos from this organization")
-	fetchCmd.Flags().IntP("threads", "j", 1, "number of concurrent goroutines")
-	fetchCmd.Flags().String("auth-type", "http", "Type of authentication: 'http', 'ssh-agent' or 'ssh-key'")
-	fetchCmd.Flags().String("ssh-key", "", "Path to ssh key")
-	fetchCmd.Flags().StringVar(&RmExts, "rm-ext", "csv,png,ipynb,txt,md,mp4,zip,gif,gz,jpg,jpeg,cache,tar,svg,bin,lock,exe,stpd,pkl,tgz,mov,tsv,patch,log,pcap,pdf,dll,tiff,mp4,xlsx,so,pptx,docx,model,deb,webm,bz2,vec,msi,ttf", "Files with extention to remove automatically after checkout")
+	fetchCmd.Flags().IntVarP(&allArgumentsFetch.Threads, "threads", "j", 1, "number of concurrent goroutines")
+	fetchCmd.Flags().StringVar(&allArgumentsFetch.AuthType, "auth-type", "http", "Type of authentication: 'http', 'ssh-agent' or 'ssh-key'")
+	fetchCmd.Flags().StringVar(&allArgumentsFetch.SSHKey, "ssh-key", "", "Path to ssh key")
+	fetchCmd.Flags().StringVar(&allArgumentsFetch.RmExts, "rm-ext", "csv,png,ipynb,txt,md,mp4,zip,gif,gz,jpg,jpeg,cache,tar,svg,bin,lock,exe", "Files with extention to remove automatically after checkout")
 }
