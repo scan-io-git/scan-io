@@ -29,13 +29,8 @@ func (g *VCSGithub) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryPar
 	repos, _, err := client.Repositories.ListByOrg(context.Background(), args.Namespace, opt)
 	if err != nil {
 		g.logger.Error("Error listing projects", "err", err)
-		// panic(err)
 		return nil, err
 	}
-
-	r := repos[0]
-
-	g.logger.Debug("repos[0]", "HTMLURL", r.HTMLURL, "CloneURL", r.CloneURL, "GitURL", r.GitURL, "MirrorURL", r.MirrorURL, "SSHURL", r.SSHURL, "SVNURL", r.SVNURL)
 
 	reposParams := make([]vcs.RepositoryParams, len(repos))
 	for i, repo := range repos {
