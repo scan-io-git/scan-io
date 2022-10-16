@@ -62,6 +62,7 @@ func (g VCSGitlab) getGitlabGroups(gitlabClient *gitlab.Client, searchNamespace 
 
 	return allGroups, nil
 
+}
 
 func (g *VCSGitlab) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryParams, error) {
 	g.logger.Debug("Entering ListRepos 2", "args", args)
