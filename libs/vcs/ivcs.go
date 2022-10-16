@@ -7,10 +7,10 @@ import (
 )
 
 type RepositoryParams struct {
-	Namespace string
-	RepoName  string
-	HttpLink  string
-	SshLink   string
+	Namespace string `json:"namespace"`
+	RepoName  string `json:"repo_name"`
+	HttpLink  string `json:"http_link"`
+	SshLink   string `json:"ssh_link"`
 }
 
 type ProjectParams struct {
@@ -34,10 +34,10 @@ type VCSFetchRequest struct {
 }
 
 type ListFuncResult struct {
-	Args    VCSListReposRequest
-	Result  []RepositoryParams
-	Status  string
-	Message string
+	Args    VCSListReposRequest `json:"args"`
+	Result  []RepositoryParams  `json:"result"`
+	Status  string              `json:"status"`
+	Message string              `json:"message"`
 }
 
 type FetchFuncResult struct {
