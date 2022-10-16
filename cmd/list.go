@@ -18,6 +18,7 @@ var (
 	outputFile string
 	namespace  string
 	limit      int
+	// org        string
 )
 
 func do() {
@@ -27,6 +28,7 @@ func do() {
 	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, vcs, func(raw interface{}) {
 		vcs := raw.(shared.VCS)
 		projects := vcs.ListRepos(shared.VCSListReposRequest{VCSURL: vcsUrl, Limit: limit, Namespace: namespace})
+		// projects := vcs.ListRepos(shared.VCSListReposRequest{VCSURL: vcsUrl, Limit: limit, Organization: org})
 		logger.Info("ListRepos finished", "total", len(projects))
 
 		file, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
@@ -78,7 +80,7 @@ func init() {
 	// is called directly, e.g.:
 	listCmd.Flags().StringVar(&vcs, "vcs", "", "VCS plugin name")
 	listCmd.Flags().StringVar(&vcsUrl, "vcs-url", "", "url to VCS API root")
-	listCmd.Flags().StringVarP(&outputFile, "output", "f", "", "output file")
 	listCmd.Flags().StringVar(&namespace, "namespace", "", "list repos in a particular namespac. for Gitlab - organization, for Bitbucket_v1 - project")
+	listCmd.Flags().StringVarP(&outputFile, "output", "o", "", "output file")
 	listCmd.Flags().IntVar(&limit, "limit", 0, "max projects to list")
 }

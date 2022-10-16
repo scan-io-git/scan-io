@@ -31,7 +31,7 @@ func scanRepos(scannerPluginName string, vcsUrl string, repos []string, threads 
 		logger.Info("Goroutine started", "#", i+1, "project", repo)
 
 		repoPath := filepath.Join(shared.GetProjectsHome(), repo)
-		resultsPath := filepath.Join(shared.GetPluginsHome(), repo)
+		resultsPath := filepath.Join(shared.GetResultsHome(), repo, fmt.Sprintf("%s.raw", scannerPluginName))
 
 		shared.WithPlugin("plugin-scanner", shared.PluginTypeScanner, scannerPluginName, func(raw interface{}) {
 			ok := raw.(shared.Scanner).Scan(shared.ScannerScanRequest{
