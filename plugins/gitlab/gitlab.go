@@ -123,7 +123,9 @@ func (g *VCSGitlab) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryPar
 
 func (g *VCSGitlab) Fetch(args vcs.VCSFetchRequest) error {
 
-	info, err := vcsurl.Parse(fmt.Sprintf("https://%s%s", args.VCSURL, args.Repository))
+	url := fmt.Sprintf("https://%s/%s", args.VCSURL, args.Repository)
+	g.logger.Debug("Fetch", "url", url)
+	info, err := vcsurl.Parse(url)
 	if err != nil {
 		g.logger.Error("Unable to parse VCS url info", "VCSURL", args.VCSURL, "Repository", args.Repository)
 		panic(err)
