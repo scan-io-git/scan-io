@@ -17,9 +17,19 @@ import (
 	"github.com/scan-io-git/scan-io/shared"
 )
 
+type RunOptionsFetch struct {
+	VCSPlugName  string
+	VCSURL       string
+	Repository   string
+	AuthType     string
+	SSHKey       string
+	TargetFolder string
+}
+
 var (
-	RmExts      string
-	resultFetch vcs.FetchFuncResult
+	allArgumentsFetch RunOptionsFetch
+	RmExts            string
+	resultFetch       vcs.FetchFuncResult
 )
 
 func findByExtAndRemove(root string, exts []string) {
@@ -51,21 +61,22 @@ func fetchRepos(vcsPluginName string, vcsUrl string, repos []string, threads int
 	logger := shared.NewLogger("core")
 	logger.Info("Fetching starting", "total", len(repos), "goroutines", threads)
 
-	shared.ForEveryStringWithBoundedGoroutines(threads, repos, func(i int, project string) {
-		logger.Info("Goroutine started", "#", i+1, "project", project)
+	shared.ForEveryStringWithBoundedGoroutines(threads, repos, func(i int, repository string) {
+		logger.Info("Goroutine started", "#", i+1, "project", repository)
 
-		targetFolder := shared.GetRepoPath(vcsUrl, project)
+		targetFolder := shared.GetRepoPath(vcsUrl, repository)
 
 		shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, vcsPluginName, func(raw interface{}) {
 
 			vcsName := raw.(vcs.VCS)
 			args := vcs.VCSFetchRequest{
-				Project:      project,
+				Repository:   repository,
 				AuthType:     authType,
 				SSHKey:       sshKey,
 				VCSURL:       vcsUrl,
 				TargetFolder: targetFolder,
 			}
+
 			err := vcsName.Fetch(args)
 			if err != nil {
 				resultFetch = vcs.FetchFuncResult{Args: args, Result: nil, Status: "FAILED", Message: err.Error()}
@@ -178,14 +189,14 @@ var fetchCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(fetchCmd)
 
-	fetchCmd.Flags().String("vcs", "", "vcs plugin name")
-	fetchCmd.Flags().String("vcs-url", "", "url to VCS - github.com")
+	fetchCmd.Flags().String(&allArgumentsFetch.VCSPlugName, "", "vcs plugin name")
+	fetchCmd.Flags().String(&allArgumentsFetch.VCSURL, "", "url to VCS - github.com")
 	fetchCmd.Flags().StringSlice("repos", []string{}, "list of repos to fetch - full path format. Bitbucket V1 API format - /project/reponame")
 	fetchCmd.Flags().StringP("input-file", "f", "", "file with list of repos to fetch")
 	//fetchCmd.Flags().Bool("cache-checking", false, "Cheking existing repos varsion on a disk ")
 	// fetchCmd.Flags().String("org", "", "fetch repos from this organization")
 	fetchCmd.Flags().IntP("threads", "j", 1, "number of concurrent goroutines")
-	fetchCmd.Flags().String("auth-type", "http", "Type of authentication: 'http', 'ssh-agent' or 'ssh-key'")
-	fetchCmd.Flags().String("ssh-key", "", "Path to ssh key")
+	fetchCmd.Flags().String(&allArgumentsFetch.AuthType, "http", "Type of authentication: 'http', 'ssh-agent' or 'ssh-key'")
+	fetchCmd.Flags().String(&allArgumentsFetch.SSHKey, "", "Path to ssh key")
 	fetchCmd.Flags().StringVar(&RmExts, "rm-ext", "csv,png,ipynb,txt,md,mp4,zip,gif,gz,jpg,jpeg,cache,tar,svg,bin,lock,exe", "Files with extention to remove automatically after checkout")
 }

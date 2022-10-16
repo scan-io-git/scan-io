@@ -6,18 +6,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type RunOptionsList struct {
+	VCSPlugName string
+	VCSURL      string
+	OutputFile  string
+	Namespace   string
+}
+
 var (
-	vcsPlugName, vcsUrl, outputFile, namespace string
-	limit                                      int
-	resultVCS                                  vcs.ListFuncResult
+	limit            int
+	allArgumentsList RunOptionsList
+	resultVCS        vcs.ListFuncResult
 )
 
 func do() {
 	logger := shared.NewLogger("core")
 
-	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, vcsPlugName, func(raw interface{}) {
+	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsList.VCSPlugName, func(raw interface{}) {
 		vcsName := raw.(vcs.VCS)
-		args := vcs.VCSListReposRequest{VCSPlugName: vcsPlugName, VCSURL: vcsUrl, Namespace: namespace, OutputFile: outputFile}
+		args := vcs.VCSListReposRequest{VCSURL: allArgumentsList.VCSURL, Namespace: allArgumentsList.Namespace}
 		projects, err := vcsName.ListRepos(args)
 
 		if err != nil {
@@ -29,7 +36,7 @@ func do() {
 			logger.Info("Amount of repositories", len(projects))
 		}
 
-		vcs.WriteJsonFile(resultVCS, outputFile, logger)
+		vcs.WriteJsonFile(resultVCS, allArgumentsList.OutputFile, logger)
 	})
 }
 
@@ -39,7 +46,7 @@ var listCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Flags().Parse(args)
-		if len(outputFile) == 0 {
+		if len(allArgumentsList.OutputFile) == 0 {
 			panic("'outputFile' must be specified")
 		}
 		do()
@@ -49,8 +56,8 @@ var listCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(listCmd)
 
-	listCmd.Flags().StringVar(&vcsPlugName, "vcs", "", "VCS plugin name")
-	listCmd.Flags().StringVar(&vcsUrl, "vcs-url", "", "url to VCS API root")
-	listCmd.Flags().StringVarP(&outputFile, "output", "f", "", "output file")
-	listCmd.Flags().StringVar(&namespace, "namespace", "", "list repos in a particular namespac. for Gitlab - organization, for Bitbucket_v1 - project")
+	listCmd.Flags().StringVar(&allArgumentsList.VCSPlugName, "vcs", "", "VCS plugin name")
+	listCmd.Flags().StringVar(&allArgumentsList.VCSURL, "vcs-url", "", "url to VCS API root")
+	listCmd.Flags().StringVarP(&allArgumentsList.OutputFile, "output", "f", "", "output file")
+	listCmd.Flags().StringVar(&allArgumentsList.Namespace, "namespace", "", "list repos in a particular namespac. for Gitlab - organization, for Bitbucket_v1 - project")
 }

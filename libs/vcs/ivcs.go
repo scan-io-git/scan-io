@@ -19,6 +19,22 @@ type ProjectParams struct {
 	Link string
 }
 
+type VCSListReposRequest struct {
+	Namespace string
+	VCSURL    string
+}
+
+type VCSFetchRequest struct {
+	VCSPlugName  string
+	Repository   string
+	AuthType     string
+	SSHKey       string
+	VCSURL       string
+	InputFile    string
+	TargetFolder string
+	RmExt        string
+}
+
 type ListFuncResult struct {
 	Args    VCSListReposRequest
 	Result  []RepositoryParams
@@ -37,32 +53,17 @@ type EvnVariables struct {
 	Username, Token, VcsPort, SshKeyPassword string
 }
 
-type VCS interface {
-	Fetch(req VCSFetchRequest) error
-	ListRepos(args VCSListReposRequest) ([]RepositoryParams, error)
-}
-
-type VCSFetchRequest struct {
-	Project      string
-	AuthType     string
-	SSHKey       string
-	VCSURL       string
-	TargetFolder string
-}
-
 type VCSFetchResponse struct {
 	Error error
 }
 
-type VCSListReposRequest struct {
-	VCSPlugName string
-	Namespace   string
-	VCSURL      string
-	OutputFile  string
-}
-
 type VCSListReposResponse struct {
 	Repositories []RepositoryParams
+}
+
+type VCS interface {
+	Fetch(req VCSFetchRequest) error
+	ListRepos(args VCSListReposRequest) ([]RepositoryParams, error)
 }
 
 type VCSRPCClient struct{ client *rpc.Client }

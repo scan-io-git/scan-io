@@ -34,9 +34,9 @@ func WriteJsonFile(data ListFuncResult, outputFile string, logger hclog.Logger) 
 
 func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger) (bool, error) {
 
-	info, err := vcsurl.Parse(fmt.Sprintf("https://%s/%s", args.VCSURL, args.Project))
+	info, err := vcsurl.Parse(fmt.Sprintf("https://%s/%s", args.VCSURL, args.Repository))
 	if err != nil {
-		logger.Error("Unable to parse VCS url info", "VCSURL", args.VCSURL, "project", args.Project)
+		logger.Error("Unable to parse VCS url info", "VCSURL", args.VCSURL, "project", args.Repository)
 
 	}
 
@@ -48,7 +48,7 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 	gitCloneOptions.URL = fmt.Sprintf("git@%s:%s%s.git", info.Host, variables.VcsPort, info.FullName)
 
 	if args.AuthType == "ssh-key" {
-		logger.Info("Making arrangements for ssh-key fetching", "repo", args.Project)
+		logger.Info("Making arrangements for ssh-key fetching", "repo", args.Repository)
 		_, err := os.Stat(args.SSHKey)
 		if err != nil {
 			logger.Error("read file %s failed %s\n", args.SSHKey, err.Error())
@@ -94,7 +94,7 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 	}
 
 	//TODO add logging from go-git
-	logger.Info("Fetching repo", "repo", args.Project)
+	logger.Info("Fetching repo", "repo", args.Repository)
 	_, err = git.PlainClone(args.TargetFolder, false, gitCloneOptions)
 
 	if err != nil {
@@ -102,6 +102,6 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 		return false, err
 	}
 
-	logger.Info("Fetch's ended", "repo", args.Project)
+	logger.Info("Fetch's ended", "repo", args.Repository)
 	return true, nil
 }
