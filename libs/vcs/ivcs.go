@@ -1,8 +1,9 @@
 package vcs
 
 import (
-	"github.com/hashicorp/go-plugin"
 	"net/rpc"
+
+	"github.com/hashicorp/go-plugin"
 )
 
 type RepositoryParams struct {
@@ -25,12 +26,19 @@ type ListFuncResult struct {
 	Message string
 }
 
+type FetchFuncResult struct {
+	Args    VCSFetchRequest
+	Result  []string
+	Status  string
+	Message string
+}
+
 type EvnVariables struct {
 	Username, Token, VcsPort, SshKeyPassword string
 }
 
 type VCS interface {
-	Fetch(req VCSFetchRequest) bool
+	Fetch(req VCSFetchRequest) error
 	ListRepos(args VCSListReposRequest) ([]RepositoryParams, error)
 }
 
@@ -43,7 +51,7 @@ type VCSFetchRequest struct {
 }
 
 type VCSFetchResponse struct {
-	Success bool
+	Error error
 }
 
 type VCSListReposRequest struct {
@@ -58,16 +66,16 @@ type VCSListReposResponse struct {
 
 type VCSRPCClient struct{ client *rpc.Client }
 
-func (g *VCSRPCClient) Fetch(req VCSFetchRequest) bool {
+func (g *VCSRPCClient) Fetch(req VCSFetchRequest) error {
 	var resp VCSFetchResponse
 
 	err := g.client.Call("Plugin.Fetch", req, &resp)
 
 	if err != nil {
-		panic(err)
+		return resp.Error
 	}
 
-	return resp.Success
+	return nil
 }
 
 func (g *VCSRPCClient) ListRepos(req VCSListReposRequest) ([]RepositoryParams, error) {
@@ -86,9 +94,12 @@ type VCSRPCServer struct {
 	Impl VCS
 }
 
-func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) string {
-	resp.Success = s.Impl.Fetch(args)
-	return "asdf"
+func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) error {
+	resp.Error = s.Impl.Fetch(args)
+	if resp.Error != nil {
+		return resp.Error
+	}
+	return nil
 }
 
 func (s *VCSRPCServer) ListRepos(args VCSListReposRequest, resp *VCSListReposResponse) error {

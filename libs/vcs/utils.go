@@ -32,11 +32,11 @@ func WriteJsonFile(data ListFuncResult, outputFile string, logger hclog.Logger) 
 
 }
 
-func GitClone(args VCSFetchRequest, variables EvnVariables) (bool, error) {
+func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger) (bool, error) {
 
 	info, err := vcsurl.Parse(fmt.Sprintf("https://%s/%s", args.VCSURL, args.Project))
 	if err != nil {
-		//g.logger.Error("Unable to parse VCS url info", "VCSURL", args.VCSURL, "project", args.Project)
+		logger.Error("Unable to parse VCS url info", "VCSURL", args.VCSURL, "project", args.Project)
 
 	}
 
@@ -48,16 +48,16 @@ func GitClone(args VCSFetchRequest, variables EvnVariables) (bool, error) {
 	gitCloneOptions.URL = fmt.Sprintf("git@%s:%s%s.git", info.Host, variables.VcsPort, info.FullName)
 
 	if args.AuthType == "ssh-key" {
-		//g.logger.Info("Making arrangements for ssh-key fetching", "repo", args.Project)
+		logger.Info("Making arrangements for ssh-key fetching", "repo", args.Project)
 		_, err := os.Stat(args.SSHKey)
 		if err != nil {
-			//g.logger.Error("read file %s failed %s\n", args.SSHKey, err.Error())
+			logger.Error("read file %s failed %s\n", args.SSHKey, err.Error())
 			panic(err)
 		}
 
 		pkCallback, err := ssh.NewPublicKeysFromFile("git", args.SSHKey, variables.SshKeyPassword)
 		if err != nil {
-			//g.logger.Error("generate publickeys failed: %s\n", err.Error())
+			logger.Error("generate publickeys failed: %s\n", err.Error())
 			panic(err)
 		}
 
@@ -70,7 +70,7 @@ func GitClone(args VCSFetchRequest, variables EvnVariables) (bool, error) {
 		//g.logger.Info("Making arrangements for ssh-agent fetching", "repo", args.Project)
 		pkCallback, err := ssh.NewSSHAgentAuth("git")
 		if err != nil {
-			//g.logger.Error("NewSSHAgentAuth error", "err", err)
+			logger.Error("NewSSHAgentAuth error", "err", err)
 			panic(err)
 		}
 
@@ -89,19 +89,19 @@ func GitClone(args VCSFetchRequest, variables EvnVariables) (bool, error) {
 			Password: variables.Token,
 		}
 	} else {
-		//g.logger.Debug("Unknown auth type")
+		logger.Debug("Unknown auth type")
 		panic("Unknown auth type")
 	}
 
 	//TODO add logging from go-git
-	//g.logger.Info("Fetching repo", "repo", args.Project)
+	logger.Info("Fetching repo", "repo", args.Project)
 	_, err = git.PlainClone(args.TargetFolder, false, gitCloneOptions)
 
 	if err != nil {
-		//g.logger.Info("Error on Clone occured", "err", err, "targetFolder", args.TargetFolder, "remote", gitCloneOptions.URL)
+		logger.Info("Error on Clone occured", "err", err, "targetFolder", args.TargetFolder, "remote", gitCloneOptions.URL)
 		return false, err
 	}
 
-	//g.logger.Info("Fetch's ended", "repo", args.Project)
+	logger.Info("Fetch's ended", "repo", args.Project)
 	return true, nil
 }

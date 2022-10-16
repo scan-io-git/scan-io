@@ -18,7 +18,8 @@ import (
 )
 
 var (
-	RmExts string
+	RmExts      string
+	resultFetch vcs.FetchFuncResult
 )
 
 func findByExtAndRemove(root string, exts []string) {
@@ -54,7 +55,6 @@ func fetchRepos(vcsPluginName string, vcsUrl string, repos []string, threads int
 		logger.Info("Goroutine started", "#", i+1, "project", project)
 
 		targetFolder := shared.GetRepoPath(vcsUrl, project)
-		ok := false
 
 		shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, vcsPluginName, func(raw interface{}) {
 
@@ -66,16 +66,23 @@ func fetchRepos(vcsPluginName string, vcsUrl string, repos []string, threads int
 				VCSURL:       vcsUrl,
 				TargetFolder: targetFolder,
 			}
-			ok = vcsName.Fetch(args)
-		})
+			err := vcsName.Fetch(args)
+			if err != nil {
+				resultFetch = vcs.FetchFuncResult{Args: args, Result: nil, Status: "FAILED", Message: err.Error()}
+				logger.Error("Failed", "error", resultFetch.Message)
+				logger.Debug("Failed", "debug_fetch_res", resultFetch)
+			} else {
+				resultFetch = vcs.FetchFuncResult{Args: args, Result: nil, Status: "OK", Message: ""}
+				logger.Info("Fetch fuctions is finished with status", "status", resultVCS.Status)
+				logger.Debug("Success", "debug_fetch_res", resultFetch)
 
-		if ok {
-			logger.Debug("Removing files with some extentions", "extentions", RmExts)
-			findByExtAndRemove(targetFolder, strings.Split(RmExts, ","))
-		}
+				logger.Info("Removing files with some extentions", "extentions", RmExts)
+				findByExtAndRemove(targetFolder, strings.Split(RmExts, ","))
+			}
+		})
 	})
 
-	logger.Info("All fetch operations are finished.")
+	logger.Info("All fetch operations are finished")
 }
 
 // fetchCmd represents the fetch command
@@ -171,14 +178,6 @@ var fetchCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(fetchCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// fetchCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
 	fetchCmd.Flags().String("vcs", "", "vcs plugin name")
 	fetchCmd.Flags().String("vcs-url", "", "url to VCS - github.com")
 	fetchCmd.Flags().StringSlice("repos", []string{}, "list of repos to fetch - full path format. Bitbucket V1 API format - /project/reponame")

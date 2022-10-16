@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -188,14 +187,18 @@ func (g *VCSBitbucket) ListRepos(args vcs.VCSListReposRequest) ([]vcs.Repository
 	return repositories, nil
 }
 
-func (g *VCSBitbucket) Fetch(args vcs.VCSFetchRequest) bool {
-	variables := g.init("fetch")
-
-	_, err := vcs.GitClone(args, variables)
+func (g *VCSBitbucket) Fetch(args vcs.VCSFetchRequest) error {
+	variables, err := g.init("fetch")
 	if err != nil {
-		return false
+		g.logger.Error("Fetching is failed", "error", err.Error())
+		return err
 	}
-	return true
+
+	_, err = vcs.GitClone(args, variables, g.logger)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func main() {
