@@ -7,17 +7,17 @@ import (
 )
 
 var (
-	vcsName, vcsUrl, outputFile, namespace string
-	limit                                  int
-	resultVCS                              vcs.ListFuncResult
+	vcsPlugName, vcsUrl, outputFile, namespace string
+	limit                                      int
+	resultVCS                                  vcs.ListFuncResult
 )
 
 func do() {
 	logger := shared.NewLogger("core")
 
-	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, vcsName, func(raw interface{}) {
+	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, vcsPlugName, func(raw interface{}) {
 		vcsName := raw.(vcs.VCS)
-		args := vcs.VCSListReposRequest{VCSURL: vcsUrl, Limit: limit, Namespace: namespace}
+		args := vcs.VCSListReposRequest{VCSPlugName: vcsPlugName, VCSURL: vcsUrl, Namespace: namespace, OutputFile: outputFile}
 		projects, err := vcsName.ListRepos(args)
 
 		if err != nil {
@@ -49,9 +49,8 @@ var listCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(listCmd)
 
-	listCmd.Flags().StringVar(&vcsName, "vcs", "", "VCS plugin name")
+	listCmd.Flags().StringVar(&vcsPlugName, "vcs", "", "VCS plugin name")
 	listCmd.Flags().StringVar(&vcsUrl, "vcs-url", "", "url to VCS API root")
 	listCmd.Flags().StringVarP(&outputFile, "output", "f", "", "output file")
 	listCmd.Flags().StringVar(&namespace, "namespace", "", "list repos in a particular namespac. for Gitlab - organization, for Bitbucket_v1 - project")
-	listCmd.Flags().IntVar(&limit, "limit", 0, "max projects to list")
 }

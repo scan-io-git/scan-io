@@ -55,9 +55,10 @@ type VCSFetchResponse struct {
 }
 
 type VCSListReposRequest struct {
-	Namespace string
-	VCSURL    string
-	Limit     int
+	VCSPlugName string
+	Namespace   string
+	VCSURL      string
+	OutputFile  string
 }
 
 type VCSListReposResponse struct {
