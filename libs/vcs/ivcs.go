@@ -50,9 +50,9 @@ type EvnVariables struct {
 	Username, Token, VcsPort, SshKeyPassword string
 }
 
-// type VCSFetchResponse struct {
-// 	Error error
-// }
+type VCSFetchResponse struct {
+	Dummy bool
+}
 
 type VCSListReposResponse struct {
 	Repositories []RepositoryParams
@@ -66,9 +66,10 @@ type VCS interface {
 type VCSRPCClient struct{ client *rpc.Client }
 
 func (g *VCSRPCClient) Fetch(req VCSFetchRequest) error {
-	// var resp VCSFetchResponse
+	var resp VCSFetchResponse
+	// var resp bool
 
-	err := g.client.Call("Plugin.Fetch", req, nil)
+	err := g.client.Call("Plugin.Fetch", req, &resp)
 
 	if err != nil {
 		return err
@@ -93,7 +94,7 @@ type VCSRPCServer struct {
 	Impl VCS
 }
 
-func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp interface{}) error {
+func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) error {
 	return s.Impl.Fetch(args)
 	// if resp.Error != nil {
 	// 	return resp.Error

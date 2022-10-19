@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: scanio-job-{{ if .Values.suffix }}{{ .Values.suffix }}{{ else }}{{ randAlphaNum 5 | lower }}{{ end }}
+  labels:
+    {{- include "scanio-job.labels" . | nindent 4 }}
+spec:
+  template:
+    metadata:
+      name: scanio
+      labels:
+        {{- include "scanio-job.selectorLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: {{ .Chart.Name }}
+          command:
+            {{- range .Values.command }}
+              - {{ . }}
+            {{- end }} 
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
