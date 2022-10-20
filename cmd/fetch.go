@@ -13,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/scan-io-git/scan-io/libs/common"
 	"github.com/scan-io-git/scan-io/libs/vcs"
 	"github.com/scan-io-git/scan-io/shared"
 )
@@ -20,10 +21,10 @@ import (
 type RunOptionsFetch struct {
 	VCSPlugName  string
 	VCSURL       string
-	Repository   string
+	Repositories []string
 	AuthType     string
 	SSHKey       string
-	TargetFolder string
+	InputFile    string
 	RmExts       string
 	Threads      int
 }
@@ -31,6 +32,7 @@ type RunOptionsFetch struct {
 var (
 	allArgumentsFetch RunOptionsFetch
 	resultFetch       vcs.FetchFuncResult
+	repositories      []string
 )
 
 func findByExtAndRemove(root string, exts []string) {
@@ -57,12 +59,12 @@ func findByExtAndRemove(root string, exts []string) {
 	})
 }
 
-func fetchRepos(repos []string) {
+func fetchRepos(repositories []string) {
 
 	logger := shared.NewLogger("core")
-	logger.Info("Fetching starting", "total", len(repos), "goroutines", allArgumentsFetch.Threads)
+	logger.Info("Fetching starting", "total", len(repositories), "goroutines", allArgumentsFetch.Threads)
 
-	shared.ForEveryStringWithBoundedGoroutines(allArgumentsFetch.Threads, repos, func(i int, repository string) {
+	shared.ForEveryStringWithBoundedGoroutines(allArgumentsFetch.Threads, repositories, func(i int, repository string) {
 		logger.Info("Goroutine started", "#", i+1, "project", repository)
 
 		targetFolder := shared.GetRepoPath(allArgumentsFetch.VCSURL, repository)
@@ -97,70 +99,61 @@ func fetchRepos(repos []string) {
 	logger.Info("All fetch operations are finished")
 }
 
-// fetchCmd represents the fetch command
 var fetchCmd = &cobra.Command{
 	Use:   "fetch",
 	Short: "A brief description of your command",
-	// 	Long: `A longer description that spans multiple lines and likely contains examples
-	// and usage of using your command. For example:
+	RunE: func(cmd *cobra.Command, args []string) error {
+		checkArgs := func() error {
+			if len(allArgumentsFetch.VCSPlugName) == 0 {
+				return fmt.Errorf(("'vcs' flag must be specified"))
+			}
 
-	// Cobra is a CLI library for Go that empowers applications.
-	// This application is a tool to generate the needed files
-	// to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("fetch called")
-		err := cmd.Flags().Parse(args)
-		if err != nil {
-			panic("parse args error")
+			if len(allArgumentsFetch.VCSURL) == 0 {
+				return fmt.Errorf(("'vcs-url' flag must be specified"))
+			}
+
+			if len(allArgumentsFetch.Repositories) != 0 && allArgumentsFetch.InputFile != "" {
+				return fmt.Errorf(("you can't use both input types for repositories"))
+			}
+
+			if len(allArgumentsFetch.Repositories) == 0 && len(allArgumentsFetch.InputFile) == 0 {
+				return fmt.Errorf(("'repos' or 'input-file' flag must be specified"))
+			}
+
+			if len(allArgumentsFetch.AuthType) == 0 {
+				return fmt.Errorf(("'auth-type' flag must be specified"))
+			}
+
+			authType := allArgumentsFetch.AuthType
+			if authType != "http" && authType != "ssh-key" && authType != "ssh-agent" {
+				return fmt.Errorf("unknown auth-type - %v", authType)
+			}
+
+			if authType == "ssh-key" && len(allArgumentsFetch.SSHKey) == 0 {
+				return fmt.Errorf("you must specify ssh-key with auth-type 'ssh-key'")
+			}
+
+			return nil
 		}
 
-		repos, err := cmd.Flags().GetStringSlice("repos")
-		if err != nil {
-			panic("get 'repos' arg error")
-		}
-		inputFile, err := cmd.Flags().GetString("input-file")
-		if err != nil {
-			panic("get 'input-file' arg error")
+		if err := checkArgs(); err != nil {
+			return err
 		}
 
-		authType := allArgumentsFetch.AuthType
-		if authType != "http" && authType != "ssh-key" && authType != "ssh-agent" {
-			panic("unknown auth-type")
-		}
-		if authType == "ssh-key" && len(allArgumentsFetch.SSHKey) == 0 {
-			panic("specify ssh-key with auth-type 'ssh-key'")
-		}
-
-		inputCount := 0
-		// if len(org) > 0 {
-		// 	inputCount += 1
-		// }
-		if len(repos) > 0 {
-			inputCount += 1
-		}
-		if len(inputFile) > 0 {
-			inputCount += 1
-		}
-		if inputCount != 1 {
-			panic("you must specify one of 'repos' or 'input-file")
-		}
-		// if len(org) > 0 {
-		// 	repos = ListRepos(vcsPluginName, vcsUrl, org, authType, sshKey)
-		// }
-
-		if len(inputFile) > 0 {
-			reposFromFile, err := shared.ReadFileLines(inputFile)
+		if allArgumentsFetch.InputFile != "" {
+			reposFromFile, err := common.ReadReposFile(allArgumentsFetch.InputFile)
 			if err != nil {
 				log.Fatal(err)
 			}
-			repos = reposFromFile
+			repositories = reposFromFile
 		}
 
-		shared.NewLogger("core").Debug("list of repos", "repos", repos)
+		//shared.NewLogger("core").Debug("list of repos", "repos", repos)
 
-		if len(repos) > 0 {
-			fetchRepos(repos)
+		if len(repositories) > 0 {
+			fetchRepos(repositories)
 		}
+		return nil
 	},
 }
 
@@ -169,11 +162,11 @@ func init() {
 
 	fetchCmd.Flags().StringVar(&allArgumentsFetch.VCSPlugName, "vcs", "", "vcs plugin name")
 	fetchCmd.Flags().StringVar(&allArgumentsFetch.VCSURL, "vcs-url", "", "url to VCS - github.com")
-	fetchCmd.Flags().StringSlice("repos", []string{}, "list of repos to fetch - full path format. Bitbucket V1 API format - /project/reponame")
-	fetchCmd.Flags().StringP("input-file", "f", "", "file with list of repos to fetch")
-	//fetchCmd.Flags().Bool("cache-checking", false, "Cheking existing repos varsion on a disk ")
+	fetchCmd.Flags().StringSliceVar(&allArgumentsFetch.Repositories, "repos", []string{}, "list of repos to fetch - full path format. Bitbucket V1 API format - /project/reponame")
+	fetchCmd.Flags().StringVarP(&allArgumentsFetch.InputFile, "input-file", "f", "", "file with list of repos to fetch")
 	fetchCmd.Flags().IntVarP(&allArgumentsFetch.Threads, "threads", "j", 1, "number of concurrent goroutines")
-	fetchCmd.Flags().StringVar(&allArgumentsFetch.AuthType, "auth-type", "http", "Type of authentication: 'http', 'ssh-agent' or 'ssh-key'")
+	fetchCmd.Flags().StringVar(&allArgumentsFetch.AuthType, "auth-type", "", "Type of authentication: 'http', 'ssh-agent' or 'ssh-key'")
 	fetchCmd.Flags().StringVar(&allArgumentsFetch.SSHKey, "ssh-key", "", "Path to ssh key")
 	fetchCmd.Flags().StringVar(&allArgumentsFetch.RmExts, "rm-ext", "csv,png,ipynb,txt,md,mp4,zip,gif,gz,jpg,jpeg,cache,tar,svg,bin,lock,exe", "Files with extention to remove automatically after checkout")
+	//fetchCmd.Flags().Bool("cache-checking", false, "Cheking existing repos varsion on a disk ")
 }
