@@ -18,6 +18,7 @@ aws eks --region $(terraform output -raw region) update-kubeconfig --name $(terr
 # get repository url
 export DOCKER_IMAGE=$(terraform output -raw repository_url)
 # dont forget to configure docker credentials for ecr
+# and push image
 
 # destroy infrastructure (eks)
 terraform destroy

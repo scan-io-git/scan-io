@@ -35,7 +35,7 @@ import (
 )
 
 // const IMAGE = "356918957485.dkr.ecr.eu-west-2.amazonaws.com/i-am-first"
-const IMAGE = "234507145459.dkr.ecr.us-west-2.amazonaws.com/scanio"
+const IMAGE = "234507145459.dkr.ecr.eu-west-2.amazonaws.com/scanio"
 const AWS_DEFAULT_REGION = "eu-west-2"
 const S3_BUCKET = "my-s3-bucket-q97843yt9"
 
@@ -189,7 +189,7 @@ func getPodSpec(jobID string, repo string) *batchv1.Job {
 								"--vcs-plugin", o.VCSPlugin,
 								"--vcs-url", o.VCSURL,
 								"--scanner-plugin", o.ScannerPlugin,
-								"--repo", repo,
+								"--repos", repo,
 								"--storage-type", "s3",
 								"--s3bucket", o.S3Bucket,
 							},
@@ -199,7 +199,7 @@ func getPodSpec(jobID string, repo string) *batchv1.Job {
 									ValueFrom: &apiv1.EnvVarSource{
 										SecretKeyRef: &apiv1.SecretKeySelector{
 											LocalObjectReference: apiv1.LocalObjectReference{Name: "s3"},
-											Key:                  "aws_secret_key_id",
+											Key:                  "aws_access_key_id",
 											Optional:             pointer.Bool(false),
 										},
 									},
@@ -313,31 +313,43 @@ func runWithHelm(repos []string) {
 		jobID := uuid.New()
 		logger.Debug("runWithHelm jobID", "jobID", jobID)
 
-		dir, err := os.MkdirTemp("", fmt.Sprintf("scanio-helm-%s-", jobID.String()))
-		if err != nil {
-			logger.Debug("Create folder error?", "dir", dir)
-			log.Fatal(err)
-		}
-		defer os.RemoveAll(dir)
-		logger.Debug("Created dir to put helm tempalte result there", "dir", dir)
+		// dir, err := os.MkdirTemp("", fmt.Sprintf("scanio-helm-%s-", jobID.String()))
+		// if err != nil {
+		// 	logger.Debug("Create folder error?", "dir", dir)
+		// 	log.Fatal(err)
+		// }
+		// defer os.RemoveAll(dir)
+		// logger.Debug("Created dir to put helm tempalte result there", "dir", dir)
 
-		cmd := exec.Command("helm", "template", "helm/scanio-job",
-			"--set", "command={echo,scanio}",
+		jobCommand := strings.Join([]string{
+			"scanio", "run",
+			"--vcs-plugin", o.VCSPlugin,
+			"--vcs-url", o.VCSURL,
+			"--scanner-plugin", o.ScannerPlugin,
+			"--repos", repo,
+			"--storage-type", "s3",
+			"--s3bucket", o.S3Bucket,
+		}, ",")
+
+		helmCommand := fmt.Sprintf("command={%s}", jobCommand)
+
+		cmd := exec.Command("helm", "install", jobID.String(), "helm/scanio-job",
+			// "--set", "command={echo,scanio}",
+			"--set", helmCommand,
 			"--set", fmt.Sprintf("image.repository=%s", IMAGE),
 			"--set", "image.tag=latest",
 			"--set", fmt.Sprintf("suffix=%s", jobID.String()),
 			// "--set", fmt.Sprintf("suffix=%s", repo),
-			"--output-dir", dir,
 		)
 		if err := cmd.Run(); err != nil {
-			logger.Debug("cmd 1 error", "err", err)
+			logger.Debug("helm install error", "err", err)
 			log.Fatal(err)
 		}
-		cmd = exec.Command("kubectl", "apply", "-R", "-f", dir)
-		if err := cmd.Run(); err != nil {
-			logger.Debug("cmd 2 error", "err", err)
-			log.Fatal(err)
-		}
+		// cmd = exec.Command("kubectl", "apply", "-R", "-f", dir)
+		// if err := cmd.Run(); err != nil {
+		// 	logger.Debug("cmd 2 error", "err", err)
+		// 	log.Fatal(err)
+		// }
 
 		jobsClient := getNewJobsClient()
 
@@ -349,13 +361,19 @@ func runWithHelm(repos []string) {
 			if err != nil {
 				panic(err)
 			}
-			if job.Status.Succeeded+job.Status.Failed != 0 {
+			if job.Status.Succeeded > 0 || job.Status.Failed == *job.Spec.BackoffLimit+1 {
 				break
 			}
 		}
 
-		logger.Info("Fetching results", "jobID", jobID)
+		logger.Info("Fetching results", "#", i+1, "jobID", jobID)
 		fetchResults(repo)
+
+		cmd = exec.Command("helm", "uninstall", jobID.String())
+		if err := cmd.Run(); err != nil {
+			logger.Debug("helm uninstall error", "err", err)
+			log.Fatal(err)
+		}
 	})
 }
 
@@ -364,9 +382,6 @@ func runInK8S(repos []string) {
 
 	shared.ForEveryStringWithBoundedGoroutines(o.Jobs, repos, func(i int, repo string) {
 		logger.Info("Goroutine started", "#", i+1, "repo", repo)
-
-		// for i, repo := range repos {
-		// logger.Info("Processing project in k8s", "#", i+1, "repo", repo)
 
 		jobsClient := getNewJobsClient()
 
@@ -386,7 +401,7 @@ func runInK8S(repos []string) {
 			if err != nil {
 				panic(err)
 			}
-			if job.Status.Succeeded+job.Status.Failed != 0 {
+			if job.Status.Succeeded > 0 || job.Status.Failed == *job.Spec.BackoffLimit+1 {
 				break
 			}
 		}

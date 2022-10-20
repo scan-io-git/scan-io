@@ -5,6 +5,8 @@ metadata:
   labels:
     {{- include "scanio-job.labels" . | nindent 4 }}
 spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 1337
   template:
     metadata:
       name: scanio
@@ -18,5 +20,18 @@ spec:
             {{- range .Values.command }}
               - {{ . }}
             {{- end }} 
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: s3
+                  key: aws_access_key_id
+                  optional: true
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: s3
+                  key: aws_secret_access_key
+                  optional: true
