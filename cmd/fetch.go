@@ -146,8 +146,9 @@ var fetchCmd = &cobra.Command{
 				log.Fatal(err)
 			}
 			repositories = reposFromFile
+		} else {
+			repositories = allArgumentsFetch.Repositories
 		}
-
 		//shared.NewLogger("core").Debug("list of repos", "repos", repos)
 
 		if len(repositories) > 0 {
