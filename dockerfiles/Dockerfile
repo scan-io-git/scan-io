@@ -3,6 +3,7 @@ FROM golang:1.19-buster AS build
 WORKDIR /usr/src/scanio
 COPY cmd cmd
 COPY plugins plugins
+COPY libs libs
 COPY shared shared
 COPY go.mod go.mod
 COPY go.sum go.sum

@@ -32,8 +32,8 @@ func NewLogger(name string) hclog.Logger {
 	return hclog.New(&hclog.LoggerOptions{
 		Name:   name,
 		Output: os.Stdout,
-		Level:  hclog.Info,
-		// Level:  hclog.Debug,
+		// Level:  hclog.Info,
+		Level: hclog.Debug,
 	})
 }
 
