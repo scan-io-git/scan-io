@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/scan-io-git/scan-io/libs/vcs"
 	"github.com/scan-io-git/scan-io/shared"
 	"github.com/spf13/cobra"
@@ -44,12 +46,27 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "A brief description of your command",
 
-	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Flags().Parse(args)
-		if len(allArgumentsList.OutputFile) == 0 {
-			panic("'outputFile' must be specified")
+	RunE: func(cmd *cobra.Command, args []string) error {
+		checkArgs := func() error {
+			if len(allArgumentsList.VCSPlugName) == 0 {
+				return fmt.Errorf(("'vcs' flag must be specified"))
+			}
+
+			if len(allArgumentsList.VCSURL) == 0 {
+				return fmt.Errorf(("'vcs-url' flag must be specified"))
+			}
+
+			if len(allArgumentsList.OutputFile) == 0 {
+				return fmt.Errorf(("'outputFile' flag must be specified"))
+			}
+			return nil
+		}
+
+		if err := checkArgs(); err != nil {
+			return err
 		}
 		do()
+		return nil
 	},
 }
 

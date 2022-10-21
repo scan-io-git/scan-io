@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	// "github.com/gitsight/go-vcsurl"
+	"github.com/scan-io-git/scan-io/libs/common"
 	"github.com/scan-io-git/scan-io/shared"
 	"github.com/spf13/cobra"
 )
@@ -91,7 +92,7 @@ var analyseCmd = &cobra.Command{
 		}
 
 		if len(inputFile) > 0 {
-			reposFromFile, err := shared.ReadFileLines(inputFile)
+			reposFromFile, err := common.ReadReposFile(inputFile)
 			if err != nil {
 				log.Fatal(err)
 			}

@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/scan-io-git/scan-io/libs/common"
 	ivcs "github.com/scan-io-git/scan-io/libs/vcs"
 	"github.com/scan-io-git/scan-io/shared"
 	"github.com/spf13/cobra"
@@ -345,7 +346,7 @@ func getReposToProcess() []string {
 	}
 
 	if len(o.InputFile) > 0 {
-		reposFromFile, err := shared.ReadFileLines(o.InputFile)
+		reposFromFile, err := common.ReadReposFile(o.InputFile)
 		if err != nil {
 			log.Fatal(err)
 		}
