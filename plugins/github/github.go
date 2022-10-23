@@ -2,13 +2,8 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
-
-	"github.com/gitsight/go-vcsurl"
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 
 	"github.com/google/go-github/v47/github"
 	"github.com/hashicorp/go-hclog"
@@ -47,39 +42,17 @@ func (g *VCSGithub) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryPar
 }
 
 func (g *VCSGithub) Fetch(args vcs.VCSFetchRequest) error {
+	//variables, err := g.init("fetch")
+	variables := vcs.EvnVariables{}
+	// if err != nil {
+	// 	g.logger.Error("Fetching is failed", "error", err)
+	// 	return err
+	// }
 
-	g.logger.Debug("Fetch called", "args", args)
-
-	info, err := vcsurl.Parse(fmt.Sprintf("https://%s/%s", args.VCSURL, args.Repository))
+	err := vcs.GitClone(args, variables, g.logger)
 	if err != nil {
-		g.logger.Error("unable to parse project '%s'", args.Repository)
 		return err
 	}
-
-	gitCloneOptions := &git.CloneOptions{
-		// Auth:     pkCallback,
-		// URL:      remote,
-		Progress: os.Stdout,
-		Depth:    1,
-	}
-	gitCloneOptions.URL, _ = info.Remote(vcsurl.HTTPS)
-	if args.AuthType == "ssh" {
-		gitCloneOptions.URL = fmt.Sprintf("git@%s:%s.git", info.Host, info.FullName)
-
-		pkCallback, err := ssh.NewSSHAgentAuth("git")
-		if err != nil {
-			g.logger.Info("NewSSHAgentAuth error", "err", err)
-			return err
-		}
-		gitCloneOptions.Auth = pkCallback
-	}
-
-	_, err = git.PlainClone(args.TargetFolder, false, gitCloneOptions)
-	if err != nil {
-		g.logger.Info("Error on Clone occured", "err", err, "targetFolder", args.TargetFolder, "remote", gitCloneOptions.URL)
-		return err
-	}
-
 	return nil
 }
 

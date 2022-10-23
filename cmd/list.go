@@ -34,8 +34,8 @@ func do() {
 			logger.Error("Failed", "error", resultVCS.Message)
 		} else {
 			resultVCS = vcs.ListFuncResult{Args: args, Result: projects, Status: "OK", Message: ""}
-			logger.Info("ListRepos fuctions is finished with status", resultVCS.Status)
-			logger.Info("Amount of repositories", len(projects))
+			logger.Info("ListRepos fuctions is finished with status", "status", resultVCS.Status)
+			logger.Info("Amount of repositories", "numbers", len(projects))
 		}
 
 		vcs.WriteJsonFile(resultVCS, allArgumentsList.OutputFile, logger)

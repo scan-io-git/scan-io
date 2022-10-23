@@ -81,8 +81,8 @@ func fetch(repo string) {
 
 		vcs := raw.(ivcs.VCS)
 		args := ivcs.VCSFetchRequest{
-			Repository:   repo,
-			VCSURL:       o.VCSURL,
+			CloneURL: repo,
+			//VCSURL:       o.VCSURL,
 			TargetFolder: targetFolder,
 		}
 		err := vcs.Fetch(args)

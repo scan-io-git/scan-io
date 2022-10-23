@@ -2,7 +2,11 @@ package common
 
 import (
 	"bufio"
+	"encoding/json"
+	"io/ioutil"
 	"os"
+
+	"github.com/scan-io-git/scan-io/libs/vcs"
 )
 
 func ReadReposFile(inputFile string) ([]string, error) {
@@ -21,4 +25,22 @@ func ReadReposFile(inputFile string) ([]string, error) {
 	}
 
 	return lines, nil
+}
+
+func ReadReposFile2(inputFile string) ([]vcs.RepositoryParams, error) {
+	var wholeFile vcs.ListFuncResult
+	var result []vcs.RepositoryParams
+
+	readFile, err := os.Open(inputFile)
+	if err != nil {
+		return result, err
+	}
+	defer readFile.Close()
+
+	byteValue, _ := ioutil.ReadAll(readFile)
+	err = json.Unmarshal(byteValue, &wholeFile)
+	if err != nil {
+		return result, err
+	}
+	return wholeFile.Result, nil
 }

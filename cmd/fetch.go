@@ -6,16 +6,18 @@ package cmd
 import (
 	"fmt"
 	"io/fs"
-	"log"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
+	"github.com/scan-io-git/scan-io/shared"
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/libs/common"
 	"github.com/scan-io-git/scan-io/libs/vcs"
-	"github.com/scan-io-git/scan-io/shared"
 )
 
 type RunOptionsFetch struct {
@@ -31,7 +33,6 @@ type RunOptionsFetch struct {
 
 var (
 	allArgumentsFetch RunOptionsFetch
-	resultFetch       vcs.FetchFuncResult
 	repositories      []string
 )
 
@@ -64,39 +65,63 @@ func fetchRepos(repositories []string) {
 	logger := shared.NewLogger("core")
 	logger.Info("Fetching starting", "total", len(repositories), "goroutines", allArgumentsFetch.Threads)
 
+	//resultChannel := make(chan vcs.FetchFuncResult)
+
 	shared.ForEveryStringWithBoundedGoroutines(allArgumentsFetch.Threads, repositories, func(i int, repository string) {
 		logger.Info("Goroutine started", "#", i+1, "project", repository)
 
-		targetFolder := shared.GetRepoPath(allArgumentsFetch.VCSURL, repository)
+		var resultFetch vcs.FetchFuncResult
+		parsedUrl, err := url.Parse(repository)
+		if err != nil {
+			logger.Error("Failed", "error", resultFetch.Message)
+		}
+		domain := allArgumentsFetch.VCSURL
+		if domain == "" {
+			host, _, _ := net.SplitHostPort(parsedUrl.Host)
+			domain = host
+		}
+		removeDotGit := regexp.MustCompile(`\.git$`)
+		path := removeDotGit.ReplaceAllLiteralString(parsedUrl.Path, "")
+
+		targetFolder := shared.GetRepoPath(domain, path)
 
 		shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsFetch.VCSPlugName, func(raw interface{}) {
 
 			vcsName := raw.(vcs.VCS)
 			args := vcs.VCSFetchRequest{
-				Repository:   repository,
+				CloneURL:     repository,
 				AuthType:     allArgumentsFetch.AuthType,
 				SSHKey:       allArgumentsFetch.SSHKey,
-				VCSURL:       allArgumentsFetch.VCSURL,
 				TargetFolder: targetFolder,
 			}
 
 			err := vcsName.Fetch(args)
 			if err != nil {
 				resultFetch = vcs.FetchFuncResult{Args: args, Result: nil, Status: "FAILED", Message: err.Error()}
+				//resultChannel <- resultFetch
 				logger.Error("Failed", "error", resultFetch.Message)
 				logger.Debug("Failed", "debug_fetch_res", resultFetch)
 			} else {
 				resultFetch = vcs.FetchFuncResult{Args: args, Result: nil, Status: "OK", Message: ""}
+				//resultChannel <- resultFetch
 				logger.Info("Fetch fuctions is finished with status", "status", resultFetch.Status)
 				logger.Debug("Success", "debug_fetch_res", resultFetch)
 
-				logger.Info("Removing files with some extentions", "extentions", allArgumentsFetch.RmExts)
-				findByExtAndRemove(targetFolder, strings.Split(allArgumentsFetch.RmExts, ","))
 			}
+			logger.Info("Removing files with some extentions", "extentions", allArgumentsFetch.RmExts)
+			findByExtAndRemove(targetFolder, strings.Split(allArgumentsFetch.RmExts, ","))
 		})
 	})
 
+	// allResults := []vcs.FetchFuncResult{}
+	// close(resultChannel)
+	// for status := range resultChannel {
+	// 	allResults = append(allResults, status)
+	// }
+
 	logger.Info("All fetch operations are finished")
+	//logger.Info("Result", "result", allResults)
+	//vcs.WriteJsonFile(resultVCS, allArgumentsList.OutputFile, logger)
 }
 
 var fetchCmd = &cobra.Command{
@@ -108,7 +133,7 @@ var fetchCmd = &cobra.Command{
 				return fmt.Errorf(("'vcs' flag must be specified"))
 			}
 
-			if len(allArgumentsFetch.VCSURL) == 0 {
+			if len(allArgumentsFetch.VCSURL) == 0 && allArgumentsFetch.InputFile == "" {
 				return fmt.Errorf(("'vcs-url' flag must be specified"))
 			}
 
@@ -141,11 +166,28 @@ var fetchCmd = &cobra.Command{
 		}
 
 		if allArgumentsFetch.InputFile != "" {
-			reposFromFile, err := common.ReadReposFile(allArgumentsFetch.InputFile)
+			repos_inf, err := common.ReadReposFile2(allArgumentsFetch.InputFile)
 			if err != nil {
-				log.Fatal(err)
+				return fmt.Errorf("Something happend when tool was parseing the Input File - %v", err)
 			}
-			repositories = reposFromFile
+
+			if allArgumentsFetch.AuthType == "http" {
+				for _, repository := range repos_inf {
+					repositories = append(repositories, repository.HttpLink)
+				}
+			} else {
+				for _, repository := range repos_inf {
+					parsed_url, err := url.Parse(repository.SshLink)
+					if err != nil {
+						return err
+					}
+
+					if parsed_url.Scheme != "ssh" {
+						return fmt.Errorf("URL for fetching has incorrect format")
+					}
+					repositories = append(repositories, repository.SshLink)
+				}
+			}
 		} else {
 			repositories = allArgumentsFetch.Repositories
 		}
@@ -153,6 +195,8 @@ var fetchCmd = &cobra.Command{
 
 		if len(repositories) > 0 {
 			fetchRepos(repositories)
+		} else {
+			return fmt.Errorf("Hasn't found no one repo")
 		}
 		return nil
 	},
@@ -165,9 +209,8 @@ func init() {
 	fetchCmd.Flags().StringVar(&allArgumentsFetch.VCSURL, "vcs-url", "", "url to VCS - github.com")
 	fetchCmd.Flags().StringSliceVar(&allArgumentsFetch.Repositories, "repos", []string{}, "list of repos to fetch - full path format. Bitbucket V1 API format - /project/reponame")
 	fetchCmd.Flags().StringVarP(&allArgumentsFetch.InputFile, "input-file", "f", "", "file with list of repos to fetch")
-	fetchCmd.Flags().IntVarP(&allArgumentsFetch.Threads, "threads", "j", 1, "number of concurrent goroutines")
+	fetchCmd.Flags().IntVarP(&allArgumentsFetch.Threads, "threads", "j", 2, "number of concurrent goroutines")
 	fetchCmd.Flags().StringVar(&allArgumentsFetch.AuthType, "auth-type", "", "Type of authentication: 'http', 'ssh-agent' or 'ssh-key'")
 	fetchCmd.Flags().StringVar(&allArgumentsFetch.SSHKey, "ssh-key", "", "Path to ssh key")
 	fetchCmd.Flags().StringVar(&allArgumentsFetch.RmExts, "rm-ext", "csv,png,ipynb,txt,md,mp4,zip,gif,gz,jpg,jpeg,cache,tar,svg,bin,lock,exe", "Files with extention to remove automatically after checkout")
-	//fetchCmd.Flags().Bool("cache-checking", false, "Cheking existing repos varsion on a disk ")
 }

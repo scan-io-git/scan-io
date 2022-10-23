@@ -28,80 +28,111 @@ func WriteJsonFile(data ListFuncResult, outputFile string, logger hclog.Logger) 
 
 	resultJson, _ := json.MarshalIndent(data, "", "    ")
 	datawriter.Write(resultJson)
-	logger.Info("Results saved to file", outputFile)
+	logger.Info("Results saved to file", "path", outputFile)
 
 }
 
-func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger) (bool, error) {
-
-	info, err := vcsurl.Parse(fmt.Sprintf("https://%s/%s", args.VCSURL, args.Repository))
+func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger) error {
+	info, err := vcsurl.Parse(args.CloneURL)
 	if err != nil {
-		logger.Error("Unable to parse VCS url info", "VCSURL", args.VCSURL, "project", args.Repository)
-
+		logger.Error("Unable to parse VCS url info", "VCSURL", args.CloneURL)
+		return err
 	}
 
+	//debut output from git cli
+	output := logger.StandardWriter(&hclog.StandardLoggerOptions{
+		InferLevels: true,
+	})
+
 	gitCloneOptions := &git.CloneOptions{
-		Progress: os.Stdout,
+		Progress: output,
+		Depth:    1,
+	}
+	gitPullOptions := &git.PullOptions{
+		Progress: output,
 		Depth:    1,
 	}
 
-	gitCloneOptions.URL = fmt.Sprintf("git@%s:%s%s.git", info.Host, variables.VcsPort, info.FullName)
+	gitCloneOptions.URL = args.CloneURL
 
 	if args.AuthType == "ssh-key" {
-		logger.Info("Making arrangements for ssh-key fetching", "repo", args.Repository)
-		_, err := os.Stat(args.SSHKey)
-		if err != nil {
+		logger.Info("Making arrangements for an ssh-key fetching", "repo", info.Name)
+		if _, err := os.Stat(args.SSHKey); err != nil {
 			logger.Error("read file %s failed %s\n", args.SSHKey, err.Error())
-			panic(err)
+			return err
 		}
 
 		pkCallback, err := ssh.NewPublicKeysFromFile("git", args.SSHKey, variables.SshKeyPassword)
 		if err != nil {
-			logger.Error("generate publickeys failed: %s\n", err.Error())
-			panic(err)
+			logger.Error("An extraction publickeys process is failed: %s\n", err.Error())
+			return err
 		}
 
 		pkCallback.HostKeyCallbackHelper = ssh.HostKeyCallbackHelper{
 			HostKeyCallback: crssh.InsecureIgnoreHostKey(),
 		}
 
-		gitCloneOptions.Auth = pkCallback
+		gitCloneOptions.Auth, gitPullOptions.Auth = pkCallback, pkCallback
 	} else if args.AuthType == "ssh-agent" {
-		//g.logger.Info("Making arrangements for ssh-agent fetching", "repo", args.Project)
+		logger.Info("Making arrangements for an ssh-agent fetching", "repo", info.Name)
 		pkCallback, err := ssh.NewSSHAgentAuth("git")
 		if err != nil {
 			logger.Error("NewSSHAgentAuth error", "err", err)
-			panic(err)
+			return err
 		}
 
 		pkCallback.HostKeyCallbackHelper = ssh.HostKeyCallbackHelper{
 			HostKeyCallback: crssh.InsecureIgnoreHostKey(),
 		}
 
-		gitCloneOptions.Auth = pkCallback
+		gitCloneOptions.Auth, gitPullOptions.Auth = pkCallback, pkCallback
 
 	} else if args.AuthType == "http" {
-		//gitCloneOptions.URL, _ = info.Remote(vcsurl.HTTPS)
-		gitCloneOptions.URL = fmt.Sprintf("https://%s/scm%s.git", info.Host, info.FullName)
-
-		gitCloneOptions.Auth = &http.BasicAuth{
+		basicAuth := &http.BasicAuth{
 			Username: variables.Username,
 			Password: variables.Token,
 		}
+		gitCloneOptions.Auth, gitPullOptions.Auth = basicAuth, basicAuth
 	} else {
-		logger.Debug("Unknown auth type")
-		panic("Unknown auth type")
+		err := fmt.Errorf("Unknown auth type")
+		logger.Error("Problems with the a git fetching process", "error", err)
+		return err
 	}
 
-	//TODO add logging from go-git
-	logger.Info("Fetching repo", "repo", args.Repository)
+	logger.Info("Fetching repo", "repo", info.Name)
 	_, err = git.PlainClone(args.TargetFolder, false, gitCloneOptions)
+	if err != nil && err == git.ErrRepositoryAlreadyExists {
+		//git checkout - check deleted files
+		logger.Info("Repository is already exists on a disk", "repo", info.Name, "targetFolder", args.TargetFolder)
 
-	if err != nil {
+		r, err := git.PlainOpen(args.TargetFolder)
+		if err != nil {
+			logger.Info("Can't open repository on a disk", "err", err, "targetFolder", args.TargetFolder)
+			return err
+		}
+		w, err := r.Worktree()
+		if err != nil {
+			logger.Info("Error on Wroktree occured", "err", err, "targetFolder", args.TargetFolder)
+			return err
+		}
+
+		logger.Info("Reseting local repo", "repo", info.Name, "targetFolder", args.TargetFolder)
+		//git reset --hard origin/master if someone delete files from disk
+		if err := w.Reset(&git.ResetOptions{Mode: git.HardReset}); err != nil {
+			fmt.Println("Error on Checkout occured", "err", err, "targetFolder", args.TargetFolder)
+			return err
+		}
+
+		logger.Info("Pulling repo", "repo", info.Name, "targetFolder", args.TargetFolder)
+		if err = w.Pull(gitPullOptions); err != nil {
+			logger.Info("Error on Pull occured", "err", err, "targetFolder", args.TargetFolder)
+			return err
+		}
+	} else if err != nil {
 		logger.Info("Error on Clone occured", "err", err, "targetFolder", args.TargetFolder, "remote", gitCloneOptions.URL)
-		return false, err
+		return err
 	}
 
-	logger.Info("Fetch's ended", "repo", args.Repository)
-	return true, nil
+	logger.Info("Fetch's ended", "repo", info.Name)
+	return nil
 }
