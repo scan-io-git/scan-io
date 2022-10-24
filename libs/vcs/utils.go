@@ -39,7 +39,7 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 		return err
 	}
 
-	//debut output from git cli
+	//debug output from git cli
 	output := logger.StandardWriter(&hclog.StandardLoggerOptions{
 		InferLevels: true,
 	})
