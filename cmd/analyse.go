@@ -27,7 +27,13 @@ func scanRepos(scannerPluginName string, repos []string, threads int) {
 	logger := shared.NewLogger("core")
 	logger.Info("Fetching starting", "total", len(repos), "goroutines", threads)
 
-	shared.ForEveryStringWithBoundedGoroutines(threads, repos, func(i int, repo string) {
+	values := make([]interface{}, len(repos))
+	for i := range repos {
+		values[i] = repos[i]
+	}
+
+	shared.ForEveryStringWithBoundedGoroutines(threads, values, func(i int, value interface{}) {
+		repo := value.(string)
 		logger.Info("Goroutine started", "#", i+1, "project", repo)
 
 		repoPath := filepath.Join(shared.GetProjectsHome(), repo)

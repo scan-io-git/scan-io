@@ -69,13 +69,13 @@ func WithPlugin(loggerName string, pluginType string, pluginName string, f func(
 	f(raw)
 }
 
-func ForEveryStringWithBoundedGoroutines(limit int, values []string, f func(i int, value string)) {
+func ForEveryStringWithBoundedGoroutines(limit int, values []interface{}, f func(i int, value interface{})) {
 	guard := make(chan struct{}, limit)
 	var wg sync.WaitGroup
 	for i, value := range values {
 		guard <- struct{}{} // would block if guard channel is already filled
 		wg.Add(1)
-		go func(i int, value string) {
+		go func(i int, value interface{}) {
 			defer wg.Done()
 			f(i, value)
 			<-guard
