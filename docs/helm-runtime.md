@@ -35,7 +35,7 @@ aws eks --region $(terraform output -raw region) update-kubeconfig --name $(terr
 ```
 6. Configure ECR (you can get instructions from aws console) and push the image. Example:
 ```bash
-❯ aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin 234507145459.dkr.ecr.eu-west-2.amazonaws.com
+❯ aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin $(aws sts get-caller-identity --query "Account" --output text).dkr.ecr.eu-west-2.amazonaws.com
 
 ❯ docker push $DOCKER_IMAGE
 ```
@@ -46,7 +46,7 @@ aws eks --region $(terraform output -raw region) update-kubeconfig --name $(terr
 ❯ scanio list --vcs github --vcs-url github.com --namespace juice-shop --output /tmp/juice-shop-projects.json
 
 # Get only paths
-❯ cat /tmp/juice-shop-projects.json | jq .result[].http_link | sed -e 's#^"https://##g' | sed -e 's#.git"$##g' > /tmp/juice-shop-projects-paths.json
+❯ cat /tmp/juice-shop-projects.json | jq .result[].http_link | sed -e 's#^"https://github.com##g' | sed -e 's#.git"$##g' > /tmp/juice-shop-projects-paths.json
 
 # Run scan with "helm" runtime
 # By default scanio get helm chart from "./helm/scanio-job" folder

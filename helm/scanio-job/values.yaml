@@ -86,3 +86,9 @@ resources: {}
 # affinity: {}
 
 suffix: ""
+
+pv:
+  efs:
+    enabled: false
+    claimName: efs-claim
+    monthPath: /data
