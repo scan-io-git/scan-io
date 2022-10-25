@@ -67,7 +67,13 @@ func fetchRepos(repositories []string) {
 
 	//resultChannel := make(chan vcs.FetchFuncResult)
 
-	shared.ForEveryStringWithBoundedGoroutines(allArgumentsFetch.Threads, repositories, func(i int, repository string) {
+	values := make([]interface{}, len(repositories))
+	for i := range repositories {
+		values[i] = repositories[i]
+	}
+
+	shared.ForEveryStringWithBoundedGoroutines(allArgumentsFetch.Threads, values, func(i int, value interface{}) {
+		repository := value.(string)
 		logger.Info("Goroutine started", "#", i+1, "project", repository)
 
 		var resultFetch vcs.FetchFuncResult

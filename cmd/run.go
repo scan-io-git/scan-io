@@ -371,7 +371,13 @@ func runWithHelm(repos []string) {
 func runInK8S(repos []string) {
 	logger := shared.NewLogger("core")
 
-	shared.ForEveryStringWithBoundedGoroutines(o.Jobs, repos, func(i int, repo string) {
+	values := make([]interface{}, len(repos))
+	for i := range repos {
+		values[i] = repos[i]
+	}
+
+	shared.ForEveryStringWithBoundedGoroutines(o.Jobs, values, func(i int, value interface{}) {
+		repo := value.(string)
 		logger.Info("Goroutine started", "#", i+1, "repo", repo)
 
 		jobsClient := getNewJobsClient()
