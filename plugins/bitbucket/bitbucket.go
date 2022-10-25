@@ -51,8 +51,8 @@ func (g *VCSBitbucket) init(command string) (vcs.EvnVariables, error) {
 		variables.SshKeyPassword = os.Getenv("BITBUCKET_SSH_KEY_PASSWORD")
 
 		if len(variables.VcsPort) == 0 {
-			g.logger.Warn("BITBUCKET_SSH_PORT is not provided in an environment. Using default 22 ssh port")
-			variables.VcsPort = "22"
+			g.logger.Warn("BITBUCKET_SSH_PORT is not provided in an environment. Using default 7989 ssh port")
+			variables.VcsPort = "7989"
 		}
 		if len(variables.SshKeyPassword) == 0 {
 			g.logger.Warn("BITBUCKET_SSH_KEY_PASSOWRD is empty or not provided.")
@@ -194,7 +194,14 @@ func (g *VCSBitbucket) Fetch(args vcs.VCSFetchRequest) error {
 		return err
 	}
 
-	_, err = vcs.GitClone(args, variables, g.logger)
+	//Format for BB api v1
+	//"https://git.acronis.com/scm/ab/virtual-appliance-updater.git",
+	//"ssh_link": "ssh://git@git.acronis.com:7989/ab/virtual-appliance-updater.git"
+	//gitCloneOptions.URL = fmt.Sprintf("git@%s:%s%s.git", info.Host, variables.VcsPort, info.FullName)
+	//gitCloneOptions.URL, _ = info.Remote(vcsurl.HTTPS)
+	//gitCloneOptions.URL = fmt.Sprintf("https://%s/scm%s.git", info.Host, info.FullName)
+
+	err = vcs.GitClone(args, variables, g.logger)
 	if err != nil {
 		return err
 	}
