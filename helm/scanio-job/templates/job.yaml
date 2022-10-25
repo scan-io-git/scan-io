@@ -15,23 +15,38 @@ spec:
     spec:
       restartPolicy: Never
       containers:
-        - name: {{ .Chart.Name }}
-          command:
-            {{- range .Values.command }}
-              - {{ . }}
-            {{- end }} 
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          env:
-            - name: AWS_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: s3
-                  key: aws_access_key_id
-                  optional: true
-            - name: AWS_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: s3
-                  key: aws_secret_access_key
-                  optional: true
+      - name: {{ .Chart.Name }}
+        command:
+        {{- range .Values.command }}
+          - {{ . }}
+        {{- end }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: s3
+              key: aws_access_key_id
+              optional: true
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: s3
+              key: aws_secret_access_key
+              optional: true
+        - name: SCANIO_HOME
+          value: /data
+        - name: SCANIO_PLUGINS_FOLDER
+          value: /scanio-plugins
+        {{- if .Values.pv.efs.enabled }}
+        volumeMounts:
+        - name: persistent-storage
+          mountPath: {{ .Values.pv.efs.monthPath }}
+        {{- end }}
+      {{- if .Values.pv.efs.enabled }}
+      volumes:
+      - name: persistent-storage
+        persistentVolumeClaim:
+          claimName: {{ .Values.pv.efs.claimName }}
+      {{- end }}

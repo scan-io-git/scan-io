@@ -50,9 +50,9 @@ type RunOptions struct {
 	S3Bucket      string
 	Runtime       string
 	Image         string
-	Experiment    string
-	InputFile     string
-	Jobs          int
+	// Experiment    string
+	InputFile string
+	Jobs      int
 }
 
 var o RunOptions
@@ -134,9 +134,9 @@ func uploadResults(repo string) {
 	uploader := s3manager.NewUploader(sess)
 
 	path := getResultsPath(repo)
-	if o.Experiment == "upload" {
-		path = filepath.Join(os.Getenv("HOME"), ".bashrc")
-	}
+	// if o.Experiment == "upload" {
+	// 	path = filepath.Join(os.Getenv("HOME"), ".bashrc")
+	// }
 	f, err := os.Open(path)
 	if err != nil {
 		// panic(fmt.Errorf("failed to open file %q, %v", f, err))
@@ -314,43 +314,31 @@ func runWithHelm(repos []string) {
 		jobID := uuid.New()
 		logger.Debug("runWithHelm jobID", "jobID", jobID)
 
-		// dir, err := os.MkdirTemp("", fmt.Sprintf("scanio-helm-%s-", jobID.String()))
-		// if err != nil {
-		// 	logger.Debug("Create folder error?", "dir", dir)
-		// 	log.Fatal(err)
-		// }
-		// defer os.RemoveAll(dir)
-		// logger.Debug("Created dir to put helm tempalte result there", "dir", dir)
-
-		jobCommand := strings.Join([]string{
+		remoteCommandArgs := []string{
 			"scanio", "run",
 			"--vcs-plugin", o.VCSPlugin,
 			"--vcs-url", o.VCSURL,
 			"--scanner-plugin", o.ScannerPlugin,
 			"--repos", repo,
-			"--storage-type", "s3",
-			"--s3bucket", o.S3Bucket,
-		}, ",")
+		}
+		if o.StorageType == "remote" {
+			remoteCommandArgs = append(remoteCommandArgs, "--storage-type", "local")
+		} else if o.StorageType == "local" || o.StorageType == "s3" {
+			remoteCommandArgs = append(remoteCommandArgs, "--storage-type", "s3", "--s3bucket", o.S3Bucket)
+		}
 
-		helmCommand := fmt.Sprintf("command={%s}", jobCommand)
+		jobCommand := fmt.Sprintf("command={%s}", strings.Join(remoteCommandArgs, ","))
 
 		cmd := exec.Command("helm", "install", jobID.String(), "helm/scanio-job",
-			// "--set", "command={echo,scanio}",
-			"--set", helmCommand,
+			"--set", jobCommand,
 			"--set", fmt.Sprintf("image.repository=%s", IMAGE),
 			"--set", "image.tag=latest",
 			"--set", fmt.Sprintf("suffix=%s", jobID.String()),
-			// "--set", fmt.Sprintf("suffix=%s", repo),
 		)
 		if err := cmd.Run(); err != nil {
 			logger.Debug("helm install error", "err", err)
 			log.Fatal(err)
 		}
-		// cmd = exec.Command("kubectl", "apply", "-R", "-f", dir)
-		// if err := cmd.Run(); err != nil {
-		// 	logger.Debug("cmd 2 error", "err", err)
-		// 	log.Fatal(err)
-		// }
 
 		jobsClient := getNewJobsClient()
 
@@ -367,8 +355,10 @@ func runWithHelm(repos []string) {
 			}
 		}
 
-		logger.Info("Fetching results", "#", i+1, "jobID", jobID)
-		fetchResults(repo)
+		if o.StorageType == "local" {
+			logger.Info("Fetching results", "#", i+1, "jobID", jobID)
+			fetchResults(repo)
+		}
 
 		cmd = exec.Command("helm", "uninstall", jobID.String())
 		if err := cmd.Run(); err != nil {
@@ -407,8 +397,10 @@ func runInK8S(repos []string) {
 			}
 		}
 
-		logger.Info("Fetching results", "jobID", jobID)
-		fetchResults(repo)
+		if o.StorageType == "local" {
+			logger.Info("Fetching results", "jobID", jobID)
+			fetchResults(repo)
+		}
 	})
 }
 
@@ -446,12 +438,12 @@ var runCmd = &cobra.Command{
 		cmd.Flags().Parse(args)
 		repos := getReposToProcess()
 		shared.NewLogger("core").Info("Run", "vcsPlugin", o.VCSPlugin, "VCSURL", o.VCSURL, "Runtime", o.Runtime)
-		if o.Experiment == "upload" {
-			for _, repo := range repos {
-				uploadResults(repo)
-			}
-			return
-		}
+		// if o.Experiment == "upload" {
+		// 	for _, repo := range repos {
+		// 		uploadResults(repo)
+		// 	}
+		// 	return
+		// }
 		if o.Runtime == "local" {
 			for _, repo := range repos {
 				fetch(repo)
@@ -495,5 +487,5 @@ func init() {
 	runCmd.Flags().StringVar(&o.Image, "image", IMAGE, "container image to scan in k8s")
 	runCmd.Flags().IntVarP(&o.Jobs, "jobs", "j", 1, "k8s jobs to run in parallel")
 
-	runCmd.Flags().StringVar(&o.Experiment, "experiment", "", "")
+	// runCmd.Flags().StringVar(&o.Experiment, "experiment", "", "")
 }
