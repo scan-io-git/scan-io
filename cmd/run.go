@@ -308,7 +308,13 @@ func runWithHelm(repos []string) {
 	logger := shared.NewLogger("core")
 	logger.Info("runWithHelm")
 
-	shared.ForEveryStringWithBoundedGoroutines(o.Jobs, repos, func(i int, repo string) {
+	values := make([]interface{}, len(repos))
+	for i := range repos {
+		values[i] = repos[i]
+	}
+
+	shared.ForEveryStringWithBoundedGoroutines(o.Jobs, values, func(i int, value interface{}) {
+		repo := value.(string)
 		logger.Info("runWithHelm Goroutine started", "#", i+1, "repo", repo, "jobs", o.Jobs)
 
 		jobID := uuid.New()
