@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -34,7 +35,8 @@ import (
 	"k8s.io/utils/pointer"
 )
 
-const IMAGE = "356918957485.dkr.ecr.eu-west-2.amazonaws.com/i-am-first"
+// const IMAGE = "356918957485.dkr.ecr.eu-west-2.amazonaws.com/i-am-first"
+const IMAGE = "234507145459.dkr.ecr.eu-west-2.amazonaws.com/scanio"
 const AWS_DEFAULT_REGION = "eu-west-2"
 const S3_BUCKET = "my-s3-bucket-q97843yt9"
 
@@ -48,9 +50,9 @@ type RunOptions struct {
 	S3Bucket      string
 	Runtime       string
 	Image         string
-	Experiment    string
-	InputFile     string
-	Jobs          int
+	// Experiment    string
+	InputFile string
+	Jobs      int
 }
 
 var o RunOptions
@@ -132,9 +134,9 @@ func uploadResults(repo string) {
 	uploader := s3manager.NewUploader(sess)
 
 	path := getResultsPath(repo)
-	if o.Experiment == "upload" {
-		path = filepath.Join(os.Getenv("HOME"), ".bashrc")
-	}
+	// if o.Experiment == "upload" {
+	// 	path = filepath.Join(os.Getenv("HOME"), ".bashrc")
+	// }
 	f, err := os.Open(path)
 	if err != nil {
 		// panic(fmt.Errorf("failed to open file %q, %v", f, err))
@@ -188,7 +190,7 @@ func getPodSpec(jobID string, repo string) *batchv1.Job {
 								"--vcs-plugin", o.VCSPlugin,
 								"--vcs-url", o.VCSURL,
 								"--scanner-plugin", o.ScannerPlugin,
-								"--repo", repo,
+								"--repos", repo,
 								"--storage-type", "s3",
 								"--s3bucket", o.S3Bucket,
 							},
@@ -198,7 +200,7 @@ func getPodSpec(jobID string, repo string) *batchv1.Job {
 									ValueFrom: &apiv1.EnvVarSource{
 										SecretKeyRef: &apiv1.SecretKeySelector{
 											LocalObjectReference: apiv1.LocalObjectReference{Name: "s3"},
-											Key:                  "aws_secret_key_id",
+											Key:                  "aws_access_key_id",
 											Optional:             pointer.Bool(false),
 										},
 									},
@@ -302,6 +304,76 @@ func fetchResults(repo string) {
 	}
 }
 
+func runWithHelm(repos []string) {
+	logger := shared.NewLogger("core")
+	logger.Info("runWithHelm")
+
+	values := make([]interface{}, len(repos))
+	for i := range repos {
+		values[i] = repos[i]
+	}
+
+	shared.ForEveryStringWithBoundedGoroutines(o.Jobs, values, func(i int, value interface{}) {
+		repo := value.(string)
+		logger.Info("runWithHelm Goroutine started", "#", i+1, "repo", repo, "jobs", o.Jobs)
+
+		jobID := uuid.New()
+		logger.Debug("runWithHelm jobID", "jobID", jobID)
+
+		remoteCommandArgs := []string{
+			"scanio", "run",
+			"--vcs-plugin", o.VCSPlugin,
+			"--vcs-url", o.VCSURL,
+			"--scanner-plugin", o.ScannerPlugin,
+			"--repos", repo,
+		}
+		if o.StorageType == "remote" {
+			remoteCommandArgs = append(remoteCommandArgs, "--storage-type", "local")
+		} else if o.StorageType == "local" || o.StorageType == "s3" {
+			remoteCommandArgs = append(remoteCommandArgs, "--storage-type", "s3", "--s3bucket", o.S3Bucket)
+		}
+
+		jobCommand := fmt.Sprintf("command={%s}", strings.Join(remoteCommandArgs, ","))
+
+		cmd := exec.Command("helm", "install", jobID.String(), "helm/scanio-job",
+			"--set", jobCommand,
+			"--set", fmt.Sprintf("image.repository=%s", IMAGE),
+			"--set", "image.tag=latest",
+			"--set", fmt.Sprintf("suffix=%s", jobID.String()),
+		)
+		if err := cmd.Run(); err != nil {
+			logger.Debug("helm install error", "err", err)
+			log.Fatal(err)
+		}
+
+		jobsClient := getNewJobsClient()
+
+		jobName := fmt.Sprintf("scanio-job-%s", jobID.String())
+
+		logger.Info("Waiting the job", "jobName", jobName)
+		for {
+			job, err := jobsClient.Get(context.Background(), jobName, metav1.GetOptions{})
+			if err != nil {
+				panic(err)
+			}
+			if job.Status.Succeeded > 0 || job.Status.Failed == *job.Spec.BackoffLimit+1 {
+				break
+			}
+		}
+
+		if o.StorageType == "local" {
+			logger.Info("Fetching results", "#", i+1, "jobID", jobID)
+			fetchResults(repo)
+		}
+
+		cmd = exec.Command("helm", "uninstall", jobID.String())
+		if err := cmd.Run(); err != nil {
+			logger.Debug("helm uninstall error", "err", err)
+			log.Fatal(err)
+		}
+	})
+}
+
 func runInK8S(repos []string) {
 	logger := shared.NewLogger("core")
 
@@ -313,9 +385,6 @@ func runInK8S(repos []string) {
 	shared.ForEveryStringWithBoundedGoroutines(o.Jobs, values, func(i int, value interface{}) {
 		repo := value.(string)
 		logger.Info("Goroutine started", "#", i+1, "repo", repo)
-
-		// for i, repo := range repos {
-		// logger.Info("Processing project in k8s", "#", i+1, "repo", repo)
 
 		jobsClient := getNewJobsClient()
 
@@ -335,13 +404,15 @@ func runInK8S(repos []string) {
 			if err != nil {
 				panic(err)
 			}
-			if job.Status.Succeeded+job.Status.Failed != 0 {
+			if job.Status.Succeeded > 0 || job.Status.Failed == *job.Spec.BackoffLimit+1 {
 				break
 			}
 		}
 
-		logger.Info("Fetching results", "jobID", jobID)
-		fetchResults(repo)
+		if o.StorageType == "local" {
+			logger.Info("Fetching results", "jobID", jobID)
+			fetchResults(repo)
+		}
 	})
 }
 
@@ -379,12 +450,12 @@ var runCmd = &cobra.Command{
 		cmd.Flags().Parse(args)
 		repos := getReposToProcess()
 		shared.NewLogger("core").Info("Run", "vcsPlugin", o.VCSPlugin, "VCSURL", o.VCSURL, "Runtime", o.Runtime)
-		if o.Experiment == "upload" {
-			for _, repo := range repos {
-				uploadResults(repo)
-			}
-			return
-		}
+		// if o.Experiment == "upload" {
+		// 	for _, repo := range repos {
+		// 		uploadResults(repo)
+		// 	}
+		// 	return
+		// }
 		if o.Runtime == "local" {
 			for _, repo := range repos {
 				fetch(repo)
@@ -396,6 +467,9 @@ var runCmd = &cobra.Command{
 		}
 		if o.Runtime == "k8s" {
 			runInK8S(repos)
+		}
+		if o.Runtime == "helm" {
+			runWithHelm(repos)
 		}
 	},
 }
@@ -425,5 +499,5 @@ func init() {
 	runCmd.Flags().StringVar(&o.Image, "image", IMAGE, "container image to scan in k8s")
 	runCmd.Flags().IntVarP(&o.Jobs, "jobs", "j", 1, "k8s jobs to run in parallel")
 
-	runCmd.Flags().StringVar(&o.Experiment, "experiment", "", "")
+	// runCmd.Flags().StringVar(&o.Experiment, "experiment", "", "")
 }
