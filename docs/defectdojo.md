@@ -56,4 +56,28 @@ echo "DefectDojo admin password: $(kubectl \
 6. Visit `http://defectdojo.example.com:8080`
 
 
-# Push results to defectdojo
+# DefectDojo Auth
+1. Get API v2 Key from defectdojo ui.
+2. Set key as env variable `DEFECTDOJO_TOKEN` before executing `scanio upload-results`.
+
+
+# Scanio usage to upload results to defectdojo
+Get list of project to scan, fetch and scan them. Get more details in `usecase-scanorg.md` document. Finally upload results.
+```bash
+❯ scanio list --vcs github --vcs-url github.com --namespace juice-shop --output /tmp/juice-shop-projects.json
+
+❯ scanio fetch --vcs github --vcs-url github.com --auth-type http -f /tmp/juice-shop-projects.json -j 10
+
+❯ cat /tmp/juice-shop-projects.json | jq .result[].http_link | sed -e 's#^"https://##g' | sed -e 's#.git"$##g' > /tmp/juice-shop-projects-local-paths.json
+❯ scanio analyse --scanner semgrep -f /tmp/juice-shop-projects-local-paths.json -j 10
+
+❯ scanio upload-results -f /tmp/juice-shop-projects.json --vcs-url github.com
+```
+
+# Watch results in DefectDojo UI.
+Scanio will create project per namespace. In this case it will create only one project `juice-shop`.
+[![Defect-Dojo-Project.png](https://i.ibb.co/PgJkcRX/Defect-Dojo-Project.png)](https://ibb.co/Xt6H790)
+Inside the project it will create multiple engagement entries. One per scan report.
+[![Defect-Dojo-Engagements.png](https://i.ibb.co/FH2Lzy0/Defect-Dojo-Engagements.png)](https://ibb.co/PDKvgP9)
+In every engagement results uploaded with specifying dd's service value equel to repo name.
+[![Defect-Dojo-Findings.png](https://i.ibb.co/xSx0YQT/Defect-Dojo-Findings.png)](https://ibb.co/MDF4fL0)
