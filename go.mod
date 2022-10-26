@@ -15,9 +15,9 @@ require (
 	github.com/spf13/cobra v1.5.0
 	github.com/xanzy/go-gitlab v0.73.1
 	golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd
-	k8s.io/api v0.25.2
-	k8s.io/apimachinery v0.25.2
-	k8s.io/client-go v0.25.2
+	k8s.io/api v0.25.3
+	k8s.io/apimachinery v0.25.3
+	k8s.io/client-go v0.25.3
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed
 )
 
@@ -37,6 +37,7 @@ require (
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.19.5 // indirect
 	github.com/go-openapi/swag v0.19.14 // indirect
+	github.com/go-resty/resty/v2 v2.7.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/gnostic v0.5.7-v3refs // indirect
