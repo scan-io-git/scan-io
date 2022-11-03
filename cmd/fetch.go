@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/scan-io-git/scan-io/shared"
@@ -33,7 +32,7 @@ type RunOptionsFetch struct {
 
 var (
 	allArgumentsFetch RunOptionsFetch
-	repositories      []string
+	// repositories      []string
 )
 
 func findByExtAndRemove(root string, exts []string) {
@@ -60,40 +59,46 @@ func findByExtAndRemove(root string, exts []string) {
 	})
 }
 
-func fetchRepos(repositories []string) {
+func fetchRepos(fetchArgs []vcs.VCSFetchRequest) {
 
 	logger := shared.NewLogger("core")
-	logger.Info("Fetching starting", "total", len(repositories), "goroutines", allArgumentsFetch.Threads)
+	logger.Info("Fetching starting", "total", len(fetchArgs), "goroutines", allArgumentsFetch.Threads)
 
 	//resultChannel := make(chan vcs.FetchFuncResult)
 
-	shared.ForEveryStringWithBoundedGoroutines(allArgumentsFetch.Threads, repositories, func(i int, repository string) {
-		logger.Info("Goroutine started", "#", i+1, "project", repository)
+	values := make([]interface{}, len(fetchArgs))
+	for i := range fetchArgs {
+		values[i] = fetchArgs[i]
+	}
+
+	shared.ForEveryStringWithBoundedGoroutines(allArgumentsFetch.Threads, values, func(i int, value interface{}) {
+		args := value.(vcs.VCSFetchRequest)
+		logger.Info("Goroutine started", "#", i+1, "args", args)
 
 		var resultFetch vcs.FetchFuncResult
-		parsedUrl, err := url.Parse(repository)
-		if err != nil {
-			logger.Error("Failed", "error", resultFetch.Message)
-		}
-		domain := allArgumentsFetch.VCSURL
-		if domain == "" {
-			host, _, _ := net.SplitHostPort(parsedUrl.Host)
-			domain = host
-		}
-		removeDotGit := regexp.MustCompile(`\.git$`)
-		path := removeDotGit.ReplaceAllLiteralString(parsedUrl.Path, "")
+		// parsedUrl, err := url.Parse(repository)
+		// if err != nil {
+		// 	logger.Error("Failed", "error", resultFetch.Message)
+		// }
+		// domain := allArgumentsFetch.VCSURL
+		// if domain == "" {
+		// 	host, _, _ := net.SplitHostPort(parsedUrl.Host)
+		// 	domain = host
+		// }
+		// removeDotGit := regexp.MustCompile(`\.git$`)
+		// path := removeDotGit.ReplaceAllLiteralString(parsedUrl.Path, "")
 
-		targetFolder := shared.GetRepoPath(domain, path)
+		// targetFolder := shared.GetRepoPath(domain, path)
 
 		shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsFetch.VCSPlugName, func(raw interface{}) {
 
 			vcsName := raw.(vcs.VCS)
-			args := vcs.VCSFetchRequest{
-				CloneURL:     repository,
-				AuthType:     allArgumentsFetch.AuthType,
-				SSHKey:       allArgumentsFetch.SSHKey,
-				TargetFolder: targetFolder,
-			}
+			// args := vcs.VCSFetchRequest{
+			// 	CloneURL:     repository,
+			// 	AuthType:     allArgumentsFetch.AuthType,
+			// 	SSHKey:       allArgumentsFetch.SSHKey,
+			// 	TargetFolder: targetFolder,
+			// }
 
 			err := vcsName.Fetch(args)
 			if err != nil {
@@ -109,7 +114,7 @@ func fetchRepos(repositories []string) {
 
 			}
 			logger.Info("Removing files with some extentions", "extentions", allArgumentsFetch.RmExts)
-			findByExtAndRemove(targetFolder, strings.Split(allArgumentsFetch.RmExts, ","))
+			findByExtAndRemove(args.TargetFolder, strings.Split(allArgumentsFetch.RmExts, ","))
 		})
 	})
 
@@ -122,6 +127,19 @@ func fetchRepos(repositories []string) {
 	logger.Info("All fetch operations are finished")
 	//logger.Info("Result", "result", allResults)
 	//vcs.WriteJsonFile(resultVCS, allArgumentsList.OutputFile, logger)
+}
+
+func getDomain(repositoryURL string) (string, error) {
+	if allArgumentsFetch.VCSURL != "" {
+		return allArgumentsFetch.VCSURL, nil
+	}
+
+	parsedUrl, err := url.Parse(repositoryURL)
+	if err != nil {
+		return "", fmt.Errorf("Error during parsing repositoryURL '%s'", repositoryURL)
+	}
+	host, _, _ := net.SplitHostPort(parsedUrl.Host)
+	return host, nil
 }
 
 var fetchCmd = &cobra.Command{
@@ -165,6 +183,8 @@ var fetchCmd = &cobra.Command{
 			return err
 		}
 
+		fetchArgs := []vcs.VCSFetchRequest{}
+
 		if allArgumentsFetch.InputFile != "" {
 			repos_inf, err := common.ReadReposFile2(allArgumentsFetch.InputFile)
 			if err != nil {
@@ -173,7 +193,19 @@ var fetchCmd = &cobra.Command{
 
 			if allArgumentsFetch.AuthType == "http" {
 				for _, repository := range repos_inf {
-					repositories = append(repositories, repository.HttpLink)
+					// repositories = append(repositories, repository.HttpLink)
+					cloneURL := repository.HttpLink
+					domain, err := getDomain(cloneURL)
+					if err != nil {
+						return err
+					}
+					targetFolder := shared.GetRepoPath(domain, filepath.Join(repository.Namespace, repository.RepoName))
+					fetchArgs = append(fetchArgs, vcs.VCSFetchRequest{
+						CloneURL:     cloneURL,
+						AuthType:     allArgumentsFetch.AuthType,
+						SSHKey:       allArgumentsFetch.SSHKey,
+						TargetFolder: targetFolder,
+					})
 				}
 			} else {
 				for _, repository := range repos_inf {
@@ -181,20 +213,33 @@ var fetchCmd = &cobra.Command{
 					if err != nil {
 						return err
 					}
-
 					if parsed_url.Scheme != "ssh" {
 						return fmt.Errorf("URL for fetching has incorrect format")
 					}
-					repositories = append(repositories, repository.SshLink)
+					// repositories = append(repositories, repository.SshLink)
+					cloneURL := repository.SshLink
+					domain, err := getDomain(cloneURL)
+					if err != nil {
+						return err
+					}
+					targetFolder := shared.GetRepoPath(domain, filepath.Join(repository.Namespace, repository.RepoName))
+					fetchArgs = append(fetchArgs, vcs.VCSFetchRequest{
+						CloneURL:     cloneURL,
+						AuthType:     allArgumentsFetch.AuthType,
+						SSHKey:       allArgumentsFetch.SSHKey,
+						TargetFolder: targetFolder,
+					})
+
 				}
 			}
 		} else {
-			repositories = allArgumentsFetch.Repositories
+			// repositories = allArgumentsFetch.Repositories
+			return fmt.Errorf("TODO: Generate targetFolder for arbitrary fetch link")
 		}
 		//shared.NewLogger("core").Debug("list of repos", "repos", repos)
 
-		if len(repositories) > 0 {
-			fetchRepos(repositories)
+		if len(fetchArgs) > 0 {
+			fetchRepos(fetchArgs)
 		} else {
 			return fmt.Errorf("Hasn't found no one repo")
 		}

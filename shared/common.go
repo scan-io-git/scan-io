@@ -32,21 +32,41 @@ func NewLogger(name string) hclog.Logger {
 	return hclog.New(&hclog.LoggerOptions{
 		Name:   name,
 		Output: os.Stdout,
-		Level:  hclog.Info,
-		// Level:  hclog.Debug,
+		// Level:  hclog.Info,
+		Level: hclog.Debug,
 	})
+}
+
+func getScanioHome() string {
+	envScanioHome := os.Getenv("SCANIO_HOME")
+	if envScanioHome != "" {
+		return envScanioHome
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		panic("unable to get home folder")
+	}
+	defaultScanioHome := filepath.Join(home, "/.scanio")
+	return defaultScanioHome
+}
+
+func getScanioPluginsFolder() string {
+	envScanioPlugins := os.Getenv("SCANIO_PLUGINS_FOLDER")
+	if envScanioPlugins != "" {
+		return envScanioPlugins
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		panic("unable to get home folder")
+	}
+	defaultScanioPlugins := filepath.Join(home, "/.scanio/plugins")
+	return defaultScanioPlugins
 }
 
 func WithPlugin(loggerName string, pluginType string, pluginName string, f func(interface{})) {
 	logger := NewLogger(loggerName)
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		panic("unable to get home folder")
-	}
-	pluginsFolder := filepath.Join(home, "/.scanio/plugins")
-
-	pluginPath := filepath.Join(pluginsFolder, pluginName)
+	pluginPath := filepath.Join(getScanioPluginsFolder(), pluginName)
 	client := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig: HandshakeConfig,
 		Plugins:         PluginMap,
@@ -69,13 +89,13 @@ func WithPlugin(loggerName string, pluginType string, pluginName string, f func(
 	f(raw)
 }
 
-func ForEveryStringWithBoundedGoroutines(limit int, values []string, f func(i int, value string)) {
+func ForEveryStringWithBoundedGoroutines(limit int, values []interface{}, f func(i int, value interface{})) {
 	guard := make(chan struct{}, limit)
 	var wg sync.WaitGroup
 	for i, value := range values {
 		guard <- struct{}{} // would block if guard channel is already filled
 		wg.Add(1)
-		go func(i int, value string) {
+		go func(i int, value interface{}) {
 			defer wg.Done()
 			f(i, value)
 			<-guard
@@ -85,11 +105,7 @@ func ForEveryStringWithBoundedGoroutines(limit int, values []string, f func(i in
 }
 
 func GetProjectsHome() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		panic("unable to get home folder")
-	}
-	projectsFolder := filepath.Join(home, "/.scanio/projects")
+	projectsFolder := filepath.Join(getScanioHome(), "/projects")
 	if _, err := os.Stat(projectsFolder); os.IsNotExist(err) {
 		NewLogger("core").Info("projectsFolder does not exists. Creating...", "projectsFolder", projectsFolder)
 		if err := os.MkdirAll(projectsFolder, os.ModePerm); err != nil {
@@ -100,11 +116,7 @@ func GetProjectsHome() string {
 }
 
 func GetResultsHome() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		panic("unable to get home folder")
-	}
-	resultsFolder := filepath.Join(home, "/.scanio/results")
+	resultsFolder := filepath.Join(getScanioHome(), "/results")
 	if _, err := os.Stat(resultsFolder); os.IsNotExist(err) {
 		NewLogger("core").Info("resultsFolder does not exists. Creating...", "resultsFolder", resultsFolder)
 		if err := os.MkdirAll(resultsFolder, os.ModePerm); err != nil {

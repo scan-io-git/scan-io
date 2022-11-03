@@ -24,8 +24,10 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) bool {
 	g.logger.Info("Scan finished", "RepoPath", args.RepoPath, "ResultsPath", args.ResultsPath)
 
 	if err != nil {
-		g.logger.Error("scanner execution error", "err", err, "RepoPath", args.RepoPath)
-		return false
+		if exitError, ok := err.(*exec.ExitError); ok && exitError.ExitCode() != 1 {
+			g.logger.Error("scanner execution error", "err", err, "RepoPath", args.RepoPath, "exitError.ExitCode()", exitError.ExitCode())
+			return false
+		}
 	}
 
 	return true
