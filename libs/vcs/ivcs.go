@@ -94,6 +94,7 @@ type VCSRPCServer struct {
 
 func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) error {
 	return s.Impl.Fetch(args)
+
 }
 
 func (s *VCSRPCServer) ListRepos(args VCSListReposRequest, resp *VCSListReposResponse) error {

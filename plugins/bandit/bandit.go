@@ -14,7 +14,7 @@ type ScannerSemgrep struct {
 	logger hclog.Logger
 }
 
-func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) bool {
+func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
 
 	cmd := exec.Command("bandit", "-r", "-f", "json", "-o", args.ResultsPath, args.RepoPath)
 	cmd.Stderr = os.Stderr
@@ -26,11 +26,11 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) bool {
 	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok && exitError.ExitCode() != 1 {
 			g.logger.Error("scanner execution error", "err", err, "RepoPath", args.RepoPath, "exitError.ExitCode()", exitError.ExitCode())
-			return false
+			return err
 		}
 	}
 
-	return true
+	return nil
 }
 
 func main() {

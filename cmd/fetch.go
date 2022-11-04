@@ -1,6 +1,3 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -188,7 +185,7 @@ var fetchCmd = &cobra.Command{
 		if allArgumentsFetch.InputFile != "" {
 			repos_inf, err := common.ReadReposFile2(allArgumentsFetch.InputFile)
 			if err != nil {
-				return fmt.Errorf("Something happend when tool was parseing the Input File - %v", err)
+				return fmt.Errorf("Something happend when tool was parsing the Input File - %v", err)
 			}
 
 			if allArgumentsFetch.AuthType == "http" {
