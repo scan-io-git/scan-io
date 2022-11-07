@@ -65,19 +65,19 @@ var analyseCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		checkArgs := func() error {
 			if len(allArgumentsAnalyse.ScannerPluginName) == 0 {
-				return fmt.Errorf(("'scanner' flag must be specified"))
+				return fmt.Errorf("'scanner' flag must be specified")
 			}
 
 			// if len(allArgumentsAnalyse.Repositories) != 0 && allArgumentsAnalyse.InputFile != "" {
-			// 	return fmt.Errorf(("you can't use both input types for repositories"))
+			// 	return fmt.Errorf("you can't use both input types for repositories")
 			// }
 
 			// if len(allArgumentsAnalyse.Repositories) == 0 && len(allArgumentsAnalyse.InputFile) == 0 {
-			// 	return fmt.Errorf(("'repos' or 'input-file' flag must be specified"))
+			// 	return fmt.Errorf("'repos' or 'input-file' flag must be specified")
 			// }
 			fmt.Println(allArgumentsAnalyse.InputFile)
 			if allArgumentsAnalyse.InputFile == "" {
-				return fmt.Errorf(("'input-file' flag must be specified"))
+				return fmt.Errorf("'input-file' flag must be specified")
 			}
 
 			return nil
@@ -138,6 +138,6 @@ func init() {
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.InputFile, "input-file", "f", "", "file with list of repos to analyse")
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.Config, "config", "c", "auto", "file with list of repos to analyse")
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.ReportFormat, "format", "o", "", "file with list of repos to analyse") //doesn't have default for "Uses ASCII output if no format specified"
-	analyseCmd.Flags().StringSliceVar(&allArgumentsAnalyse.AdditionalArgs, "args", []string{}, "additional commands for semgrep which are will be concatenated to a semgrep call")
+	analyseCmd.Flags().StringSliceVar(&allArgumentsAnalyse.AdditionalArgs, "args", []string{}, "additional commands for semgrep which are will be added to a semgrep call. Format in quots with commas withous spaces.")
 	analyseCmd.Flags().IntVarP(&allArgumentsAnalyse.Threads, "threads", "j", 2, "number of concurrent goroutines")
 }
