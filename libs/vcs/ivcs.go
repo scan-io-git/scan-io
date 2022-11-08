@@ -66,7 +66,6 @@ type VCSRPCClient struct{ client *rpc.Client }
 
 func (g *VCSRPCClient) Fetch(req VCSFetchRequest) error {
 	var resp VCSFetchResponse
-	// var resp bool
 
 	err := g.client.Call("Plugin.Fetch", req, &resp)
 
@@ -95,10 +94,7 @@ type VCSRPCServer struct {
 
 func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) error {
 	return s.Impl.Fetch(args)
-	// if resp.Error != nil {
-	// 	return resp.Error
-	// }
-	// return nil
+
 }
 
 func (s *VCSRPCServer) ListRepos(args VCSListReposRequest, resp *VCSListReposResponse) error {

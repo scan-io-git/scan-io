@@ -6,61 +6,48 @@ import (
 	"github.com/hashicorp/go-plugin"
 )
 
-// Scanner is the interface that we're exposing as a plugin.
 type Scanner interface {
-	Scan(args ScannerScanRequest) bool
+	Scan(args ScannerScanRequest) error
 }
 
-type ScannerScanResponse struct {
-	Success bool
+type ScannerScanResult struct {
+	Args    ScannerScanRequest
+	Result  []string
+	Status  string
+	Message string
 }
 
 type ScannerScanRequest struct {
-	RepoPath    string
-	ResultsPath string
+	RepoPath       string
+	ReportFormat   string
+	ConfigPath     string
+	ResultsPath    string
+	AdditionalArgs []string
 }
 
-// Here is an implementation that talks over RPC
 type ScannerRPCClient struct{ client *rpc.Client }
 
-func (g *ScannerRPCClient) Scan(req ScannerScanRequest) bool {
-	var resp ScannerScanResponse
+func (g *ScannerRPCClient) Scan(req ScannerScanRequest) error {
+	var resp ScannerScanResult
 
 	err := g.client.Call("Plugin.Scan", req, &resp)
 
 	if err != nil {
-		// You usually want your interfaces to return errors. If they don't,
-		// there isn't much other choice here.
-		panic(err)
+		return err
 	}
 
-	return resp.Success
-}
-
-// Here is the RPC server that ScannerRPCClient talks to, conforming to
-// the requirements of net/rpc
-type ScannerRPCServer struct {
-	// This is the real implementation
-	Impl Scanner
-}
-
-func (s *ScannerRPCServer) Scan(args ScannerScanRequest, resp *ScannerScanResponse) error {
-	resp.Success = s.Impl.Scan(args)
 	return nil
 }
 
-// This is the implementation of plugin.Plugin so we can serve/consume this
-//
-// This has two methods: Server must return an RPC server for this plugin
-// type. We construct a ScannerRPCServer for this.
-//
-// Client must return an implementation of our interface that communicates
-// over an RPC client. We return ScannerRPCClient for this.
-//
-// Ignore MuxBroker. That is used to create more multiplexed streams on our
-// plugin connection and is a more advanced use case.
+type ScannerRPCServer struct {
+	Impl Scanner
+}
+
+func (s *ScannerRPCServer) Scan(args ScannerScanRequest, resp *ScannerScanResult) error {
+	return s.Impl.Scan(args)
+}
+
 type ScannerPlugin struct {
-	// Impl Injection
 	Impl Scanner
 }
 

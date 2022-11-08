@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
+	"io"
 	"os"
 	"os/exec"
 
@@ -9,26 +12,52 @@ import (
 	"github.com/scan-io-git/scan-io/shared"
 )
 
-// Here is a real implementation of Scanner
 type ScannerSemgrep struct {
 	logger hclog.Logger
 }
 
-func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) bool {
+func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
+	g.logger.Info("Scan is starting", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath)
+	var commandArgs []string
+	var cmd *exec.Cmd
+	var reportFormat string
+	var stdBuffer bytes.Buffer
 
-	cmd := exec.Command("semgrep", "--config", "auto", "-o", args.ResultsPath, "--sarif", args.RepoPath)
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
+	commandArgs = []string{"scan"}
 
-	err := cmd.Run()
-	g.logger.Info("Scan finished", "project", args.RepoPath, "resultsFile", args.ResultsPath)
-
-	if err != nil {
-		g.logger.Error("semgrep execution error", "err", err, "projectFolder", args.RepoPath)
-		return false
+	// Add additional arguments
+	if len(args.AdditionalArgs) != 0 {
+		commandArgs = append(commandArgs, args.AdditionalArgs...)
 	}
 
-	return true
+	if args.ReportFormat != "" {
+		reportFormat = fmt.Sprintf("--%v", args.ReportFormat)
+	}
+
+	if args.ConfigPath == "auto" {
+		commandArgs = append(commandArgs, "-f", args.ConfigPath, "--output", args.ResultsPath, reportFormat, args.RepoPath)
+	} else {
+		commandArgs = append(commandArgs, "--metrics", "off", "-f", args.ConfigPath, "--output", args.ResultsPath, reportFormat, args.RepoPath)
+	}
+
+	cmd = exec.Command("semgrep", commandArgs...)
+	g.logger.Info("cmd", cmd.Args)
+	mw := io.MultiWriter(g.logger.StandardWriter(&hclog.StandardLoggerOptions{
+		InferLevels: true,
+	}), &stdBuffer)
+
+	cmd.Stdout = mw
+	cmd.Stderr = mw
+
+	err := cmd.Run()
+	if err != nil {
+		err := fmt.Errorf(stdBuffer.String())
+
+		g.logger.Error("Semgrep execution error", "err", err)
+		return err
+	}
+	g.logger.Info("Scan finished", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
+	return nil
 }
 
 func main() {
@@ -41,7 +70,7 @@ func main() {
 	Scanner := &ScannerSemgrep{
 		logger: logger,
 	}
-	// pluginMap is the map of plugins we can dispense.
+
 	var pluginMap = map[string]plugin.Plugin{
 		shared.PluginTypeScanner: &shared.ScannerPlugin{Impl: Scanner},
 	}

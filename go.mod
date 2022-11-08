@@ -7,6 +7,7 @@ require (
 	github.com/gfleury/go-bitbucket-v1 v0.0.0-20220418082332-711d7d5e805f
 	github.com/gitsight/go-vcsurl v1.0.0
 	github.com/go-git/go-git/v5 v5.4.2
+	github.com/go-resty/resty/v2 v2.7.0
 	github.com/google/go-github/v47 v47.1.1-0.20220922183808-8a4bdb5e400f
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-hclog v0.14.1
@@ -37,7 +38,6 @@ require (
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.19.5 // indirect
 	github.com/go-openapi/swag v0.19.14 // indirect
-	github.com/go-resty/resty/v2 v2.7.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/gnostic v0.5.7-v3refs // indirect
