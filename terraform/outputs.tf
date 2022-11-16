@@ -27,3 +27,8 @@ output "repository_url" {
   description = "scanio image repository url"
   value       = aws_ecr_repository.scanio_repository.repository_url
 }
+
+output "dev_addr" {
+  description = "address of dev vm"
+  value = aws_instance.ec2_dev.public_dns
+}

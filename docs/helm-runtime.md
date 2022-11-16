@@ -46,7 +46,7 @@ aws eks --region $(terraform output -raw region) update-kubeconfig --name $(terr
 ❯ scanio list --vcs github --vcs-url github.com --namespace juice-shop --output /tmp/juice-shop-projects.json
 
 # Get only paths
-❯ cat /tmp/juice-shop-projects.json | jq .result[].http_link | sed -e 's#^"https://github.com##g' | sed -e 's#.git"$##g' > /tmp/juice-shop-projects-paths.json
+❯ cat /tmp/juice-shop-projects.json | jq .result[].http_link | sed -e 's#^"https://github.com/##g' | sed -e 's#.git"$##g' > /tmp/juice-shop-projects-paths.json
 
 # Run scan with "helm" runtime
 # By default scanio get helm chart from "./helm/scanio-job" folder

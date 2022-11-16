@@ -41,4 +41,7 @@ export DOCKER_IMAGE=$(terraform output -raw repository_url)
 # After you finished working with the infrastructure, destroy it. May take about 15-20 minutes.
 terraform destroy
 # During execution of `apply` command, terraform create about 50 resources. Deleting them manually is painfull. Terraform store state with all deployed resources in a state file. By executing `terraform destroy` on the same machine will use this state file, and determine resources to be deleted automatically.
+
+# Terraform also create dev vm, you can you it to build images and etc.
+ssh -A ubuntu@$(terraform output -raw dev_addr)
 ```
