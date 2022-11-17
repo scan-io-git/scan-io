@@ -75,7 +75,7 @@ var analyseCmd = &cobra.Command{
 			// if len(allArgumentsAnalyse.Repositories) == 0 && len(allArgumentsAnalyse.InputFile) == 0 {
 			// 	return fmt.Errorf("'repos' or 'input-file' flag must be specified")
 			// }
-			fmt.Println(allArgumentsAnalyse.InputFile)
+			// fmt.Println(allArgumentsAnalyse.InputFile)
 			if allArgumentsAnalyse.InputFile == "" {
 				return fmt.Errorf("'input-file' flag must be specified")
 			}
@@ -88,43 +88,37 @@ var analyseCmd = &cobra.Command{
 		}
 		analyseArgs := []shared.ScannerScanRequest{}
 
-		if allArgumentsAnalyse.InputFile != "" {
-			reposInf, err := common.ReadReposFile2(allArgumentsAnalyse.InputFile)
-			if err != nil {
-				return fmt.Errorf("Something happend when tool was parsing the Input File - %v", err)
-			}
+		reposInf, err := common.ReadReposFile2(allArgumentsAnalyse.InputFile)
+		if err != nil {
+			return fmt.Errorf("something happend when tool was parsing the Input File - %v", err)
+		}
 
-			for _, repository := range reposInf {
-				domain, err := getDomain(repository.SshLink)
+		for _, repository := range reposInf {
+			domain, err := common.GetDomain(repository.SshLink)
+			if err != nil {
+				domain, err = common.GetDomain(repository.HttpLink)
 				if err != nil {
-					domain, err = getDomain(repository.HttpLink)
-					if err != nil {
-						return err
-					}
 					return err
 				}
-
-				targetFolder := shared.GetRepoPath(domain, filepath.Join(repository.Namespace, repository.RepoName))
-				resultsPath := filepath.Join(shared.GetResultsHome(), domain, filepath.Join(repository.Namespace, repository.RepoName), fmt.Sprintf("%s.raw", allArgumentsAnalyse.ScannerPluginName))
-				analyseArgs = append(analyseArgs, shared.ScannerScanRequest{
-					RepoPath:       targetFolder,
-					ResultsPath:    resultsPath,
-					ConfigPath:     allArgumentsAnalyse.Config,
-					AdditionalArgs: allArgumentsAnalyse.AdditionalArgs,
-					ReportFormat:   allArgumentsAnalyse.ReportFormat,
-				})
-				//shared.NewLogger("core").Info(fmt.Sprintf("%v/%v", repository.Namespace, repository.RepoName))
+				// return err
 			}
 
+			targetFolder := shared.GetRepoPath(domain, filepath.Join(repository.Namespace, repository.RepoName))
+			resultsPath := filepath.Join(shared.GetResultsHome(), domain, filepath.Join(repository.Namespace, repository.RepoName), fmt.Sprintf("%s.raw", allArgumentsAnalyse.ScannerPluginName))
+			analyseArgs = append(analyseArgs, shared.ScannerScanRequest{
+				RepoPath:       targetFolder,
+				ResultsPath:    resultsPath,
+				ConfigPath:     allArgumentsAnalyse.Config,
+				AdditionalArgs: allArgumentsAnalyse.AdditionalArgs,
+				ReportFormat:   allArgumentsAnalyse.ReportFormat,
+			})
+			//shared.NewLogger("core").Info(fmt.Sprintf("%v/%v", repository.Namespace, repository.RepoName))
 		}
-		// else {
-		// 	repositories = allArgumentsFetch.Repositories
-		// }
 
 		if len(analyseArgs) > 0 {
 			scanRepos(analyseArgs)
 		} else {
-			return fmt.Errorf("Hasn't found no one repo")
+			return fmt.Errorf("hasn't found no one repo")
 		}
 		return nil
 	},

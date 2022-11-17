@@ -3,8 +3,11 @@ package common
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
+	"strings"
 
 	"github.com/scan-io-git/scan-io/libs/vcs"
 )
@@ -43,4 +46,26 @@ func ReadReposFile2(inputFile string) ([]vcs.RepositoryParams, error) {
 		return result, err
 	}
 	return wholeFile.Result, nil
+}
+
+func GetDomain(repositoryURL string) (string, error) {
+
+	if strings.HasPrefix(repositoryURL, "git@") && strings.HasSuffix(repositoryURL, ".git") {
+		return strings.Split(repositoryURL[4:], ":")[0], nil
+	}
+
+	parsedUrl, err := url.Parse(repositoryURL)
+	if err != nil {
+		return "", fmt.Errorf("error during parsing repositoryURL '%s': %w", repositoryURL, err)
+	}
+
+	parts := strings.Split(parsedUrl.Host, ":")
+	switch len(parts) {
+	case 1:
+		fallthrough
+	case 2:
+		return parts[0], nil
+	default:
+		return "", fmt.Errorf("unable to get domain from %s", parsedUrl.Host)
+	}
 }

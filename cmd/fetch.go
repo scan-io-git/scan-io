@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"io/fs"
-	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -126,18 +125,18 @@ func fetchRepos(fetchArgs []vcs.VCSFetchRequest) {
 	//vcs.WriteJsonFile(resultVCS, allArgumentsList.OutputFile, logger)
 }
 
-func getDomain(repositoryURL string) (string, error) {
-	if allArgumentsFetch.VCSURL != "" {
-		return allArgumentsFetch.VCSURL, nil
-	}
+// func getDomain(repositoryURL string) (string, error) {
+// 	if allArgumentsFetch.VCSURL != "" {
+// 		return allArgumentsFetch.VCSURL, nil
+// 	}
 
-	parsedUrl, err := url.Parse(repositoryURL)
-	if err != nil {
-		return "", fmt.Errorf("Error during parsing repositoryURL '%s'", repositoryURL)
-	}
-	host, _, _ := net.SplitHostPort(parsedUrl.Host)
-	return host, nil
-}
+// 	parsedUrl, err := url.Parse(repositoryURL)
+// 	if err != nil {
+// 		return "", fmt.Errorf("error during parsing repositoryURL '%s': %w", repositoryURL, err)
+// 	}
+// 	host, _, _ := net.SplitHostPort(parsedUrl.Host)
+// 	return host, nil
+// }
 
 var fetchCmd = &cobra.Command{
 	Use:   "fetch",
@@ -192,7 +191,7 @@ var fetchCmd = &cobra.Command{
 				for _, repository := range repos_inf {
 					// repositories = append(repositories, repository.HttpLink)
 					cloneURL := repository.HttpLink
-					domain, err := getDomain(cloneURL)
+					domain, err := common.GetDomain(cloneURL)
 					if err != nil {
 						return err
 					}
@@ -215,7 +214,7 @@ var fetchCmd = &cobra.Command{
 					}
 					// repositories = append(repositories, repository.SshLink)
 					cloneURL := repository.SshLink
-					domain, err := getDomain(cloneURL)
+					domain, err := common.GetDomain(cloneURL)
 					if err != nil {
 						return err
 					}
