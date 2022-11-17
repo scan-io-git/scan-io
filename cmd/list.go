@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/scan-io-git/scan-io/libs/vcs"
-	"github.com/scan-io-git/scan-io/shared"
+	// "github.com/scan-io-git/scan-io/internal/vcs"
+	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -18,27 +18,27 @@ type RunOptionsList struct {
 var (
 	limit            int
 	allArgumentsList RunOptionsList
-	resultVCS        vcs.ListFuncResult
+	resultVCS        shared.ListFuncResult
 )
 
 func do() {
 	logger := shared.NewLogger("core")
 
 	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsList.VCSPlugName, func(raw interface{}) {
-		vcsName := raw.(vcs.VCS)
-		args := vcs.VCSListReposRequest{VCSURL: allArgumentsList.VCSURL, Namespace: allArgumentsList.Namespace}
+		vcsName := raw.(shared.VCS)
+		args := shared.VCSListReposRequest{VCSURL: allArgumentsList.VCSURL, Namespace: allArgumentsList.Namespace}
 		projects, err := vcsName.ListRepos(args)
 
 		if err != nil {
-			resultVCS = vcs.ListFuncResult{Args: args, Result: projects, Status: "FAILED", Message: err.Error()}
+			resultVCS = shared.ListFuncResult{Args: args, Result: projects, Status: "FAILED", Message: err.Error()}
 			logger.Error("Failed", "error", resultVCS.Message)
 		} else {
-			resultVCS = vcs.ListFuncResult{Args: args, Result: projects, Status: "OK", Message: ""}
+			resultVCS = shared.ListFuncResult{Args: args, Result: projects, Status: "OK", Message: ""}
 			logger.Info("ListRepos fuctions is finished with status", "status", resultVCS.Status)
 			logger.Info("Amount of repositories", "numbers", len(projects))
 		}
 
-		vcs.WriteJsonFile(resultVCS, allArgumentsList.OutputFile, logger)
+		shared.WriteJsonFile(resultVCS, allArgumentsList.OutputFile, logger)
 	})
 }
 

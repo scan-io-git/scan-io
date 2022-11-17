@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/scan-io-git/scan-io/libs/vcs"
+	"github.com/scan-io-git/scan-io/pkg/shared"
 )
 
 func ReadReposFile(inputFile string) ([]string, error) {
@@ -30,9 +30,9 @@ func ReadReposFile(inputFile string) ([]string, error) {
 	return lines, nil
 }
 
-func ReadReposFile2(inputFile string) ([]vcs.RepositoryParams, error) {
-	var wholeFile vcs.ListFuncResult
-	var result []vcs.RepositoryParams
+func ReadReposFile2(inputFile string) ([]shared.RepositoryParams, error) {
+	var wholeFile shared.ListFuncResult
+	var result []shared.RepositoryParams
 
 	readFile, err := os.Open(inputFile)
 	if err != nil {

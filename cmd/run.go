@@ -13,9 +13,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/scan-io-git/scan-io/libs/common"
-	ivcs "github.com/scan-io-git/scan-io/libs/vcs"
-	"github.com/scan-io-git/scan-io/shared"
+	utils "github.com/scan-io-git/scan-io/internal/utils"
+	// ivcs "github.com/scan-io-git/scan-io/internal/vcs"
+	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -81,8 +81,8 @@ func fetch(repo string) {
 
 	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, o.VCSPlugin, func(raw interface{}) {
 
-		vcs := raw.(ivcs.VCS)
-		args := ivcs.VCSFetchRequest{
+		vcs := raw.(shared.VCS)
+		args := shared.VCSFetchRequest{
 			CloneURL: repo,
 			//VCSURL:       o.VCSURL,
 			TargetFolder: targetFolder,
@@ -423,7 +423,7 @@ func getReposToProcess() []string {
 	}
 
 	if len(o.InputFile) > 0 {
-		reposFromFile, err := common.ReadReposFile(o.InputFile)
+		reposFromFile, err := utils.ReadReposFile(o.InputFile)
 		if err != nil {
 			log.Fatal(err)
 		}

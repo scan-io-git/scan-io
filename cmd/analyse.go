@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/scan-io-git/scan-io/libs/common"
-	"github.com/scan-io-git/scan-io/shared"
+	utils "github.com/scan-io-git/scan-io/internal/utils"
+	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -88,15 +88,15 @@ var analyseCmd = &cobra.Command{
 		}
 		analyseArgs := []shared.ScannerScanRequest{}
 
-		reposInf, err := common.ReadReposFile2(allArgumentsAnalyse.InputFile)
+		reposInf, err := utils.ReadReposFile2(allArgumentsAnalyse.InputFile)
 		if err != nil {
 			return fmt.Errorf("something happend when tool was parsing the Input File - %v", err)
 		}
 
 		for _, repository := range reposInf {
-			domain, err := common.GetDomain(repository.SshLink)
+			domain, err := utils.GetDomain(repository.SshLink)
 			if err != nil {
-				domain, err = common.GetDomain(repository.HttpLink)
+				domain, err = utils.GetDomain(repository.HttpLink)
 				if err != nil {
 					return err
 				}

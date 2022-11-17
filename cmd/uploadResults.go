@@ -14,9 +14,10 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/scan-io-git/scan-io/libs/common"
-	"github.com/scan-io-git/scan-io/libs/vcs"
-	"github.com/scan-io-git/scan-io/shared"
+	utils "github.com/scan-io-git/scan-io/internal/utils"
+
+	// "github.com/scan-io-git/scan-io/internal/vcs"
+	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -46,7 +47,7 @@ type DefectDojoEngagement struct {
 	ProductID int `json:"product"`
 }
 
-func collectUniqueDefectDojoProjectNames(reposDetails []vcs.RepositoryParams) []string {
+func collectUniqueDefectDojoProjectNames(reposDetails []shared.RepositoryParams) []string {
 	uniqueNamesMap := make(map[string]interface{})
 	for _, repo := range reposDetails {
 		if repo.Namespace == "" {
@@ -74,7 +75,7 @@ func namespaceToDefectDojoProjectName(namespace string) string {
 	return fmt.Sprintf("%s%s", allUploadResultsOptions.ProjectsPrefix, namespace)
 }
 
-func ensureDefectDojoProjectExistance(reposDetails []vcs.RepositoryParams) error {
+func ensureDefectDojoProjectExistance(reposDetails []shared.RepositoryParams) error {
 	client := resty.New()
 	client.SetHostURL(allUploadResultsOptions.URL)
 	client.SetHeader("Authorization", fmt.Sprintf("Token %s", DEFECTDOJO_TOKEN))
@@ -125,7 +126,7 @@ func ensureDefectDojoProjectExistance(reposDetails []vcs.RepositoryParams) error
 	return nil
 }
 
-func uploadResultsToDefectDojo(reposDetails []vcs.RepositoryParams) error {
+func uploadResultsToDefectDojo(reposDetails []shared.RepositoryParams) error {
 	client := resty.New()
 	client.SetHostURL(allUploadResultsOptions.URL)
 	client.SetHeader("Authorization", fmt.Sprintf("Token %s", DEFECTDOJO_TOKEN))
@@ -211,7 +212,7 @@ var uploadResultsCmd = &cobra.Command{
 		fmt.Println("uploadResults called")
 		fmt.Printf("DefectDojo URL: %s\n", allUploadResultsOptions.URL)
 
-		reposDetails, err := common.ReadReposFile2(allUploadResultsOptions.InputFile)
+		reposDetails, err := utils.ReadReposFile2(allUploadResultsOptions.InputFile)
 		if err != nil {
 			return err
 		}
