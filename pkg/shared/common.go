@@ -9,7 +9,6 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"github.com/scan-io-git/scan-io/libs/vcs"
 )
 
 const (
@@ -24,7 +23,7 @@ var HandshakeConfig = plugin.HandshakeConfig{
 }
 
 var PluginMap = map[string]plugin.Plugin{
-	PluginTypeVCS:     &vcs.VCSPlugin{},
+	PluginTypeVCS:     &VCSPlugin{},
 	PluginTypeScanner: &ScannerPlugin{},
 }
 

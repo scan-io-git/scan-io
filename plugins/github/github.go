@@ -8,8 +8,9 @@ import (
 	"github.com/google/go-github/v47/github"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"github.com/scan-io-git/scan-io/libs/vcs"
-	"github.com/scan-io-git/scan-io/shared"
+
+	// "github.com/scan-io-git/scan-io/internal/vcs"
+	"github.com/scan-io-git/scan-io/pkg/shared"
 )
 
 // Here is a real implementation of VCS
@@ -17,7 +18,7 @@ type VCSGithub struct {
 	logger hclog.Logger
 }
 
-func (g *VCSGithub) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryParams, error) {
+func (g *VCSGithub) ListRepos(args shared.VCSListReposRequest) ([]shared.RepositoryParams, error) {
 	g.logger.Debug("Entering ListRepos", "organization", args.Namespace)
 	client := github.NewClient(nil)
 	opt := &github.RepositoryListByOrgOptions{Type: "public"}
@@ -27,10 +28,10 @@ func (g *VCSGithub) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryPar
 		return nil, err
 	}
 
-	reposParams := make([]vcs.RepositoryParams, len(repos))
+	reposParams := make([]shared.RepositoryParams, len(repos))
 	for i, repo := range repos {
 		parts := strings.Split(*repo.FullName, "/")
-		reposParams[i] = vcs.RepositoryParams{
+		reposParams[i] = shared.RepositoryParams{
 			Namespace: strings.Join(parts[:len(parts)-1], "/"),
 			RepoName:  *repo.Name,
 			SshLink:   *repo.SSHURL,
@@ -41,15 +42,15 @@ func (g *VCSGithub) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryPar
 	return reposParams, nil
 }
 
-func (g *VCSGithub) Fetch(args vcs.VCSFetchRequest) error {
+func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) error {
 	//variables, err := g.init("fetch")
-	variables := vcs.EvnVariables{}
+	variables := shared.EvnVariables{}
 	// if err != nil {
 	// 	g.logger.Error("Fetching is failed", "error", err)
 	// 	return err
 	// }
 
-	err := vcs.GitClone(args, variables, g.logger)
+	err := shared.GitClone(args, variables, g.logger)
 	if err != nil {
 		return err
 	}
@@ -68,7 +69,7 @@ func main() {
 	}
 	// pluginMap is the map of plugins we can dispense.
 	var pluginMap = map[string]plugin.Plugin{
-		shared.PluginTypeVCS: &vcs.VCSPlugin{Impl: VCS},
+		shared.PluginTypeVCS: &shared.VCSPlugin{Impl: VCS},
 	}
 
 	plugin.Serve(&plugin.ServeConfig{

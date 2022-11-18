@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/scan-io-git/scan-io/shared"
+	// "github.com/scan-io-git/scan-io/shared"
 	"github.com/spf13/cobra"
 
-	"github.com/scan-io-git/scan-io/libs/common"
-	"github.com/scan-io-git/scan-io/libs/vcs"
+	utils "github.com/scan-io-git/scan-io/internal/utils"
+	"github.com/scan-io-git/scan-io/pkg/shared"
 )
 
 type RunOptionsFetch struct {
@@ -55,12 +55,12 @@ func findByExtAndRemove(root string, exts []string) {
 	})
 }
 
-func fetchRepos(fetchArgs []vcs.VCSFetchRequest) {
+func fetchRepos(fetchArgs []shared.VCSFetchRequest) {
 
 	logger := shared.NewLogger("core")
 	logger.Info("Fetching starting", "total", len(fetchArgs), "goroutines", allArgumentsFetch.Threads)
 
-	//resultChannel := make(chan vcs.FetchFuncResult)
+	//resultChannel := make(chan shared.FetchFuncResult)
 
 	values := make([]interface{}, len(fetchArgs))
 	for i := range fetchArgs {
@@ -68,10 +68,10 @@ func fetchRepos(fetchArgs []vcs.VCSFetchRequest) {
 	}
 
 	shared.ForEveryStringWithBoundedGoroutines(allArgumentsFetch.Threads, values, func(i int, value interface{}) {
-		args := value.(vcs.VCSFetchRequest)
+		args := value.(shared.VCSFetchRequest)
 		logger.Info("Goroutine started", "#", i+1, "args", args)
 
-		var resultFetch vcs.FetchFuncResult
+		var resultFetch shared.FetchFuncResult
 		// parsedUrl, err := url.Parse(repository)
 		// if err != nil {
 		// 	logger.Error("Failed", "error", resultFetch.Message)
@@ -88,8 +88,8 @@ func fetchRepos(fetchArgs []vcs.VCSFetchRequest) {
 
 		shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsFetch.VCSPlugName, func(raw interface{}) {
 
-			vcsName := raw.(vcs.VCS)
-			// args := vcs.VCSFetchRequest{
+			vcsName := raw.(shared.VCS)
+			// args := shared.VCSFetchRequest{
 			// 	CloneURL:     repository,
 			// 	AuthType:     allArgumentsFetch.AuthType,
 			// 	SSHKey:       allArgumentsFetch.SSHKey,
@@ -98,12 +98,12 @@ func fetchRepos(fetchArgs []vcs.VCSFetchRequest) {
 
 			err := vcsName.Fetch(args)
 			if err != nil {
-				resultFetch = vcs.FetchFuncResult{Args: args, Result: nil, Status: "FAILED", Message: err.Error()}
+				resultFetch = shared.FetchFuncResult{Args: args, Result: nil, Status: "FAILED", Message: err.Error()}
 				//resultChannel <- resultFetch
 				logger.Error("Failed", "error", resultFetch.Message)
 				logger.Debug("Failed", "debug_fetch_res", resultFetch)
 			} else {
-				resultFetch = vcs.FetchFuncResult{Args: args, Result: nil, Status: "OK", Message: ""}
+				resultFetch = shared.FetchFuncResult{Args: args, Result: nil, Status: "OK", Message: ""}
 				//resultChannel <- resultFetch
 				logger.Info("Fetch fuctions is finished with status", "status", resultFetch.Status)
 				logger.Debug("Success", "debug_fetch_res", resultFetch)
@@ -114,7 +114,7 @@ func fetchRepos(fetchArgs []vcs.VCSFetchRequest) {
 		})
 	})
 
-	// allResults := []vcs.FetchFuncResult{}
+	// allResults := []shared.FetchFuncResult{}
 	// close(resultChannel)
 	// for status := range resultChannel {
 	// 	allResults = append(allResults, status)
@@ -122,7 +122,7 @@ func fetchRepos(fetchArgs []vcs.VCSFetchRequest) {
 
 	logger.Info("All fetch operations are finished")
 	//logger.Info("Result", "result", allResults)
-	//vcs.WriteJsonFile(resultVCS, allArgumentsList.OutputFile, logger)
+	//shared.WriteJsonFile(resultVCS, allArgumentsList.OutputFile, logger)
 }
 
 // func getDomain(repositoryURL string) (string, error) {
@@ -179,10 +179,10 @@ var fetchCmd = &cobra.Command{
 			return err
 		}
 
-		fetchArgs := []vcs.VCSFetchRequest{}
+		fetchArgs := []shared.VCSFetchRequest{}
 
 		if allArgumentsFetch.InputFile != "" {
-			repos_inf, err := common.ReadReposFile2(allArgumentsFetch.InputFile)
+			repos_inf, err := utils.ReadReposFile2(allArgumentsFetch.InputFile)
 			if err != nil {
 				return fmt.Errorf("Something happend when tool was parsing the Input File - %v", err)
 			}
@@ -191,12 +191,12 @@ var fetchCmd = &cobra.Command{
 				for _, repository := range repos_inf {
 					// repositories = append(repositories, repository.HttpLink)
 					cloneURL := repository.HttpLink
-					domain, err := common.GetDomain(cloneURL)
+					domain, err := utils.GetDomain(cloneURL)
 					if err != nil {
 						return err
 					}
 					targetFolder := shared.GetRepoPath(domain, filepath.Join(repository.Namespace, repository.RepoName))
-					fetchArgs = append(fetchArgs, vcs.VCSFetchRequest{
+					fetchArgs = append(fetchArgs, shared.VCSFetchRequest{
 						CloneURL:     cloneURL,
 						AuthType:     allArgumentsFetch.AuthType,
 						SSHKey:       allArgumentsFetch.SSHKey,
@@ -214,12 +214,12 @@ var fetchCmd = &cobra.Command{
 					}
 					// repositories = append(repositories, repository.SshLink)
 					cloneURL := repository.SshLink
-					domain, err := common.GetDomain(cloneURL)
+					domain, err := utils.GetDomain(cloneURL)
 					if err != nil {
 						return err
 					}
 					targetFolder := shared.GetRepoPath(domain, filepath.Join(repository.Namespace, repository.RepoName))
-					fetchArgs = append(fetchArgs, vcs.VCSFetchRequest{
+					fetchArgs = append(fetchArgs, shared.VCSFetchRequest{
 						CloneURL:     cloneURL,
 						AuthType:     allArgumentsFetch.AuthType,
 						SSHKey:       allArgumentsFetch.SSHKey,

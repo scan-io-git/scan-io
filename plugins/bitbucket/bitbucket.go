@@ -14,8 +14,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"github.com/scan-io-git/scan-io/libs/vcs"
-	"github.com/scan-io-git/scan-io/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared"
 )
 
 type VCSBitbucket struct {
@@ -35,8 +34,8 @@ func getProjectsResponse(r *bitbucketv1.APIResponse) ([]bitbucketv1.Project, err
 }
 
 // Init function for checking an environment
-func (g *VCSBitbucket) init(command string) (vcs.EvnVariables, error) {
-	var variables vcs.EvnVariables
+func (g *VCSBitbucket) init(command string) (shared.EvnVariables, error) {
+	var variables shared.EvnVariables
 	variables.Username = os.Getenv("BITBUCKET_USERNAME")
 	variables.Token = os.Getenv("BITBUCKET_TOKEN")
 
@@ -62,7 +61,7 @@ func (g *VCSBitbucket) init(command string) (vcs.EvnVariables, error) {
 }
 
 // Listing all project in Bitbucket v1 API
-func (g *VCSBitbucket) listAllProjects(client *bitbucketv1.APIClient) ([]vcs.ProjectParams, error) {
+func (g *VCSBitbucket) listAllProjects(client *bitbucketv1.APIClient) ([]shared.ProjectParams, error) {
 	g.logger.Info("Trying to list all projects..")
 	response, err := client.DefaultApi.GetProjects(opts)
 	if err != nil {
@@ -77,9 +76,9 @@ func (g *VCSBitbucket) listAllProjects(client *bitbucketv1.APIClient) ([]vcs.Pro
 		return nil, err
 	}
 
-	var projectsList []vcs.ProjectParams
+	var projectsList []shared.ProjectParams
 	for _, bitbucketRepo := range res {
-		projectsList = append(projectsList, vcs.ProjectParams{Key: bitbucketRepo.Key, Name: bitbucketRepo.Name, Link: bitbucketRepo.Links.Self[0].Href})
+		projectsList = append(projectsList, shared.ProjectParams{Key: bitbucketRepo.Key, Name: bitbucketRepo.Name, Link: bitbucketRepo.Links.Self[0].Href})
 	}
 
 	g.logger.Info("List of projects is ready")
@@ -90,7 +89,7 @@ func (g *VCSBitbucket) listAllProjects(client *bitbucketv1.APIClient) ([]vcs.Pro
 }
 
 // Resolving information about all repositories in a one project from Bitbucket v1 API
-func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project string) ([]vcs.RepositoryParams, error) {
+func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project string) ([]shared.RepositoryParams, error) {
 	g.logger.Info("Resolving a particular project", "project", project)
 	response, err := client.DefaultApi.GetRepositoriesWithOptions(project, opts)
 	if err != nil {
@@ -105,7 +104,7 @@ func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project 
 		return nil, err
 	}
 
-	var resultList []vcs.RepositoryParams
+	var resultList []shared.RepositoryParams
 	for _, repo := range result {
 		var httpLink string
 		var sshLink string
@@ -121,7 +120,7 @@ func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project 
 			}
 		}
 
-		resultList = append(resultList, vcs.RepositoryParams{Namespace: project, RepoName: repo.Name, HttpLink: httpLink, SshLink: sshLink})
+		resultList = append(resultList, shared.RepositoryParams{Namespace: project, RepoName: repo.Name, HttpLink: httpLink, SshLink: sshLink})
 	}
 
 	g.logger.Info("List of repositories is ready.")
@@ -131,7 +130,7 @@ func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project 
 	return resultList, nil
 }
 
-func (g *VCSBitbucket) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryParams, error) {
+func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) ([]shared.RepositoryParams, error) {
 	g.logger.Debug("Entering ListRepos", "args", args)
 	variables, err := g.init("list")
 	if err != nil {
@@ -151,7 +150,7 @@ func (g *VCSBitbucket) ListRepos(args vcs.VCSListReposRequest) ([]vcs.Repository
 		bitbucketv1.NewConfiguration(baseURL),
 	)
 
-	var repositories []vcs.RepositoryParams
+	var repositories []shared.RepositoryParams
 	if len(args.Namespace) != 0 {
 		g.logger.Info("Resolving a project")
 		oneProjectData, err := g.resolveOneProject(client, args.Namespace)
@@ -187,7 +186,7 @@ func (g *VCSBitbucket) ListRepos(args vcs.VCSListReposRequest) ([]vcs.Repository
 	return repositories, nil
 }
 
-func (g *VCSBitbucket) Fetch(args vcs.VCSFetchRequest) error {
+func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) error {
 	variables, err := g.init("fetch")
 	if err != nil {
 		g.logger.Error("Fetching is failed", "error", err)
@@ -201,7 +200,7 @@ func (g *VCSBitbucket) Fetch(args vcs.VCSFetchRequest) error {
 	//gitCloneOptions.URL, _ = info.Remote(vcsurl.HTTPS)
 	//gitCloneOptions.URL = fmt.Sprintf("https://%s/scm%s.git", info.Host, info.FullName)
 
-	err = vcs.GitClone(args, variables, g.logger)
+	err = shared.GitClone(args, variables, g.logger)
 	if err != nil {
 		return err
 	}
@@ -220,7 +219,7 @@ func main() {
 	}
 
 	var pluginMap = map[string]plugin.Plugin{
-		shared.PluginTypeVCS: &vcs.VCSPlugin{Impl: VCS},
+		shared.PluginTypeVCS: &shared.VCSPlugin{Impl: VCS},
 	}
 
 	plugin.Serve(&plugin.ServeConfig{

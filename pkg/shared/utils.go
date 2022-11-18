@@ -1,12 +1,13 @@
-package vcs
+package shared
 
 import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/go-hclog"
 	"log"
 	"os"
+
+	"github.com/hashicorp/go-hclog"
 
 	crssh "golang.org/x/crypto/ssh"
 

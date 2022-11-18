@@ -1,4 +1,4 @@
-package vcs
+package shared
 
 import (
 	"net/rpc"

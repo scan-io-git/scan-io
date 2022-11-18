@@ -7,8 +7,7 @@ import (
 	// "github.com/google/go-github/v47/github"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"github.com/scan-io-git/scan-io/libs/vcs"
-	"github.com/scan-io-git/scan-io/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/xanzy/go-gitlab"
 )
 
@@ -60,7 +59,7 @@ func (g VCSGitlab) getGitlabGroups(gitlabClient *gitlab.Client, searchNamespace 
 
 }
 
-func (g *VCSGitlab) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryParams, error) {
+func (g *VCSGitlab) ListRepos(args shared.VCSListReposRequest) ([]shared.RepositoryParams, error) {
 	g.logger.Debug("Entering ListRepos 2", "args", args)
 
 	gitlabClient, err := getGitlabClient(args.VCSURL)
@@ -76,7 +75,7 @@ func (g *VCSGitlab) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryPar
 	}
 	g.logger.Debug("Collected groups", "total", len(allGroups))
 
-	reposParams := []vcs.RepositoryParams{}
+	reposParams := []shared.RepositoryParams{}
 
 	page := 1
 	perPage := 100
@@ -100,7 +99,7 @@ func (g *VCSGitlab) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryPar
 			}
 
 			for _, project := range projects {
-				reposParams = append(reposParams, vcs.RepositoryParams{
+				reposParams = append(reposParams, shared.RepositoryParams{
 					Namespace: project.Namespace.FullPath,
 					RepoName:  project.Name,
 					HttpLink:  project.HTTPURLToRepo,
@@ -119,15 +118,15 @@ func (g *VCSGitlab) ListRepos(args vcs.VCSListReposRequest) ([]vcs.RepositoryPar
 	return reposParams, nil
 }
 
-func (g *VCSGitlab) Fetch(args vcs.VCSFetchRequest) error {
+func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) error {
 	//variables, err := g.init("fetch")
-	variables := vcs.EvnVariables{}
+	variables := shared.EvnVariables{}
 	// if err != nil {
 	// 	g.logger.Error("Fetching is failed", "error", err)
 	// 	return err
 	// }
 
-	err := vcs.GitClone(args, variables, g.logger)
+	err := shared.GitClone(args, variables, g.logger)
 	if err != nil {
 		return err
 	}
@@ -146,7 +145,7 @@ func main() {
 	}
 	// pluginMap is the map of plugins we can dispense.
 	var pluginMap = map[string]plugin.Plugin{
-		shared.PluginTypeVCS: &vcs.VCSPlugin{Impl: VCS},
+		shared.PluginTypeVCS: &shared.VCSPlugin{Impl: VCS},
 	}
 
 	// logger.Debug("message from plugin", "foo", "bar")
