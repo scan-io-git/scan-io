@@ -7,6 +7,10 @@ resource "aws_instance" "ec2_dev" {
   tags = {
     Name = "scanio-dev"
   }
+
+  root_block_device {
+    volume_size = 50
+  }
 }
 
 resource "aws_security_group" "sg_access_ec2_dev" {

@@ -16,13 +16,17 @@ During following this guide you will create AWS Service Account with rights to m
 Handy help commands:
 ```bash
 # get AWS account ID
-❯ aws sts get-caller-identity --query "Account" --output text
+❯ aws sts get-caller-identity --query 'Account' --output text
 
 # get EKS region (if you use terraform)
 ❯ terraform output -raw region
 
 # get EKS cluster name (if you use terraform)
 ❯ terraform output -raw cluster_name
+
+# replace values in trust-policy file.
+❯ sed -i '' -e "s/111122223333/$(aws sts get-caller-identity --query 'Account' --output text)/g" /tmp/trust-policy.json
+❯ sed -i '' -e "s/region-code/$(terraform output -raw region)/g" /tmp/trust-policy.json
 ```
 You will you these values to correctly adjust configuration file to install EFS driver.
 
@@ -41,7 +45,7 @@ pv:
   efs:
     enabled: true
     claimName: efs-claim
-    monthPath: /data
+    mountPath: /data
 ```
 3. List Repos
 ```bash

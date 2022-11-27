@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+spec:
+  serviceAccountName: {{ include "scanio-main.serviceAccountName" . }}
+  containers:
+  - name: test-pod
+    image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+    imagePullPolicy: {{ .Values.image.pullPolicy }}
+    env:
+      - name: JOB_HELM_CHART_PATH
+        value: /scanio-helm/scanio-job
+    command:
+    {{- range .Values.command }}
+      - {{ . }}
+    {{- end }}
+    # args: ["-c", "while true; do echo $(date -u) >> /data/out1.txt; sleep 5; done"]
+    {{- if .Values.pv.efs.enabled }}
+    volumeMounts:
+    - name: persistent-storage
+      mountPath: {{ .Values.pv.efs.mountPath }}
+    {{- end }}
+    {{- if .Values.pv.efs.enabled }}
+  volumes:
+  - name: persistent-storage
+    persistentVolumeClaim:
+      claimName: {{ .Values.pv.efs.claimName }}
+  {{- end }}

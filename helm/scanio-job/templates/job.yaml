@@ -42,7 +42,7 @@ spec:
         {{- if .Values.pv.efs.enabled }}
         volumeMounts:
         - name: persistent-storage
-          mountPath: {{ .Values.pv.efs.monthPath }}
+          mountPath: {{ .Values.pv.efs.mountPath }}
         {{- end }}
       {{- if .Values.pv.efs.enabled }}
       volumes:
