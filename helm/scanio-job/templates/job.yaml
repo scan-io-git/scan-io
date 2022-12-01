@@ -1,3 +1,19 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: my-pv-claim
+spec:
+  accessModes:
+    - ReadWriteMany
+  # resources:
+  #   requests:
+  #     storage: 5Gi
+capacity:
+    storage: 5Gi
+  hostPath:
+    path: /data
+
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -21,32 +37,21 @@ spec:
           - {{ . }}
         {{- end }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        # imagePullPolicy: {{ .Values.image.pullPolicy }}
+        imagePullPolicy: Never
         env:
-        - name: AWS_ACCESS_KEY_ID
-          valueFrom:
-            secretKeyRef:
-              name: s3
-              key: aws_access_key_id
-              optional: true
-        - name: AWS_SECRET_ACCESS_KEY
-          valueFrom:
-            secretKeyRef:
-              name: s3
-              key: aws_secret_access_key
-              optional: true
         - name: SCANIO_HOME
           value: /data
         - name: SCANIO_PLUGINS_FOLDER
           value: /scanio-plugins
         {{- if .Values.pv.efs.enabled }}
         volumeMounts:
-        - name: persistent-storage
-          mountPath: {{ .Values.pv.efs.mountPath }}
+        - name: my-pv-claim-vol
+          mountPath: /data
         {{- end }}
       {{- if .Values.pv.efs.enabled }}
       volumes:
-      - name: persistent-storage
+      - name: my-pv-claim-vol
         persistentVolumeClaim:
-          claimName: {{ .Values.pv.efs.claimName }}
+          claimName: my-pv-claim
       {{- end }}

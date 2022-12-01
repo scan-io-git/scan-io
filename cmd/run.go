@@ -37,7 +37,7 @@ import (
 )
 
 // const IMAGE = "356918957485.dkr.ecr.eu-west-2.amazonaws.com/i-am-first"
-const IMAGE = "234507145459.dkr.ecr.eu-west-2.amazonaws.com/scanio"
+const IMAGE = "scanio"
 const AWS_DEFAULT_REGION = "eu-west-2"
 const S3_BUCKET = "my-s3-bucket-q97843yt9"
 const DEFAULT_JOB_HELM_CHART_PATH = "helm/scanio-job"
@@ -359,12 +359,13 @@ func runWithHelm(repos []string) {
 			"--scanner-plugin", o.ScannerPlugin,
 			"--repos", repo,
 		}
+
 		if o.StorageType == "remote" {
 			remoteCommandArgs = append(remoteCommandArgs, "--storage-type", "local")
 		} else if o.StorageType == "local" || o.StorageType == "s3" {
 			remoteCommandArgs = append(remoteCommandArgs, "--storage-type", "s3", "--s3bucket", o.S3Bucket)
 		}
-
+		logger.Debug("runWithHelm jobID", "command", remoteCommandArgs)
 		jobCommand := fmt.Sprintf("command={%s}", strings.Join(remoteCommandArgs, ","))
 
 		jobChartPath := DEFAULT_JOB_HELM_CHART_PATH
@@ -378,6 +379,7 @@ func runWithHelm(repos []string) {
 			"--set", "image.tag=latest",
 			"--set", fmt.Sprintf("suffix=%s", jobID.String()),
 		)
+		logger.Debug("runWithHelm jobID", "cmd", cmd)
 		if err := cmd.Run(); err != nil {
 			logger.Debug("helm install error", "err", err)
 			log.Fatal(err)

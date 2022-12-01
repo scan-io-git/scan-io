@@ -25,6 +25,7 @@ FROM ubuntu:20.04
 RUN apt-get update && \
     apt-get install -y ca-certificates curl && \
     apt-get install -y python3 python3-pip && \
+    apt-get install -y jq && \
     python3 -m pip install semgrep bandit
 
 RUN curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg && \
@@ -53,6 +54,7 @@ COPY --from=build /usr/bin/semgrep $SCANIO_PLUGINS_FOLDER/semgrep
 COPY --from=build /usr/bin/bandit $SCANIO_PLUGINS_FOLDER/bandit
 
 COPY helm /scanio-helm
+COPY cmd /scanio-cmd
 ENV JOB_HELM_CHART_PATH=/scanio-helm/scanio-job
 
 # ENTRYPOINT ["/bin/scanio"]

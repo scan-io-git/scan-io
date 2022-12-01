@@ -90,5 +90,5 @@ suffix: ""
 pv:
   efs:
     enabled: true
-    claimName: efs-claim
+    claimName: my-pv-claim
     mountPath: /data

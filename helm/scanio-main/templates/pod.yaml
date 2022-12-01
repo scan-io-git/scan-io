@@ -1,3 +1,15 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: my-pv-claim
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+
+---
 apiVersion: v1
 kind: Pod
 metadata:
@@ -7,7 +19,7 @@ spec:
   containers:
   - name: test-pod
     image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-    imagePullPolicy: {{ .Values.image.pullPolicy }}
+    imagePullPolicy: Never
     env:
       - name: JOB_HELM_CHART_PATH
         value: /scanio-helm/scanio-job
@@ -18,12 +30,13 @@ spec:
     # args: ["-c", "while true; do echo $(date -u) >> /data/out1.txt; sleep 5; done"]
     {{- if .Values.pv.efs.enabled }}
     volumeMounts:
-    - name: persistent-storage
-      mountPath: {{ .Values.pv.efs.mountPath }}
+    - name: my-pv-claim-vol
+      mountPath: /data
     {{- end }}
     {{- if .Values.pv.efs.enabled }}
   volumes:
-  - name: persistent-storage
+  - name: my-pv-claim-vol
     persistentVolumeClaim:
-      claimName: {{ .Values.pv.efs.claimName }}
+      # claimName: {{ .Values.pv.efs.claimName }}
+      claimName: my-pv-claim
   {{- end }}
