@@ -30,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/batch/v1"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/utils/pointer"
@@ -39,6 +40,7 @@ import (
 const IMAGE = "234507145459.dkr.ecr.eu-west-2.amazonaws.com/scanio"
 const AWS_DEFAULT_REGION = "eu-west-2"
 const S3_BUCKET = "my-s3-bucket-q97843yt9"
+const DEFAULT_JOB_HELM_CHART_PATH = "helm/scanio-job"
 
 type RunOptions struct {
 	VCSPlugin     string
@@ -226,18 +228,48 @@ func getPodSpec(jobID string, repo string) *batchv1.Job {
 	}
 }
 
-func getNewJobsClient() v1.JobInterface {
-	kubeconfig := filepath.Join(homedir.HomeDir(), ".kube", "config")
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+func tryGetFromClusterConfig() (*kubernetes.Clientset, error) {
+	config, err := rest.InClusterConfig()
 	if err != nil {
-		panic(err)
+		return nil, err
+		// panic(err.Error())
 	}
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		panic(err)
+		return nil, err
+		// panic(err)
 	}
-	jobsClient := clientset.BatchV1().Jobs(apiv1.NamespaceDefault)
-	return jobsClient
+	return clientset, nil
+}
+
+func tryGetFromKubeConfig() (*kubernetes.Clientset, error) {
+	kubeconfig := filepath.Join(homedir.HomeDir(), ".kube", "config")
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil {
+		return nil, err
+		// panic(err)
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+		// panic(err)
+	}
+	return clientset, nil
+}
+
+func getNewJobsClient() v1.JobInterface {
+
+	clientset, err1 := tryGetFromClusterConfig()
+	if err1 == nil {
+		return clientset.BatchV1().Jobs(apiv1.NamespaceDefault)
+	}
+
+	clientset, err2 := tryGetFromKubeConfig()
+	if err2 == nil {
+		return clientset.BatchV1().Jobs(apiv1.NamespaceDefault)
+	}
+
+	panic(fmt.Errorf("cant create kubernetes client. For cluster config: %w. For kube config: %w", err1, err2))
 }
 
 func fetchResults(repo string) {
@@ -335,7 +367,12 @@ func runWithHelm(repos []string) {
 
 		jobCommand := fmt.Sprintf("command={%s}", strings.Join(remoteCommandArgs, ","))
 
-		cmd := exec.Command("helm", "install", jobID.String(), "helm/scanio-job",
+		jobChartPath := DEFAULT_JOB_HELM_CHART_PATH
+		if path := os.Getenv("JOB_HELM_CHART_PATH"); path != "" {
+			jobChartPath = path
+		}
+
+		cmd := exec.Command("helm", "install", jobID.String(), jobChartPath,
 			"--set", jobCommand,
 			"--set", fmt.Sprintf("image.repository=%s", IMAGE),
 			"--set", "image.tag=latest",

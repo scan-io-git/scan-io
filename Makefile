@@ -19,7 +19,7 @@ build-cli: ## Build scanio core
 
 .PHONE: docker
 docker: ## Build docker image
-	docker build -f dockerfiles/Dockerfile -t scanio .
+	docker build -t scanio .
 
 .PHONE: helm-clean
 helm-clean: ## Uninstall all helm releases
