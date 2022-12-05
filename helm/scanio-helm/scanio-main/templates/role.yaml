@@ -14,5 +14,5 @@ rules:
   - create
   - delete
 - apiGroups: [""]
-  resources: ["secrets", "pods","persistentvolumes"]
+  resources: ["secrets"]
   verbs: ["get", "list", "create", "delete"]

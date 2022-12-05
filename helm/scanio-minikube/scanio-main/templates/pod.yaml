@@ -1,14 +1,29 @@
-kind: PersistentVolumeClaim
 apiVersion: v1
+kind: PersistentVolume
 metadata:
-  name: my-pv-claim
+  name: volume1
+  labels:
+    type: local
 spec:
+  capacity:
+    storage: 20Gi
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
+  storageClassName: manual
+  hostPath:
+    path: "/data/scanio"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pv-claim
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 5Gi
-
+      storage: 20Gi
 ---
 apiVersion: v1
 kind: Pod
@@ -19,7 +34,7 @@ spec:
   containers:
   - name: test-pod
     image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-    imagePullPolicy: Never
+    imagePullPolicy: {{ .Values.image.pullPolicy }}
     env:
       - name: JOB_HELM_CHART_PATH
         value: /scanio-helm/scanio-job
@@ -27,16 +42,14 @@ spec:
     {{- range .Values.command }}
       - {{ . }}
     {{- end }}
-    # args: ["-c", "while true; do echo $(date -u) >> /data/out1.txt; sleep 5; done"]
     {{- if .Values.pv.efs.enabled }}
     volumeMounts:
-    - name: my-pv-claim-vol
-      mountPath: /data
+    - name: pv-claim-vol
+      mountPath: /data/
     {{- end }}
     {{- if .Values.pv.efs.enabled }}
   volumes:
-  - name: my-pv-claim-vol
+  - name: pv-claim-vol
     persistentVolumeClaim:
-      # claimName: {{ .Values.pv.efs.claimName }}
-      claimName: my-pv-claim
+      claimName: {{ .Values.pv.efs.claimName }}
   {{- end }}
