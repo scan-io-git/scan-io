@@ -5,13 +5,13 @@ If you would like work with mimikube you will have to setup some values in helm 
 ## Scanio-main 
 - Make sure that value ```minikube.enabled``` is ```true``` - ```helm/scanio-main/values.yaml```. 
 
-This value is enabling a persistent volume/ persistent volume claim setup. 
+This value is enabling a persistent volume/persistent volume claim setup. 
 - Make sure that value ```pv.efs.enabled``` is ```true``` - ```helm/scanio-main/values.yaml```. 
 
 ## Scanio-job
 - Make sure that value ```minikube.enabled``` is ```true``` - ```helm/scanio-job/values.yaml```. 
 
-This value is enabling a persistent volume/ persistent volume claim setup. 
+This value is enabling a persistent volume/persistent volume claim setup. 
 - Make sure that value ```pv.efs.enabled``` is ```true``` - ```helm/scanio-job/values.yaml```.  
 
 # Step by step guide "How to use a local minikube cluster with Scanio"
@@ -22,7 +22,9 @@ This value is enabling a persistent volume/ persistent volume claim setup.
 3. Build and put a docker image with the application.
 
 On this step you have few different options:
-- Build a docker container manualy with ```docker build -t scanio .``` or ```make build```. After a building you have to put the image to a minikube context with a ```minikube image load scanio:latest``` command. Don't forget to load a new image every time after building. 
+- Build a docker container manualy with ```docker build -t scanio .``` or ```make build```. After a building you have to put the image to a minikube context with a ```minikube image load scanio:latest``` command. 
+
+Don't forget to load a new image every time after building. 
 - Build a docker container with ```minikube image build -t scanio .```.
 - Use ```eval $(minikube docker-env)``` and build a docker container manualy with ```docker build -t scanio .``` or ```make build```. This approach may work not properly.
 
@@ -40,6 +42,7 @@ You may mount files from your local file system to a minikube file system ```min
 
 # Possible errors
 - ```Error: failed to start container "test-pod": Error response from daemon: error while creating mount source path '/data/scanio': mkdir /data: file exists```
+
 You should uninstall all helm charts and restart a minikube cluster.
 
 # Additional articles
