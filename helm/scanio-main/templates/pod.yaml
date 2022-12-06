@@ -1,31 +1,4 @@
 apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: volume1
-  labels:
-    type: local
-spec:
-  capacity:
-    storage: 20Gi
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: manual
-  hostPath:
-    path: "/data/scanio"
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: pv-claim
-spec:
-  storageClassName: manual
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 20Gi
----
-apiVersion: v1
 kind: Pod
 metadata:
   name: test-pod
@@ -33,8 +6,13 @@ spec:
   serviceAccountName: {{ include "scanio-main.serviceAccountName" . }}
   containers:
   - name: test-pod
+    {{- if .Values.minikube.enabled }}
+    image: "{{ .Values.minikube.repository }}:{{ .Values.minikube.tag }}"
+    imagePullPolicy: {{ .Values.minikube.pullPolicy }}
+    {{ else}}
     image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
     imagePullPolicy: {{ .Values.image.pullPolicy }}
+    {{ end }}
     env:
       - name: JOB_HELM_CHART_PATH
         value: /scanio-helm/scanio-job
@@ -42,14 +20,15 @@ spec:
     {{- range .Values.command }}
       - {{ . }}
     {{- end }}
+    # args: ["-c", "while true; do echo $(date -u) >> /data/out1.txt; sleep 5; done"]
     {{- if .Values.pv.efs.enabled }}
     volumeMounts:
-    - name: pv-claim-vol
-      mountPath: /data/
+    - name: persistent-storage
+      mountPath: {{ .Values.pv.efs.mountPath }}
     {{- end }}
     {{- if .Values.pv.efs.enabled }}
   volumes:
-  - name: pv-claim-vol
+  - name: persistent-storage
     persistentVolumeClaim:
       claimName: {{ .Values.pv.efs.claimName }}
   {{- end }}

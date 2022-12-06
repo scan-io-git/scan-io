@@ -20,8 +20,14 @@ spec:
         {{- range .Values.command }}
           - {{ . }}
         {{- end }}
+        {{- if .Values.minikube.enabled }}
+        image: "{{ .Values.minikube.repository }}:{{ .Values.minikube.tag }}"
+        imagePullPolicy: {{ .Values.minikube.pullPolicy }}
+        {{ else}}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        {{ end }}
+
         env:
         - name: SCANIO_HOME
           value: /data
@@ -29,12 +35,12 @@ spec:
           value: /scanio-plugins
         {{- if .Values.pv.efs.enabled }}
         volumeMounts:
-        - name: pv-claim-vol
-          mountPath: /data
+        - name: persistent-storage
+          mountPath: {{ .Values.pv.efs.mountPath }}
         {{- end }}
       {{- if .Values.pv.efs.enabled }}
       volumes:
-      - name: pv-claim-vol
+      - name: persistent-storage
         persistentVolumeClaim:
-          claimName: pv-claim
+          claimName: {{ .Values.pv.efs.claimName }}
       {{- end }}

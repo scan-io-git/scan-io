@@ -63,8 +63,15 @@ resources: {}
 
 suffix: ""
 
+minikube:
+  enabled: true
+  repository: scanio
+  pullPolicy: Never
+  tag: latest
+
 pv:
   efs:
     enabled: true
-    claimName: pv-claim
+    claimName: efs-claim
     mountPath: /data
+    capacity: 20Gi

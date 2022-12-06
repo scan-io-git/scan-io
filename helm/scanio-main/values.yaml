@@ -1,8 +1,9 @@
 replicaCount: 1
 
 image:
-  repository: scanio
-  pullPolicy: Never # mandatory for a local minikube work
+  repository: 234507145459.dkr.ecr.eu-west-2.amazonaws.com/scanio
+  # pullPolicy: IfNotPresent
+  pullPolicy: Always
   tag: latest
 
 command:
@@ -25,7 +26,6 @@ podSecurityContext: {}
 
 securityContext: {}
 
-
 resources: {}
   # limits:
   #   cpu: 100m
@@ -47,8 +47,18 @@ tolerations: []
 
 affinity: {}
 
+minikube:
+  enabled: true
+  pvName: volume-minikube
+  mountPath: /data/scanio
+  capacity: 20Gi
+  repository: scanio
+  pullPolicy: Never
+  tag: latest
+
 pv:
   efs:
     enabled: true
-    claimName: pv-claim
+    claimName: efs-claim
     mountPath: /data
+    capacity: 20Gi
