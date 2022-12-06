@@ -1,17 +1,18 @@
 
-# Prerequisite for minikube (helm carts configuration)
+# Prerequisite for minikube (helm charts configuration)
 If you would like work with mimikube you will have to setup some values in helm charts.
 
 ## Scanio-main 
 - Make sure that value ```minikube.enabled``` is ```true``` - ```helm/scanio-main/values.yaml```. 
+
 This value is enabling a persistent volume/ persistent volume claim setup. 
 - Make sure that value ```pv.efs.enabled``` is ```true``` - ```helm/scanio-main/values.yaml```. 
 
 ## Scanio-job
 - Make sure that value ```minikube.enabled``` is ```true``` - ```helm/scanio-job/values.yaml```. 
+
 This value is enabling a persistent volume/ persistent volume claim setup. 
 - Make sure that value ```pv.efs.enabled``` is ```true``` - ```helm/scanio-job/values.yaml```.  
-
 
 # Step by step guide "How to use a local minikube cluster with Scanio"
 *Tested on a MacOS with an M1 chip.*
@@ -26,6 +27,7 @@ On this step you have few different options:
 - Use ```eval $(minikube docker-env)``` and build a docker container manualy with ```docker build -t scanio .``` or ```make build```. This approach may work not properly.
 
 4. Now you should install a scanio-main helm chart that will create a persistent volume which is mounted to a local cluster disk and start an infinity pod with privileges to PVCs and Jobs.
+
 ```helm install scanio-main helm/scanio-minikube/scanio-main/```
 
 5. Now you could use scanio 
