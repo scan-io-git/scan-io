@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: scanio
-  pullPolicy: Never
+  pullPolicy: IfNotPresent
   tag: latest
 
 command:
@@ -63,15 +63,14 @@ resources: {}
 
 suffix: ""
 
-minikube:
-  enabled: true
-  repository: scanio
-  pullPolicy: Never
-  tag: latest
+# minikube:
+#   enabled: true
+#   repository: scanio
+#   pullPolicy: Never
+#   tag: latest
 
-pv:
-  efs:
-    enabled: true
-    claimName: efs-claim
-    mountPath: /data
-    capacity: 20Gi
+persistence:
+  enabled: true
+  claimName: pv-claim
+  mountPath: /data
+  # capacity: 20Gi

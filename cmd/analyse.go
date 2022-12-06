@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
@@ -35,6 +37,13 @@ func scanRepos(analyseArgs []shared.ScannerScanRequest) {
 	shared.ForEveryStringWithBoundedGoroutines(allArgumentsAnalyse.Threads, values, func(i int, value interface{}) {
 		args := value.(shared.ScannerScanRequest)
 		logger.Info("Goroutine started", "#", i+1, "args", args)
+
+		resultsFolder := args.ResultsPath[:strings.LastIndex(args.ResultsPath, "/")]
+		err := os.MkdirAll(resultsFolder, os.ModePerm)
+		if err != nil {
+			logger.Error("create resultsFolder failed", "resultsFolder", resultsFolder, "error", err)
+			return
+		}
 
 		shared.WithPlugin("plugin-scanner", shared.PluginTypeScanner, allArgumentsAnalyse.ScannerPluginName, func(raw interface{}) {
 

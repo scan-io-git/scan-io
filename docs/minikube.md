@@ -2,17 +2,10 @@
 # Prerequisite for minikube (helm charts configuration)
 If you would like work with mimikube you will have to setup some values in helm charts.
 
-## Scanio-main 
-- Make sure that value ```minikube.enabled``` is ```true``` - ```helm/scanio-main/values.yaml```. 
-
-This value is enabling a persistent volume/persistent volume claim setup. 
-- Make sure that value ```pv.efs.enabled``` is ```true``` - ```helm/scanio-main/values.yaml```. 
-
-## Scanio-job
-- Make sure that value ```minikube.enabled``` is ```true``` - ```helm/scanio-job/values.yaml```. 
-
-This value is enabling a persistent volume/persistent volume claim setup. 
-- Make sure that value ```pv.efs.enabled``` is ```true``` - ```helm/scanio-job/values.yaml```.  
+## Persistent Storage
+To deploy persistent storage, you can reuse prepared yaml files. `kubectl apply -f kubernetes/minikube`.
+Provide persistent storage claim name to helm value `persistence.claimName`, and set `persistence.enabled: true`.
+After work to destroy resources use `kubectl delete -f kubernetes/minikube`.
 
 # Step by step guide "How to use a local minikube cluster with Scanio"
 *Tested on a MacOS with an M1 chip.*
@@ -22,11 +15,11 @@ This value is enabling a persistent volume/persistent volume claim setup.
 3. Build and put a docker image with the application.
 
 On this step you have few different options:
-- Build a docker container manualy with ```docker build -t scanio .``` or ```make build```. After a building you have to put the image to a minikube context with a ```minikube image load scanio:latest``` command. 
+- Build a docker container manualy with ```docker build -t scanio .``` or ```make docker```. After a building you have to put the image to a minikube context with a ```minikube image load scanio:latest``` command. 
 
 Don't forget to load a new image every time after building. 
 - Build a docker container with ```minikube image build -t scanio .```.
-- Use ```eval $(minikube docker-env)``` and build a docker container manualy with ```docker build -t scanio .``` or ```make build```. This approach may work not properly.
+- Use ```eval $(minikube docker-env)``` and build a docker container manualy with ```docker build -t scanio .``` or ```make docker```. This approach may work not properly.
 
 4. Now you should install a scanio-main helm chart that will create a persistent volume which is mounted to a local cluster disk and start an infinity pod with privileges to PVCs and Jobs.
 
