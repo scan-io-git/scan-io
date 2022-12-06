@@ -27,7 +27,6 @@ podSecurityContext: {}
 securityContext: {}
 
 resources: {}
-  # limits:
   #   cpu: 100m
   #   memory: 128Mi
   # requests:
@@ -62,3 +61,4 @@ pv:
     claimName: efs-claim
     mountPath: /data
     capacity: 20Gi
+

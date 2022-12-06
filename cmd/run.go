@@ -40,7 +40,7 @@ import (
 const IMAGE = "scanio"
 const AWS_DEFAULT_REGION = "eu-west-2"
 const S3_BUCKET = "my-s3-bucket-q97843yt9"
-const DEFAULT_JOB_HELM_CHART_PATH = "helm/scanio-helm/scanio-job"
+const DEFAULT_JOB_HELM_CHART_PATH = "helm/scanio-job"
 
 type RunOptions struct {
 	VCSPlugin     string
