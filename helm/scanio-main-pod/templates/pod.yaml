@@ -6,13 +6,8 @@ spec:
   serviceAccountName: {{ include "scanio-main.serviceAccountName" . }}
   containers:
   - name: test-pod
-    {{- if .Values.minikube.enabled }}
-    image: "{{ .Values.minikube.repository }}:{{ .Values.minikube.tag }}"
-    imagePullPolicy: {{ .Values.minikube.pullPolicy }}
-    {{ else}}
     image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
     imagePullPolicy: {{ .Values.image.pullPolicy }}
-    {{ end }}
     env:
       - name: JOB_HELM_CHART_PATH
         value: /scanio-helm/scanio-job
@@ -21,14 +16,14 @@ spec:
       - {{ . }}
     {{- end }}
     # args: ["-c", "while true; do echo $(date -u) >> /data/out1.txt; sleep 5; done"]
-    {{- if .Values.pv.efs.enabled }}
+    {{- if .Values.persistence.enabled }}
     volumeMounts:
     - name: persistent-storage
-      mountPath: {{ .Values.pv.efs.mountPath }}
+      mountPath: {{ .Values.persistence.mountPath }}
     {{- end }}
-    {{- if .Values.pv.efs.enabled }}
+    {{- if .Values.persistence.enabled }}
   volumes:
   - name: persistent-storage
     persistentVolumeClaim:
-      claimName: {{ .Values.pv.efs.claimName }}
+      claimName: {{ .Values.persistence.claimName }}
   {{- end }}

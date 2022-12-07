@@ -1,9 +1,9 @@
 replicaCount: 1
 
 image:
-  repository: 234507145459.dkr.ecr.eu-west-2.amazonaws.com/scanio
-  # pullPolicy: IfNotPresent
-  pullPolicy: Always
+  repository: scanio
+  pullPolicy: IfNotPresent
+  # pullPolicy: Always
   tag: latest
 
 command:
@@ -17,7 +17,7 @@ fullnameOverride: ""
 serviceAccount:
   create: true
   annotations: {}
-  name: "scanio-main"
+  name: "scanio-main-pod"
 
 podAnnotations: {}
 
@@ -46,19 +46,9 @@ tolerations: []
 
 affinity: {}
 
-minikube:
+persistence:
   enabled: true
-  pvName: volume-minikube
-  mountPath: /data/scanio
-  capacity: 20Gi
-  repository: scanio
-  pullPolicy: Never
-  tag: latest
-
-pv:
-  efs:
-    enabled: true
-    claimName: efs-claim
-    mountPath: /data
-    capacity: 20Gi
+  claimName: pv-claim
+  mountPath: /data
+  # capacity: 20Gi
 
