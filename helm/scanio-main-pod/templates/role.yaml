@@ -12,7 +12,9 @@ rules:
   - list
   - get
   - create
+  - update
+  - patch 
   - delete
 - apiGroups: [""]
-  resources: ["secrets"]
-  verbs: ["get", "list", "create", "delete"]
+  resources: ["secrets", "pods","persistentvolumeclaims", "persistentvolumes"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]

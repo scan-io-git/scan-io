@@ -35,11 +35,11 @@ You have to apply storage class, pv and claim before using EFS with pods.
 
 # Adjust helm chart to use EFS PV
 
-You can either update chart file directly or update values. Turn `.Value.pv.efs.enabled` to true, and update claimName and mountPath.
+You can either update chart file directly or update values. Turn `.Value.persistence.enabled` to true, and update claimName and mountPath.
 
 # Usage example
 1. I have created pv claim with name `efs-claim`.
-2. Go to `./helm/values.yaml` and update `pv.efs` section:
+2. Go to `./helm/values.yaml` and update `persistence` section:
 ```yaml
 pv:
   efs:

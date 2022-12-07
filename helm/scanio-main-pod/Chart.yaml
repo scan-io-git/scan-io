@@ -1,5 +1,5 @@
 apiVersion: v2
-name: scanio-job
+name: scanio-main-pod
 description: A Helm chart for Kubernetes
 
 type: application
