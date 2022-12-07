@@ -3,8 +3,8 @@
 If you would like work with mimikube you will have to setup some values in helm charts.
 
 ## Persistent Storage
-To deploy persistent storage, you can reuse prepared yaml files. `kubectl apply -f kubernetes/minikube`.
-Provide persistent storage claim name to helm value `persistence.claimName`, and set `persistence.enabled: true`.
+To deploy a persistent storage, you can reuse prepared yaml files. `kubectl apply -f kubernetes/minikube`.
+Provide a persistent storage claim name to a helm value `persistence.claimName`, and set `persistence.enabled: true`.
 After work to destroy resources use `kubectl delete -f kubernetes/minikube`.
 
 # Step by step guide "How to use a local minikube cluster with Scanio"
@@ -21,13 +21,15 @@ Don't forget to load a new image every time after building.
 - Build a docker container with ```minikube image build -t scanio .```.
 - Use ```eval $(minikube docker-env)``` and build a docker container manualy with ```docker build -t scanio .``` or ```make docker```. This approach may work not properly.
 
-4. Now you should install a scanio-main helm chart that will create a persistent volume which is mounted to a local cluster disk and start an infinity pod with privileges to PVCs and Jobs.
+4. Now you may install a scanio-main helm chart that will create an infinity pod with privileges to PVCs and Jobs - it's not mandatory. 
 
-```helm install scanio-main helm/scanio-minikube/scanio-main/```
+```helm install scanio-main helm/scanio-main-pod/```
 
-5. Now you could use scanio 
+5.  Now you use scanio 
 - ```scanio run ...``` - through a wrapper.
-- ```helm install test-job helm/scanio-minikube/scanio-job --set command="{'scanio', '--help'}" --set image.repository=scanio --set image.tag=latest --set suffix=test-job``` - manually.
+- ```helm install test-job helm/scanio-job --set command="{'scanio', '--help'}" --set image.repository=scanio --set image.tag=latest --set suffix=test-job``` - manually.
+
+You are able to use scanio from your local PC and from a main pod cluster - ```kubectl exec -ti test-pod -- bash```. 
 
 You can check your cluster local files by using a ```minikube ssh``` command. All files developed by main pod and jobs will be in a ```/data/scanio/``` directory. If a minikube cluster redeploy or stop your files won't be erased.
 
