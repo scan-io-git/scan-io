@@ -4,13 +4,18 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/google/uuid"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Run2Options struct {
@@ -18,6 +23,7 @@ type Run2Options struct {
 	InputFile         string
 	Repositories      []string
 	RmExts            string
+	Runtime           string
 	ScannerPluginName string
 	SSHKey            string
 	VCSPlugName       string
@@ -45,6 +51,12 @@ func prepScanArgs(repo shared.RepositoryParams) (*shared.ScannerScanRequest, err
 
 	repoFolder := shared.GetRepoPath(domain, filepath.Join(repo.Namespace, repo.RepoName))
 	resultsFolderPath := filepath.Join(shared.GetResultsHome(), domain, filepath.Join(repo.Namespace, repo.RepoName))
+
+	if err := os.MkdirAll(resultsFolderPath, os.ModePerm); err != nil {
+		return nil, err
+		// log.Fatal(err)
+	}
+
 	reportExt := "raw"
 	if len(allRun2Options.ReportFormat) > 0 {
 		reportExt = allRun2Options.ReportFormat
@@ -165,43 +177,126 @@ func convertRawRepoURLToRepoParams(repoURL string) (*shared.RepositoryParams, er
 	}, nil
 }
 
+func prepRepos() ([]shared.RepositoryParams, error) {
+	var repos []shared.RepositoryParams
+
+	if len(allRun2Options.InputFile) > 0 {
+		reposFromFile, err := utils.ReadReposFile2(allRun2Options.InputFile)
+		if err != nil {
+			return nil, err
+		}
+		repos = reposFromFile
+	}
+
+	for _, repoURL := range allRun2Options.Repositories {
+		repoParams, err := convertRawRepoURLToRepoParams(repoURL)
+		if err != nil {
+			return nil, err
+		}
+		repos = append(repos, *repoParams)
+	}
+
+	return repos, nil
+}
+
+func run2Locally(repos []shared.RepositoryParams) error {
+
+	if !allRun2Options.NoFetch {
+		err := run2fetchRepos(repos)
+		if err != nil {
+			return err
+		}
+	}
+
+	if !allRun2Options.NoScan {
+		err := run2analyzeRepos(repos)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func run2WithHelm(repos []shared.RepositoryParams) error {
+
+	for _, repo := range repos {
+		jobID := uuid.New()
+
+		repoURL := repo.HttpLink
+		if allRun2Options.AuthType != "http" {
+			repoURL = repo.SshLink
+		}
+		remoteCommandArgs := []string{
+			"scanio", "run2",
+			"--auth-type", allRun2Options.AuthType,
+			"--vcs", allRun2Options.VCSPlugName,
+			"--scanner", allRun2Options.ScannerPluginName,
+			"--repos", repoURL,
+		}
+		jobCommand := fmt.Sprintf("command={%s}", strings.Join(remoteCommandArgs, ","))
+
+		jobChartPath := DEFAULT_JOB_HELM_CHART_PATH
+		if path := os.Getenv("JOB_HELM_CHART_PATH"); path != "" {
+			jobChartPath = path
+		}
+
+		cmd := exec.Command("helm", "install", jobID.String(), jobChartPath,
+			"--set", jobCommand,
+			// "--set", "image.repository=scanio",
+			// "--set", "image.tag=latest",
+			"--set", fmt.Sprintf("suffix=%s", jobID.String()),
+		)
+		if err := cmd.Run(); err != nil {
+			// logger.Debug("helm install error", "err", err)
+			// log.Fatal(err)
+			return err
+		}
+
+		jobsClient := getNewJobsClient()
+
+		jobName := fmt.Sprintf("scanio-job-%s", jobID.String())
+
+		// logger.Info("Waiting the job", "jobName", jobName)
+		for {
+			job, err := jobsClient.Get(context.Background(), jobName, metav1.GetOptions{})
+			if err != nil {
+				panic(err)
+			}
+			if job.Status.Succeeded > 0 || job.Status.Failed == *job.Spec.BackoffLimit+1 {
+				break
+			}
+		}
+
+		// cmd = exec.Command("helm", "uninstall", jobID.String())
+		// if err := cmd.Run(); err != nil {
+		// 	// log.Fatal(err)
+		// 	return err
+		// }
+	}
+
+	return nil
+}
+
 var run2Cmd = &cobra.Command{
 	Use:   "run2",
 	Short: "Better version of 'run'",
 	// Long: `
 	// `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var repos []shared.RepositoryParams
-		if len(allRun2Options.InputFile) > 0 {
-			reposFromFile, err := utils.ReadReposFile2(allRun2Options.InputFile)
-			if err != nil {
-				return err
-			}
-			repos = reposFromFile
-		}
-		for _, repoURL := range allRun2Options.Repositories {
-			repoParams, err := convertRawRepoURLToRepoParams(repoURL)
-			if err != nil {
-				return err
-			}
-			repos = append(repos, *repoParams)
+
+		repos, err := prepRepos()
+		if err != nil {
+			return err
 		}
 
-		if !allRun2Options.NoFetch {
-			err := run2fetchRepos(repos)
-			if err != nil {
-				return err
-			}
+		if allRun2Options.Runtime == "helm" {
+			return run2WithHelm(repos)
+		} else if allRun2Options.Runtime == "local" {
+			return run2Locally(repos)
+		} else {
+			return fmt.Errorf("unknown runtime")
 		}
-
-		if !allRun2Options.NoScan {
-			err := run2analyzeRepos(repos)
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
 	},
 }
 
@@ -210,7 +305,7 @@ func init() {
 
 	run2Cmd.Flags().StringVar(&allRun2Options.AuthType, "auth-type", "", "Type of authentication: 'http', 'ssh-agent' or 'ssh-key'")
 	run2Cmd.Flags().StringVarP(&allRun2Options.InputFile, "input", "f", "", "file with list of repos. Results of there repos will be uploaded")
-	run2Cmd.Flags().StringSliceVar(&allRun2Options.Repositories, "repos", []string{}, "list of repos to fetch - full path format=")
+	run2Cmd.Flags().StringSliceVar(&allRun2Options.Repositories, "repos", []string{}, "list of repos to fetch - full path format")
 	run2Cmd.Flags().StringVar(&allRun2Options.RmExts, "rm-ext", "csv,png,ipynb,txt,md,mp4,zip,gif,gz,jpg,jpeg,cache,tar,svg,bin,lock,exe", "Files with extention to remove automatically after checkout")
 	run2Cmd.Flags().StringVar(&allRun2Options.ScannerPluginName, "scanner", "semgrep", "scanner plugin name")
 	run2Cmd.Flags().StringVar(&allRun2Options.SSHKey, "ssh-key", "", "Path to ssh key")
@@ -220,4 +315,5 @@ func init() {
 	run2Cmd.Flags().StringSliceVar(&allRun2Options.AdditionalArgs, "args", []string{}, "additional commands for scanner which are will be added to a scanner call. Format in quots with commas withous spaces.")
 	run2Cmd.Flags().BoolVar(&allRun2Options.NoFetch, "no-fetch", false, "skip fetch stage")
 	run2Cmd.Flags().BoolVar(&allRun2Options.NoScan, "no-scan", false, "skip scan stage")
+	run2Cmd.Flags().StringVar(&allRun2Options.Runtime, "runtime", "local", "runtime 'local' or 'helm'")
 }
