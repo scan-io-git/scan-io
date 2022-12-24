@@ -32,6 +32,7 @@ type Run2Options struct {
 	AdditionalArgs    []string
 	NoFetch           bool
 	NoScan            bool
+	Jobs              int
 }
 
 var allRun2Options Run2Options
@@ -96,12 +97,22 @@ func run2analyzeRepos(repos []shared.RepositoryParams) error {
 		scanArgsList = append(scanArgsList, *scanArgs)
 	}
 
-	for _, scanArgs := range scanArgsList {
+	logger := shared.NewLogger("core-run2")
+
+	values := make([]interface{}, len(scanArgsList))
+	for i := range scanArgsList {
+		values[i] = scanArgsList[i]
+	}
+
+	shared.ForEveryStringWithBoundedGoroutines(allRun2Options.Jobs, values, func(i int, value interface{}) {
+		scanArgs := value.(shared.ScannerScanRequest)
+
 		err := run2scan(scanArgs)
 		if err != nil {
-			return err
+			logger.Error("run2scan error", "err", err)
+			// return err
 		}
-	}
+	})
 
 	return nil
 }
@@ -153,12 +164,21 @@ func run2fetchRepos(repos []shared.RepositoryParams) error {
 		fetchArgsList = append(fetchArgsList, *fetchArgs)
 	}
 
-	for _, fetchArgs := range fetchArgsList {
+	logger := shared.NewLogger("core-run2")
+
+	values := make([]interface{}, len(fetchArgsList))
+	for i := range fetchArgsList {
+		values[i] = fetchArgsList[i]
+	}
+
+	shared.ForEveryStringWithBoundedGoroutines(allRun2Options.Jobs, values, func(i int, value interface{}) {
+		fetchArgs := value.(shared.VCSFetchRequest)
 		err := run2fetch(fetchArgs)
 		if err != nil {
-			return err
+			logger.Error("run2fetch error", "err", err)
+			// return err
 		}
-	}
+	})
 
 	return nil
 }
@@ -219,14 +239,25 @@ func run2Locally(repos []shared.RepositoryParams) error {
 }
 
 func run2WithHelm(repos []shared.RepositoryParams) error {
+	logger := shared.NewLogger("core-run2")
 
-	for _, repo := range repos {
+	values := make([]interface{}, len(repos))
+	for i := range repos {
+		values[i] = repos[i]
+	}
+
+	shared.ForEveryStringWithBoundedGoroutines(allRun2Options.Jobs, values, func(i int, value interface{}) {
+		repo := value.(shared.RepositoryParams)
+
 		jobID := uuid.New()
 
 		repoURL := repo.HttpLink
 		if allRun2Options.AuthType != "http" {
 			repoURL = repo.SshLink
 		}
+
+		logger.Info("run2WithHelm's goroutine started", "#", i+1, "repo", repoURL)
+
 		remoteCommandArgs := []string{
 			"scanio", "run2",
 			"--auth-type", allRun2Options.AuthType,
@@ -250,7 +281,8 @@ func run2WithHelm(repos []shared.RepositoryParams) error {
 		if err := cmd.Run(); err != nil {
 			// logger.Debug("helm install error", "err", err)
 			// log.Fatal(err)
-			return err
+			panic(err)
+			// return err
 		}
 
 		jobsClient := getNewJobsClient()
@@ -268,12 +300,15 @@ func run2WithHelm(repos []shared.RepositoryParams) error {
 			}
 		}
 
-		// cmd = exec.Command("helm", "uninstall", jobID.String())
-		// if err := cmd.Run(); err != nil {
-		// 	// log.Fatal(err)
-		// 	return err
-		// }
-	}
+		logger.Info("run2WithHelm's goroutine ending", "#", i+1, "repo", repoURL)
+
+		cmd = exec.Command("helm", "uninstall", jobID.String())
+		if err := cmd.Run(); err != nil {
+			// log.Fatal(err)
+			panic(err)
+			// return
+		}
+	})
 
 	return nil
 }
@@ -281,8 +316,11 @@ func run2WithHelm(repos []shared.RepositoryParams) error {
 var run2Cmd = &cobra.Command{
 	Use:   "run2",
 	Short: "Better version of 'run'",
-	// Long: `
-	// `,
+	Long: `
+		run2 command is a combination of fetch and analyze commands.
+		Actively used for remote runtime (--runtime helm).
+		But you can use it locally too (--runtime local).
+	`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		repos, err := prepRepos()
@@ -316,4 +354,5 @@ func init() {
 	run2Cmd.Flags().BoolVar(&allRun2Options.NoFetch, "no-fetch", false, "skip fetch stage")
 	run2Cmd.Flags().BoolVar(&allRun2Options.NoScan, "no-scan", false, "skip scan stage")
 	run2Cmd.Flags().StringVar(&allRun2Options.Runtime, "runtime", "local", "runtime 'local' or 'helm'")
+	run2Cmd.Flags().IntVarP(&allRun2Options.Jobs, "jobs", "j", 1, "jobs to run in parallel")
 }
