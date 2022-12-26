@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
@@ -98,4 +100,28 @@ func SplitPathOnNamespaceAndRepoName(path string) (string, string) {
 	namespace := strings.Join(pathParts[:len(pathParts)-1], "/")
 	repoName := pathParts[len(pathParts)-1]
 	return namespace, repoName
+}
+
+func FindByExtAndRemove(root string, exts []string) {
+	filepath.WalkDir(root, func(s string, d fs.DirEntry, e error) error {
+		if e != nil {
+			return e
+		}
+		ext := filepath.Ext(d.Name())
+		match := false
+		for _, rmExt := range exts {
+			if fmt.Sprintf(".%s", rmExt) == ext {
+				match = true
+				break
+			}
+		}
+		if !match {
+			return nil
+		}
+		e = os.Remove(s)
+		if e != nil {
+			return e
+		}
+		return nil
+	})
 }

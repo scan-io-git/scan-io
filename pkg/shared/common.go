@@ -28,11 +28,14 @@ var PluginMap = map[string]plugin.Plugin{
 }
 
 func NewLogger(name string) hclog.Logger {
+	loglevel := hclog.Info
+	if os.Getenv("SCANIO_LOGLEVEL") == "DEBUG" {
+		loglevel = hclog.Debug
+	}
 	return hclog.New(&hclog.LoggerOptions{
 		Name:   name,
 		Output: os.Stdout,
-		// Level:  hclog.Info,
-		Level: hclog.Debug,
+		Level:  loglevel,
 	})
 }
 
