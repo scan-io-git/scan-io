@@ -69,3 +69,33 @@ func GetDomain(repositoryURL string) (string, error) {
 		return "", fmt.Errorf("unable to get domain from %s", parsedUrl.Host)
 	}
 }
+
+func GetPath(repositoryURL string) (string, error) {
+
+	if strings.HasPrefix(repositoryURL, "git@") && strings.HasSuffix(repositoryURL, ".git") {
+		url := strings.TrimPrefix(repositoryURL, "git@")
+		url = strings.TrimSuffix(url, ".git")
+		parts := strings.Split(url, ":")
+		if len(parts) != 2 {
+			return "", fmt.Errorf("unknown format of url: %s", repositoryURL)
+		}
+		return parts[1], nil
+	}
+
+	parsedUrl, err := url.Parse(repositoryURL)
+	if err != nil {
+		return "", fmt.Errorf("error during parsing repositoryURL '%s': %w", repositoryURL, err)
+	}
+
+	path := parsedUrl.Path
+	path = strings.TrimPrefix(path, "/")
+	path = strings.TrimSuffix(path, ".git")
+	return path, nil
+}
+
+func SplitPathOnNamespaceAndRepoName(path string) (string, string) {
+	pathParts := strings.Split(path, "/")
+	namespace := strings.Join(pathParts[:len(pathParts)-1], "/")
+	repoName := pathParts[len(pathParts)-1]
+	return namespace, repoName
+}

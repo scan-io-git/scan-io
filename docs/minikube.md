@@ -16,10 +16,10 @@ After work to destroy resources use `kubectl delete -f kubernetes/minikube`.
 
 On this step you have few different options:
 - Build a docker container manualy with ```docker build -t scanio .``` or ```make docker```. After a building you have to put the image to a minikube context with a ```minikube image load scanio:latest``` command. 
-
-Don't forget to load a new image every time after building. 
 - Build a docker container with ```minikube image build -t scanio .```.
 - Use ```eval $(minikube docker-env)``` and build a docker container manualy with ```docker build -t scanio .``` or ```make docker```. This approach may work not properly.
+
+Don't forget to load a new image every time after building.
 
 4. Now you may install a scanio-main helm chart that will create an infinity pod with privileges to PVCs and Jobs - it's not mandatory. 
 
