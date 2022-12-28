@@ -10,6 +10,9 @@ image:
 #   - sleep
 #   - infinity
 
+# https://crontab.guru
+schedule: "*/5 * * * *"
+
 command:
   - bash
   - -c
