@@ -2,15 +2,12 @@ package cmd
 
 import (
 	"fmt"
-	"io/fs"
-	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 
 	// "github.com/scan-io-git/scan-io/shared"
 	"github.com/spf13/cobra"
 
+	"github.com/scan-io-git/scan-io/internal/fetcher"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 )
@@ -26,117 +23,7 @@ type RunOptionsFetch struct {
 	Threads      int
 }
 
-var (
-	allArgumentsFetch RunOptionsFetch
-	// repositories      []string
-)
-
-func findByExtAndRemove(root string, exts []string) {
-	filepath.WalkDir(root, func(s string, d fs.DirEntry, e error) error {
-		if e != nil {
-			return e
-		}
-		ext := filepath.Ext(d.Name())
-		match := false
-		for _, rmExt := range exts {
-			if fmt.Sprintf(".%s", rmExt) == ext {
-				match = true
-				break
-			}
-		}
-		if !match {
-			return nil
-		}
-		e = os.Remove(s)
-		if e != nil {
-			return e
-		}
-		return nil
-	})
-}
-
-func fetchRepos(fetchArgs []shared.VCSFetchRequest) {
-
-	logger := shared.NewLogger("core")
-	logger.Info("Fetching starting", "total", len(fetchArgs), "goroutines", allArgumentsFetch.Threads)
-
-	//resultChannel := make(chan shared.FetchFuncResult)
-
-	values := make([]interface{}, len(fetchArgs))
-	for i := range fetchArgs {
-		values[i] = fetchArgs[i]
-	}
-
-	shared.ForEveryStringWithBoundedGoroutines(allArgumentsFetch.Threads, values, func(i int, value interface{}) {
-		args := value.(shared.VCSFetchRequest)
-		logger.Info("Goroutine started", "#", i+1, "args", args)
-
-		var resultFetch shared.FetchFuncResult
-		// parsedUrl, err := url.Parse(repository)
-		// if err != nil {
-		// 	logger.Error("Failed", "error", resultFetch.Message)
-		// }
-		// domain := allArgumentsFetch.VCSURL
-		// if domain == "" {
-		// 	host, _, _ := net.SplitHostPort(parsedUrl.Host)
-		// 	domain = host
-		// }
-		// removeDotGit := regexp.MustCompile(`\.git$`)
-		// path := removeDotGit.ReplaceAllLiteralString(parsedUrl.Path, "")
-
-		// targetFolder := shared.GetRepoPath(domain, path)
-
-		shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsFetch.VCSPlugName, func(raw interface{}) {
-
-			vcsName := raw.(shared.VCS)
-			// args := shared.VCSFetchRequest{
-			// 	CloneURL:     repository,
-			// 	AuthType:     allArgumentsFetch.AuthType,
-			// 	SSHKey:       allArgumentsFetch.SSHKey,
-			// 	TargetFolder: targetFolder,
-			// }
-
-			err := vcsName.Fetch(args)
-			if err != nil {
-				resultFetch = shared.FetchFuncResult{Args: args, Result: nil, Status: "FAILED", Message: err.Error()}
-				//resultChannel <- resultFetch
-				logger.Error("Failed", "error", resultFetch.Message)
-				logger.Debug("Failed", "debug_fetch_res", resultFetch)
-			} else {
-				resultFetch = shared.FetchFuncResult{Args: args, Result: nil, Status: "OK", Message: ""}
-				//resultChannel <- resultFetch
-				logger.Info("Fetch fuctions is finished with status", "status", resultFetch.Status)
-				logger.Debug("Success", "debug_fetch_res", resultFetch)
-
-			}
-			logger.Info("Removing files with some extentions", "extentions", allArgumentsFetch.RmExts)
-			findByExtAndRemove(args.TargetFolder, strings.Split(allArgumentsFetch.RmExts, ","))
-		})
-	})
-
-	// allResults := []shared.FetchFuncResult{}
-	// close(resultChannel)
-	// for status := range resultChannel {
-	// 	allResults = append(allResults, status)
-	// }
-
-	logger.Info("All fetch operations are finished")
-	//logger.Info("Result", "result", allResults)
-	//shared.WriteJsonFile(resultVCS, allArgumentsList.OutputFile, logger)
-}
-
-// func getDomain(repositoryURL string) (string, error) {
-// 	if allArgumentsFetch.VCSURL != "" {
-// 		return allArgumentsFetch.VCSURL, nil
-// 	}
-
-// 	parsedUrl, err := url.Parse(repositoryURL)
-// 	if err != nil {
-// 		return "", fmt.Errorf("error during parsing repositoryURL '%s': %w", repositoryURL, err)
-// 	}
-// 	host, _, _ := net.SplitHostPort(parsedUrl.Host)
-// 	return host, nil
-// }
+var allArgumentsFetch RunOptionsFetch
 
 var fetchCmd = &cobra.Command{
 	Use:   "fetch",
@@ -179,66 +66,24 @@ var fetchCmd = &cobra.Command{
 			return err
 		}
 
-		fetchArgs := []shared.VCSFetchRequest{}
-
-		if allArgumentsFetch.InputFile != "" {
-			repos_inf, err := utils.ReadReposFile2(allArgumentsFetch.InputFile)
-			if err != nil {
-				return fmt.Errorf("Something happend when tool was parsing the Input File - %v", err)
-			}
-
-			if allArgumentsFetch.AuthType == "http" {
-				for _, repository := range repos_inf {
-					// repositories = append(repositories, repository.HttpLink)
-					cloneURL := repository.HttpLink
-					domain, err := utils.GetDomain(cloneURL)
-					if err != nil {
-						return err
-					}
-					targetFolder := shared.GetRepoPath(domain, filepath.Join(repository.Namespace, repository.RepoName))
-					fetchArgs = append(fetchArgs, shared.VCSFetchRequest{
-						CloneURL:     cloneURL,
-						AuthType:     allArgumentsFetch.AuthType,
-						SSHKey:       allArgumentsFetch.SSHKey,
-						TargetFolder: targetFolder,
-					})
-				}
-			} else {
-				for _, repository := range repos_inf {
-					parsed_url, err := url.Parse(repository.SshLink)
-					if err != nil {
-						return err
-					}
-					if parsed_url.Scheme != "ssh" {
-						return fmt.Errorf("URL for fetching has incorrect format")
-					}
-					// repositories = append(repositories, repository.SshLink)
-					cloneURL := repository.SshLink
-					domain, err := utils.GetDomain(cloneURL)
-					if err != nil {
-						return err
-					}
-					targetFolder := shared.GetRepoPath(domain, filepath.Join(repository.Namespace, repository.RepoName))
-					fetchArgs = append(fetchArgs, shared.VCSFetchRequest{
-						CloneURL:     cloneURL,
-						AuthType:     allArgumentsFetch.AuthType,
-						SSHKey:       allArgumentsFetch.SSHKey,
-						TargetFolder: targetFolder,
-					})
-
-				}
-			}
-		} else {
-			// repositories = allArgumentsFetch.Repositories
-			return fmt.Errorf("TODO: Generate targetFolder for arbitrary fetch link")
+		reposParams, err := utils.ReadReposFile2(allArgumentsFetch.InputFile)
+		if err != nil {
+			return err
 		}
-		//shared.NewLogger("core").Debug("list of repos", "repos", repos)
 
-		if len(fetchArgs) > 0 {
-			fetchRepos(fetchArgs)
-		} else {
-			return fmt.Errorf("Hasn't found no one repo")
+		logger := shared.NewLogger("core-run2-fetcher")
+		fetcher := fetcher.New(allArgumentsFetch.AuthType, allArgumentsFetch.SSHKey, allArgumentsFetch.Threads, allArgumentsFetch.VCSPlugName, strings.Split(allArgumentsFetch.RmExts, ","), logger)
+
+		fetchArgs, err := fetcher.PrepFetchArgs(reposParams)
+		if err != nil {
+			return err
 		}
+
+		err = fetcher.FetchRepos(fetchArgs)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	},
 }

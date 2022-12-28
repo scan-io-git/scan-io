@@ -94,7 +94,7 @@ func fetch(repo string) {
 			logger.Debug("Fetch error", "err", err)
 		} else {
 			logger.Debug("Removing files with some extentions", "extentions", o.RmExts)
-			findByExtAndRemove(targetFolder, o.RmExts)
+			utils.FindByExtAndRemove(targetFolder, o.RmExts)
 		}
 	})
 

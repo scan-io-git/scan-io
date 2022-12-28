@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/scan-io-git/scan-io/internal/fetcher"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
@@ -117,68 +118,20 @@ func run2analyzeRepos(repos []shared.RepositoryParams) error {
 	return nil
 }
 
-func run2fetch(fetchArgs shared.VCSFetchRequest) error {
-
-	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allRun2Options.VCSPlugName, func(raw interface{}) {
-		vcsName := raw.(shared.VCS)
-		err := vcsName.Fetch(fetchArgs)
-		if err == nil {
-			findByExtAndRemove(fetchArgs.TargetFolder, strings.Split(allRun2Options.RmExts, ","))
-		}
-	})
-
-	return nil
-}
-
-func prepFetchArgs(repo shared.RepositoryParams) (*shared.VCSFetchRequest, error) {
-	var cloneURL string
-	if allRun2Options.AuthType == "http" {
-		cloneURL = repo.HttpLink
-	} else {
-		cloneURL = repo.SshLink
-	}
-
-	domain, err := utils.GetDomain(cloneURL)
-	if err != nil {
-		return nil, err
-	}
-
-	targetFolder := shared.GetRepoPath(domain, filepath.Join(repo.Namespace, repo.RepoName))
-
-	return &shared.VCSFetchRequest{
-		CloneURL:     cloneURL,
-		AuthType:     allRun2Options.AuthType,
-		SSHKey:       allRun2Options.SSHKey,
-		TargetFolder: targetFolder,
-	}, nil
-}
-
 func run2fetchRepos(repos []shared.RepositoryParams) error {
-	var fetchArgsList []shared.VCSFetchRequest
 
-	for _, repo := range repos {
-		fetchArgs, err := prepFetchArgs(repo)
-		if err != nil {
-			return err
-		}
-		fetchArgsList = append(fetchArgsList, *fetchArgs)
+	logger := shared.NewLogger("core-run2-fetcher")
+	fetcher := fetcher.New(allRun2Options.AuthType, allRun2Options.SSHKey, allRun2Options.Jobs, allRun2Options.VCSPlugName, strings.Split(allRun2Options.RmExts, ","), logger)
+
+	fetchArgs, err := fetcher.PrepFetchArgs(repos)
+	if err != nil {
+		return err
 	}
 
-	logger := shared.NewLogger("core-run2")
-
-	values := make([]interface{}, len(fetchArgsList))
-	for i := range fetchArgsList {
-		values[i] = fetchArgsList[i]
+	err = fetcher.FetchRepos(fetchArgs)
+	if err != nil {
+		return err
 	}
-
-	shared.ForEveryStringWithBoundedGoroutines(allRun2Options.Jobs, values, func(i int, value interface{}) {
-		fetchArgs := value.(shared.VCSFetchRequest)
-		err := run2fetch(fetchArgs)
-		if err != nil {
-			logger.Error("run2fetch error", "err", err)
-			// return err
-		}
-	})
 
 	return nil
 }
