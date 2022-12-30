@@ -1,0 +1,62 @@
+replicaCount: 1
+
+image:
+  repository: scanio
+  pullPolicy: IfNotPresent
+  # pullPolicy: Always
+  tag: latest
+
+# command:
+#   - sleep
+#   - infinity
+
+# https://crontab.guru
+schedule: "*/5 * * * *"
+
+command:
+  - bash
+  - -c
+  - scanio list --vcs github --vcs-url github.com --namespace juice-shop --output /tmp/juice-shop-projects.json && scanio run2 --auth-type http -f /tmp/juice-shop-projects.json --scanner bandit --vcs github --runtime helm -j 10
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: "scanio-main-cronjob"
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+
+resources: {}
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+persistence:
+  enabled: true
+  claimName: pv-claim
+  mountPath: /data
+  # capacity: 20Gi
+

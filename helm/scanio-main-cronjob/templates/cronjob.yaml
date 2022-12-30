@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: test-cronjob
+spec:
+  schedule: "{{ .Values.schedule }}"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          serviceAccountName: {{ include "scanio-main.serviceAccountName" . }}
+          containers:
+          - name: test-cronjob
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            env:
+              - name: JOB_HELM_CHART_PATH
+                value: /scanio-helm/scanio-job
+            command:
+            {{- range .Values.command }}
+              - {{ . }}
+            {{- end }}
+            # args: ["-c", "while true; do echo $(date -u) >> /data/out1.txt; sleep 5; done"]
+            {{- if .Values.persistence.enabled }}
+            volumeMounts:
+            - name: persistent-storage
+              mountPath: {{ .Values.persistence.mountPath }}
+            {{- end }}
+            {{- if .Values.persistence.enabled }}
+          volumes:
+          - name: persistent-storage
+            persistentVolumeClaim:
+              claimName: {{ .Values.persistence.claimName }}
+          {{- end }}
