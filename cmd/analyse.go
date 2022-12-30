@@ -2,10 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 
+	"github.com/scan-io-git/scan-io/internal/scanner"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
@@ -21,52 +19,7 @@ type RunOptionsAnalyse struct {
 	Threads        int
 }
 
-var (
-	allArgumentsAnalyse RunOptionsAnalyse
-)
-
-func scanRepos(analyseArgs []shared.ScannerScanRequest) {
-
-	logger := shared.NewLogger("core")
-	logger.Info("Scan starting", "total", len(analyseArgs), "goroutines", allArgumentsAnalyse.Threads)
-	values := make([]interface{}, len(analyseArgs))
-	for i := range analyseArgs {
-		values[i] = analyseArgs[i]
-	}
-
-	shared.ForEveryStringWithBoundedGoroutines(allArgumentsAnalyse.Threads, values, func(i int, value interface{}) {
-		args := value.(shared.ScannerScanRequest)
-		logger.Info("Goroutine started", "#", i+1, "args", args)
-
-		resultsFolder := args.ResultsPath[:strings.LastIndex(args.ResultsPath, "/")]
-		err := os.MkdirAll(resultsFolder, os.ModePerm)
-		if err != nil {
-			logger.Error("create resultsFolder failed", "resultsFolder", resultsFolder, "error", err)
-			return
-		}
-
-		shared.WithPlugin("plugin-scanner", shared.PluginTypeScanner, allArgumentsAnalyse.ScannerPluginName, func(raw interface{}) {
-
-			var resultScan shared.ScannerScanResult
-			scanName := raw.(shared.Scanner)
-
-			err := scanName.Scan(args)
-			if err != nil {
-				resultScan = shared.ScannerScanResult{Args: args, Result: nil, Status: "FAILED", Message: err.Error()}
-				//resultChannel <- resultFetch
-				logger.Error("Failed", "error", resultScan.Message)
-				logger.Debug("Failed", "debug_fetch_res", resultScan)
-			} else {
-				resultScan = shared.ScannerScanResult{Args: args, Result: nil, Status: "OK", Message: ""}
-				//resultChannel <- resultFetch
-				logger.Info("Analyze fuctions is finished with status", "#", i+1, "args", args, "status", resultScan.Status)
-				logger.Debug("Success", "debug_fetch_res", resultScan)
-
-			}
-		})
-	})
-	logger.Info("All analyze operations are finished")
-}
+var allArgumentsAnalyse RunOptionsAnalyse
 
 var analyseCmd = &cobra.Command{
 	Use:   "analyse",
@@ -95,40 +48,25 @@ var analyseCmd = &cobra.Command{
 		if err := checkArgs(); err != nil {
 			return err
 		}
-		analyseArgs := []shared.ScannerScanRequest{}
 
 		reposInf, err := utils.ReadReposFile2(allArgumentsAnalyse.InputFile)
 		if err != nil {
 			return fmt.Errorf("something happend when tool was parsing the Input File - %v", err)
 		}
 
-		for _, repository := range reposInf {
-			domain, err := utils.GetDomain(repository.SshLink)
-			if err != nil {
-				domain, err = utils.GetDomain(repository.HttpLink)
-				if err != nil {
-					return err
-				}
-				// return err
-			}
+		logger := shared.NewLogger("core-analyze-scanner")
+		s := scanner.New(allArgumentsAnalyse.ScannerPluginName, allArgumentsAnalyse.Threads, allArgumentsAnalyse.Config, allArgumentsAnalyse.ReportFormat, allArgumentsAnalyse.AdditionalArgs, logger)
 
-			targetFolder := shared.GetRepoPath(domain, filepath.Join(repository.Namespace, repository.RepoName))
-			resultsPath := filepath.Join(shared.GetResultsHome(), domain, filepath.Join(repository.Namespace, repository.RepoName), fmt.Sprintf("%s.raw", allArgumentsAnalyse.ScannerPluginName))
-			analyseArgs = append(analyseArgs, shared.ScannerScanRequest{
-				RepoPath:       targetFolder,
-				ResultsPath:    resultsPath,
-				ConfigPath:     allArgumentsAnalyse.Config,
-				AdditionalArgs: allArgumentsAnalyse.AdditionalArgs,
-				ReportFormat:   allArgumentsAnalyse.ReportFormat,
-			})
-			//shared.NewLogger("core").Info(fmt.Sprintf("%v/%v", repository.Namespace, repository.RepoName))
+		analyseArgs, err := s.PrepScanArgs(reposInf)
+		if err != nil {
+			return err
 		}
 
-		if len(analyseArgs) > 0 {
-			scanRepos(analyseArgs)
-		} else {
-			return fmt.Errorf("hasn't found no one repo")
+		err = s.ScanRepos(analyseArgs)
+		if err != nil {
+			return err
 		}
+
 		return nil
 	},
 }

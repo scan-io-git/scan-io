@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/scan-io-git/scan-io/internal/fetcher"
+	"github.com/scan-io-git/scan-io/internal/scanner"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
@@ -38,97 +38,36 @@ type Run2Options struct {
 
 var allRun2Options Run2Options
 
-func prepScanArgs(repo shared.RepositoryParams) (*shared.ScannerScanRequest, error) {
-	var cloneURL string
-	if allRun2Options.AuthType == "http" {
-		cloneURL = repo.HttpLink
-	} else {
-		cloneURL = repo.SshLink
-	}
-
-	domain, err := utils.GetDomain(cloneURL)
-	if err != nil {
-		return nil, err
-	}
-
-	repoFolder := shared.GetRepoPath(domain, filepath.Join(repo.Namespace, repo.RepoName))
-	resultsFolderPath := filepath.Join(shared.GetResultsHome(), domain, filepath.Join(repo.Namespace, repo.RepoName))
-
-	if err := os.MkdirAll(resultsFolderPath, os.ModePerm); err != nil {
-		return nil, err
-		// log.Fatal(err)
-	}
-
-	reportExt := "raw"
-	if len(allRun2Options.ReportFormat) > 0 {
-		reportExt = allRun2Options.ReportFormat
-	}
-	resultsPath := filepath.Join(resultsFolderPath, fmt.Sprintf("%s.%s", allRun2Options.ScannerPluginName, reportExt))
-	return &shared.ScannerScanRequest{
-		RepoPath:       repoFolder,
-		ResultsPath:    resultsPath,
-		ConfigPath:     allRun2Options.Config,
-		AdditionalArgs: allRun2Options.AdditionalArgs,
-		ReportFormat:   allRun2Options.ReportFormat,
-	}, nil
-}
-
-func run2scan(scanArgs shared.ScannerScanRequest) error {
-
-	shared.WithPlugin("plugin-scanner", shared.PluginTypeScanner, allRun2Options.ScannerPluginName, func(raw interface{}) {
-		scanName := raw.(shared.Scanner)
-		err := scanName.Scan(scanArgs)
-		if err != nil {
-			logger := shared.NewLogger("core")
-			logger.Warn("problem on scan", "error", err)
-		}
-	})
-
-	return nil
-}
-
 func run2analyzeRepos(repos []shared.RepositoryParams) error {
-	var scanArgsList []shared.ScannerScanRequest
 
-	for _, repo := range repos {
-		scanArgs, err := prepScanArgs(repo)
-		if err != nil {
-			return err
-		}
-		scanArgsList = append(scanArgsList, *scanArgs)
+	logger := shared.NewLogger("core-run2-scanner")
+	s := scanner.New(allRun2Options.ScannerPluginName, allRun2Options.Jobs, allRun2Options.Config, allRun2Options.ReportFormat, allRun2Options.AdditionalArgs, logger)
+
+	scanArgs, err := s.PrepScanArgs(repos)
+	if err != nil {
+		return err
 	}
 
-	logger := shared.NewLogger("core-run2")
-
-	values := make([]interface{}, len(scanArgsList))
-	for i := range scanArgsList {
-		values[i] = scanArgsList[i]
+	err = s.ScanRepos(scanArgs)
+	if err != nil {
+		return err
 	}
-
-	shared.ForEveryStringWithBoundedGoroutines(allRun2Options.Jobs, values, func(i int, value interface{}) {
-		scanArgs := value.(shared.ScannerScanRequest)
-
-		err := run2scan(scanArgs)
-		if err != nil {
-			logger.Error("run2scan error", "err", err)
-			// return err
-		}
-	})
 
 	return nil
+
 }
 
 func run2fetchRepos(repos []shared.RepositoryParams) error {
 
 	logger := shared.NewLogger("core-run2-fetcher")
-	fetcher := fetcher.New(allRun2Options.AuthType, allRun2Options.SSHKey, allRun2Options.Jobs, allRun2Options.VCSPlugName, strings.Split(allRun2Options.RmExts, ","), logger)
+	f := fetcher.New(allRun2Options.AuthType, allRun2Options.SSHKey, allRun2Options.Jobs, allRun2Options.VCSPlugName, strings.Split(allRun2Options.RmExts, ","), logger)
 
-	fetchArgs, err := fetcher.PrepFetchArgs(repos)
+	fetchArgs, err := f.PrepFetchArgs(repos)
 	if err != nil {
 		return err
 	}
 
-	err = fetcher.FetchRepos(fetchArgs)
+	err = f.FetchRepos(fetchArgs)
 	if err != nil {
 		return err
 	}
