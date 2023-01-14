@@ -52,7 +52,7 @@ containers:
 
 Add to ssh key provisioning configuration to all charts you are going to use: `scanio-job`, `scanio-main-cronjob`.
 
-Before the next step, don't forget to build docker image and push to a registry, that k8s works with.
+Before the next step, don't forget to build docker image and push to a registry, that k8s works with. Also the following guide assume that you use persistant volume/storage.
 
 Deploy the pod:  
 `helm install scanio-main-pod helm/scanio-main-pod/`
@@ -71,3 +71,10 @@ Or you can use umbrella command `run2`:
 `scanio run2 --auth-type ssh-key --ssh-key /ssh-key-volume/private -f /tmp/demo-group-projects.json --vcs gitlab --scanner bandit --runtime helm`
 
 As a result you will find fetched project in `/data/projects` folder. Scan results in `/data/results`.
+
+By looking into `scanio-main-pod` chart that we use, you can mention that default command is `sleep infinity`. It's done for debugging purposes. You can overwrite it in `values.yaml` file to have something like one button scan:
+```yaml
+command:
+  - scanio list --vcs gitlab --vcs-url gitlab.com --namespace demo-group --output /tmp/demo-group-projects.json
+  - scanio run2 --auth-type ssh-key --ssh-key /ssh-key-volume/private -f /tmp/demo-group-projects.json --vcs gitlab --scanner bandit --runtime helm
+```
