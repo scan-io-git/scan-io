@@ -13,6 +13,7 @@ type RunOptionsList struct {
 	VCSURL      string
 	OutputFile  string
 	Namespace   string
+	Language    string
 }
 
 var (
@@ -26,7 +27,11 @@ func do() {
 
 	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsList.VCSPlugName, func(raw interface{}) {
 		vcsName := raw.(shared.VCS)
-		args := shared.VCSListReposRequest{VCSURL: allArgumentsList.VCSURL, Namespace: allArgumentsList.Namespace}
+		args := shared.VCSListReposRequest{
+			VCSURL:    allArgumentsList.VCSURL,
+			Namespace: allArgumentsList.Namespace,
+			Language:  allArgumentsList.Language,
+		}
 		projects, err := vcsName.ListRepos(args)
 
 		if err != nil {
@@ -77,4 +82,5 @@ func init() {
 	listCmd.Flags().StringVar(&allArgumentsList.VCSURL, "vcs-url", "", "url to VCS API root")
 	listCmd.Flags().StringVarP(&allArgumentsList.OutputFile, "output", "f", "", "output file")
 	listCmd.Flags().StringVar(&allArgumentsList.Namespace, "namespace", "", "list repos in a particular namespac. for Gitlab - organization, for Bitbucket_v1 - project")
+	listCmd.Flags().StringVarP(&allArgumentsList.Language, "language", "l", "", "collect only projects that have code on specified language")
 }

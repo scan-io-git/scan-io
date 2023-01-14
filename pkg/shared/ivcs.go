@@ -22,6 +22,7 @@ type ProjectParams struct {
 type VCSListReposRequest struct {
 	Namespace string
 	VCSURL    string
+	Language  string
 }
 
 type VCSFetchRequest struct {

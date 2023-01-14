@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	// "github.com/google/go-github/v47/github"
 	"github.com/hashicorp/go-hclog"
@@ -77,13 +78,11 @@ func (g *VCSGitlab) ListRepos(args shared.VCSListReposRequest) ([]shared.Reposit
 
 	reposParams := []shared.RepositoryParams{}
 
-	page := 1
-	perPage := 100
 	for i, groupID := range allGroups {
-		g.logger.Debug("Getting list of projects for a group", "#", i+1, "groupID", groupID)
+		g.logger.Info("Getting list of projects for a group", "page", i+1, "totalPages", len(allGroups), "groupID", groupID)
 
-		page = 1
-		perPage = 100
+		page := 1
+		perPage := 100
 		for {
 			projects, _, err := gitlabClient.Groups.ListGroupProjects(groupID, &gitlab.ListGroupProjectsOptions{
 				ListOptions: gitlab.ListOptions{
@@ -99,6 +98,25 @@ func (g *VCSGitlab) ListRepos(args shared.VCSListReposRequest) ([]shared.Reposit
 			}
 
 			for _, project := range projects {
+				if len(args.Language) != 0 {
+					langauges, _, err := gitlabClient.Projects.GetProjectLanguages(project.ID)
+					if err != nil {
+						g.logger.Error("gitlab GetProjectLanguages error", "err", err, "project.ID", project.ID, "project.PathWithNamespace", project.PathWithNamespace)
+						return nil, err
+					}
+
+					match := false
+					for lang := range *langauges {
+						if strings.ToLower(lang) == args.Language {
+							match = true
+							break
+						}
+					}
+
+					if !match {
+						continue
+					}
+				}
 				reposParams = append(reposParams, shared.RepositoryParams{
 					Namespace: project.Namespace.FullPath,
 					RepoName:  project.Name,
