@@ -27,11 +27,12 @@ Let's look at the example with k8s secrets:
 ```
 Change help chart, for example, `scanio-main-pod` by adding the following lines, which will set env var from secret:
 ```yaml
-- name: GITLAB_TOKEN
-  valueFrom:
-    secretKeyRef:
-      name: gitlab-token
-      key: token
+env:
+  - name: GITLAB_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: gitlab-token
+        key: token
 ```
 add the following lines to mount secret with ssh key as a volume:
 ```yaml
@@ -75,6 +76,7 @@ As a result you will find fetched project in `/data/projects` folder. Scan resul
 By looking into `scanio-main-pod` chart that we use, you can mention that default command is `sleep infinity`. It's done for debugging purposes. You can overwrite it in `values.yaml` file to have something like one button scan:
 ```yaml
 command:
-  - scanio list --vcs gitlab --vcs-url gitlab.com --namespace demo-group --output /tmp/demo-group-projects.json
-  - scanio run2 --auth-type ssh-key --ssh-key /ssh-key-volume/private -f /tmp/demo-group-projects.json --vcs gitlab --scanner bandit --runtime helm
+  - bash
+  - -c
+  - scanio list --vcs gitlab --vcs-url gitlab.com --namespace demo-group --output /tmp/demo-group-projects.json && scanio run2 --auth-type ssh-key --ssh-key /ssh-key-volume/private -f /tmp/demo-group-projects.json --vcs gitlab --scanner bandit --runtime helm
 ```
