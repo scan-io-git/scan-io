@@ -30,8 +30,8 @@ Change help chart, for example, `scanio-main-pod` by adding the following lines,
 - name: GITLAB_TOKEN
   valueFrom:
     secretKeyRef:
-    name: gitlab-token
-    key: token
+      name: gitlab-token
+      key: token
 ```
 add the following lines to mount secret with ssh key as a volume:
 ```yaml
@@ -50,6 +50,8 @@ containers:
     mountPath: "/ssh-key-volume"
 ```
 
+Add to ssh key provisioning configuration to all charts you are going to use: `scanio-job`, `scanio-main-cronjob`.
+
 Before the next step, don't forget to build docker image and push to a registry, that k8s works with.
 
 Deploy the pod:  
@@ -64,4 +66,8 @@ scanio list --vcs gitlab --vcs-url gitlab.com --namespace demo-group --output /t
 
 scanio fetch --vcs gitlab --vcs-url gitlab.com --auth-type ssh-key --ssh-key /ssh-key-volume/private -f /tmp/demo-group-projects.json
 ```
-As a result you will find fetched project in `/data/projects` folder.
+
+Or you can use umbrella command `run2`:  
+`scanio run2 --auth-type ssh-key --ssh-key /ssh-key-volume/private -f /tmp/demo-group-projects.json --vcs gitlab --scanner bandit --runtime helm`
+
+As a result you will find fetched project in `/data/projects` folder. Scan results in `/data/results`.

@@ -153,6 +153,7 @@ func run2WithHelm(repos []shared.RepositoryParams) error {
 		remoteCommandArgs := []string{
 			"scanio", "run2",
 			"--auth-type", allRun2Options.AuthType,
+			"--ssh-key", allRun2Options.SSHKey,
 			"--vcs", allRun2Options.VCSPlugName,
 			"--scanner", allRun2Options.ScannerPluginName,
 			"--repos", repoURL,
