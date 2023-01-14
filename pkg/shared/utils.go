@@ -43,6 +43,7 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 	//debug output from git cli
 	output := logger.StandardWriter(&hclog.StandardLoggerOptions{
 		InferLevels: true,
+		ForceLevel:  hclog.Debug,
 	})
 
 	gitCloneOptions := &git.CloneOptions{
