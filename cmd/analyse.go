@@ -22,12 +22,14 @@ type RunOptionsAnalyse struct {
 var allArgumentsAnalyse RunOptionsAnalyse
 
 var analyseCmd = &cobra.Command{
-	Use:   "analyse",
-	Short: "A brief description of your command",
+	Use:          "analyse",
+	SilenceUsage: true,
+	Short:        "The main function is to present a top-level for a specified scanner and execute it.",
+
 	RunE: func(cmd *cobra.Command, args []string) error {
 		checkArgs := func() error {
 			if len(allArgumentsAnalyse.ScannerPluginName) == 0 {
-				return fmt.Errorf("'scanner' flag must be specified")
+				return fmt.Errorf("'scanner' flag must be specified!")
 			}
 
 			// if len(allArgumentsAnalyse.Repositories) != 0 && allArgumentsAnalyse.InputFile != "" {
@@ -39,7 +41,7 @@ var analyseCmd = &cobra.Command{
 			// }
 			// fmt.Println(allArgumentsAnalyse.InputFile)
 			if allArgumentsAnalyse.InputFile == "" {
-				return fmt.Errorf("'input-file' flag must be specified")
+				return fmt.Errorf("'input-file' flag must be specified!")
 			}
 
 			return nil
@@ -52,6 +54,10 @@ var analyseCmd = &cobra.Command{
 		reposInf, err := utils.ReadReposFile2(allArgumentsAnalyse.InputFile)
 		if err != nil {
 			return fmt.Errorf("something happend when tool was parsing the Input File - %v", err)
+		}
+
+		if len(allArgumentsAnalyse.AdditionalArgs) != 0 && allArgumentsAnalyse.ScannerPluginName != "semgrep" {
+			return fmt.Errorf(("'args' is supported only for a semgrep plugin."))
 		}
 
 		logger := shared.NewLogger("core-analyze-scanner")
@@ -74,11 +80,11 @@ var analyseCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(analyseCmd)
 
-	analyseCmd.Flags().StringVar(&allArgumentsAnalyse.ScannerPluginName, "scanner", "semgrep", "scanner plugin name")
+	analyseCmd.Flags().StringVar(&allArgumentsAnalyse.ScannerPluginName, "scanner", "", "the plugin name of the scanner used. Eg. semgrep, bandit etc.")
 	// analyseCmd.Flags().StringSliceVar(&allArgumentsAnalyse.Repositories, "repos", []string{}, "list of repos to analyse - full path format. Bitbucket V1 API format - /project/reponame")
-	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.InputFile, "input-file", "f", "", "file with list of repos to analyse")
-	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.Config, "config", "c", "auto", "file with list of repos to analyse")
-	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.ReportFormat, "format", "o", "", "file with list of repos to analyse") //doesn't have default for "Uses ASCII output if no format specified"
+	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.InputFile, "input-file", "f", "", "a file in scanio format with list of repositories to analyse. The list command could prepare this file.")
+	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.Config, "config", "c", "auto", "a path or type of config for a scanner.")
+	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.ReportFormat, "format", "o", "", "a format for a report with results.") //doesn't have default for "Uses ASCII output if no format specified"
 	analyseCmd.Flags().StringSliceVar(&allArgumentsAnalyse.AdditionalArgs, "args", []string{}, "additional commands for semgrep which are will be added to a semgrep call. Format in quots with commas withous spaces.")
-	analyseCmd.Flags().IntVarP(&allArgumentsAnalyse.Threads, "threads", "j", 2, "number of concurrent goroutines")
+	analyseCmd.Flags().IntVarP(&allArgumentsAnalyse.Threads, "threads", "j", 1, "number of concurrent goroutines.")
 }
