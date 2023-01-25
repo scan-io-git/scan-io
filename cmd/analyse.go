@@ -24,7 +24,7 @@ var allArgumentsAnalyse RunOptionsAnalyse
 var analyseCmd = &cobra.Command{
 	Use:          "analyse",
 	SilenceUsage: true,
-	Short:        "The main function is to present a top-level for a specified scanner and execute it.",
+	Short:        "The main function is to present a top-level interface for a specified scanner.",
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		checkArgs := func() error {
@@ -80,11 +80,11 @@ var analyseCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(analyseCmd)
 
-	analyseCmd.Flags().StringVar(&allArgumentsAnalyse.ScannerPluginName, "scanner", "", "the plugin name of the scanner used. Eg. semgrep, bandit etc.")
+	analyseCmd.Flags().StringVar(&allArgumentsAnalyse.ScannerPluginName, "scanner", "", "the plugin name of the scanner used.. Eg. semgrep, bandit etc.")
 	// analyseCmd.Flags().StringSliceVar(&allArgumentsAnalyse.Repositories, "repos", []string{}, "list of repos to analyse - full path format. Bitbucket V1 API format - /project/reponame")
-	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.InputFile, "input-file", "f", "", "a file in scanio format with list of repositories to analyse. The list command could prepare this file.")
-	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.Config, "config", "c", "auto", "a path or type of config for a scanner.")
+	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.InputFile, "input-file", "f", "", "a file in scanio format with a list of repositories to analyse. The list command could prepare this file..")
+	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.Config, "config", "c", "auto", "a path or type of config for a scanner. The value depends on a particular scanner's used formats.")
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.ReportFormat, "format", "o", "", "a format for a report with results.") //doesn't have default for "Uses ASCII output if no format specified"
-	analyseCmd.Flags().StringSliceVar(&allArgumentsAnalyse.AdditionalArgs, "args", []string{}, "additional commands for semgrep which are will be added to a semgrep call. Format in quots with commas withous spaces.")
+	analyseCmd.Flags().StringSliceVar(&allArgumentsAnalyse.AdditionalArgs, "args", []string{}, "additional commands for semgrep which will be added to a semgrep call. The format in quotes with commas without spaces.")
 	analyseCmd.Flags().IntVarP(&allArgumentsAnalyse.Threads, "threads", "j", 1, "number of concurrent goroutines.")
 }

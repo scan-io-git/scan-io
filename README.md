@@ -1,30 +1,19 @@
-# scan-io
+# Scanio
+The application is an orchestrator over plugins. The orchestrator consist of two parts - the core and plugins. <br>
+The core implements handling over plugins and controles the whole life cycle of the plugins.<br>
+The plugins implement work with a variety of functions, other applications, scanner etc. <br><br>
 
-## Bootstrap
-### cobra
-For cli management I used [cobra project](https://github.com/spf13/cobra).  
-Fast intro to [cobra-cli and cli tool management](https://github.com/spf13/cobra-cli/blob/main/README.md).  
-What I did:
-```sh
-mkdir ~/scan-io
-cd ~/scan-io
+## Scenarios of using
 
-go mod init github.com/scan-io-git/scan-io
-cobra-cli init
-cobra-cli add fetch
-```
-It created a skeleton of cli with "fetch" command, "--help" argument, etc...
-
-### go-plugin
-For plugin system I used [go-plugin library](https://github.com/hashicorp/go-plugin).  
-This skeleton is heavily based on [basic example](https://github.com/hashicorp/go-plugin/tree/master/examples/basic). Examine it to understand what happens.
-
-## Development
-### Easy start
+## Installation
 ```sh
 make clean
-make buildplugins
-make runprojects
-make runorg
-make runscan
+make build
 ```
+<br>
+
+## Articles for read 
+List of articles about commands of the application:
+* [List](docs/scanio-list.md).
+* [Fetch](docs/scanio-fetch.md).
+* [Analyse](docs/scanio-analyse.md).
