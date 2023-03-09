@@ -1,18 +1,31 @@
-# Commands
-- Command for a listing repositories in a particular project.
-```scanio list --vcs bitbucket --vcs-url bitbucket.com --namespace AB -f output.file```
-- Command for a resolving repositories in all projects.
-```scanio list --vcs bitbucket --vcs-url bitbucket.com -f output.file```
+# Bitbucket plugin
+The plugin implements work with functions ```list``` and ```fetch```:
+* Listing whole repositories in a VCS from the master/main branch.
+* Listing repositories by a project in a VCS from the master/main branch.
+* Fetching from an input file using an ssh-key/ssh-agent/HTTP authentification.<br><br>
 
-- Command for a fetching repositories from a file with ssh key authentifiction.
-```scanio fetch --vcs bitbucket --vcs-url bitbucket.com --input-file output.file --auth-type ssh-key --ssh-key /Users/e.k/.ssh/id_ed25519 -j 1```
-- Command for a fetching repositories from a file with ssh agent authentifiction.
-```scanio fetch --vcs bitbucket --vcs-url bitbucket.com --input-file output.file --auth-type ssh-agent -j 1```
-- Command for a fetching repositories from a file with http authentifiction.
-```scanio fetch --vcs bitbucket --vcs-url bitbucket.com --input-file output.file --auth-typ http -j 1```
+This page is a short plugin description.<br>
 
-# Output
-- The listing output format is a file that is looks like:
+You may find additional information in our articles:
+- [scanio-list](../../docs/scanio-list.md).
+- [scanio-fetch](../../docs/scanio-fetch.md).<br><br>
+
+## Commands
+* Listing whole repositories in a VCS.<br>
+```scanio list --vcs bitbucket --vcs-url example.com -f /Users/root/.scanio/output.file```
+* Listing repositories by a project in a VCS.<br>
+```scanio list --vcs bitbucket --vcs-url example.com --namespace PROJECT -f /Users/root/.scanio/PROJECT.file```
+* Fetching from an input file using an ssh-key authentification.<br>
+```scanio fetch --vcs bitbucket --vcs-url example.com --input-file /Users/root/.scanio/output.file --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1```
+* Fetching from an input file using an ssh-agent authentification.<br>
+```scanio fetch --vcs bitbucket --vcs-url example.com --input-file /Users/root/.scanio/output.file --auth-type ssh-agent -j 1```
+* Fetching from an input file with an HTTP.<br>
+```scanio fetch --vcs bitbucket --vcs-url example.com --input-file /Users/root/.scanio/output.file --auth-typ http -j 1```<br><br>
+
+## Results of the command
+### Output of a "list" command
+
+As a result, the command prepares a JSON file:
 ```
 {
     "args": {
@@ -23,36 +36,44 @@
         {
             "namespace": "<project_name>",
             "repo_name": "<repo_name>",
-            "http_link": "https://git@domain.com/<project_name>/<repo_name>.git",
-            "ssh_link": "ssh://git@git.acronis.com:7989/<project_name>/<repo_name>.git"
+            "http_link": "https://git@example.com/<project_name>/<repo_name>.git",
+            "ssh_link": "ssh://git@git.example.com:7989/<project_name>/<repo_name>.git"
         }
     ],
     "status": "<status>",
     "message": "<err_message>"
 }
 ```
-- The fetching works without an output - only fetching repos on a disk. 
 
-# Errors
-- If you find an error ```ssh: handshake failed: knownhosts: key mismatch```
-Check your .ssh/config. If you use not a default 22 port for fetching and .ssh/config rules for this host, you have to determite a port too:
+### Output of a "fetch" command
+The fetching works without an direct output.
+The command saves results into a home directory ```~/.scanio/projects/+<VCSURL>+<Namespace>+<repo_name>```.<br><br>
+
+## Possible errors
+### ```ssh: handshake failed: knownhosts: key mismatch```
+If you find the error check your .ssh/config. If you do use not a default 22 port for fetching and .ssh/config rules for this host, you have to determine a port too:
 ```
-Host git.domain.com
-   Hostname git.domain.com
+Host git.example.com
+   Hostname git.example.com
    Port 7989 
    IdentityFile ~/.ssh/id_ed25519
 ``` 
-Or just not use .ssh/config and port will be identifed automatically. 
+Or just not use .ssh/config and the port will be identified automatically. <br><br>
 
-```ssh: handshake failed: ssh: unable to authenticate, attempted methods [none publickey], no supported methods remain```
-Algorithm is the same - determite a port in .ssh/config for your host or don't use .ssh/config rules.
-- ```Error on Clone occured: err="reference not found"``` means that a branch in a remote repo doesn't exits.
-- ```Error on Clone occured: err="remote repository is empty"``` means that a default branch in a remote repo (master/main) is empty.
+### ```ssh: handshake failed: ssh: unable to authenticate, attempted methods [none publickey], no supported methods remain```
+The algorithm is the same - determine a port in .ssh/config for your host or don't use .ssh/config rules.<br><br>
 
-# Environment for a BitBucket v1 API plugin
-- BITBUCKET_USERNAME - your username in BitBucket. *mandatory
-- BITBUCKET_TOKEN - your token. *mandatory
-It may be a plain text password or a personal access token from <your_bb_domain>/plugins/servlet/access-tokens/manage.
+### ```Error on Clone occurred: err="reference not found"``` 
+It means that a branch in a remote repo doesn't exits. 
+Try to fix the name of the branch or project.<br><br>
 
-- BITBUCKET_SSH_KEY_PASSOWRD - your password for ssh. Default is an empty value!
-- BITBUCKET_SSH_PORT - port for git ssh operations. Default is 7989!
+### ```Error on Clone occurred: err="remote repository is empty"``` 
+It means that a default branch in a remote repo (master/main) is empty.
+Try to fix the name of the branch or project.<br><br>
+
+## Environment for a BitBucket v1 API plugin
+* BITBUCKET_SSH_KEY_PASSOWRD - your password for ssh. The default is an empty value!
+* BITBUCKET_SSH_PORT - port for git ssh operations. The default is 7989!
+* BITBUCKET_USERNAME - your username in BitBucket.
+* BITBUCKET_TOKEN - your Bitbucket token. 
+  * It may be a plain text password or a personal access token from \<your_bb_domain\>/plugins/servlet/access-tokens/manage. <br><br>
