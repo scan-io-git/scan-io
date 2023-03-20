@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/go-hclog"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
@@ -43,7 +44,7 @@ func (s Scanner) PrepScanArgs(repos []shared.RepositoryParams) ([]shared.Scanner
 			}
 		}
 
-		resultsFolderPath := filepath.Join(shared.GetResultsHome(), domain, filepath.Join(repo.Namespace, repo.RepoName))
+		resultsFolderPath := filepath.Join(shared.GetResultsHome(), strings.ToLower(domain), filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
 		// ensure that folder for results exists, some scanners don't create it themselves and just exit with an error
 		if err := os.MkdirAll(resultsFolderPath, os.ModePerm); err != nil {
 			return nil, err
