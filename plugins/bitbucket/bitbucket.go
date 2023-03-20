@@ -110,7 +110,6 @@ func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project 
 		var sshLink string
 
 		for _, clone_links := range repo.Links.Clone {
-
 			if clone_links.Name == "http" {
 				httpLink = clone_links.Href
 			} else if clone_links.Name == "ssh" {

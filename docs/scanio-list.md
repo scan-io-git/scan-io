@@ -18,6 +18,7 @@ Covered VCSs:
 |List an only one repository|Not Supported|Not Supported|Not Supported|
 |Public repositories|Supported|Supported|Supported|
 |Private repositories|Supported| ?|Not Supported|
+|Users repositories|Not supported|Not supported|Not supported| 
 <br>
 
 ## Result of the command
@@ -76,7 +77,6 @@ This scenario needs if you would like to list all repositories from your VCS.<br
 
 #### **Github**
 At the moment the plugin can't list a whole VCS.<br><br>
-
 #### **Gitlab**
 TODO<br><br>
 

@@ -2,6 +2,7 @@ package fetcher
 
 import (
 	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/go-hclog"
 
@@ -44,7 +45,7 @@ func (f Fetcher) PrepFetchArgs(repos []shared.RepositoryParams) ([]shared.VCSFet
 			return nil, err
 		}
 
-		targetFolder := shared.GetRepoPath(domain, filepath.Join(repo.Namespace, repo.RepoName))
+		targetFolder := shared.GetRepoPath(domain, filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
 
 		fetchArgs = append(fetchArgs, shared.VCSFetchRequest{
 			CloneURL:     cloneURL,

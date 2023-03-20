@@ -12,43 +12,71 @@ import (
 )
 
 type RunOptionsFetch struct {
-	VCSPlugName  string
-	VCSURL       string
-	Repositories []string
-	AuthType     string
-	SSHKey       string
-	InputFile    string
-	RmExts       string
-	Threads      int
+	VCSPlugName string
+	AuthType    string
+	SSHKey      string
+	InputFile   string
+	RmExts      string
+	Threads     int
 }
 
 var allArgumentsFetch RunOptionsFetch
 
 var fetchCmd = &cobra.Command{
-	Use:          "fetch",
+	Use:          "fetch [flags] \n  scanio fetch [flags] [url]",
 	SilenceUsage: true,
 	Short:        "The main function is to fetch code of a specified repositories and do consistency support.",
 
 	RunE: func(cmd *cobra.Command, args []string) error {
+		reposParams := []shared.RepositoryParams{}
+
 		checkArgs := func() error {
+			if len(args) >= 2 {
+				return fmt.Errorf("Invalid argument(s) received!")
+			}
 			if len(allArgumentsFetch.VCSPlugName) == 0 {
 				return fmt.Errorf(("'vcs' flag must be specified!"))
 			}
 
-			if len(allArgumentsFetch.VCSURL) == 0 && allArgumentsFetch.InputFile == "" {
-				return fmt.Errorf(("'vcs-url' flag must be specified!"))
+			if len(allArgumentsFetch.InputFile) == 0 && len(args) == 0 {
+				return fmt.Errorf(("'vcs-url' flag or 'input-file' flag or URL must be specified!"))
 			}
 
-			if len(allArgumentsFetch.Repositories) != 0 && allArgumentsFetch.InputFile != "" {
-				return fmt.Errorf(("You can't use both input types for repositories!"))
+			if len(allArgumentsFetch.InputFile) != 0 && len(args) != 0 {
+				return fmt.Errorf(("You can't use a few input types for repositories!"))
 			}
 
-			// if len(allArgumentsFetch.Repositories) == 0 && len(allArgumentsFetch.InputFile) == 0 {
-			// 	return fmt.Errorf(("'repos' or 'input-file' flag must be specified!"))
-			// }
+			if len(args) == 1 {
+				if len(allArgumentsFetch.InputFile) != 0 {
+					return fmt.Errorf(("You can't use a specific url with an input-file argument!"))
+				}
 
-			if len(allArgumentsFetch.InputFile) == 0 {
-				return fmt.Errorf(("'input-file' flag must be specified!"))
+				URL := args[0]
+				_, namespace, repository, httpLink, sshLink, err := shared.ExtractRepositoryInfoFromURL(URL, allArgumentsFetch.VCSPlugName)
+				if len(repository) == 0 {
+					return fmt.Errorf(("A fetch function for a whole project is not supported."))
+				}
+
+				if err != nil {
+					return err
+				}
+				reposParams = append(reposParams, shared.RepositoryParams{
+					Namespace: namespace,
+					RepoName:  repository,
+					HttpLink:  httpLink,
+					SshLink:   sshLink,
+				})
+
+			} else {
+				if len(allArgumentsFetch.InputFile) == 0 {
+					return fmt.Errorf(("'input-file' flag must be specified!"))
+				}
+
+				reposData, err := utils.ReadReposFile2(allArgumentsFetch.InputFile)
+				if err != nil {
+					return err
+				}
+				reposParams = reposData
 			}
 
 			if len(allArgumentsFetch.AuthType) == 0 {
@@ -68,11 +96,6 @@ var fetchCmd = &cobra.Command{
 		}
 
 		if err := checkArgs(); err != nil {
-			return err
-		}
-
-		reposParams, err := utils.ReadReposFile2(allArgumentsFetch.InputFile)
-		if err != nil {
 			return err
 		}
 
@@ -97,8 +120,6 @@ func init() {
 	rootCmd.AddCommand(fetchCmd)
 
 	fetchCmd.Flags().StringVar(&allArgumentsFetch.VCSPlugName, "vcs", "", "the plugin name of the VCS used. Eg. bitbucket, gitlab, github, etc.")
-	fetchCmd.Flags().StringVar(&allArgumentsFetch.VCSURL, "vcs-url", "", "URL to a root of the VCS API. Eg. github.com.")
-	// fetchCmd.Flags().StringSliceVar(&allArgumentsFetch.Repositories, "repos", []string{}, "the list of repositories to fetching. Bitbucket V1 API format - /project/reponame.")
 	fetchCmd.Flags().StringVarP(&allArgumentsFetch.InputFile, "input-file", "f", "", "a file in scanio format with list of repositories to fetching. The list command could prepare this file.")
 	fetchCmd.Flags().IntVarP(&allArgumentsFetch.Threads, "threads", "j", 1, "number of concurrent goroutines.")
 	fetchCmd.Flags().StringVar(&allArgumentsFetch.AuthType, "auth-type", "", "type of authentication: 'http', 'ssh-agent' or 'ssh-key'.")

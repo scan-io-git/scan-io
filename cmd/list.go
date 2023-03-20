@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
 )
@@ -48,18 +47,38 @@ func do() {
 }
 
 var listCmd = &cobra.Command{
-	Use:          "list",
+	Use:          "list [flags] \n  scanio list [flags] [url]",
 	SilenceUsage: true,
 	Short:        "The command's function is to list repositories from a version control system.",
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		checkArgs := func() error {
+			if len(args) >= 2 {
+				return fmt.Errorf("Invalid argument(s) received!")
+			}
+
 			if len(allArgumentsList.VCSPlugName) == 0 {
 				return fmt.Errorf(("'vcs' flag must be specified!"))
 			}
+			if len(args) == 1 {
+				if len(allArgumentsList.VCSURL) != 0 || len(allArgumentsList.Namespace) != 0 {
+					return fmt.Errorf(("You can't use a specific url with 'namespace' and 'vcs-url' arguments!"))
+				}
 
-			if len(allArgumentsList.VCSURL) == 0 {
-				return fmt.Errorf(("'vcs-url' flag must be specified!"))
+				URL := args[0]
+				hostname, namespace, _, _, _, err := shared.ExtractRepositoryInfoFromURL(URL, allArgumentsList.VCSPlugName)
+				if err != nil {
+					return err
+				}
+				allArgumentsList.VCSURL = hostname
+				allArgumentsList.Namespace = namespace
+			} else {
+				if len(allArgumentsList.VCSURL) == 0 {
+					return fmt.Errorf(("'vcs-url' flag must be specified!"))
+				}
+				if len(allArgumentsList.Namespace) == 0 {
+					return fmt.Errorf(("'namespace' flag must be specified!"))
+				}
 			}
 
 			if len(allArgumentsList.Language) != 0 && allArgumentsList.VCSPlugName != "gitlab" {
