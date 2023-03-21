@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/scan-io-git/scan-io/internal/scanner"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
@@ -11,37 +12,52 @@ import (
 
 type RunOptionsAnalyse struct {
 	ScannerPluginName string
-	// Repositories      []string
-	InputFile      string
-	ReportFormat   string
-	Config         string
-	AdditionalArgs []string
-	Threads        int
+	InputFile         string
+	ReportFormat      string
+	Config            string
+	AdditionalArgs    []string
+	Threads           int
 }
 
 var allArgumentsAnalyse RunOptionsAnalyse
 
 var analyseCmd = &cobra.Command{
-	Use:          "analyse",
+	Use:          "analyse [flags] \n  scanio analyse [flags] [url]",
 	SilenceUsage: true,
 	Short:        "The main function is to present a top-level interface for a specified scanner.",
 
 	RunE: func(cmd *cobra.Command, args []string) error {
+		var reposInf []shared.RepositoryParams
+		var path string
+
 		checkArgs := func() error {
 			if len(allArgumentsAnalyse.ScannerPluginName) == 0 {
 				return fmt.Errorf("'scanner' flag must be specified!")
 			}
 
-			// if len(allArgumentsAnalyse.Repositories) != 0 && allArgumentsAnalyse.InputFile != "" {
-			// 	return fmt.Errorf("you can't use both input types for repositories")
-			// }
+			if len(args) == 1 {
+				if len(allArgumentsAnalyse.InputFile) != 0 {
+					return fmt.Errorf(("You can't use a specific url with an input-file argument!"))
+				}
+				path = args[0]
+				if _, err := os.Stat(path); os.IsNotExist(err) {
+					return fmt.Errorf("Path does not exists: %v", path)
+				}
 
-			// if len(allArgumentsAnalyse.Repositories) == 0 && len(allArgumentsAnalyse.InputFile) == 0 {
-			// 	return fmt.Errorf("'repos' or 'input-file' flag must be specified")
-			// }
-			// fmt.Println(allArgumentsAnalyse.InputFile)
-			if allArgumentsAnalyse.InputFile == "" {
-				return fmt.Errorf("'input-file' flag must be specified!")
+			} else {
+				if len(allArgumentsAnalyse.InputFile) == 0 {
+					return fmt.Errorf(("'input-file' flag must be specified!"))
+				}
+
+				reposData, err := utils.ReadReposFile2(allArgumentsAnalyse.InputFile)
+				if err != nil {
+					return fmt.Errorf("something happend when tool was parsing the Input File - %v", err)
+				}
+				reposInf = reposData
+			}
+
+			if len(allArgumentsAnalyse.AdditionalArgs) != 0 && allArgumentsAnalyse.ScannerPluginName != "semgrep" {
+				return fmt.Errorf(("'args' is supported only for a semgrep plugin."))
 			}
 
 			return nil
@@ -51,19 +67,10 @@ var analyseCmd = &cobra.Command{
 			return err
 		}
 
-		reposInf, err := utils.ReadReposFile2(allArgumentsAnalyse.InputFile)
-		if err != nil {
-			return fmt.Errorf("something happend when tool was parsing the Input File - %v", err)
-		}
-
-		if len(allArgumentsAnalyse.AdditionalArgs) != 0 && allArgumentsAnalyse.ScannerPluginName != "semgrep" {
-			return fmt.Errorf(("'args' is supported only for a semgrep plugin."))
-		}
-
 		logger := shared.NewLogger("core-analyze-scanner")
 		s := scanner.New(allArgumentsAnalyse.ScannerPluginName, allArgumentsAnalyse.Threads, allArgumentsAnalyse.Config, allArgumentsAnalyse.ReportFormat, allArgumentsAnalyse.AdditionalArgs, logger)
 
-		analyseArgs, err := s.PrepScanArgs(reposInf)
+		analyseArgs, err := s.PrepScanArgs(reposInf, path)
 		if err != nil {
 			return err
 		}
@@ -81,7 +88,6 @@ func init() {
 	rootCmd.AddCommand(analyseCmd)
 
 	analyseCmd.Flags().StringVar(&allArgumentsAnalyse.ScannerPluginName, "scanner", "", "the plugin name of the scanner used.. Eg. semgrep, bandit etc.")
-	// analyseCmd.Flags().StringSliceVar(&allArgumentsAnalyse.Repositories, "repos", []string{}, "list of repos to analyse - full path format. Bitbucket V1 API format - /project/reponame")
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.InputFile, "input-file", "f", "", "a file in scanio format with a list of repositories to analyse. The list command could prepare this file..")
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.Config, "config", "c", "auto", "a path or type of config for a scanner. The value depends on a particular scanner's used formats.")
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.ReportFormat, "format", "o", "", "a format for a report with results.") //doesn't have default for "Uses ASCII output if no format specified"

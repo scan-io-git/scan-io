@@ -45,7 +45,7 @@ func (f Fetcher) PrepFetchArgs(repos []shared.RepositoryParams) ([]shared.VCSFet
 			return nil, err
 		}
 
-		targetFolder := shared.GetRepoPath(domain, filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
+		targetFolder := shared.GetRepoPath(strings.ToLower(domain), filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
 
 		fetchArgs = append(fetchArgs, shared.VCSFetchRequest{
 			CloneURL:     cloneURL,
