@@ -31,8 +31,7 @@ This method is using an SSH key from a disk. <br><br>
 
 #### **Bitbucket** 
 For Bitbucket API v1 you need to use a few environment variables:
-* BITBUCKET_SSH_KEY_PASSOWRD - your password for ssh. The default is an empty value!
-* BITBUCKET_SSH_PORT - port for git ssh operations. The default is 7989!<br><br>
+* BITBUCKET_SSH_KEY_PASSOWRD - your password for ssh. The default is an empty value!<br><br>
 
 #### **Github**
 At the moment the plugin is working without any variables from an environment.<br><br>

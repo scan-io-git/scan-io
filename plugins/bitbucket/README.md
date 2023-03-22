@@ -47,7 +47,7 @@ As a result, the command prepares a JSON file:
 
 ### Output of a "fetch" command
 The fetching works without an direct output.
-The command saves results into a home directory ```~/.scanio/projects/+<VCSURL>+<Namespace>+<repo_name>```.<br><br>
+The command saves results into a home directory ```<homedirectory()>/.scanio/projects/+<VCSURL>+<Namespace>+<repo_name>```.<br><br>
 
 ## Possible errors
 ### ```ssh: handshake failed: knownhosts: key mismatch```
@@ -73,7 +73,6 @@ Try to fix the name of the branch or project.<br><br>
 
 ## Environment for a BitBucket v1 API plugin
 * BITBUCKET_SSH_KEY_PASSOWRD - your password for ssh. The default is an empty value!
-* BITBUCKET_SSH_PORT - port for git ssh operations. The default is 7989!
 * BITBUCKET_USERNAME - your username in BitBucket.
 * BITBUCKET_TOKEN - your Bitbucket token. 
   * It may be a plain text password or a personal access token from \<your_bb_domain\>/plugins/servlet/access-tokens/manage. <br><br>

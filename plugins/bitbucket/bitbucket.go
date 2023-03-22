@@ -46,13 +46,13 @@ func (g *VCSBitbucket) init(command string) (shared.EvnVariables, error) {
 	}
 
 	if command == "fetch" {
-		variables.VcsPort = os.Getenv("BITBUCKET_SSH_PORT")
+		// variables.VcsPort = os.Getenv("BITBUCKET_SSH_PORT")
 		variables.SshKeyPassword = os.Getenv("BITBUCKET_SSH_KEY_PASSWORD")
 
-		if len(variables.VcsPort) == 0 {
-			g.logger.Warn("BITBUCKET_SSH_PORT is not provided in an environment. Using default 7989 ssh port")
-			variables.VcsPort = "7989"
-		}
+		// if len(variables.VcsPort) == 0 {
+		// 	g.logger.Warn("BITBUCKET_SSH_PORT is not provided in an environment. Using default 7989 ssh port")
+		// 	variables.VcsPort = "7989"
+		// }
 		if len(variables.SshKeyPassword) == 0 {
 			g.logger.Warn("BITBUCKET_SSH_KEY_PASSOWRD is empty or not provided.")
 		}
