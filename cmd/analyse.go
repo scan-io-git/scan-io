@@ -28,17 +28,32 @@ var analyseCmd = &cobra.Command{
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var reposInf []shared.RepositoryParams
+		argsLenAtDash := cmd.ArgsLenAtDash()
 		var path string
+		var add []string
 
 		checkArgs := func() error {
 			if len(allArgumentsAnalyse.ScannerPluginName) == 0 {
 				return fmt.Errorf("'scanner' flag must be specified!")
 			}
 
-			if len(args) == 1 {
-				if len(allArgumentsAnalyse.InputFile) != 0 {
-					return fmt.Errorf(("You can't use a specific url with an input-file argument!"))
+			if argsLenAtDash > -1 {
+				if allArgumentsAnalyse.ScannerPluginName != "semgrep" {
+					return fmt.Errorf(("Additional arguments are supported only for a semgrep plugin!"))
 				}
+				add = args[argsLenAtDash:]
+				fmt.Println(add)
+				allArgumentsAnalyse.AdditionalArgs = args[argsLenAtDash:]
+			}
+			if ((len(args) == 0) || (len(args) > 0 && argsLenAtDash == 0)) && len(allArgumentsAnalyse.InputFile) == 0 {
+				return fmt.Errorf(("An 'input-file' flag or a path must be specified!"))
+			}
+
+			if len(args) > 0 && (argsLenAtDash == -1 || argsLenAtDash == 1) {
+				if len(allArgumentsAnalyse.InputFile) != 0 {
+					return fmt.Errorf(("You can't use an 'input-file' argument and a path at the same time!"))
+				}
+
 				path = args[0]
 				if _, err := os.Stat(path); os.IsNotExist(err) {
 					return fmt.Errorf("Path does not exists: %v", path)
@@ -46,18 +61,14 @@ var analyseCmd = &cobra.Command{
 
 			} else {
 				if len(allArgumentsAnalyse.InputFile) == 0 {
-					return fmt.Errorf(("'input-file' flag must be specified!"))
+					return fmt.Errorf(("An 'input-file' flag must be specified!"))
 				}
 
 				reposData, err := utils.ReadReposFile2(allArgumentsAnalyse.InputFile)
 				if err != nil {
-					return fmt.Errorf("something happend when tool was parsing the Input File - %v", err)
+					return fmt.Errorf("Something happend when tool was parsing the Input File - %v", err)
 				}
 				reposInf = reposData
-			}
-
-			if len(allArgumentsAnalyse.AdditionalArgs) != 0 && allArgumentsAnalyse.ScannerPluginName != "semgrep" {
-				return fmt.Errorf(("'args' is supported only for a semgrep plugin."))
 			}
 
 			return nil
@@ -89,7 +100,7 @@ func init() {
 
 	analyseCmd.Flags().StringVar(&allArgumentsAnalyse.ScannerPluginName, "scanner", "", "the plugin name of the scanner used.. Eg. semgrep, bandit etc.")
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.InputFile, "input-file", "f", "", "a file in scanio format with a list of repositories to analyse. The list command could prepare this file..")
-	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.Config, "config", "c", "auto", "a path or type of config for a scanner. The value depends on a particular scanner's used formats.")
+	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.Config, "config", "c", "", "a path or type of config for a scanner. The value depends on a particular scanner's used formats.")
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.ReportFormat, "format", "o", "", "a format for a report with results.") //doesn't have default for "Uses ASCII output if no format specified"
 	analyseCmd.Flags().StringSliceVar(&allArgumentsAnalyse.AdditionalArgs, "args", []string{}, "additional commands for semgrep which will be added to a semgrep call. The format in quotes with commas without spaces.")
 	analyseCmd.Flags().IntVarP(&allArgumentsAnalyse.Threads, "threads", "j", 1, "number of concurrent goroutines.")

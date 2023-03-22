@@ -42,10 +42,17 @@ func (s Scanner) PrepScanArgs(repos []shared.RepositoryParams, path string) ([]s
 		reportExt = s.reportFormat
 	}
 	if len(path) != 0 {
-		// In the case with a manual path result will be written to the same folder
+		// in the case with a manual path the result will be written to the same folder
 		targetFolder = path
 		resultsPath = filepath.Join(path, fmt.Sprintf("%s.%s", s.scannerPluginName, reportExt))
 
+		scanArgs = append(scanArgs, shared.ScannerScanRequest{
+			RepoPath:       targetFolder,
+			ResultsPath:    resultsPath,
+			ConfigPath:     s.config,
+			AdditionalArgs: s.additionalArgs,
+			ReportFormat:   s.reportFormat,
+		})
 	} else {
 		for _, repo := range repos {
 			domain, err := utils.GetDomain(repo.SshLink)
@@ -65,16 +72,16 @@ func (s Scanner) PrepScanArgs(repos []shared.RepositoryParams, path string) ([]s
 			targetFolder = shared.GetRepoPath(strings.ToLower(domain), filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
 			resultsPath = filepath.Join(resultsFolderPath, fmt.Sprintf("%s.%s", s.scannerPluginName, reportExt))
 
+			scanArgs = append(scanArgs, shared.ScannerScanRequest{
+				RepoPath:       targetFolder,
+				ResultsPath:    resultsPath,
+				ConfigPath:     s.config,
+				AdditionalArgs: s.additionalArgs,
+				ReportFormat:   s.reportFormat,
+			})
 		}
 	}
 
-	scanArgs = append(scanArgs, shared.ScannerScanRequest{
-		RepoPath:       targetFolder,
-		ResultsPath:    resultsPath,
-		ConfigPath:     s.config,
-		AdditionalArgs: s.additionalArgs,
-		ReportFormat:   s.reportFormat,
-	})
 	return scanArgs, nil
 }
 

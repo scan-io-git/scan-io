@@ -32,12 +32,13 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
 
 	if args.ReportFormat != "" {
 		reportFormat = fmt.Sprintf("--%v", args.ReportFormat)
+		commandArgs = append(commandArgs, reportFormat)
 	}
 
-	if args.ConfigPath == "auto" {
-		commandArgs = append(commandArgs, "-f", args.ConfigPath, "--output", args.ResultsPath, reportFormat, args.RepoPath)
+	if args.ConfigPath == "" {
+		commandArgs = append(commandArgs, "-f", "auto", "--output", args.ResultsPath, args.RepoPath)
 	} else {
-		commandArgs = append(commandArgs, "--metrics", "off", "-f", args.ConfigPath, "--output", args.ResultsPath, reportFormat, args.RepoPath)
+		commandArgs = append(commandArgs, "--metrics", "off", "-f", args.ConfigPath, "--output", args.ResultsPath, args.RepoPath)
 	}
 
 	cmd = exec.Command("semgrep", commandArgs...)
