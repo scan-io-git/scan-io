@@ -30,7 +30,6 @@ var analyseCmd = &cobra.Command{
 		var reposInf []shared.RepositoryParams
 		argsLenAtDash := cmd.ArgsLenAtDash()
 		var path string
-		var add []string
 
 		checkArgs := func() error {
 			if len(allArgumentsAnalyse.ScannerPluginName) == 0 {
@@ -41,8 +40,6 @@ var analyseCmd = &cobra.Command{
 				if allArgumentsAnalyse.ScannerPluginName != "semgrep" {
 					return fmt.Errorf(("Additional arguments are supported only for a semgrep plugin!"))
 				}
-				add = args[argsLenAtDash:]
-				fmt.Println(add)
 				allArgumentsAnalyse.AdditionalArgs = args[argsLenAtDash:]
 			}
 			if ((len(args) == 0) || (len(args) > 0 && argsLenAtDash == 0)) && len(allArgumentsAnalyse.InputFile) == 0 {

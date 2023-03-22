@@ -153,7 +153,6 @@ func ExtractRepositoryInfoFromURL(Url string, VCSPlugName string) (string, strin
 
 	vcsUrl := u.Hostname()
 	scheme := u.Scheme
-	port := u.Port()
 
 	// Split the path and remove empty elements
 	for _, dir := range strings.Split(u.Path, "/") {
@@ -199,7 +198,7 @@ func ExtractRepositoryInfoFromURL(Url string, VCSPlugName string) (string, strin
 			namespace = pathDirs[0]
 			repository = strings.TrimSuffix(pathDirs[1], ".git")
 			httpUrl := fmt.Sprintf("https://%s/scm/%s/%s.git", vcsUrl, namespace, repository) //
-			sshUrl := fmt.Sprintf("ssh://git@%s:%s/%s/%s.git", vcsUrl, port, namespace, repository)
+			sshUrl := fmt.Sprintf("ssh://git@%s:7989/%s/%s.git", vcsUrl, namespace, repository)
 			return vcsUrl, namespace, repository, httpUrl, sshUrl, nil
 		}
 	case "github":
