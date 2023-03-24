@@ -31,23 +31,20 @@ You may find additional information in our articles:
 ### Supported URL formats
 The application supports a few different formats of url:
 * URL points to a VCS using Web UI format - ```https://example.com/```.<br>
-&emsp;You could use the format with *list* command to list all repositories from your VCS.<br>
+&emsp;You could use the format with **list** command to list all repositories from your VCS.<br>
 &emsp;```scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/```<br>
 * URL points to a specific project using Web UI format - ```https://example.com/projects/<PROJECT_NAME>/```<br>
-&emsp;You could use the format with *list* command to list all repositories from the project.<br>
-&emsp;```scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/projects/PROJECT/```<br>
-* URL points to a specific project and repository using Web UI format. <br>
-```https://example.com/projects/<PROJECT_NAME>/repos/<REPO_NAME>/browse```
-&emsp;You could use the format with *fetch* command to fetch a specific repository.<br>
+&emsp;You could use the format with **list** command to list all repositories from the project.<br>
+&emsp;```scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/projects/scanio_project/```<br>
+* URL points to a specific project and repository using Web UI format - ```https://example.com/projects/<PROJECT_NAME>/repos/<REPO_NAME>/browse```<br>
+&emsp;You could use the format with **fetch** command to fetch a specific repository.<br>
 &emsp;```scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 https://example.com/projects/scanio_project/repos/scanio/browse```<br>
-* URL points to a specific project and repository using API format and ssh type. <br>
-```ssh://git@gexample.com:7989/<PROJECT_NAME>/<REPO_NAME>.git```
-&emsp;You could use the format with *fetch* command to fetch a specific repository.<br>
+* URL points to a specific project and repository using API format and ssh type - ```ssh://git@gexample.com:7989/<PROJECT_NAME>/<REPO_NAME>.git```<br>
+&emsp;You could use the format with **fetch** command to fetch a specific repository.<br>
 &emsp;You also can change the port using ssh scheme.<br>
 &emsp;```scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 ssh://git@git.acronis.com:7989/scanio_project/scanio.git```<br>
-* URL points to a specific project and repository using API format and http type. <br>
-```https://example.com/scm/<PROJECT_NAME>/<REPO_NAME>.git```
-&emsp;You could use the format with *fetch* command to fetch a specific repository.<br>
+* URL points to a specific project and repository using API format and http type - ```https://example.com/scm/<PROJECT_NAME>/<REPO_NAME>.git```<br>
+&emsp;You could use the format with **fetch** command to fetch a specific repository.<br>
 &emsp;```scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 https://git.acronis.com/scm/scanio_project/scanio.git```<br>
 
 ## Results of the command

@@ -71,7 +71,8 @@ At the moment the plugin is working without any variables from an environment.<b
 ## Using scenarios 
 When developing, we aimed at the fact that the program will be used primarily for automation purposes but you still able to use it manually from CLI.<br>
 
-The command saves results into a home directory ```~/.scanio/projects/+<VCSURL>+<Namespace>+<repo_name>```.<br><br>
+The command saves results into a home directory - ```~/.scanio/projects/+<VCSURL>+<Namespace>+<repo_name>```.<br>
+You can redifine a home directory by using **SCANIO_HOME** environment variable.<br><br>
 
 ### Fetching from input file
 The command uses an output format of a List command for fetching required repositories.<br><br>
