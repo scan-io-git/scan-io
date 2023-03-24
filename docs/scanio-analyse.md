@@ -27,7 +27,7 @@ When developing, we aimed at the fact that the program will be used primarily fo
 ### Analysing from an input file
 The command uses an output format of a List command for analysing required repositories.<br>
 
-If you use an **input file** argument the command will save results into a home directory: ```~/.scanio/results/+<VCSURL>+<Namespace>+<repo_name>/<scanner_name>.<report_format>```.<br>
+If you use an **input file** argument the command will save results into a home directory - ```~/.scanio/results/+<VCSURL>+<Namespace>+<repo_name>/<scanner_name>.<report_format>```.<br>
 You can redifine a home directory by using **SCANIO_HOME** environment variable.<br><br>
 
 #### **Semgrep**
