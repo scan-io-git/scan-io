@@ -27,6 +27,7 @@ type VCSListReposRequest struct {
 
 type VCSFetchRequest struct {
 	CloneURL     string
+	Branch       string
 	AuthType     string
 	SSHKey       string
 	TargetFolder string

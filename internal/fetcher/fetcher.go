@@ -14,16 +14,18 @@ type Fetcher struct {
 	authType      string
 	sshKey        string
 	jobs          int
+	branch        string
 	vcsPluginName string
 	rmExts        []string
 	logger        hclog.Logger
 }
 
-func New(authType string, sshKey string, jobs int, vcsPluginName string, rmExts []string, logger hclog.Logger) Fetcher {
+func New(authType string, sshKey string, jobs int, branch string, vcsPluginName string, rmExts []string, logger hclog.Logger) Fetcher {
 	return Fetcher{
 		authType:      authType,
 		sshKey:        sshKey,
 		jobs:          jobs,
+		branch:        branch,
 		vcsPluginName: vcsPluginName,
 		rmExts:        rmExts,
 		logger:        logger,
@@ -49,6 +51,7 @@ func (f Fetcher) PrepFetchArgs(repos []shared.RepositoryParams) ([]shared.VCSFet
 
 		fetchArgs = append(fetchArgs, shared.VCSFetchRequest{
 			CloneURL:     cloneURL,
+			Branch:       f.branch,
 			AuthType:     f.authType,
 			SSHKey:       f.sshKey,
 			TargetFolder: targetFolder,

@@ -17,6 +17,7 @@ type RunOptionsFetch struct {
 	SSHKey      string
 	InputFile   string
 	RmExts      string
+	Branch      string
 	Threads     int
 }
 
@@ -24,8 +25,8 @@ var allArgumentsFetch RunOptionsFetch
 var execExampleFetch = `  # Fetching from an input file using an ssh-key authentification
   scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1
 
-  # Fetching using an ssh-key authentification and URL that points a specific repository.
-  scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 https://example.com/projects/scanio_project/repos/scanio/browse
+  # Fetching using an ssh-key authentification, branch and URL that points a specific repository.
+  scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 -b develop https://example.com/projects/scanio_project/repos/scanio/browse
 
   # Fetching from an input file using an ssh-agent authentification
   scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-type ssh-agent -j 1
@@ -34,7 +35,7 @@ var execExampleFetch = `  # Fetching from an input file using an ssh-key authent
   scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-typ http -j 1`
 
 var fetchCmd = &cobra.Command{
-	Use:                   "fetch --vcs PLUGIN_NAME --output /local_path/output.file --auth-type AUTH_TYPE [--ssh-key /local_path/.ssh/id_ed25519] [--rm-ext LIST_OF_EXTENTIONS] [-j THREADS_NUMBER] (--input-file /local_path/repositories.file | <url>)",
+	Use:                   "fetch --vcs PLUGIN_NAME --output /local_path/output.file --auth-type AUTH_TYPE [--ssh-key /local_path/.ssh/id_ed25519] [--rm-ext LIST_OF_EXTENTIONS] [-j THREADS_NUMBER] (--input-file /local_path/repositories.file | [-b BRANCH] <url>)",
 	SilenceUsage:          true,
 	DisableFlagsInUseLine: true,
 	Example:               execExampleFetch,
@@ -122,7 +123,7 @@ List of plugins:
 		}
 
 		logger := shared.NewLogger("core-fetcher")
-		fetcher := fetcher.New(allArgumentsFetch.AuthType, allArgumentsFetch.SSHKey, allArgumentsFetch.Threads, allArgumentsFetch.VCSPlugName, strings.Split(allArgumentsFetch.RmExts, ","), logger)
+		fetcher := fetcher.New(allArgumentsFetch.AuthType, allArgumentsFetch.SSHKey, allArgumentsFetch.Threads, allArgumentsFetch.Branch, allArgumentsFetch.VCSPlugName, strings.Split(allArgumentsFetch.RmExts, ","), logger)
 
 		fetchArgs, err := fetcher.PrepFetchArgs(reposParams)
 		if err != nil {
@@ -146,5 +147,6 @@ func init() {
 	fetchCmd.Flags().IntVarP(&allArgumentsFetch.Threads, "threads", "j", 1, "number of concurrent goroutines.")
 	fetchCmd.Flags().StringVar(&allArgumentsFetch.AuthType, "auth-type", "", "type of authentication: 'http', 'ssh-agent' or 'ssh-key'.")
 	fetchCmd.Flags().StringVar(&allArgumentsFetch.SSHKey, "ssh-key", "", "the path to an ssh key.")
+	fetchCmd.Flags().StringVarP(&allArgumentsFetch.Branch, "branch", "b", "", "a specific branch for fetching. You can use it manual URL mode. A default value is main or master.")
 	fetchCmd.Flags().StringVar(&allArgumentsFetch.RmExts, "rm-ext", "csv,png,ipynb,txt,md,mp4,zip,gif,gz,jpg,jpeg,cache,tar,svg,bin,lock,exe", "extensions of files to remove it automatically after fetching.")
 }

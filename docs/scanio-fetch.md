@@ -6,11 +6,13 @@ At the moment plugins fetch only the master/main branch. <br><br>
 ## Args of the command
 - "vcs" is the plugin name of the VCS used. Eg. bitbucket, gitlab, github, etc.
 - "input-file" or "f" is a file in scanio format with list of repositories to fetch. The list command could prepare this file.
-- "namespace" is the name of a specific namespace. Namespace for Gitlab is an organization, for Bitbucket_v1 is a project.
 - "auth-type" is a type for an authentication - "http", "ssh-agent" or "ssh-key".
 - "ssh-key" is a path to an SSH key.
 - "threads" or "j" is a number of concurrent goroutines. The default is 1. 
+- "branch" or "b" is a specific branch for fetching. You can use it manual URL mode. A default value is main or master.
 - "rm-ext" is a list of extensions that will be removed automatically after checkout. The default is  `csv,png,ipynb,txt,md,mp4,zip,gif,gz,jpg,jpeg,cache,tar,svg,bin,lock,exe`.<br><br>
+
+Instead of using **input-file** flag you could use a specific **URL** that points to a particular namespace from your VCS (check the [link](#fetching-only-one-repo-manually-by-using-url)). <br><br>
 
 ## Authentification types scenarios 
 Plugins support three types of authentification:
@@ -107,6 +109,9 @@ The command uses a link that is pointing to a particular repository for fetching
 #### **Bitbucket**
 * Fetching using an ssh-key authentification and url that points to a specific repository.<br>
 ```scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 https://example.com/projects/scanio_project/repos/scanio/browse```<br><br>
+
+In this manual mode you can set a custom branch.<br>
+```scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 -b develop https://example.com/projects/scanio_project/repos/scanio/browse```<br><br>
 
 You can find additional information about URL formats [here](../plugins/bitbucket/README.md#supported-url-formats)<br><br>
 

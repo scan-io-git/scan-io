@@ -15,6 +15,7 @@ import (
 
 	"github.com/gitsight/go-vcsurl"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 )
@@ -58,9 +59,15 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 	}
 
 	gitCloneOptions.URL = args.CloneURL
+	if args.Branch != "" {
+		referenceNamePrefix := "refs/heads/%s"
+		customBranch := plumbing.ReferenceName(fmt.Sprintf(referenceNamePrefix, args.Branch))
+		gitCloneOptions.ReferenceName = customBranch
+		gitPullOptions.ReferenceName = customBranch
+	}
 
 	if args.AuthType == "ssh-key" {
-		logger.Info("Making arrangements for an ssh-key fetching", "repo", info.Name)
+		logger.Info("Making arrangements for an ssh-key fetching", "repo", info.Name, "branch", args.Branch)
 		if _, err := os.Stat(args.SSHKey); err != nil {
 			logger.Error("read file %s failed %s\n", args.SSHKey, err.Error())
 			return err
@@ -78,7 +85,7 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 
 		gitCloneOptions.Auth, gitPullOptions.Auth = pkCallback, pkCallback
 	} else if args.AuthType == "ssh-agent" {
-		logger.Info("Making arrangements for an ssh-agent fetching", "repo", info.Name)
+		logger.Info("Making arrangements for an ssh-agent fetching", "repo", info.Name, "branch", args.Branch)
 		pkCallback, err := ssh.NewSSHAgentAuth("git")
 		if err != nil {
 			logger.Error("NewSSHAgentAuth error", "err", err)
@@ -103,7 +110,7 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 		return err
 	}
 
-	logger.Info("Fetching repo", "repo", info.Name)
+	logger.Info("Fetching repo", "repo", info.Name, "branch", args.Branch)
 	_, err = git.PlainClone(args.TargetFolder, false, gitCloneOptions)
 	if err != nil && err == git.ErrRepositoryAlreadyExists {
 		//git checkout - check deleted files
@@ -116,7 +123,7 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 		}
 		w, err := r.Worktree()
 		if err != nil {
-			logger.Info("Error on Wroktree occured", "err", err, "targetFolder", args.TargetFolder)
+			logger.Info("Error on Worktree occured", "err", err, "targetFolder", args.TargetFolder)
 			return err
 		}
 
@@ -127,7 +134,7 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 			return err
 		}
 
-		logger.Info("Pulling repo", "repo", info.Name, "targetFolder", args.TargetFolder)
+		logger.Info("Pulling repo", "repo", info.Name, "targetFolder", args.TargetFolder, "branch", args.Branch)
 		if err = w.Pull(gitPullOptions); err != nil {
 			logger.Info("Error on Pull occured", "err", err, "targetFolder", args.TargetFolder)
 			return err

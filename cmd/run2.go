@@ -27,6 +27,7 @@ type Run2Options struct {
 	Runtime           string
 	ScannerPluginName string
 	SSHKey            string
+	Branch            string
 	VCSPlugName       string
 	ReportFormat      string
 	Config            string
@@ -60,7 +61,7 @@ func run2analyzeRepos(repos []shared.RepositoryParams) error {
 func run2fetchRepos(repos []shared.RepositoryParams) error {
 
 	logger := shared.NewLogger("core-run2-fetcher")
-	f := fetcher.New(allRun2Options.AuthType, allRun2Options.SSHKey, allRun2Options.Jobs, allRun2Options.VCSPlugName, strings.Split(allRun2Options.RmExts, ","), logger)
+	f := fetcher.New(allRun2Options.AuthType, allRun2Options.SSHKey, allRun2Options.Jobs, allRun2Options.Branch, allRun2Options.VCSPlugName, strings.Split(allRun2Options.RmExts, ","), logger)
 
 	fetchArgs, err := f.PrepFetchArgs(repos)
 	if err != nil {
