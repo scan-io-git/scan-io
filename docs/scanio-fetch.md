@@ -5,7 +5,6 @@ At the moment plugins fetch only the master/main branch. <br><br>
 
 ## Args of the command
 - "vcs" is the plugin name of the VCS used. Eg. bitbucket, gitlab, github, etc.
-- "vcs-url" is an URL to a root of the VCS API. Eg. github.com.
 - "input-file" or "f" is a file in scanio format with list of repositories to fetch. The list command could prepare this file.
 - "namespace" is the name of a specific namespace. Namespace for Gitlab is an organization, for Bitbucket_v1 is a project.
 - "auth-type" is a type for an authentication - "http", "ssh-agent" or "ssh-key".
@@ -101,18 +100,20 @@ The command uses an output format of a List command for fetching required reposi
 * Fetching from input file with an HTTP authentification.<br>
 ```scanio fetch --vcs gitlab --vcs-url example.com --input-file /Users/root/.scanio/output.file --auth-typ http -j 1```<br><br>
 
-### Fetching only one repo manually
+### Fetching only one repo manually by using URL
 The command uses a link that is pointing to a particular repository for fetching.<br><br>
 
 #### **Bitbucket**
-TODO<br><br>
+* Fetching using an ssh-key authentification and url that points to a specific repository.<br>
+```scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 https://example.com/projects/scanio_project/repos/scanio/browse```<br><br>
+
+You can find additional information about URL formats [here](../plugins/bitbucket/README.md#supported-url-formats)<br><br>
 
 #### **Github**
-TODO<br><br>
+Not Supported.<br><br>
 
 #### **Gitlab**
-TODO<br><br>
-
+Not Supported.<br><br>
 
 ## Possible errors
 ### Bitbucket

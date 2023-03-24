@@ -4,7 +4,7 @@ The main command's function is to list repositories from a version control syste
 The command can list repositories:
 - In the whole VCS. The results will be a file with all repositories in your VCS.
 - By projects or namespaces. The results will be a file with all repositories in a particular namespace.
-- Only one repository. TODO!<br><br>
+<br><br>
 
 Covered VCSs:
 - Bitbucket API v1.
@@ -13,8 +13,10 @@ Covered VCSs:
 
 |    |Bitbucket|Gitlab|Github|
 |----|-----|---|---|
-|List in a whole VCS|Supported|Not Supported|?|
-|List by a project|Supported|Supported|?|
+|List in all VCS|Supported|Not Supported|?|
+|List by all VCS from URL|Supported|Not Supported|?|
+|List by a project from args|Supported|Supported|?|
+|List by a project from URL|Supported|Not Supported|?|
 |List an only one repository|Not Supported|Not Supported|Not Supported|
 |Public repositories|Supported|Supported|Supported|
 |Private repositories|Supported| ?|Not Supported|
@@ -65,20 +67,35 @@ This generic output is used as input for other commands in case of no manual int
 * "namespace" is the name of a specific namespace. Namespace for Gitlab is an organization, for Bitbucket_v1 is a project.
 * "language" or "l" helps to collect only projects that have code in a specified language. It works only for Gitlab.<br><br>
 
+Instead of using **vcs-url** and **namespace** flags you could use a specific **URL** that points to a particular namespace from your VCS (check the [link](#listing-all-repositories-by-a-project-using-url)) and points to VCS (check the [link](#listing-all-repositories-in-a-vcs-using-url)). <br><br>
+
 ## Using scenarios 
 When developing, we aimed at the fact that the program will be used primarily for automation purposes but you still able to use it manually from CLI.<br><br>
 
-
-### Listing whole repositories in a VCS
+### Listing all repositories in a VCS
 This scenario needs if you would like to list all repositories from your VCS.<br><br>
 
 #### **Bitbucket**
 ```scanio list --vcs bitbucket --vcs-url example.com -f /Users/root/.scanio/output.file```<br><br>
 
 #### **Github**
-At the moment the plugin can't list a whole VCS.<br><br>
+At the moment the plugin can't list a all VCS.<br><br>
+
 #### **Gitlab**
 TODO<br><br>
+
+### Listing all repositories in a VCS using URL
+This scenario needs if you would like to list all repositories from your VCS by using URL.<br><br>
+
+#### **Bitbucket**
+```scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/```<br>
+You can find additional information about URL formats [here](../plugins/bitbucket/README.md#supported-url-formats)<br><br>
+
+#### **Github**
+Not supported <br><br>
+
+#### **Gitlab**
+Not supported <br><br>
 
 ### Listing repositories by a project in a VCS
 This scenario needs if you would like to list repositories on a specified project/namespace. <br><br>
@@ -92,18 +109,18 @@ This scenario needs if you would like to list repositories on a specified projec
 #### **Gitlab**
 TODO <br><br>
 
-### Listing an only one repository
-We think it's a rare case when you need to automate the scanning of only one repository. But you are still able to do it.
-TODO <br><br>
+### Listing all repositories by a project using URL
+This scenario needs if you would like to list repositories on a specified project/namespace by using URL. <br><br>
 
 #### **Bitbucket**
-TODO <br><br>
+```scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/projects/PROJECT/```<br>
+You can find additional information about URL formats [here](../plugins/bitbucket/README.md#supported-url-formats)<br><br>
 
 #### **Github**
-TODO <br><br>
+Not supported <br><br>
 
 #### **Gitlab**
-TODO <br><br>
+Not supported <br><br>
 
 ## Authentification
 If your VCS requires an authentification or your ```project/namespace/repository``` is private you will have to auth factor for an authentification.<br><br>

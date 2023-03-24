@@ -21,11 +21,30 @@ type RunOptionsFetch struct {
 }
 
 var allArgumentsFetch RunOptionsFetch
+var execExampleFetch = `  # Fetching from an input file using an ssh-key authentification
+  scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1
+
+  # Fetching using an ssh-key authentification and URL that points a specific repository.
+  scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 https://example.com/projects/scanio_project/repos/scanio/browse
+
+  # Fetching from an input file using an ssh-agent authentification
+  scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-type ssh-agent -j 1
+
+  # Fetching from an input file with an HTTP.<br>
+  scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-typ http -j 1`
 
 var fetchCmd = &cobra.Command{
-	Use:          "fetch [flags] \n  scanio fetch [flags] [url]",
-	SilenceUsage: true,
-	Short:        "The main function is to fetch code of a specified repositories and do consistency support.",
+	Use:                   "fetch --vcs PLUGIN_NAME --output /local_path/output.file --auth-type AUTH_TYPE [--ssh-key /local_path/.ssh/id_ed25519] [--rm-ext LIST_OF_EXTENTIONS] [-j THREADS_NUMBER] (--input-file /local_path/repositories.file | <url>)",
+	SilenceUsage:          true,
+	DisableFlagsInUseLine: true,
+	Example:               execExampleFetch,
+	Short:                 "The main function is to fetch code of a specified repositories and do consistency support.",
+	Long: `The main function is to fetch code of a specified repositories and do consistency support.
+
+List of plugins:
+  - bitbucket
+  - gitlab
+  - github`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		reposParams := []shared.RepositoryParams{}
@@ -53,13 +72,16 @@ var fetchCmd = &cobra.Command{
 
 				URL := args[0]
 				_, namespace, repository, httpLink, sshLink, err := shared.ExtractRepositoryInfoFromURL(URL, allArgumentsFetch.VCSPlugName)
-				if len(repository) == 0 {
-					return fmt.Errorf(("A fetch function for a whole project is not supported."))
-				}
-
 				if err != nil {
 					return err
 				}
+
+				if len(namespace) == 0 {
+					return fmt.Errorf(("A fetch function for fetching all VCS is not supported."))
+				} else if len(repository) == 0 {
+					return fmt.Errorf(("A fetch function for fetching a whole project is not supported."))
+				}
+
 				reposParams = append(reposParams, shared.RepositoryParams{
 					Namespace: namespace,
 					RepoName:  repository,

@@ -21,10 +21,33 @@ type RunOptionsAnalyse struct {
 
 var allArgumentsAnalyse RunOptionsAnalyse
 
+var (
+	execExampleAnalyse = `  # Analysing using semgrep with an input file argument
+  scanio analyse --scanner semgrep --input-file /Users/root/.scanio/output.file --format sarif -j 1
+  
+  # Analysing using semgrep with a specific path
+  scanio analyse --scanner semgrep --format sarif -j 1 /tmp/my_project
+
+  # Analysing using semgrep with an input file and custom rules
+  scanio analyse --scanner semgrep --config /Users/root/scan-io-semgrep-rules --input-file /Users/root/.scanio/output.file --format sarif -j 1
+
+  # Analysing using semgrep with an input file and additional arguments
+    # If you want to execute scanner with custom arguments,
+    # you could use two dashes (--) to separate additional flags/arguments
+  scanio analyse --scanner semgrep --input-file /Users/root/.scanio/output.file --format sarif -j 1 -- --verbose --severity INFO`
+)
+
 var analyseCmd = &cobra.Command{
-	Use:          "analyse [flags] \n  scanio analyse [flags] [url]",
-	SilenceUsage: true,
-	Short:        "The main function is to present a top-level interface for a specified scanner.",
+	Use:                   "analyse --scanner PLUGIN_NAME [--config /local_path] [--format FILE_FORMAT] [-j THREADS_NUMBER] (--input-file /local_path/repositories.file | /local_path) -- [args...]",
+	SilenceUsage:          true,
+	DisableFlagsInUseLine: true,
+	Example:               execExampleAnalyse,
+	Short:                 "The main function is to present a top-level interface for a specified scanner.",
+	Long: `The main function is to present a top-level interface for a specified scanner.
+
+List of plugins:
+  - semgrep
+  - bandit`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var reposInf []shared.RepositoryParams
@@ -99,6 +122,5 @@ func init() {
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.InputFile, "input-file", "f", "", "a file in scanio format with a list of repositories to analyse. The list command could prepare this file..")
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.Config, "config", "c", "", "a path or type of config for a scanner. The value depends on a particular scanner's used formats.")
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.ReportFormat, "format", "o", "", "a format for a report with results.") //doesn't have default for "Uses ASCII output if no format specified"
-	analyseCmd.Flags().StringSliceVar(&allArgumentsAnalyse.AdditionalArgs, "args", []string{}, "additional commands for semgrep which will be added to a semgrep call. The format in quotes with commas without spaces.")
 	analyseCmd.Flags().IntVarP(&allArgumentsAnalyse.Threads, "threads", "j", 1, "number of concurrent goroutines.")
 }

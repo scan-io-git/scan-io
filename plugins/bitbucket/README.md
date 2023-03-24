@@ -1,6 +1,6 @@
 # Bitbucket plugin
 The plugin implements work with functions ```list``` and ```fetch```:
-* Listing whole repositories in a VCS from the master/main branch.
+* Listing all repositories in a VCS from the master/main branch.
 * Listing repositories by a project in a VCS from the master/main branch.
 * Fetching from an input file using an ssh-key/ssh-agent/HTTP authentification.<br><br>
 
@@ -11,16 +11,44 @@ You may find additional information in our articles:
 - [scanio-fetch](../../docs/scanio-fetch.md).<br><br>
 
 ## Commands
-* Listing whole repositories in a VCS.<br>
+* Listing all repositories in a VCS.<br>
 ```scanio list --vcs bitbucket --vcs-url example.com -f /Users/root/.scanio/output.file```
-* Listing repositories by a project in a VCS.<br>
+* Listing all repositories by a project in a VCS.<br>
 ```scanio list --vcs bitbucket --vcs-url example.com --namespace PROJECT -f /Users/root/.scanio/PROJECT.file```
+* Listing all repositories in a VCS using URL.<br>
+```scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/```
+* Listing all repositories by a project using URL.<br>
+```scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/projects/PROJECT/```
 * Fetching from an input file using an ssh-key authentification.<br>
-```scanio fetch --vcs bitbucket --vcs-url example.com --input-file /Users/root/.scanio/output.file --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1```
+```scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1```
+* Fetching using an ssh-key authentification and URL that points a specific repository.<br>
+```scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 https://example.com/projects/scanio_project/repos/scanio/browse```
 * Fetching from an input file using an ssh-agent authentification.<br>
-```scanio fetch --vcs bitbucket --vcs-url example.com --input-file /Users/root/.scanio/output.file --auth-type ssh-agent -j 1```
+```scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-type ssh-agent -j 1```
 * Fetching from an input file with an HTTP.<br>
-```scanio fetch --vcs bitbucket --vcs-url example.com --input-file /Users/root/.scanio/output.file --auth-typ http -j 1```<br><br>
+```scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-typ http -j 1```<br><br>
+
+### Supported URL formats
+The application supports a few different formats of url:
+* URL points to a VCS using Web UI format - ```https://example.com/```.<br>
+&emsp;You could use the format with *list* command to list all repositories from your VCS.<br>
+&emsp;```scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/```<br>
+* URL points to a specific project using Web UI format - ```https://example.com/projects/<PROJECT_NAME>/```<br>
+&emsp;You could use the format with *list* command to list all repositories from the project.<br>
+&emsp;```scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/projects/PROJECT/```<br>
+* URL points to a specific project and repository using Web UI format. <br>
+```https://example.com/projects/<PROJECT_NAME>/repos/<REPO_NAME>/browse```
+&emsp;You could use the format with *fetch* command to fetch a specific repository.<br>
+&emsp;```scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 https://example.com/projects/scanio_project/repos/scanio/browse```<br>
+* URL points to a specific project and repository using API format and ssh type. <br>
+```ssh://git@gexample.com:7989/<PROJECT_NAME>/<REPO_NAME>.git```
+&emsp;You could use the format with *fetch* command to fetch a specific repository.<br>
+&emsp;You also can change the port using ssh scheme.<br>
+&emsp;```scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 ssh://git@git.acronis.com:7989/scanio_project/scanio.git```<br>
+* URL points to a specific project and repository using API format and http type. <br>
+```https://example.com/scm/<PROJECT_NAME>/<REPO_NAME>.git```
+&emsp;You could use the format with *fetch* command to fetch a specific repository.<br>
+&emsp;```scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 https://git.acronis.com/scm/scanio_project/scanio.git```<br>
 
 ## Results of the command
 ### Output of a "list" command
@@ -47,7 +75,7 @@ As a result, the command prepares a JSON file:
 
 ### Output of a "fetch" command
 The fetching works without an direct output.
-The command saves results into a home directory ```<homedirectory()>/.scanio/projects/+<VCSURL>+<Namespace>+<repo_name>```.<br><br>
+The command saves results into a home directory ```~/.scanio/projects/+<VCSURL>+<Namespace>+<repo_name>```.<br><br>
 
 ## Possible errors
 ### ```ssh: handshake failed: knownhosts: key mismatch```

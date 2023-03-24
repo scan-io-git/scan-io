@@ -14,35 +14,44 @@ The main function is to present a top-level interface for a specified scanner. T
 - "input-file" or "f" is a file in scanio format with a list of repositories to analyse. The list command could prepare this file.
 - "format" or "o" is a format for a report with results. 
 - "config" or "c" is a path or type of config for a scanner. The value depends on a particular scanner's used formats. The default is auto. 
-- "arg" are additional commands for semgrep which will be added to a semgrep call. The format in quotes with commas without spaces, e.g. ```--arg --verbose,--severity,INFO```.
-- "threads" or "j" is a number of concurrent goroutines. The default is 1. 
-<br><br>
+- "threads" or "j" is a number of concurrent goroutines. The default is 1.<br><br>
+
+Instead of using an **input file** flag you could use a specific **path** that points to a folder with your code. Check the [link](#analysing-only-one-repository-manually-by-path). <br><br>
+
+Also you are able to add additional arguments to a command. If you want to execute scanner with custom arguments, you could use two dashes (--) to separate additional flags/arguments:<br>
+```scanio analyse --scanner semgrep --input-file /Users/root/.scanio/output.file --format sarif -j 1 -- --verbose --severity INFO```<br><br>
 
 ## Using scenarios 
 When developing, we aimed at the fact that the program will be used primarily for automation purposes but you still able to use it manually from CLI.<br>
 
-The command is saving results into a home directory ```~/.scanio/results/+<VCSURL>+<Namespace>+<repo_name>/<scanner_name>.<report_format>```.<br><br>
-
 ### Analysing from an input file
-The command uses an output format of a List command for analysing required repositories.<br><br>
+The command uses an output format of a List command for analysing required repositories.<br>
+
+If you use an **input file** argument the command will save results into a home directory: ```~/.scanio/results/+<VCSURL>+<Namespace>+<repo_name>/<scanner_name>.<report_format>```.<br><br>
 
 #### **Semgrep**
-* Analysing from an input file.<br>
-```scanio analyse --scanner semgrep --input-file /Users/root/.scanio/output.file --format sarif```
-* Analysing from an input file with custom rules.<br>
-```scanio analyse --scanner semgrep --config /Users/root/scan-io-semgrep-rules --input-file /Users/root/.scanio/output.file --format sarif```
-* Analysing from an input file with additional agruments.<br>
-```scanio analyse --scanner semgrep --input-file /Users/root/.scanio/output.file --format sarif --args "--verbose,--severity,INFO"```<br><br>
+* Analysing using semgrep with an input file argument.<br>
+```scanio analyse --scanner semgrep --input-file /Users/root/.scanio/output.file --format sarif -j 2```
+* Analysing using semgrep with a specific path .<br>
+```scanio analyse --scanner semgrep --format sarif -j 1 /tmp/my_project```
+* Analysing using semgrep with an input file and custom rules.<br>
+```scanio analyse --scanner semgrep --config /Users/root/scan-io-semgrep-rules --input-file /Users/root/.scanio/output.file --format sarif -j 2```
+* Analysing using semgrep with an input file and additional arguments.<br>
+```scanio analyse --scanner semgrep --input-file /Users/root/.scanio/output.file --format sarif -- --verbose --severity INFO```<br><br>
 
 #### **Bandit**
 * Analysing from an input file.<br>
 ```scanio analyse --scanner bandit --input-file /Users/root/.scanio/output.file```
 
 ### Analysing only one repository manually by path
-The command uses a path that is pointing to a particular repository for analysing.<br><br>
+The command uses a path that is pointing to a particular folder for analysing.<br>
+
+If you use a specific **path** argument the command will save results into the same directory:<br>
+* ```scanio analyse --scanner <scanner_name> --format sarif /tmp/my_project```
+* Result path - ```/tmp/my_project/<scanner_name>.<report_format>```<br><br>
 
 #### **Semgrep**
-TODO<br><br>
+* ```scanio analyse --scanner semgrep --format sarif /tmp/my_project```
 
 #### **Bandit**
 TODO<br><br>

@@ -144,6 +144,7 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 func ExtractRepositoryInfoFromURL(Url string, VCSPlugName string) (string, string, string, string, string, error) {
 	var namespace string
 	var repository string
+	var lastElement string
 	var pathDirs []string
 
 	u, err := url.ParseRequestURI(Url)
@@ -160,7 +161,9 @@ func ExtractRepositoryInfoFromURL(Url string, VCSPlugName string) (string, strin
 			pathDirs = append(pathDirs, dir)
 		}
 	}
-	lastElement := pathDirs[len(pathDirs)-1]
+	if len(pathDirs) > 0 {
+		lastElement = pathDirs[len(pathDirs)-1]
+	}
 	isHTTP := scheme == "http" || scheme == "https"
 
 	switch VCSPlugName {
@@ -170,15 +173,15 @@ func ExtractRepositoryInfoFromURL(Url string, VCSPlugName string) (string, strin
 		// We can move building urls to just calling a list function
 		// But bitbucketV1 library can't resolve a particular repo
 
-		if len(pathDirs) == 0 && isHTTP {
+		if len(pathDirs) == 0 && (isHTTP || scheme == "ssh") {
 			// Case is working with a whole VCS
 			return vcsUrl, namespace, repository, Url, "", nil
-		} else if len(pathDirs) <= 2 && pathDirs[0] == "projects" && isHTTP {
+		} else if len(pathDirs) == 2 && pathDirs[0] == "projects" && isHTTP {
 			// Case is working with a whole project from a Web UI URL format
 			// https://bitbucket.com/projects/<project_name>
 			namespace = pathDirs[1]
 			return vcsUrl, namespace, repository, Url, "", nil
-		} else if len(pathDirs) >= 3 && pathDirs[0] == "projects" && pathDirs[2] == "repos" && isHTTP {
+		} else if len(pathDirs) > 3 && pathDirs[0] == "projects" && pathDirs[2] == "repos" && isHTTP {
 			// Case is working with a certain repo form a Web UI URL format
 			// https://bitbucket.com/projects/<project_name>/repos/<repo_name>/browse
 			namespace = pathDirs[1]
@@ -186,19 +189,21 @@ func ExtractRepositoryInfoFromURL(Url string, VCSPlugName string) (string, strin
 			httpUrl := fmt.Sprintf("https://%s/scm/%s/%s.git", vcsUrl, namespace, repository)
 			sshUrl := fmt.Sprintf("ssh://git@%s:7989/%s/%s.git", vcsUrl, namespace, repository)
 			return vcsUrl, namespace, repository, httpUrl, sshUrl, nil
-		} else if isHTTP && pathDirs[0] == "scm" && strings.Contains(lastElement, ".git") {
+		} else if len(pathDirs) >= 3 && isHTTP && pathDirs[0] == "scm" && strings.Contains(lastElement, ".git") {
 			// https://bitbucket.com/scm/<project_name>/<repo_name>.git
 			namespace = pathDirs[1]
-			repository = strings.TrimSuffix(pathDirs[2], ".git")
+			repository = strings.TrimSuffix(lastElement, ".git")
 			httpUrl := fmt.Sprintf("https://%s/scm/%s/%s.git", vcsUrl, namespace, repository)
 			sshUrl := fmt.Sprintf("ssh://git@%s:7989/%s/%s.git", vcsUrl, namespace, repository)
 			return vcsUrl, namespace, repository, httpUrl, sshUrl, nil
 		} else if scheme == "ssh" && strings.Contains(lastElement, ".git") {
 			// ssh://git@bitbucket.com:7989/<project_name>/<repo_name>.git
+			port := u.Port()
 			namespace = pathDirs[0]
-			repository = strings.TrimSuffix(pathDirs[1], ".git")
-			httpUrl := fmt.Sprintf("https://%s/scm/%s/%s.git", vcsUrl, namespace, repository) //
-			sshUrl := fmt.Sprintf("ssh://git@%s:7989/%s/%s.git", vcsUrl, namespace, repository)
+			repository = strings.TrimSuffix(lastElement, ".git")
+			httpUrl := fmt.Sprintf("https://%s/scm/%s/%s.git", vcsUrl, namespace, repository)
+			// User can override a port if he use an ssh scheme format of URL
+			sshUrl := fmt.Sprintf("ssh://git@%s:%s/%s/%s.git", vcsUrl, port, namespace, repository)
 			return vcsUrl, namespace, repository, httpUrl, sshUrl, nil
 		}
 	case "github":
