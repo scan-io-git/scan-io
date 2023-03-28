@@ -97,7 +97,7 @@ It means that a default branch in a remote repo (master/main) is empty.
 Try to fix the name of the branch or project.<br><br>
 
 ## Environment for a BitBucket v1 API plugin
-* BITBUCKET_SSH_KEY_PASSOWRD - your password for ssh. The default is an empty value!
-* BITBUCKET_USERNAME - your username in BitBucket.
-* BITBUCKET_TOKEN - your Bitbucket token. 
+* SCANIO_BITBUCKET_SSH_KEY_PASSOWRD - your password for ssh. The default is an empty value!
+* SCANIO_BITBUCKET_USERNAME - your username in BitBucket.
+* SCANIO_BITBUCKET_TOKEN - your Bitbucket token. 
   * It may be a plain text password or a personal access token from \<your_bb_domain\>/plugins/servlet/access-tokens/manage. <br><br>

@@ -477,7 +477,7 @@ func getReposToProcess() []string {
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "Test version work with k8s. Deprecated, check run2!",
+	Short: "[DEPRECATED] Test version work with k8s",
 	// 	Long: `A longer description that spans multiple lines and likely contains examples
 	// and usage of using your command. For example:
 

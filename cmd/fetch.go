@@ -39,8 +39,8 @@ var fetchCmd = &cobra.Command{
 	SilenceUsage:          true,
 	DisableFlagsInUseLine: true,
 	Example:               execExampleFetch,
-	Short:                 "The main function is to fetch code of a specified repositories and do consistency support.",
-	Long: `The main function is to fetch code of a specified repositories and do consistency support.
+	Short:                 "The main function is to fetch code of a specified repositories and do consistency support",
+	Long: `The main function is to fetch code of a specified repositories and do consistency support
 
 List of plugins:
   - bitbucket

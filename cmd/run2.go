@@ -209,7 +209,7 @@ func run2WithHelm(repos []shared.RepositoryParams) error {
 
 var run2Cmd = &cobra.Command{
 	Use:   "run2",
-	Short: "Better version of 'run'",
+	Short: "[EXPERIMENTAL] Better version of 'run'",
 	Long: `
 		run2 command is a combination of fetch and analyze commands.
 		Actively used for remote runtime (--runtime helm).

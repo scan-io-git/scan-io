@@ -42,8 +42,8 @@ var analyseCmd = &cobra.Command{
 	SilenceUsage:          true,
 	DisableFlagsInUseLine: true,
 	Example:               execExampleAnalyse,
-	Short:                 "The main function is to present a top-level interface for a specified scanner.",
-	Long: `The main function is to present a top-level interface for a specified scanner.
+	Short:                 "The main function is to present a top-level interface for a specified scanner",
+	Long: `The main function is to present a top-level interface for a specified scanner
 
 List of plugins:
   - semgrep

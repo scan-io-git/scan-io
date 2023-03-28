@@ -110,7 +110,7 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 		return err
 	}
 
-	logger.Info("Fetching repo", "repo", info.Name, "branch", args.Branch)
+	logger.Info("Fetching repo", "repo", info.Name, "branch", args.Branch, "targetFolder", args.TargetFolder)
 	_, err = git.PlainClone(args.TargetFolder, false, gitCloneOptions)
 	if err != nil && err == git.ErrRepositoryAlreadyExists {
 		//git checkout - check deleted files
@@ -144,7 +144,7 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 		return err
 	}
 
-	logger.Info("Fetch's ended", "repo", info.Name)
+	logger.Info("Fetch's ended", "repo", info.Name, "branch", args.Branch, "targetFolder", args.TargetFolder)
 	return nil
 }
 

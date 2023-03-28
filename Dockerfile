@@ -26,6 +26,13 @@ RUN go build -o /usr/bin/bandit ./plugins/bandit
 FROM python:alpine3.17
 # Here we are preparing a container with all 3rd party dependencies for Scanio 
 
+# RUN addgroup -g 101 scanio && \
+#     adduser -h /home/scanio -s /bin/bash --uid 1001 -G scanio -D scanio && \
+#     chown -R scanio:scanio $SCANIO_PLUGINS_FOLDER && \
+#     chown -R scanio:scanio $SCANIO_HOME
+
+# USER scanio:scanio
+
 RUN apk update &&\
     apk upgrade
 
@@ -35,6 +42,7 @@ RUN apk add --no-cache \
                 libc6-compat
 
 RUN apk add --no-cache --virtual .build-deps \
+                openssh \
                 gcc \
                 make \ 
                 openssl \
@@ -71,14 +79,5 @@ COPY --from=build-scanio-plugins /usr/bin/bandit $SCANIO_PLUGINS_FOLDER/bandit
 COPY helm /scanio-helm
 COPY Dockerfile /Dockerfile
 
-# RUN addgroup -g 101 scanio && \
-#     adduser -h /home/scanio -s /bin/bash --uid 1001 -G scanio -D scanio && \
-#     chown -R scanio:scanio $SCANIO_PLUGINS_FOLDER && \
-#     chown -R scanio:scanio $SCANIO_HOME
-
-# USER scanio:scanio
-
-# ENTRYPOINT ["/bin/scanio"]
-# CMD ["--help"]
-
-CMD ["/bin/bash"]
+ENTRYPOINT ["/bin/scanio"]
+CMD ["--help"]

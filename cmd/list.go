@@ -42,7 +42,6 @@ func do() {
 			Language:  allArgumentsList.Language,
 		}
 		projects, err := vcsName.ListRepos(args)
-		logger.Info(args.Language)
 
 		if err != nil {
 			resultVCS = shared.ListFuncResult{Args: args, Result: projects, Status: "FAILED", Message: err.Error()}
@@ -62,8 +61,8 @@ var listCmd = &cobra.Command{
 	SilenceUsage:          true,
 	DisableFlagsInUseLine: true,
 	Example:               execExampleList,
-	Short:                 "The command's function is to list repositories from a version control system.",
-	Long: `The command's function is to list repositories from a version control system.
+	Short:                 "The command's function is to list repositories from a version control system",
+	Long: `The command's function is to list repositories from a version control system
 
 List of plugins:
   - bitbucket

@@ -127,8 +127,8 @@ If your VCS requires an authentification or your ```project/namespace/repository
 
 ### Bitbucket
 For Bitbucket API v1 you need to use a few environment variables:
-* BITBUCKET_USERNAME - your username in a VCS.
-* BITBUCKET_TOKEN - token for authentification.
+* SCANIO_BITBUCKET_USERNAME - your username in a VCS.
+* SCANIO_BITBUCKET_TOKEN - token for authentification.
    * It may be a plain text password or a personal access token from ```<your_bb_domain>/plugins/servlet/access-tokens/manage```.
 
 ### Github

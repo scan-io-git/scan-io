@@ -32,7 +32,7 @@ This method is using an SSH key from a disk. <br><br>
 
 #### **Bitbucket** 
 For Bitbucket API v1 you need to use a few environment variables:
-* BITBUCKET_SSH_KEY_PASSOWRD - your password for ssh. The default is an empty value!<br><br>
+* SCANIO_BITBUCKET_SSH_KEY_PASSOWRD - your password for ssh. The default is an empty value!<br><br>
 
 #### **Github**
 At the moment the plugin is working without any variables from an environment.<br><br>
@@ -60,8 +60,8 @@ This method is using the same token as for a list command and your username.
 
 #### **Bitbucket**
 For Bitbucket API v1 you need to use a few environment variables:
-* BITBUCKET_USERNAME - your username in BitBucket. **Mandatory**!
-* BITBUCKET_TOKEN - your Bitbucket token. **Mandatory**!
+* SCANIO_BITBUCKET_USERNAME - your username in BitBucket. **Mandatory**!
+* SCANIO_BITBUCKET_TOKEN - your Bitbucket token. **Mandatory**!
   * It may be a plain text password or a personal access token from \<your_bb_domain\>/plugins/servlet/access-tokens/manage. <br><br>
 
 #### **Github**
