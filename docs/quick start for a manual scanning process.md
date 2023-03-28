@@ -15,8 +15,6 @@ By using this approach, AppSec teams and developers can easily perform manual sc
 You can use Docker with the application or CLI as is. Here are the commands for both methods.
 > We're using Bitbucket and Semgrep as examples, but you can easily change the VCS and scanner flags to suit your needs. To see a list of supported plugins for your command, check out the [README](../README.md#articles-for-read).
 
-<br>
-
 ### Prerequisites
 The first step is to build/pull/install the container/CLI. Check the [installation guide](../README.md#installation).<br>
 
@@ -75,8 +73,6 @@ ssh-add private.key
 ```
 [MacIssue](https://github.com/docker/for-mac/issues/410#issuecomment-577064671) with mouting an SSH socket.
 
-<br>
-
 ### Fetching a particular repository
 To fetch a particular repository for scanning, you can use the following commands:<br><br>
 
@@ -97,8 +93,6 @@ scanio fetch --vcs bitbucket --auth-type ssh-agent -j 1 https://example.com/proj
 ```
 
 > Replace ```john.doe``` with your Bitbucket username, ```https://example.com/projects/SCANIO/repos/scanio/browse``` with the URL of the repository you want to fetch and `/~/development/:/data` with path of the repository to scan. If you use SSH key authentication, make sure to copy your private key to the container or use an SSH agent authentification.
-
-<br>
 
 ### Analyzing a particular repository
 To analyze a particular repository, use the following commands:<br><br>

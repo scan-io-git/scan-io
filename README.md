@@ -5,14 +5,10 @@ The core handles the plugins and controls the entire life cycle of the plugins, 
 ## Scenarios for Using Scanio
 There are several different scenarios in which you might use Scanio, which are sorted by the environment in which they're used.
 
-<br>
-
 ### Manual Scanning Process for AppSec Teams and Developers
 This scenario involves performing on-demand scanning, which is a common use case for the application. It allows you to manually control any arguments for the scanner that you need, including implementation review scanning, developing custom rules and scanning, scans initiated by developers to self-check, and more.<br><br>
 
-If you're interested in using Scanio for manual scanning, check out the "[Quick Start for a Manual Scanning Process](docs/qucik%20start%20-%20a%20manual%20scan%20process.md)" page!
-
-<br>
+If you're interested in using Scanio for manual scanning, check out the "[Quick Start for a Manual Scanning Process](docs/quick%20start%20for%20a%20manual%20scanning%20process.md)" page!
 
 ### Iterative Scanning Process
 The main idea behind this approach is to enable constant scanning of a project. This could include regular, iterative scans, or scans with specific rules (such as PCI-DSS code) depending on your requirements.<br><br>
@@ -25,8 +21,6 @@ Some of the environments used for this approach include:
 
 *Quick Start Guid is in progress...*
 
-<br>
-
 ### Merge Request Scanning Process
 The primary objective of this approach is to integrate the orchestrator with CI/CD pipelines and trigger scans automatically after certain actions in your Version Control System (VCS).<br><br>
 
@@ -37,8 +31,6 @@ Some of the environments used for this approach include:
 <br>
 
 *Quick Start Guid is in progress...*
-
-<br>
 
 ## Installation
 ### Docker Building from Source Code
@@ -63,15 +55,11 @@ make build
 ## Articles to Read
 Here are some articles that provide more information about using the Scanio application.
 
-<br>
-
 ### Commands 
 These articles cover the different commands available in the application:
 * [List](docs/scanio-list.md).
 * [Fetch](docs/scanio-fetch.md).
 * [Analyse](docs/scanio-analyse.md).
-
-<br>
 
 ### Plugins
 These articles cover the different plugins supported by the application:
