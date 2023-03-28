@@ -2,7 +2,7 @@
 The main function of the plugin is to present a top-level interface for a semgrep scanner. 
 
 This page is a short plugin description.<br>
-You may find additional information in a [scanio-analyse](../../docs/scanio-analyse.md) articles.<br><br>
+You may find additional information in a [scanio-analyse](../../docs/scanio-analyse.md) articles.
 
 ## Commands
 * Analysing using semgrep with an input file argument.<br>
@@ -12,11 +12,11 @@ You may find additional information in a [scanio-analyse](../../docs/scanio-anal
 * Analysing using semgrep with an input file and custom rules.<br>
 ```scanio analyse --scanner semgrep --config /Users/root/scan-io-semgrep-rules --input-file /Users/root/.scanio/output.file --format sarif -j 2```
 * Analysing using semgrep with an input file and additional arguments.<br>
-```scanio analyse --scanner semgrep --input-file /Users/root/.scanio/output.file --format sarif -- --verbose --severity INFO```<br><br>
+```scanio analyse --scanner semgrep --input-file /Users/root/.scanio/output.file --format sarif -- --verbose --severity INFO```
 
 ## Results of the command
 If you use an **input file** argument the command will save results into a home directory: ```~/.scanio/results/+<VCSURL>+<Namespace>+<repo_name>/<scanner_name>.<report_format>```.<br><br>
 
 If you use a specific **path** argument the command will save results into the same directory:<br>
 * ```scanio analyse --scanner <scanner_name> --format sarif /tmp/my_project```
-* Result path - ```/tmp/my_project/<scanner_name>.<report_format>```<br><br>
+* Result path - ```/tmp/my_project/<scanner_name>.<report_format>```r>

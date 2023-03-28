@@ -13,12 +13,12 @@ By using this approach, AppSec teams and developers can easily perform manual sc
 
 ## Working on a Personal Device
 You can use Docker with the application or CLI as is. Here are the commands for both methods.
-> We're using Bitbucket and Semgrep as examples, but you can easily change the VCS and scanner flags to suit your needs. To see a list of supported plugins for your command, check out the [README](../README.md#articles-for-read).
+> We're using Bitbucket and Semgrep as examples, but you can easily change the VCS and scanner flags to suit your needs. To see a list of supported plugins for your command, check out the [README](../README.md#articles-to-read).
 
 ### Prerequisites
 The first step is to build/pull/install the container/CLI. Check the [installation guide](../README.md#installation).<br>
 
-Depending on your VCS and scanner, you may need different prerequisites. Check out the requirements for your plugin [here](../README.md#articles-for-read).<br><br>
+Depending on your VCS and scanner, you may need different prerequisites. Check out the requirements for your plugin [here](../README.md#plugins).<br><br>
 
 In the case of Bitbucket, you will need to add a few environment variables
 ```
@@ -73,7 +73,7 @@ ssh-add private.key
 ```
 [MacIssue](https://github.com/docker/for-mac/issues/410#issuecomment-577064671) with mouting an SSH socket.
 
-### Fetching a particular repository
+### Fetching a Particular Repository
 To fetch a particular repository for scanning, you can use the following commands:<br><br>
 
 Command for CLI.
@@ -84,7 +84,8 @@ scanio fetch --vcs bitbucket --auth-type ssh-agent -j 1 https://git.acronis.com/
 
 For Docker.
 ```
-docker run --rm -e SCANIO_BITBUCKET_USERNAME='john.doe' \
+docker run --rm \
+-e SCANIO_BITBUCKET_USERNAME='john.doe' \
 -e SCANIO_BITBUCKET_TOKEN \
 -e SCANIO_BITBUCKET_SSH_KEY_PASSWORD \
 -v "/~/development/:/data" \
@@ -94,7 +95,7 @@ scanio fetch --vcs bitbucket --auth-type ssh-agent -j 1 https://example.com/proj
 
 > Replace ```john.doe``` with your Bitbucket username, ```https://example.com/projects/SCANIO/repos/scanio/browse``` with the URL of the repository you want to fetch and `/~/development/:/data` with path of the repository to scan. If you use SSH key authentication, make sure to copy your private key to the container or use an SSH agent authentification.
 
-### Analyzing a particular repository
+### Analyzing a Particular Repository
 To analyze a particular repository, use the following commands:<br><br>
 
 Command for CLI.
@@ -114,7 +115,7 @@ The analysis result can be found in the same folder on your host file system: ``
 
 > Replace ```/data/projects/example.com/scanio/scanio``` with the path of the repository you want to scan.
 
-### Interactive mode with bash for Docker
+### Interactive Mode with Bash for Docker
 To work with the Scanio container in interactive mode, you can use the following command:
 ```
 docker run --rm \

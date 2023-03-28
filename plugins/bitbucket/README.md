@@ -8,7 +8,7 @@ This page is a short plugin description.<br>
 
 You may find additional information in our articles:
 - [scanio-list](../../docs/scanio-list.md).
-- [scanio-fetch](../../docs/scanio-fetch.md).<br><br>
+- [scanio-fetch](../../docs/scanio-fetch.md).
 
 ## Commands
 * Listing all repositories in a VCS.<br>
@@ -26,7 +26,7 @@ You may find additional information in our articles:
 * Fetching from an input file using an ssh-agent authentification.<br>
 ```scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-type ssh-agent -j 1```
 * Fetching from an input file with an HTTP.<br>
-```scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-typ http -j 1```<br><br>
+```scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-typ http -j 1```
 
 ### Supported URL formats
 The application supports a few different formats of url:
@@ -49,7 +49,6 @@ The application supports a few different formats of url:
 
 ## Results of the command
 ### Output of a "list" command
-
 As a result, the command prepares a JSON file:
 ```
 {
@@ -72,7 +71,7 @@ As a result, the command prepares a JSON file:
 
 ### Output of a "fetch" command
 The fetching works without an direct output.
-The command saves results into a home directory ```~/.scanio/projects/+<VCSURL>+<Namespace>+<repo_name>```.<br><br>
+The command saves results into a home directory ```~/.scanio/projects/+<VCSURL>+<Namespace>+<repo_name>```.
 
 ## Possible errors
 ### ```ssh: handshake failed: knownhosts: key mismatch```
@@ -83,21 +82,21 @@ Host git.example.com
    Port 7989 
    IdentityFile ~/.ssh/id_ed25519
 ``` 
-Or just not use .ssh/config and the port will be identified automatically. <br><br>
+Or just not use .ssh/config and the port will be identified automatically.
 
 ### ```ssh: handshake failed: ssh: unable to authenticate, attempted methods [none publickey], no supported methods remain```
-The algorithm is the same - determine a port in .ssh/config for your host or don't use .ssh/config rules.<br><br>
+The algorithm is the same - determine a port in .ssh/config for your host or don't use .ssh/config rules.
 
 ### ```Error on Clone occurred: err="reference not found"``` 
 It means that a branch in a remote repo doesn't exits. 
-Try to fix the name of the branch or project.<br><br>
+Try to fix the name of the branch or project.
 
 ### ```Error on Clone occurred: err="remote repository is empty"``` 
 It means that a default branch in a remote repo (master/main) is empty.
-Try to fix the name of the branch or project.<br><br>
+Try to fix the name of the branch or project.
 
 ## Environment for a BitBucket v1 API plugin
 * SCANIO_BITBUCKET_SSH_KEY_PASSOWRD - your password for ssh. The default is an empty value!
 * SCANIO_BITBUCKET_USERNAME - your username in BitBucket.
 * SCANIO_BITBUCKET_TOKEN - your Bitbucket token. 
-  * It may be a plain text password or a personal access token from \<your_bb_domain\>/plugins/servlet/access-tokens/manage. <br><br>
+  * It may be a plain text password or a personal access token from \<your_bb_domain\>/plugins/servlet/access-tokens/manage. 
