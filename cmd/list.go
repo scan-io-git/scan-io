@@ -94,9 +94,6 @@ List of plugins:
 				if len(allArgumentsList.VCSURL) == 0 {
 					return fmt.Errorf(("'vcs-url' flag must be specified!"))
 				}
-				if len(allArgumentsList.Namespace) == 0 {
-					return fmt.Errorf(("'namespace' flag must be specified!"))
-				}
 			}
 
 			if len(allArgumentsList.Language) != 0 && allArgumentsList.VCSPlugName != "gitlab" {
@@ -113,6 +110,7 @@ List of plugins:
 		if err := checkArgs(); err != nil {
 			return err
 		}
+
 		do()
 		return nil
 	},

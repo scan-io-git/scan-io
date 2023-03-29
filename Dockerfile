@@ -39,10 +39,10 @@ RUN apk update &&\
 RUN apk add --no-cache \
                 bash \
                 jq \
+                openssh \
                 libc6-compat
 
 RUN apk add --no-cache --virtual .build-deps \
-                openssh \
                 gcc \
                 make \ 
                 openssl \

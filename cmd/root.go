@@ -1,6 +1,3 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -10,15 +7,17 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:          "scanio",
-	SilenceUsage: true,
-	Short:        "Scanio is an orchestrator for a variety of tools.",
+	Use:                   "scanio [command]",
+	SilenceUsage:          true,
+	DisableFlagsInUseLine: true,
+	Short:                 "Scanio is an orchestrator for a variety of tools.",
 	Long: `Scanio is an orchestrator that consolidates various security scanning capabilities, 
 including SAST, dynamic application security testing DAST, secret search, and dependency analysis.
 `,
 }
 
 func Execute() {
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
