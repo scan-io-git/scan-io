@@ -20,3 +20,17 @@ If you use an **input file** argument the command will save results into a home 
 If you use a specific **path** argument the command will save results into the same directory:<br>
 * ```scanio analyse --scanner <scanner_name> --format sarif /tmp/my_project```
 * Result path - ```/tmp/my_project/<scanner_name>.<report_format>```r>
+
+## Possible errors
+### ```Semgrep does not support Linux ARM64```
+You may face with this error if you are using Mac with an M chip. 
+
+You juset need to build a docker container with a platform flag. 
+```docker build --platform linux/amd64 -t scanio .```
+And use a docker command with the same flas:
+```
+docker run --rm \                              
+            -v "/~/develop/:/data" \
+            --platform linux/amd64 \
+            scanio analyse --scanner semgrep --input-file /data/testSEC.file --format sarif -j 1
+```

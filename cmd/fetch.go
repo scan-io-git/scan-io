@@ -31,8 +31,8 @@ var execExampleFetch = `  # Fetching from an input file using an ssh-key authent
   # Fetching from an input file using an ssh-agent authentification
   scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-type ssh-agent -j 1
 
-  # Fetching from an input file with an HTTP.<br>
-  scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-typ http -j 1`
+  # Fetching from an input file with an HTTP.
+  scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-type http -j 1`
 
 var fetchCmd = &cobra.Command{
 	Use:                   "fetch --vcs PLUGIN_NAME --output /local_path/output.file --auth-type AUTH_TYPE [--ssh-key /local_path/.ssh/id_ed25519] [--rm-ext LIST_OF_EXTENTIONS] [-j THREADS_NUMBER] (--input-file /local_path/repositories.file | [-b BRANCH] <url>)",

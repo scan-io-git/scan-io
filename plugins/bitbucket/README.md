@@ -95,6 +95,13 @@ Try to fix the name of the branch or project.
 It means that a default branch in a remote repo (master/main) is empty.
 Try to fix the name of the branch or project.
 
+### ```error creating SSH agent: "SSH agent requested but SSH_AUTH_SOCK not-specified"```
+You might face this error if your repository was fetched by ssh and you are trying to fetch a repo with HTTP authentification.
+It means that ```git pull``` is trying to pull code with HTTP authentification but the origin of the repo is "ssh://....".
+
+To fix this issue just change the authentification type to ssh-key or ssh-agent.
+We recommend not mixing approaches for a fetch command. 
+
 ## Environment for a BitBucket v1 API plugin
 * SCANIO_BITBUCKET_SSH_KEY_PASSOWRD - your password for ssh. The default is an empty value!
 * SCANIO_BITBUCKET_USERNAME - your username in BitBucket.

@@ -11,6 +11,7 @@ type RunOptionsList struct {
 	VCSURL      string
 	OutputFile  string
 	Namespace   string
+	Repository  string
 	Language    string
 }
 
@@ -39,8 +40,13 @@ func do() {
 		args := shared.VCSListReposRequest{
 			VCSURL:    allArgumentsList.VCSURL,
 			Namespace: allArgumentsList.Namespace,
-			Language:  allArgumentsList.Language,
+			// Repository: allArgumentsList.Repository,
+			Language: allArgumentsList.Language,
 		}
+		if len(allArgumentsList.Repository) != 0 {
+			logger.Warn("Listing a particular repository is not supported. The namespace will be listed instead", "namespace", args.Namespace)
+		}
+
 		projects, err := vcsName.ListRepos(args)
 
 		if err != nil {
@@ -84,12 +90,13 @@ List of plugins:
 				}
 
 				URL := args[0]
-				hostname, namespace, _, _, _, err := shared.ExtractRepositoryInfoFromURL(URL, allArgumentsList.VCSPlugName)
+				hostname, namespace, repository, _, _, err := shared.ExtractRepositoryInfoFromURL(URL, allArgumentsList.VCSPlugName)
 				if err != nil {
 					return err
 				}
 				allArgumentsList.VCSURL = hostname
 				allArgumentsList.Namespace = namespace
+				allArgumentsList.Repository = repository
 			} else {
 				if len(allArgumentsList.VCSURL) == 0 {
 					return fmt.Errorf(("'vcs-url' flag must be specified!"))

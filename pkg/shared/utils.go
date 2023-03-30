@@ -153,6 +153,8 @@ func ExtractRepositoryInfoFromURL(Url string, VCSPlugName string) (string, strin
 	var repository string
 	var lastElement string
 	var pathDirs []string
+	var httpUrl string
+	var sshUrl string
 
 	u, err := url.ParseRequestURI(Url)
 	if err != nil {
@@ -196,21 +198,26 @@ func ExtractRepositoryInfoFromURL(Url string, VCSPlugName string) (string, strin
 			httpUrl := fmt.Sprintf("https://%s/scm/%s/%s.git", vcsUrl, namespace, repository)
 			sshUrl := fmt.Sprintf("ssh://git@%s:7989/%s/%s.git", vcsUrl, namespace, repository)
 			return vcsUrl, namespace, repository, httpUrl, sshUrl, nil
-		} else if len(pathDirs) >= 3 && isHTTP && pathDirs[0] == "scm" && strings.Contains(lastElement, ".git") {
-			// https://bitbucket.com/scm/<project_name>/<repo_name>.git
+		} else if len(pathDirs) >= 2 && isHTTP && pathDirs[0] == "scm" {
+			// https://bitbucket.com/scm/<project_name>/
 			namespace = pathDirs[1]
-			repository = strings.TrimSuffix(lastElement, ".git")
-			httpUrl := fmt.Sprintf("https://%s/scm/%s/%s.git", vcsUrl, namespace, repository)
-			sshUrl := fmt.Sprintf("ssh://git@%s:7989/%s/%s.git", vcsUrl, namespace, repository)
+			if strings.Contains(lastElement, ".git") {
+				// https://bitbucket.com/scm/<project_name>/<repo_name>.git
+				repository = strings.TrimSuffix(lastElement, ".git")
+				httpUrl = fmt.Sprintf("https://%s/scm/%s/%s.git", vcsUrl, namespace, repository)
+				sshUrl = fmt.Sprintf("ssh://git@%s:7989/%s/%s.git", vcsUrl, namespace, repository)
+			}
 			return vcsUrl, namespace, repository, httpUrl, sshUrl, nil
-		} else if scheme == "ssh" && strings.Contains(lastElement, ".git") {
-			// ssh://git@bitbucket.com:7989/<project_name>/<repo_name>.git
-			port := u.Port()
+		} else if scheme == "ssh" {
 			namespace = pathDirs[0]
-			repository = strings.TrimSuffix(lastElement, ".git")
-			httpUrl := fmt.Sprintf("https://%s/scm/%s/%s.git", vcsUrl, namespace, repository)
-			// User can override a port if he use an ssh scheme format of URL
-			sshUrl := fmt.Sprintf("ssh://git@%s:%s/%s/%s.git", vcsUrl, port, namespace, repository)
+			if strings.Contains(lastElement, ".git") {
+				// ssh://git@bitbucket.com:7989/<project_name>/<repo_name>.git
+				port := u.Port()
+				repository = strings.TrimSuffix(lastElement, ".git")
+				httpUrl = fmt.Sprintf("https://%s/scm/%s/%s.git", vcsUrl, namespace, repository)
+				// User can override a port if he use an ssh scheme format of URL
+				sshUrl = fmt.Sprintf("ssh://git@%s:%s/%s/%s.git", vcsUrl, port, namespace, repository)
+			}
 			return vcsUrl, namespace, repository, httpUrl, sshUrl, nil
 		}
 	case "github":
