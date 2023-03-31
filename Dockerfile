@@ -1,4 +1,8 @@
-FROM golang:1.19-buster AS build
+# To decrease the size of the image you could choose only mandatory plugins and scanners for your processes.
+# For example, Semgrep is a really huge 3rd party dependency ~400MB. 
+
+# Here we are building a main binary file and plugins from Golang code
+FROM golang:1.19-buster AS build-scanio-plugins
 
 WORKDIR /usr/src/scanio
 
@@ -19,44 +23,61 @@ RUN go build -o /usr/bin/bitbucket ./plugins/bitbucket
 RUN go build -o /usr/bin/semgrep ./plugins/semgrep 
 RUN go build -o /usr/bin/bandit ./plugins/bandit 
 
-# FROM debian:buster
-FROM ubuntu:20.04
+FROM python:alpine3.17
+# Here we are preparing a container with all 3rd party dependencies for Scanio 
 
-RUN apt-get update && \
-    apt-get install -y ca-certificates curl && \
-    apt-get install -y python3 python3-pip && \
-    apt-get install -y jq && \
-    python3 -m pip install semgrep bandit
+# RUN addgroup -g 101 scanio && \
+#     adduser -h /home/scanio -s /bin/bash --uid 1001 -G scanio -D scanio && \
+#     chown -R scanio:scanio $SCANIO_PLUGINS_FOLDER && \
+#     chown -R scanio:scanio $SCANIO_HOME
 
-RUN curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg && \
-    echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | tee /etc/apt/sources.list.d/kubernetes.list && \
-    apt-get update && \
-    apt-get install -y kubectl
+# USER scanio:scanio
 
-RUN curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | tee /usr/share/keyrings/helm.gpg > /dev/null && \
-    apt-get install apt-transport-https --yes && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | tee /etc/apt/sources.list.d/helm-stable-debian.list && \
-    apt-get update && \
-    apt-get install helm
+RUN apk update &&\
+    apk upgrade
 
-# RUN adduser --home /home/scanio --shell /bin/bash --uid 1001 --disabled-password scanio
-# USER scanio
+RUN apk add --no-cache \
+                bash \
+                jq \
+                openssh \
+                libc6-compat
 
-ENV SCANIO_PLUGINS_FOLDER=/scanio-plugins
+RUN apk add --no-cache --virtual .build-deps \
+                gcc \
+                make \ 
+                openssl \
+                git \
+                ca-certificates \
+                curl \
+                musl-dev && python3 -m pip install semgrep
+
+RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
+    curl -LO "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256" && \
+    (echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c ) && \
+    chmod +x ./kubectl && \
+    mv kubectl /usr/local/bin
+
+RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
+        chmod 700 get_helm.sh && \
+        ./get_helm.sh
+
 ENV SCANIO_HOME=/data
-
-RUN mkdir -p $SCANIO_PLUGINS_FOLDER
-COPY --from=build /usr/bin/scanio /bin/scanio
-COPY --from=build /usr/bin/github $SCANIO_PLUGINS_FOLDER/github
-COPY --from=build /usr/bin/gitlab $SCANIO_PLUGINS_FOLDER/gitlab
-COPY --from=build /usr/bin/bitbucket $SCANIO_PLUGINS_FOLDER/bitbucket
-COPY --from=build /usr/bin/semgrep $SCANIO_PLUGINS_FOLDER/semgrep
-COPY --from=build /usr/bin/bandit $SCANIO_PLUGINS_FOLDER/bandit
-
-COPY helm /scanio-helm
+ENV SCANIO_PLUGINS_FOLDER=/scanio-plugins
 ENV JOB_HELM_CHART_PATH=/scanio-helm/scanio-job
 
-# ENTRYPOINT ["/bin/scanio"]
-# CMD ["--help"]
+RUN mkdir -p $SCANIO_HOME
+RUN mkdir -p $SCANIO_PLUGINS_FOLDER
 
-CMD ["/bin/bash"]
+# Copying built binaries
+COPY --from=build-scanio-plugins /usr/bin/scanio /bin/scanio
+COPY --from=build-scanio-plugins /usr/bin/github $SCANIO_PLUGINS_FOLDER/github
+COPY --from=build-scanio-plugins /usr/bin/gitlab $SCANIO_PLUGINS_FOLDER/gitlab
+COPY --from=build-scanio-plugins /usr/bin/bitbucket $SCANIO_PLUGINS_FOLDER/bitbucket
+COPY --from=build-scanio-plugins /usr/bin/semgrep $SCANIO_PLUGINS_FOLDER/semgrep
+COPY --from=build-scanio-plugins /usr/bin/bandit $SCANIO_PLUGINS_FOLDER/bandit
+
+COPY helm /scanio-helm
+COPY Dockerfile /Dockerfile
+
+ENTRYPOINT ["/bin/scanio"]
+CMD ["--help"]

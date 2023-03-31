@@ -36,25 +36,25 @@ func getProjectsResponse(r *bitbucketv1.APIResponse) ([]bitbucketv1.Project, err
 // Init function for checking an environment
 func (g *VCSBitbucket) init(command string) (shared.EvnVariables, error) {
 	var variables shared.EvnVariables
-	variables.Username = os.Getenv("BITBUCKET_USERNAME")
-	variables.Token = os.Getenv("BITBUCKET_TOKEN")
+	variables.Username = os.Getenv("SCANIO_BITBUCKET_USERNAME")
+	variables.Token = os.Getenv("SCANIO_BITBUCKET_TOKEN")
 
 	if (len(variables.Username) == 0) || (len(variables.Token) == 0) {
-		err := fmt.Errorf("BITBUCKET_USERNAME or BITBUCKET_TOKEN is not provided in an environment.")
+		err := fmt.Errorf("SCANIO_BITBUCKET_USERNAME or SCANIO_BITBUCKET_TOKEN is not provided in an environment.")
 		g.logger.Debug("Env problems", "error", err)
 		return variables, err
 	}
 
 	if command == "fetch" {
-		variables.VcsPort = os.Getenv("BITBUCKET_SSH_PORT")
-		variables.SshKeyPassword = os.Getenv("BITBUCKET_SSH_KEY_PASSWORD")
+		// variables.VcsPort = os.Getenv("BITBUCKET_SSH_PORT")
+		variables.SshKeyPassword = os.Getenv("SCANIO_BITBUCKET_SSH_KEY_PASSWORD")
 
-		if len(variables.VcsPort) == 0 {
-			g.logger.Warn("BITBUCKET_SSH_PORT is not provided in an environment. Using default 7989 ssh port")
-			variables.VcsPort = "7989"
-		}
+		// if len(variables.VcsPort) == 0 {
+		// 	g.logger.Warn("BITBUCKET_SSH_PORT is not provided in an environment. Using default 7989 ssh port")
+		// 	variables.VcsPort = "7989"
+		// }
 		if len(variables.SshKeyPassword) == 0 {
-			g.logger.Warn("BITBUCKET_SSH_KEY_PASSOWRD is empty or not provided.")
+			g.logger.Warn("SCANIO_BITBUCKET_SSH_KEY_PASSOWRD is empty or not provided.")
 		}
 	}
 	return variables, nil
@@ -110,7 +110,6 @@ func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project 
 		var sshLink string
 
 		for _, clone_links := range repo.Links.Clone {
-
 			if clone_links.Name == "http" {
 				httpLink = clone_links.Href
 			} else if clone_links.Name == "ssh" {

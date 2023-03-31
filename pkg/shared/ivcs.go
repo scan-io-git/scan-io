@@ -20,13 +20,15 @@ type ProjectParams struct {
 }
 
 type VCSListReposRequest struct {
-	Namespace string
-	VCSURL    string
-	Language  string
+	Namespace  string
+	VCSURL     string
+	Repository string
+	Language   string
 }
 
 type VCSFetchRequest struct {
 	CloneURL     string
+	Branch       string
 	AuthType     string
 	SSHKey       string
 	TargetFolder string

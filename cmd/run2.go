@@ -27,6 +27,7 @@ type Run2Options struct {
 	Runtime           string
 	ScannerPluginName string
 	SSHKey            string
+	Branch            string
 	VCSPlugName       string
 	ReportFormat      string
 	Config            string
@@ -43,7 +44,7 @@ func run2analyzeRepos(repos []shared.RepositoryParams) error {
 	logger := shared.NewLogger("core-run2-scanner")
 	s := scanner.New(allRun2Options.ScannerPluginName, allRun2Options.Jobs, allRun2Options.Config, allRun2Options.ReportFormat, allRun2Options.AdditionalArgs, logger)
 
-	scanArgs, err := s.PrepScanArgs(repos)
+	scanArgs, err := s.PrepScanArgs(repos, "")
 	if err != nil {
 		return err
 	}
@@ -60,7 +61,7 @@ func run2analyzeRepos(repos []shared.RepositoryParams) error {
 func run2fetchRepos(repos []shared.RepositoryParams) error {
 
 	logger := shared.NewLogger("core-run2-fetcher")
-	f := fetcher.New(allRun2Options.AuthType, allRun2Options.SSHKey, allRun2Options.Jobs, allRun2Options.VCSPlugName, strings.Split(allRun2Options.RmExts, ","), logger)
+	f := fetcher.New(allRun2Options.AuthType, allRun2Options.SSHKey, allRun2Options.Jobs, allRun2Options.Branch, allRun2Options.VCSPlugName, strings.Split(allRun2Options.RmExts, ","), logger)
 
 	fetchArgs, err := f.PrepFetchArgs(repos)
 	if err != nil {
@@ -208,7 +209,7 @@ func run2WithHelm(repos []shared.RepositoryParams) error {
 
 var run2Cmd = &cobra.Command{
 	Use:   "run2",
-	Short: "Better version of 'run'",
+	Short: "[EXPERIMENTAL] Better version of 'run'",
 	Long: `
 		run2 command is a combination of fetch and analyze commands.
 		Actively used for remote runtime (--runtime helm).

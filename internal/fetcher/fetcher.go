@@ -2,6 +2,7 @@ package fetcher
 
 import (
 	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/go-hclog"
 
@@ -13,16 +14,18 @@ type Fetcher struct {
 	authType      string
 	sshKey        string
 	jobs          int
+	branch        string
 	vcsPluginName string
 	rmExts        []string
 	logger        hclog.Logger
 }
 
-func New(authType string, sshKey string, jobs int, vcsPluginName string, rmExts []string, logger hclog.Logger) Fetcher {
+func New(authType string, sshKey string, jobs int, branch string, vcsPluginName string, rmExts []string, logger hclog.Logger) Fetcher {
 	return Fetcher{
 		authType:      authType,
 		sshKey:        sshKey,
 		jobs:          jobs,
+		branch:        branch,
 		vcsPluginName: vcsPluginName,
 		rmExts:        rmExts,
 		logger:        logger,
@@ -44,10 +47,11 @@ func (f Fetcher) PrepFetchArgs(repos []shared.RepositoryParams) ([]shared.VCSFet
 			return nil, err
 		}
 
-		targetFolder := shared.GetRepoPath(domain, filepath.Join(repo.Namespace, repo.RepoName))
+		targetFolder := shared.GetRepoPath(strings.ToLower(domain), filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
 
 		fetchArgs = append(fetchArgs, shared.VCSFetchRequest{
 			CloneURL:     cloneURL,
+			Branch:       f.branch,
 			AuthType:     f.authType,
 			SSHKey:       f.sshKey,
 			TargetFolder: targetFolder,

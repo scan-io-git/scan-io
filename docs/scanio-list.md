@@ -4,7 +4,7 @@ The main command's function is to list repositories from a version control syste
 The command can list repositories:
 - In the whole VCS. The results will be a file with all repositories in your VCS.
 - By projects or namespaces. The results will be a file with all repositories in a particular namespace.
-- Only one repository. TODO!<br><br>
+<br><br>
 
 Covered VCSs:
 - Bitbucket API v1.
@@ -13,14 +13,16 @@ Covered VCSs:
 
 |    |Bitbucket|Gitlab|Github|
 |----|-----|---|---|
-|List in a whole VCS|Supported|Not Supported|?|
-|List by a project|Supported|Supported|?|
+|List in all VCS|Supported|Not Supported|?|
+|List by all VCS from URL|Supported|Not Supported|?|
+|List by a project from args|Supported|Supported|?|
+|List by a project from URL|Supported|Not Supported|?|
 |List an only one repository|Not Supported|Not Supported|Not Supported|
 |Public repositories|Supported|Supported|Supported|
 |Private repositories|Supported| ?|Not Supported|
-<br>
+|Users repositories|Not supported|Not supported|Not supported| 
 
-## Result of the command
+## Result of the Command
 As a result, the command prepares a JSON file:
 ```
 {
@@ -57,66 +59,80 @@ The path in ```http_link/ssh_link``` might be different. It depends on the VCS d
 
 This generic output is used as input for other commands in case of no manual interaction with the tool.<br>
 
-## Args of the command
+## Args of the Command
 * "vcs" is the plugin name of the VCS used. Eg. bitbucket, gitlab, github, etc.
 * "vcs-url" is an URL to a root of the VCS API. Eg. github.com.
 * "output" or "f" is a path to an output file.
 * "namespace" is the name of a specific namespace. Namespace for Gitlab is an organization, for Bitbucket_v1 is a project.
 * "language" or "l" helps to collect only projects that have code in a specified language. It works only for Gitlab.<br><br>
 
-## Using scenarios 
-When developing, we aimed at the fact that the program will be used primarily for automation purposes but you still able to use it manually from CLI.<br><br>
+Instead of using **vcs-url** and **namespace** flags you could use a specific **URL** that points to a particular namespace from your VCS (check the [link](#listing-all-repositories-by-a-project-using-url)) and points to VCS (check the [link](#listing-all-repositories-in-a-vcs-using-url)).
 
+## Using Scenarios 
+When developing, we aimed at the fact that the program will be used primarily for automation purposes but you still able to use it manually from CLI.
 
-### Listing whole repositories in a VCS
-This scenario needs if you would like to list all repositories from your VCS.<br><br>
+### Listing All Repositories in a VCS
+This scenario needs if you would like to list all repositories from your VCS.
 
-#### **Bitbucket**
-```scanio list --vcs bitbucket --vcs-url example.com -f /Users/root/.scanio/output.file```<br><br>
+#### Bitbucket
+```scanio list --vcs bitbucket --vcs-url example.com -f /Users/root/.scanio/output.file```
 
-#### **Github**
-At the moment the plugin can't list a whole VCS.<br><br>
+#### Github
+At the moment the plugin can't list a all VCS.
 
-#### **Gitlab**
-TODO<br><br>
+#### Gitlab
+*TODO*
 
-### Listing repositories by a project in a VCS
-This scenario needs if you would like to list repositories on a specified project/namespace. <br><br>
+### Listing All Repositories in a VCS Using URL
+This scenario needs if you would like to list all repositories from your VCS by using URL.
 
-#### **Bitbucket**
-```scanio list --vcs bitbucket --vcs-url example.com --namespace PROJECT -f /Users/root/.scanio/PROJECT.file```<br><br>
+#### Bitbucket
+```scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/```<br>
+You can find additional information about URL formats [here](../plugins/bitbucket/README.md#supported-url-formats)
 
-#### **Github**
-```scanio list --vcs github --vcs-url example.com --namespace PROJECT -f /Users/root/.scanio/PROJECT.file```<br><br>
+#### Github
+*Not supported*
 
-#### **Gitlab**
-TODO <br><br>
+#### Gitlab
+*Not supported*
 
-### Listing an only one repository
-We think it's a rare case when you need to automate the scanning of only one repository. But you are still able to do it.
-TODO <br><br>
+### Listing Repositories by a Project in a VCS
+This scenario needs if you would like to list repositories on a specified project/namespace. 
 
-#### **Bitbucket**
-TODO <br><br>
+#### Bitbucket
+```scanio list --vcs bitbucket --vcs-url example.com --namespace PROJECT -f /Users/root/.scanio/PROJECT.file```
 
-#### **Github**
-TODO <br><br>
+#### Github
+```scanio list --vcs github --vcs-url example.com --namespace PROJECT -f /Users/root/.scanio/PROJECT.file```
 
-#### **Gitlab**
-TODO <br><br>
+#### Gitlab
+*TODO*
+
+### Listing All Repositories by a Project Using URL
+This scenario needs if you would like to list repositories on a specified project/namespace by using URL. 
+
+#### Bitbucket
+```scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/projects/PROJECT/```<br>
+You can find additional information about URL formats [here](../plugins/bitbucket/README.md#supported-url-formats)
+
+#### Github
+*Not supported*
+
+#### Gitlab
+*Not supported*
 
 ## Authentification
-If your VCS requires an authentification or your ```project/namespace/repository``` is private you will have to auth factor for an authentification.<br><br>
+If your VCS requires an authentification or your ```project/namespace/repository``` is private you will have to auth factor for an authentification.
 
 ### Bitbucket
 For Bitbucket API v1 you need to use a few environment variables:
-* BITBUCKET_USERNAME - your username in a VCS.
-* BITBUCKET_TOKEN - token for authentification.
+* SCANIO_BITBUCKET_USERNAME - your username in a VCS.
+* SCANIO_BITBUCKET_TOKEN - token for authentification.
    * It may be a plain text password or a personal access token from ```<your_bb_domain>/plugins/servlet/access-tokens/manage```.
 
 ### Github
-The plugin can list only public repositories. <br><br>
+The plugin can list only public repositories.
 
 ### Gitlab
 For Gitlab you need to use an environment variable:
-- GITLAB_TOKEN - token for an authentification.<br><br>
+- GITLAB_TOKEN - token for an authentification.
