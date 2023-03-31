@@ -1,4 +1,4 @@
-# Bitbucket plugin
+# Bitbucket Plugin
 The plugin implements work with functions ```list``` and ```fetch```:
 * Listing all repositories in a VCS from the master/main branch.
 * Listing repositories by a project in a VCS from the master/main branch.
@@ -28,7 +28,7 @@ You may find additional information in our articles:
 * Fetching from an input file with an HTTP.<br>
 ```scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-typ http -j 1```
 
-### Supported URL formats
+### Supported URL Formats
 The application supports a few different formats of url:
 * URL points to a VCS using Web UI format - ```https://example.com/```.<br>
 &emsp;You could use the format with **list** command to list all repositories from your VCS.<br>
@@ -47,8 +47,8 @@ The application supports a few different formats of url:
 &emsp;You could use the format with **fetch** command to fetch a specific repository.<br>
 &emsp;```scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 https://git.acronis.com/scm/scanio_project/scanio.git```<br>
 
-## Results of the command
-### Output of a "list" command
+## Results of the Command
+### Output of a "list" Command
 As a result, the command prepares a JSON file:
 ```
 {
@@ -69,11 +69,11 @@ As a result, the command prepares a JSON file:
 }
 ```
 
-### Output of a "fetch" command
+### Output of a "fetch" Command
 The fetching works without an direct output.
 The command saves results into a home directory ```~/.scanio/projects/+<VCSURL>+<Namespace>+<repo_name>```.
 
-## Possible errors
+## Possible Errors
 ### ```ssh: handshake failed: knownhosts: key mismatch```
 If you find the error check your .ssh/config. If you do use not a default 22 port for fetching and .ssh/config rules for this host, you have to determine a port too:
 ```
@@ -102,7 +102,7 @@ It means that ```git pull``` is trying to pull code with HTTP authentification b
 To fix this issue just change the authentification type to ssh-key or ssh-agent.
 We recommend not mixing approaches for a fetch command. 
 
-## Environment for a BitBucket v1 API plugin
+## Environment for a BitBucket v1 API Plugin
 * SCANIO_BITBUCKET_SSH_KEY_PASSOWRD - your password for ssh. The default is an empty value!
 * SCANIO_BITBUCKET_USERNAME - your username in BitBucket.
 * SCANIO_BITBUCKET_TOKEN - your Bitbucket token. 

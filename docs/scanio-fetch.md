@@ -121,7 +121,7 @@ You can find additional information about URL formats [here](../plugins/bitbucke
 #### Gitlab
 *Not Supported*
 
-## Possible errors
+## Possible Errors
 ### Bitbucket
 #### ```ssh: handshake failed: knownhosts: key mismatch```
 If you find the error check your .ssh/config. If you do use not a default 22 port for fetching and .ssh/config rules for this host, you have to determine a port too:

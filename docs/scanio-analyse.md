@@ -8,7 +8,7 @@ The main function is to present a top-level interface for a specified scanner. T
 |Report format arg|Supported|Not supported|
 |Local multithread|Supported|Supported|
 
-## Args of the command
+## Args of the Command
 - "scanner" is the plugin name of the scanner used. The default is semgrep.
 - "input-file" or "f" is a file in scanio format with a list of repositories to analyse. The list command could prepare this file.
 - "format" or "o" is a format for a report with results. 
@@ -20,10 +20,10 @@ Instead of using an **input file** flag you could use a specific **path** that p
 Also you are able to add additional arguments to a command. If you want to execute scanner with custom arguments, you could use two dashes (--) to separate additional flags/arguments:<br>
 ```scanio analyse --scanner semgrep --input-file /Users/root/.scanio/output.file --format sarif -j 1 -- --verbose --severity INFO```
 
-## Using scenarios 
+## Using Scenarios 
 When developing, we aimed at the fact that the program will be used primarily for automation purposes but you still able to use it manually from CLI.
 
-### Analysing from an input file
+### Analysing from an Input File
 The command uses an output format of a List command for analysing required repositories.<br>
 
 If you use an **input file** argument the command will save results into a home directory - ```~/.scanio/results/+<VCSURL>+<Namespace>+<repo_name>/<scanner_name>.<report_format>```.<br>

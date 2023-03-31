@@ -51,6 +51,8 @@ To build the CLI from the source code, use the following command:
 ```
 make build
 ```
+In this case you will need to install all dependencies before using the application. <br>
+"Please note that the list of dependencies you will need may vary depending on the plugins you intend to use. We recommend checking the installation instructions for [each plugin](/README.md#plugins) to determine its specific requirements.
 
 ## Articles to Read
 Here are some articles that provide more information about using the Scanio application.
