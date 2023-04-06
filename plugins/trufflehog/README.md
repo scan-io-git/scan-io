@@ -4,14 +4,14 @@ The main function of the plugin is to present a top-level interface for a Truffl
 This page is a short plugin description.<br>
 You may find additional information in a [scanio-analyse](../../docs/scanio-analyse.md) article.
 
-## Truffelhog command
+## Trufflehog command
 By defaul a plugin use this command:<br>
-```truffelhog + <AdditionalArgs> + [--config <ConfigPath>] + [--<ReportFormat>] + --no-verification + filesystem + <RepoPath>```<br>
+```trufflehog + <AdditionalArgs> + [--config <ConfigPath>] + [--<ReportFormat>] + --no-verification + filesystem + <RepoPath>```<br>
 
 Where:
 * AdditionalArgs is additional arguments in ```scanio analyse``` command after ```--```.
 * ConfigPath is a path to a custom config. Will be applied if you use ```--config``` or ```-c``` in ```scanio analyse``` command.
-* ReportFormat is a non default format of a report. Truffelhog supports only json. Will be applied if you use ```--format``` or ```-o```. 
+* ReportFormat is a non default format of a report. trufflehog supports only json. Will be applied if you use ```--format``` or ```-o```. 
 * ```--no-verification``` it means that all found secrets will not be validated by using external systems. 
 * ```filesystem``` is a command in terms of Trufflehog. It means the scanner will be searching secrets on a local file system. 
 * RepoPath is a local path to a file or a folder with code. 
