@@ -60,9 +60,6 @@ List of plugins:
 			}
 
 			if argsLenAtDash > -1 {
-				if allArgumentsAnalyse.ScannerPluginName != "semgrep" {
-					return fmt.Errorf(("Additional arguments are supported only for a semgrep plugin!"))
-				}
 				allArgumentsAnalyse.AdditionalArgs = args[argsLenAtDash:]
 			}
 			if ((len(args) == 0) || (len(args) > 0 && argsLenAtDash == 0)) && len(allArgumentsAnalyse.InputFile) == 0 {

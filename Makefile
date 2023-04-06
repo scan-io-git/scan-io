@@ -12,6 +12,7 @@ build-plugins: ## Build plugins
 	go build -o ~/.scanio/plugins/bitbucket ./plugins/bitbucket/
 	go build -o ~/.scanio/plugins/semgrep ./plugins/semgrep/
 	go build -o ~/.scanio/plugins/bandit ./plugins/bandit/
+	go build -o ~/.scanio/plugins/trufflehog ./plugins/trufflehog/
 
 .PHONY: build-cli
 build-cli: ## Build scanio core

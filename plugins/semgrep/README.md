@@ -2,7 +2,7 @@
 The main function of the plugin is to present a top-level interface for a Semgrep scanner. 
 
 This page is a short plugin description.<br>
-You may find additional information in a [scanio-analyse](../../docs/scanio-analyse.md) articles.
+You may find additional information in a [scanio-analyse](../../docs/scanio-analyse.md) article.
 
 ## Installing Dependencies
 If you build the Scanio code using Docker or pull a pre-built container, you do not need to separately install the Semgrep dependencies. However, if you build the Scanio code to a binary, you will need to install Semgrep before using the application.
