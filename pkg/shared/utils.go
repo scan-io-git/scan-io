@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
@@ -43,6 +44,14 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 		return err
 	}
 
+	// handle paths starting with tilda, like ~/.ssh/id_rsa
+	// https://gist.github.com/miguelmota/9ab72c5e342f833123c0b5cfd5aca468?permalink_comment_id=3953465#gistcomment-3953465
+	SSHKey := args.SSHKey
+	if strings.HasPrefix(args.SSHKey, "~/") {
+		dirname, _ := os.UserHomeDir()
+		SSHKey = filepath.Join(dirname, args.SSHKey[2:])
+	}
+
 	//debug output from git cli
 	output := logger.StandardWriter(&hclog.StandardLoggerOptions{
 		InferLevels: true,
@@ -68,12 +77,12 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 
 	if args.AuthType == "ssh-key" {
 		logger.Info("Making arrangements for an ssh-key fetching", "repo", info.Name, "branch", args.Branch)
-		if _, err := os.Stat(args.SSHKey); err != nil {
-			logger.Error("read file %s failed %s\n", args.SSHKey, err.Error())
+		if _, err := os.Stat(SSHKey); err != nil {
+			logger.Error("read file %s failed %s\n", SSHKey, err.Error())
 			return err
 		}
 
-		pkCallback, err := ssh.NewPublicKeysFromFile("git", args.SSHKey, variables.SshKeyPassword)
+		pkCallback, err := ssh.NewPublicKeysFromFile("git", SSHKey, variables.SshKeyPassword)
 		if err != nil {
 			logger.Error("An extraction publickeys process is failed: %s\n", err.Error())
 			return err
@@ -232,7 +241,9 @@ func ExtractRepositoryInfoFromURL(Url string, VCSPlugName string) (string, strin
 			// Case is working with a certain repo
 			namespace = pathDirs[0]
 			repository = pathDirs[1]
-			return vcsUrl, namespace, repository, "", "", nil
+			httpUrl = fmt.Sprintf("https://%s/%s/%s.git", vcsUrl, namespace, repository)
+			sshUrl = fmt.Sprintf("ssh://git@%s/%s/%s.git", vcsUrl, namespace, repository)
+			return vcsUrl, namespace, repository, httpUrl, sshUrl, nil
 		}
 	case "gitlab":
 		//TODO
