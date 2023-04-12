@@ -13,6 +13,8 @@ func TestGetDomain(t *testing.T) {
 		{"git@github.com:juice-shop/juice-shop.git", "github.com"},
 		{"http://bitbucket.example.com:7994/scm/thet/projectsource.git", "bitbucket.example.com"},
 		{"ssh://git@bitbucket.example.com:7999/scm/thet/projectsource.git", "bitbucket.example.com"},
+		{"https://gitlab.com/juice-shop/juice-shop.git", "gitlab.com"},
+		{"git@gitlab.com:juice-shop/juice-shop.git", "gitlab.com"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.repoURL, func(t *testing.T) {
