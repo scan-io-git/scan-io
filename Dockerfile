@@ -2,7 +2,7 @@
 # For example, Semgrep is a really huge 3rd party dependency ~400MB. 
 
 # Here we are building a main binary file and plugins from Golang code
-FROM golang:1.19-buster AS build-scanio-plugins
+FROM golang:1.19.8-alpine3.17 AS build-scanio-plugins
 
 WORKDIR /usr/src/scanio
 
