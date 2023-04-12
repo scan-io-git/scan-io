@@ -22,7 +22,7 @@ You can refer to the Semgrep [documentation](https://semgrep.dev/docs/getting-st
 If you use an **input file** argument the command will save results into a home directory: ```~/.scanio/results/+<VCSURL>+<Namespace>+<repo_name>/<scanner_name>.<report_format>```.<br><br>
 
 If you use a specific **path** argument the command will save results into the same directory:<br>
-* ```scanio analyse --scanner <scanner_name> --format sarif /tmp/my_project```
+* ```scanio analyse --scanner <scanner_name> --format <report_format> /tmp/my_project```
 * Result path - ```/tmp/my_project/<scanner_name>.<report_format>```r>
 
 ## Possible Errors

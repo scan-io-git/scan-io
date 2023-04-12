@@ -23,6 +23,7 @@ RUN go build -o /usr/bin/bitbucket ./plugins/bitbucket
 RUN go build -o /usr/bin/semgrep ./plugins/semgrep 
 RUN go build -o /usr/bin/bandit ./plugins/bandit 
 RUN go build -o /usr/bin/trufflehog ./plugins/trufflehog/
+RUN go build -o /usr/bin/trufflehog3 ./plugins/trufflehog3/
 
 # Installing Trufflehog Go by unpacking binary
 # ENV TRUFFLEHOG_VERSION 3.31.3
@@ -62,7 +63,10 @@ RUN apk add --no-cache --virtual .build-deps \
                 curl \
                 musl-dev
 
+# Installing Semgrep 
 RUN python3 -m pip install semgrep
+# Installing Trufflehog3 
+RUN python3 -m pip install trufflehog3
 
 RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
     curl -LO "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256" && \
@@ -89,6 +93,7 @@ COPY --from=build-scanio-plugins /usr/bin/bitbucket $SCANIO_PLUGINS_FOLDER/bitbu
 COPY --from=build-scanio-plugins /usr/bin/semgrep $SCANIO_PLUGINS_FOLDER/semgrep
 COPY --from=build-scanio-plugins /usr/bin/bandit $SCANIO_PLUGINS_FOLDER/bandit
 COPY --from=build-scanio-plugins /usr/bin/trufflehog $SCANIO_PLUGINS_FOLDER/trufflehog
+COPY --from=build-scanio-plugins /usr/bin/trufflehog3 $SCANIO_PLUGINS_FOLDER/trufflehog3
 
 # Copy TrufflehogGo binary
 COPY --from=build-scanio-plugins /usr/src/scanio/trufflehog /usr/local/bin

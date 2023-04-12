@@ -20,7 +20,6 @@ func (g *ScannerTrufflehog) Scan(args shared.ScannerScanRequest) error {
 	g.logger.Info("Scan is starting", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath)
 	var commandArgs []string
 	var cmd *exec.Cmd
-	var reportFormat string
 	var stdBuffer bytes.Buffer
 
 	// Add additional arguments
@@ -33,7 +32,7 @@ func (g *ScannerTrufflehog) Scan(args shared.ScannerScanRequest) error {
 	}
 
 	if args.ReportFormat != "" && args.ReportFormat == "json" {
-		reportFormat = fmt.Sprintf("--%v", args.ReportFormat)
+		reportFormat := fmt.Sprintf("--%v", args.ReportFormat)
 		commandArgs = append(commandArgs, reportFormat)
 	} else if args.ReportFormat != "" {
 		g.logger.Warn("Trufflehog supports only a json non default format. Will be used default format instead of your reportFormat", "reportFormat", args.ReportFormat)
