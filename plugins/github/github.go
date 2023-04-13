@@ -9,22 +9,20 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 
-	// "github.com/scan-io-git/scan-io/internal/vcs"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 )
 
-// Here is a real implementation of VCS
 type VCSGithub struct {
 	logger hclog.Logger
 }
 
 func (g *VCSGithub) ListRepos(args shared.VCSListReposRequest) ([]shared.RepositoryParams, error) {
-	g.logger.Debug("Entering ListRepos", "organization", args.Namespace)
+	g.logger.Debug("Starting an all-repositories listing function", "args", args)
 	client := github.NewClient(nil)
 	opt := &github.RepositoryListByOrgOptions{Type: "public"}
 	repos, _, err := client.Repositories.ListByOrg(context.Background(), args.Namespace, opt)
 	if err != nil {
-		g.logger.Error("Error listing projects", "err", err)
+		g.logger.Error("A particular organisation function is failed", "error", err)
 		return nil, err
 	}
 
@@ -52,6 +50,7 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) error {
 
 	err := shared.GitClone(args, variables, g.logger)
 	if err != nil {
+		g.logger.Error("A fetching function is failed", "error", err)
 		return err
 	}
 	return nil
@@ -67,7 +66,7 @@ func main() {
 	VCS := &VCSGithub{
 		logger: logger,
 	}
-	// pluginMap is the map of plugins we can dispense.
+
 	var pluginMap = map[string]plugin.Plugin{
 		shared.PluginTypeVCS: &shared.VCSPlugin{Impl: VCS},
 	}

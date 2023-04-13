@@ -17,7 +17,9 @@ type ScannerSemgrep struct {
 }
 
 func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
-	g.logger.Info("Scan is starting", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath)
+	g.logger.Info("Scan is starting", "project", args.RepoPath)
+	g.logger.Debug("Debug info", "args", args)
+
 	var commandArgs []string
 	var cmd *exec.Cmd
 	var reportFormat string
@@ -42,7 +44,8 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
 	}
 
 	cmd = exec.Command("semgrep", commandArgs...)
-	g.logger.Info("cmd", cmd.Args)
+	g.logger.Debug("Debug info", "cmd", cmd.Args)
+
 	mw := io.MultiWriter(g.logger.StandardWriter(&hclog.StandardLoggerOptions{
 		InferLevels: true,
 	}), &stdBuffer)
@@ -53,11 +56,12 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
 	err := cmd.Run()
 	if err != nil {
 		err := fmt.Errorf(stdBuffer.String())
-
-		g.logger.Error("Semgrep execution error", "err", err)
+		g.logger.Error("Semgrep execution error", "error", err)
 		return err
 	}
-	g.logger.Info("Scan finished", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
+	g.logger.Info("Scan finished for", "project", args.RepoPath)
+	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
+	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
 	return nil
 }
 

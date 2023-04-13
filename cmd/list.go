@@ -51,11 +51,11 @@ func do() {
 
 		if err != nil {
 			resultVCS = shared.ListFuncResult{Args: args, Result: projects, Status: "FAILED", Message: err.Error()}
-			logger.Error("Failed", "error", resultVCS.Message)
+			logger.Error("A function of listing repositories is failed")
 		} else {
 			resultVCS = shared.ListFuncResult{Args: args, Result: projects, Status: "OK", Message: ""}
-			logger.Info("A ListRepos fuction is finished with status", "status", resultVCS.Status)
-			logger.Info("Amount of repositories are", "numbers", len(projects))
+			logger.Info("A function of listing repositories finished with", "status", resultVCS.Status)
+			logger.Info("The amount of repositories is", "numbers", len(projects))
 		}
 
 		shared.WriteJsonFile(resultVCS, allArgumentsList.OutputFile, logger)

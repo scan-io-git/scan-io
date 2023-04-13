@@ -39,14 +39,14 @@ func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) error {
 		commandArgs = append(commandArgs, "--format", args.ReportFormat)
 	}
 
-	// Here we added -z flag because Trufflehog3 send a not correct exit code even when it finished without errors
+	// Here we added -z flag because Trufflehog3 sends a not correct exit code even when it finished without errors
 	commandArgs = append(commandArgs, "-z", "--output", args.ResultsPath, args.RepoPath)
 
 	cmd = exec.Command("trufflehog3", commandArgs...)
 	g.logger.Debug("Debug info", "cmd", cmd.Args)
 
 	mw := io.MultiWriter(g.logger.StandardWriter(&hclog.StandardLoggerOptions{
-		InferLevels: false,
+		InferLevels: true,
 	}), &stdBuffer)
 
 	cmd.Stdout = mw
@@ -55,8 +55,7 @@ func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) error {
 	err := cmd.Run()
 	if err != nil {
 		err := fmt.Errorf(stdBuffer.String())
-
-		g.logger.Error("Trufflehog3 execution error", "err", err)
+		g.logger.Error("Trufflehog3 execution error", "error", err)
 		return err
 	}
 	g.logger.Info("Scan finished for", "project", args.RepoPath)

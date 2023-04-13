@@ -10,7 +10,7 @@ require (
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/google/go-github/v47 v47.1.1-0.20220922183808-8a4bdb5e400f
 	github.com/google/uuid v1.3.0
-	github.com/hashicorp/go-hclog v0.16.2
+	github.com/hashicorp/go-hclog v0.14.1
 	github.com/hashicorp/go-plugin v1.4.5
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/spf13/cobra v1.5.0

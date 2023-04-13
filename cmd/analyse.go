@@ -56,7 +56,7 @@ List of plugins:
 
 		checkArgs := func() error {
 			if len(allArgumentsAnalyse.ScannerPluginName) == 0 {
-				return fmt.Errorf("'scanner' flag must be specified!")
+				return fmt.Errorf("A 'scanner' flag must be specified!")
 			}
 
 			if argsLenAtDash > -1 {
@@ -68,12 +68,12 @@ List of plugins:
 
 			if len(args) > 0 && (argsLenAtDash == -1 || argsLenAtDash == 1) {
 				if len(allArgumentsAnalyse.InputFile) != 0 {
-					return fmt.Errorf(("You can't use an 'input-file' argument and a path at the same time!"))
+					return fmt.Errorf(("You can't use an 'input-file' flag and a path at the same time!"))
 				}
 
 				path = args[0]
 				if _, err := os.Stat(path); os.IsNotExist(err) {
-					return fmt.Errorf("Path does not exists: %v", path)
+					return fmt.Errorf("The path does not exists: %v", path)
 				}
 
 			} else {

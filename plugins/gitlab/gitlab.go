@@ -61,17 +61,17 @@ func (g VCSGitlab) getGitlabGroups(gitlabClient *gitlab.Client, searchNamespace 
 }
 
 func (g *VCSGitlab) ListRepos(args shared.VCSListReposRequest) ([]shared.RepositoryParams, error) {
-	g.logger.Debug("Entering ListRepos", "args", args)
+	g.logger.Debug("Starting an all-repositories listing function", "args", args)
 
 	gitlabClient, err := getGitlabClient(args.VCSURL)
 	if err != nil {
-		g.logger.Warn("Failed to create gitlab Client", "err", err)
+		g.logger.Error("Failed to create gitlab Client", "error", err)
 		return nil, err
 	}
 
 	allGroups, err := g.getGitlabGroups(gitlabClient, args.Namespace)
 	if err != nil {
-		g.logger.Warn("Failed to get list of Gitlab groups", "err", err)
+		g.logger.Error("Failed to get list of Gitlab groups", "error", err)
 		return nil, err
 	}
 	g.logger.Debug("Collected groups", "total", len(allGroups))
@@ -93,7 +93,7 @@ func (g *VCSGitlab) ListRepos(args shared.VCSListReposRequest) ([]shared.Reposit
 				Sort:    gitlab.String("asc"),
 			})
 			if err != nil {
-				g.logger.Warn("gitlab ListGroups error", "err", err, "page", page)
+				g.logger.Error("Gitlab ListGroups error", "page", page, "error", err)
 				return nil, err
 			}
 

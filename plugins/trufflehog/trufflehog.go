@@ -17,7 +17,8 @@ type ScannerTrufflehog struct {
 }
 
 func (g *ScannerTrufflehog) Scan(args shared.ScannerScanRequest) error {
-	g.logger.Info("Scan is starting", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath)
+	g.logger.Info("Scan is starting", "project", args.RepoPath)
+	g.logger.Debug("Debug info", "args", args)
 	var commandArgs []string
 	var cmd *exec.Cmd
 	var stdBuffer bytes.Buffer
@@ -39,9 +40,8 @@ func (g *ScannerTrufflehog) Scan(args shared.ScannerScanRequest) error {
 	}
 
 	commandArgs = append(commandArgs, "--no-verification", "filesystem", args.RepoPath)
-
 	cmd = exec.Command("trufflehog", commandArgs...)
-	g.logger.Info("cmd", cmd.Args)
+	g.logger.Debug("Debug info", "cmd", cmd.Args)
 
 	// trufflehog doesn't support writing results in file, only to stdout
 	// writing stdout to a file with results
@@ -61,11 +61,12 @@ func (g *ScannerTrufflehog) Scan(args shared.ScannerScanRequest) error {
 	err = cmd.Run()
 	if err != nil {
 		err := fmt.Errorf(stdBuffer.String())
-
-		g.logger.Error("Trufflehog execution error", "err", err)
+		g.logger.Error("Trufflehog execution error", "error", err)
 		return err
 	}
-	g.logger.Info("Scan finished", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
+	g.logger.Info("Scan finished for", "project", args.RepoPath)
+	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
+	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
 	return nil
 }
 

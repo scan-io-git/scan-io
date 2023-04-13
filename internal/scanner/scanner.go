@@ -91,7 +91,7 @@ func (s Scanner) scanRepo(scanArg shared.ScannerScanRequest) error {
 		scanner := raw.(shared.Scanner)
 		err := scanner.Scan(scanArg)
 		if err != nil {
-			s.logger.Error("vcs plugin failed on scan", "err", err)
+			s.logger.Error("Scanner plugin is failed")
 		}
 	})
 
