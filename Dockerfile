@@ -25,6 +25,12 @@ RUN go build -o /usr/bin/bandit ./plugins/bandit
 RUN go build -o /usr/bin/trufflehog ./plugins/trufflehog/
 RUN go build -o /usr/bin/trufflehog3 ./plugins/trufflehog3/
 
+RUN apk update &&\
+    apk upgrade
+
+RUN apk add --no-cache \
+                curl 
+
 # Installing Trufflehog Go by unpacking binary
 # ENV TRUFFLEHOG_VERSION 3.31.3
 RUN export TRUFFLEHOG_VER="$(curl -s -qI https://github.com/trufflesecurity/trufflehog/releases/latest | awk -F '/' '/^location/ {print  substr($NF, 1, length($NF)-1)}' | awk -F 'v' '{print $2}')" && \
@@ -63,10 +69,14 @@ RUN apk add --no-cache --virtual .build-deps \
                 curl \
                 musl-dev
 
+# Installing Trufflehog3 
+# to resolve a problem with same dependencies trufflehog3 has to be installed first
+RUN python3 -m pip install trufflehog3
+
 # Installing Semgrep 
 RUN python3 -m pip install semgrep
-# Installing Trufflehog3 
-RUN python3 -m pip install trufflehog3
+# Installing Bandit 
+RUN python3 -m pip install bandit
 
 RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
     curl -LO "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256" && \
