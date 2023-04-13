@@ -12,67 +12,58 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared"
 )
 
-type ScannerSemgrep struct {
+type ScannerTrufflehog struct {
 	logger hclog.Logger
 }
 
-func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
+func (g *ScannerTrufflehog) Scan(args shared.ScannerScanRequest) error {
 	g.logger.Info("Scan is starting", "project", args.RepoPath)
 	g.logger.Debug("Debug info", "args", args)
-
 	var commandArgs []string
 	var cmd *exec.Cmd
-	var reportFormat string
 	var stdBuffer bytes.Buffer
-
-	commandArgs = []string{"scan"}
 
 	// Add additional arguments
 	if len(args.AdditionalArgs) != 0 {
 		commandArgs = append(commandArgs, args.AdditionalArgs...)
 	}
 
-	if args.ReportFormat != "" {
-		reportFormat = fmt.Sprintf("--%v", args.ReportFormat)
+	if args.ConfigPath != "" {
+		commandArgs = append(commandArgs, "--config", args.ConfigPath)
+	}
+
+	if args.ReportFormat != "" && args.ReportFormat == "json" {
+		reportFormat := fmt.Sprintf("--%v", args.ReportFormat)
 		commandArgs = append(commandArgs, reportFormat)
+	} else if args.ReportFormat != "" {
+		g.logger.Warn("Trufflehog supports only a json non default format. Will be used default format instead of your reportFormat", "reportFormat", args.ReportFormat)
 	}
 
-	// use "p/deafult" by default to not send metrics
-	configPath := args.ConfigPath
-	if args.ConfigPath == "" {
-		configPath = "p/default"
-	}
-
-	// auto config requires sendings metrics
-	commandArgs = append(commandArgs, "-f", configPath)
-	if configPath != "auto" {
-		commandArgs = append(commandArgs, "--metrics", "off")
-	}
-
-	// output file
-	commandArgs = append(commandArgs, "--output", args.ResultsPath)
-
-	// repo path
-	commandArgs = append(commandArgs, args.RepoPath)
-
-	// prep cmd
-	cmd = exec.Command("semgrep", commandArgs...)
+	commandArgs = append(commandArgs, "--no-verification", "filesystem", args.RepoPath)
+	cmd = exec.Command("trufflehog", commandArgs...)
 	g.logger.Debug("Debug info", "cmd", cmd.Args)
+
+	// trufflehog doesn't support writing results in file, only to stdout
+	// writing stdout to a file with results
+	resultsFile, err := os.Create(args.ResultsPath)
+	if err != nil {
+		return err
+	}
+	defer resultsFile.Close()
 
 	mw := io.MultiWriter(g.logger.StandardWriter(&hclog.StandardLoggerOptions{
 		InferLevels: true,
-	}), &stdBuffer)
+	}), &stdBuffer, resultsFile)
 
 	cmd.Stdout = mw
 	cmd.Stderr = mw
 
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		err := fmt.Errorf(stdBuffer.String())
-		g.logger.Error("Semgrep execution error", "error", err)
+		g.logger.Error("Trufflehog execution error", "error", err)
 		return err
 	}
-
 	g.logger.Info("Scan finished for", "project", args.RepoPath)
 	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
 	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
@@ -86,7 +77,7 @@ func main() {
 		JSONFormat: true,
 	})
 
-	Scanner := &ScannerSemgrep{
+	Scanner := &ScannerTrufflehog{
 		logger: logger,
 	}
 

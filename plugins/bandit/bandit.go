@@ -9,27 +9,31 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared"
 )
 
-// Here is a real implementation of Scanner
 type ScannerSemgrep struct {
 	logger hclog.Logger
 }
 
 func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
+	g.logger.Info("Scan is starting", "project", args.RepoPath)
+	g.logger.Debug("Debug info", "args", args)
 
 	cmd := exec.Command("bandit", "-r", "-f", "json", "-o", args.ResultsPath, args.RepoPath)
+	g.logger.Debug("Debug info", "cmd", cmd.Args)
+
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 
 	err := cmd.Run()
-	g.logger.Info("Scan finished", "RepoPath", args.RepoPath, "ResultsPath", args.ResultsPath)
-
 	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok && exitError.ExitCode() != 1 {
-			g.logger.Error("scanner execution error", "err", err, "RepoPath", args.RepoPath, "exitError.ExitCode()", exitError.ExitCode())
+			g.logger.Error("Bandit execution error", "exitError.ExitCode()", exitError.ExitCode())
 			return err
 		}
 	}
 
+	g.logger.Info("Scan finished for", "project", args.RepoPath)
+	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
+	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
 	return nil
 }
 
@@ -43,7 +47,7 @@ func main() {
 	Scanner := &ScannerSemgrep{
 		logger: logger,
 	}
-	// pluginMap is the map of plugins we can dispense.
+
 	var pluginMap = map[string]plugin.Plugin{
 		shared.PluginTypeScanner: &shared.ScannerPlugin{Impl: Scanner},
 	}

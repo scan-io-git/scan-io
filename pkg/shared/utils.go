@@ -40,7 +40,7 @@ func WriteJsonFile(data ListFuncResult, outputFile string, logger hclog.Logger) 
 func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger) error {
 	info, err := vcsurl.Parse(args.CloneURL)
 	if err != nil {
-		logger.Error("Unable to parse VCS url info", "VCSURL", args.CloneURL)
+		logger.Error("Unable to parse VCS url", "VCSURL", args.CloneURL)
 		return err
 	}
 
@@ -76,15 +76,15 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 	}
 
 	if args.AuthType == "ssh-key" {
-		logger.Info("Making arrangements for an ssh-key fetching", "repo", info.Name, "branch", args.Branch)
-		if _, err := os.Stat(SSHKey); err != nil {
-			logger.Error("read file %s failed %s\n", SSHKey, err.Error())
+		logger.Debug("Making arrangements for an ssh-key fetching", "repo", info.Name, "branch", args.Branch)
+		if _, err := os.Stat(args.SSHKey); err != nil {
+			logger.Error("Reading file with a key is failed ", "path", args.SSHKey, "error", err.Error())
 			return err
 		}
 
 		pkCallback, err := ssh.NewPublicKeysFromFile("git", SSHKey, variables.SshKeyPassword)
 		if err != nil {
-			logger.Error("An extraction publickeys process is failed: %s\n", err.Error())
+			logger.Error("An extraction publickeys process is failed", "error", err.Error())
 			return err
 		}
 
@@ -94,7 +94,7 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 
 		gitCloneOptions.Auth, gitPullOptions.Auth = pkCallback, pkCallback
 	} else if args.AuthType == "ssh-agent" {
-		logger.Info("Making arrangements for an ssh-agent fetching", "repo", info.Name, "branch", args.Branch)
+		logger.Debug("Making arrangements for an ssh-agent fetching", "repo", info.Name, "branch", args.Branch)
 		pkCallback, err := ssh.NewSSHAgentAuth("git")
 		if err != nil {
 			logger.Error("NewSSHAgentAuth error", "err", err)
@@ -115,45 +115,45 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 		gitCloneOptions.Auth, gitPullOptions.Auth = basicAuth, basicAuth
 	} else {
 		err := fmt.Errorf("Unknown auth type")
-		logger.Error("Problems with the a git fetching process", "error", err)
+		logger.Error("Problems with a git fetching process", "error", err)
 		return err
 	}
 
-	logger.Info("Fetching repo", "repo", info.Name, "branch", args.Branch, "targetFolder", args.TargetFolder)
+	logger.Debug("Fetching repo", "repo", info.Name, "branch", args.Branch, "targetFolder", args.TargetFolder)
 	_, err = git.PlainClone(args.TargetFolder, false, gitCloneOptions)
 	if err != nil && err == git.ErrRepositoryAlreadyExists {
 		//git checkout - check deleted files
-		logger.Info("Repository is already exists on a disk", "repo", info.Name, "targetFolder", args.TargetFolder)
+		logger.Warn("Repository is already exists on a disk", "repo", info.Name, "targetFolder", args.TargetFolder)
 
 		r, err := git.PlainOpen(args.TargetFolder)
 		if err != nil {
-			logger.Info("Can't open repository on a disk", "err", err, "targetFolder", args.TargetFolder)
+			logger.Error("Can't open repository on a disk", "err", err, "targetFolder", args.TargetFolder)
 			return err
 		}
 		w, err := r.Worktree()
 		if err != nil {
-			logger.Info("Error on Worktree occured", "err", err, "targetFolder", args.TargetFolder)
+			logger.Error("Error on Worktree occured", "err", err, "targetFolder", args.TargetFolder)
 			return err
 		}
 
-		logger.Info("Reseting local repo", "repo", info.Name, "targetFolder", args.TargetFolder)
+		logger.Debug("Reseting local repo", "repo", info.Name, "targetFolder", args.TargetFolder)
 		//git reset --hard origin/master if someone delete files from disk
 		if err := w.Reset(&git.ResetOptions{Mode: git.HardReset}); err != nil {
 			fmt.Println("Error on Checkout occured", "err", err, "targetFolder", args.TargetFolder)
 			return err
 		}
 
-		logger.Info("Pulling repo", "repo", info.Name, "targetFolder", args.TargetFolder, "branch", args.Branch)
+		logger.Debug("Pulling repo", "repo", info.Name, "targetFolder", args.TargetFolder, "branch", args.Branch)
 		if err = w.Pull(gitPullOptions); err != nil {
-			logger.Info("Error on Pull occured", "err", err, "targetFolder", args.TargetFolder)
+			logger.Error("Error on Pull occured", "err", err, "targetFolder", args.TargetFolder)
 			return err
 		}
 	} else if err != nil {
-		logger.Info("Error on Clone occured", "err", err, "targetFolder", args.TargetFolder, "remote", gitCloneOptions.URL)
+		logger.Error("Error on Clone occured", "err", err, "targetFolder", args.TargetFolder, "remote", gitCloneOptions.URL)
 		return err
 	}
 
-	logger.Info("Fetch's ended", "repo", info.Name, "branch", args.Branch, "targetFolder", args.TargetFolder)
+	logger.Info("A fetch function finished", "repo", info.Name, "branch", args.Branch, "targetFolder", args.TargetFolder)
 	return nil
 }
 

@@ -33,9 +33,10 @@ func NewLogger(name string) hclog.Logger {
 		loglevel = hclog.Debug
 	}
 	return hclog.New(&hclog.LoggerOptions{
-		Name:   name,
-		Output: os.Stdout,
-		Level:  loglevel,
+		Name:        name,
+		DisableTime: true,
+		Output:      os.Stdout,
+		Level:       loglevel,
 	})
 }
 

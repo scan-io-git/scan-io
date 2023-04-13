@@ -2,7 +2,7 @@
 The main function of the plugin is to present a top-level interface for a Semgrep scanner. 
 
 This page is a short plugin description.<br>
-You may find additional information in a [scanio-analyse](../../docs/scanio-analyse.md) articles.
+You may find additional information in a [scanio-analyse](../../docs/scanio-analyse.md) article.
 
 ## Installing Dependencies
 If you build the Scanio code using Docker or pull a pre-built container, you do not need to separately install the Semgrep dependencies. However, if you build the Scanio code to a binary, you will need to install Semgrep before using the application.
@@ -22,7 +22,7 @@ You can refer to the Semgrep [documentation](https://semgrep.dev/docs/getting-st
 If you use an **input file** argument the command will save results into a home directory: ```~/.scanio/results/+<VCSURL>+<Namespace>+<repo_name>/<scanner_name>.<report_format>```.<br><br>
 
 If you use a specific **path** argument the command will save results into the same directory:<br>
-* ```scanio analyse --scanner <scanner_name> --format sarif /tmp/my_project```
+* ```scanio analyse --scanner <scanner_name> --format <report_format> /tmp/my_project```
 * Result path - ```/tmp/my_project/<scanner_name>.<report_format>```r>
 
 ## Possible Errors

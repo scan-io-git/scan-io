@@ -22,6 +22,17 @@ RUN go build -o /usr/bin/gitlab ./plugins/gitlab
 RUN go build -o /usr/bin/bitbucket ./plugins/bitbucket 
 RUN go build -o /usr/bin/semgrep ./plugins/semgrep 
 RUN go build -o /usr/bin/bandit ./plugins/bandit 
+RUN go build -o /usr/bin/trufflehog ./plugins/trufflehog/
+RUN go build -o /usr/bin/trufflehog3 ./plugins/trufflehog3/
+
+# Installing Trufflehog Go by unpacking binary
+# ENV TRUFFLEHOG_VERSION 3.31.3
+RUN export TRUFFLEHOG_VER="$(curl -s -qI https://github.com/trufflesecurity/trufflehog/releases/latest | awk -F '/' '/^location/ {print  substr($NF, 1, length($NF)-1)}' | awk -F 'v' '{print $2}')" && \
+    export TRUFFLEHOG_SHA="$(curl -Ls https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/trufflehog_${TRUFFLEHOG_VER}_checksums.txt | grep trufflehog_${TRUFFLEHOG_VER}_linux_amd64.tar.gz | awk '{print $1}')"  && \
+    curl -LOs "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/trufflehog_${TRUFFLEHOG_VER}_linux_amd64.tar.gz" && \
+    echo "${TRUFFLEHOG_SHA}  trufflehog_${TRUFFLEHOG_VER}_linux_amd64.tar.gz" | sha256sum -c - && \
+    tar -xzf trufflehog_${TRUFFLEHOG_VER}_linux_amd64.tar.gz 
+
 
 FROM python:alpine3.17
 # Here we are preparing a container with all 3rd party dependencies for Scanio 
@@ -43,13 +54,19 @@ RUN apk add --no-cache \
                 libc6-compat
 
 RUN apk add --no-cache --virtual .build-deps \
+                git \
                 gcc \
                 make \ 
                 openssl \
                 git \
                 ca-certificates \
                 curl \
-                musl-dev && python3 -m pip install semgrep
+                musl-dev
+
+# Installing Semgrep 
+RUN python3 -m pip install semgrep
+# Installing Trufflehog3 
+RUN python3 -m pip install trufflehog3
 
 RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
     curl -LO "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256" && \
@@ -75,6 +92,11 @@ COPY --from=build-scanio-plugins /usr/bin/gitlab $SCANIO_PLUGINS_FOLDER/gitlab
 COPY --from=build-scanio-plugins /usr/bin/bitbucket $SCANIO_PLUGINS_FOLDER/bitbucket
 COPY --from=build-scanio-plugins /usr/bin/semgrep $SCANIO_PLUGINS_FOLDER/semgrep
 COPY --from=build-scanio-plugins /usr/bin/bandit $SCANIO_PLUGINS_FOLDER/bandit
+COPY --from=build-scanio-plugins /usr/bin/trufflehog $SCANIO_PLUGINS_FOLDER/trufflehog
+COPY --from=build-scanio-plugins /usr/bin/trufflehog3 $SCANIO_PLUGINS_FOLDER/trufflehog3
+
+# Copy TrufflehogGo binary
+COPY --from=build-scanio-plugins /usr/src/scanio/trufflehog /usr/local/bin
 
 COPY helm /scanio-helm
 COPY Dockerfile /Dockerfile

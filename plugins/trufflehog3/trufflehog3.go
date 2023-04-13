@@ -12,51 +12,37 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared"
 )
 
-type ScannerSemgrep struct {
+type ScannerTrufflehog3 struct {
 	logger hclog.Logger
 }
 
-func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
+func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) error {
 	g.logger.Info("Scan is starting", "project", args.RepoPath)
 	g.logger.Debug("Debug info", "args", args)
-
 	var commandArgs []string
 	var cmd *exec.Cmd
-	var reportFormat string
 	var stdBuffer bytes.Buffer
-
-	commandArgs = []string{"scan"}
 
 	// Add additional arguments
 	if len(args.AdditionalArgs) != 0 {
 		commandArgs = append(commandArgs, args.AdditionalArgs...)
 	}
 
+	// Trufflehog3 --rules is a rules file that contains regexes that might trigger
+	// --config it's a flag for .trufflehog3.yml file with wider configuration rather than rules
+	// .trufflehog3.yml will be found automatically in root of your folder
+	if args.ConfigPath != "" {
+		commandArgs = append(commandArgs, "--rules", args.ConfigPath)
+	}
+
 	if args.ReportFormat != "" {
-		reportFormat = fmt.Sprintf("--%v", args.ReportFormat)
-		commandArgs = append(commandArgs, reportFormat)
+		commandArgs = append(commandArgs, "--format", args.ReportFormat)
 	}
 
-	// use "p/deafult" by default to not send metrics
-	configPath := args.ConfigPath
-	if args.ConfigPath == "" {
-		configPath = "p/default"
-	}
+	// Here we added -z flag because Trufflehog3 sends a not correct exit code even when it finished without errors
+	commandArgs = append(commandArgs, "-z", "--output", args.ResultsPath, args.RepoPath)
 
-	// auto config requires sendings metrics
-	commandArgs = append(commandArgs, "-f", configPath)
-	if configPath != "auto" {
-		commandArgs = append(commandArgs, "--metrics", "off")
-	}
-
-	// output file
-	commandArgs = append(commandArgs, "--output", args.ResultsPath)
-
-	// repo path
-	commandArgs = append(commandArgs, args.RepoPath)
-
-	// prep cmd
-	cmd = exec.Command("semgrep", commandArgs...)
+	cmd = exec.Command("trufflehog3", commandArgs...)
 	g.logger.Debug("Debug info", "cmd", cmd.Args)
 
 	mw := io.MultiWriter(g.logger.StandardWriter(&hclog.StandardLoggerOptions{
@@ -69,10 +55,9 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
 	err := cmd.Run()
 	if err != nil {
 		err := fmt.Errorf(stdBuffer.String())
-		g.logger.Error("Semgrep execution error", "error", err)
+		g.logger.Error("Trufflehog3 execution error", "error", err)
 		return err
 	}
-
 	g.logger.Info("Scan finished for", "project", args.RepoPath)
 	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
 	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
@@ -86,7 +71,7 @@ func main() {
 		JSONFormat: true,
 	})
 
-	Scanner := &ScannerSemgrep{
+	Scanner := &ScannerTrufflehog3{
 		logger: logger,
 	}
 
