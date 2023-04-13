@@ -37,12 +37,25 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
 		commandArgs = append(commandArgs, reportFormat)
 	}
 
+	// use "p/deafult" by default to not send metrics
+	configPath := args.ConfigPath
 	if args.ConfigPath == "" {
-		commandArgs = append(commandArgs, "-f", "auto", "--output", args.ResultsPath, args.RepoPath)
-	} else {
-		commandArgs = append(commandArgs, "--metrics", "off", "-f", args.ConfigPath, "--output", args.ResultsPath, args.RepoPath)
+		configPath = "p/default"
 	}
 
+	// auto config requires sendings metrics
+	commandArgs = append(commandArgs, "-f", configPath)
+	if configPath != "auto" {
+		commandArgs = append(commandArgs, "--metrics", "off")
+	}
+
+	// output file
+	commandArgs = append(commandArgs, "--output", args.ResultsPath)
+
+	// repo path
+	commandArgs = append(commandArgs, args.RepoPath)
+
+	// prep cmd
 	cmd = exec.Command("semgrep", commandArgs...)
 	g.logger.Debug("Debug info", "cmd", cmd.Args)
 
@@ -59,6 +72,7 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
 		g.logger.Error("Semgrep execution error", "error", err)
 		return err
 	}
+
 	g.logger.Info("Scan finished for", "project", args.RepoPath)
 	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
 	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
