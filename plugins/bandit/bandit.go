@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
+	"io"
 	"os"
 	"os/exec"
 
@@ -9,24 +12,45 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared"
 )
 
-type ScannerSemgrep struct {
+type ScannerBandit struct {
 	logger hclog.Logger
 }
 
-func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
+func (g *ScannerBandit) Scan(args shared.ScannerScanRequest) error {
 	g.logger.Info("Scan is starting", "project", args.RepoPath)
 	g.logger.Debug("Debug info", "args", args)
 
-	cmd := exec.Command("bandit", "-r", "-f", "json", "-o", args.ResultsPath, args.RepoPath)
+	var commandArgs []string
+	var stdBuffer bytes.Buffer
+
+	// Add additional arguments
+	if len(args.AdditionalArgs) != 0 {
+		commandArgs = append(commandArgs, args.AdditionalArgs...)
+	}
+
+	if args.ReportFormat != "" {
+		commandArgs = append(commandArgs, "-f", args.ReportFormat)
+	}
+
+	if args.ConfigPath != "" {
+		commandArgs = append(commandArgs, "-c", args.ConfigPath)
+	}
+
+	cmd := exec.Command("bandit", "-r", "-o", args.ResultsPath, args.RepoPath)
 	g.logger.Debug("Debug info", "cmd", cmd.Args)
 
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
+	mw := io.MultiWriter(g.logger.StandardWriter(&hclog.StandardLoggerOptions{
+		InferLevels: true,
+	}), &stdBuffer)
+
+	cmd.Stdout = mw
+	cmd.Stderr = mw
 
 	err := cmd.Run()
 	if err != nil {
+		err := fmt.Errorf(stdBuffer.String())
 		if exitError, ok := err.(*exec.ExitError); ok && exitError.ExitCode() != 1 {
-			g.logger.Error("Bandit execution error", "exitError.ExitCode()", exitError.ExitCode())
+			g.logger.Error("Bandit execution error", "exitError.ExitCode()", exitError.ExitCode(), "error", err)
 			return err
 		}
 	}
@@ -44,7 +68,7 @@ func main() {
 		JSONFormat: true,
 	})
 
-	Scanner := &ScannerSemgrep{
+	Scanner := &ScannerBandit{
 		logger: logger,
 	}
 

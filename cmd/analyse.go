@@ -47,7 +47,8 @@ var analyseCmd = &cobra.Command{
 
 List of plugins:
   - semgrep
-  - bandit`,
+  - bandit
+  - trufflehog`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var reposInf []shared.RepositoryParams
