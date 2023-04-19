@@ -2,11 +2,6 @@
 # Prerequisite for Minikube (helm charts configuration)
 If you would like work with mimikube you will have to setup some values in helm charts.
 
-## Persistent Storage
-To deploy a persistent storage, you can reuse prepared yaml files. `kubectl apply -f kubernetes/minikube`.
-Provide a persistent storage claim name to a helm value `persistence.claimName`, and set `persistence.enabled: true`.
-After work to destroy resources use `kubectl delete -f kubernetes/minikube`.
-
 # Step by Step Guide "How to use a local minikube cluster with Scanio"
 *Tested on a MacOS with an M1 chip.*
 
@@ -34,6 +29,11 @@ You are able to use scanio from your local PC and from a main pod cluster - ```k
 You can check your cluster local files by using a ```minikube ssh``` command. All files developed by main pod and jobs will be in a ```/data/scanio/``` directory. If a minikube cluster redeploy or stop your files won't be erased.
 
 You may mount files from your local file system to a minikube file system ```minikube mount ~/.scanio/projects/:/data/scanio``` as well.
+
+# Persistent Storage
+To deploy a persistent storage, you can reuse prepared yaml files. `kubectl apply -f kubernetes/minikube`.  
+Provide a persistent storage claim name to a helm value `persistence.claimName`, and set `persistence.enabled: true`.  
+After work to destroy resources use `kubectl delete -f kubernetes/minikube`.  
 
 # Possible Errors
 - ```Error: failed to start container "test-pod": Error response from daemon: error while creating mount source path '/data/scanio': mkdir /data: file exists```
