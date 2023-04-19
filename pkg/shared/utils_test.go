@@ -86,3 +86,30 @@ func TestGithubClonePrivateWithSSHAgent(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestGitlabClonePrivateWithSSHAgent(t *testing.T) {
+
+	// temp dir for fetching
+	dir, err := ioutil.TempDir("", "TestGitlabClonePrivateWithSSHAgent")
+	if err != nil {
+		t.Error(err)
+	}
+	defer os.RemoveAll(dir)
+
+	// prep args
+	args := VCSFetchRequest{
+		CloneURL:     "git@gitlab.com:scanio-demo/juice-shop.git",
+		Branch:       "",
+		AuthType:     "ssh-key",
+		SSHKey:       "~/.ssh/id_rsa",
+		TargetFolder: dir,
+	}
+	vars := EvnVariables{}
+	logger := NewLogger("test")
+
+	// function check
+	err = GitClone(args, vars, logger)
+	if err != nil {
+		t.Error(err)
+	}
+}

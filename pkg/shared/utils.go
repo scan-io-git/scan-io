@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -47,9 +48,9 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 	// handle paths starting with tilda, like ~/.ssh/id_rsa
 	// https://gist.github.com/miguelmota/9ab72c5e342f833123c0b5cfd5aca468?permalink_comment_id=3953465#gistcomment-3953465
 	SSHKey := args.SSHKey
-	if strings.HasPrefix(args.SSHKey, "~/") {
+	if strings.HasPrefix(SSHKey, "~/") {
 		dirname, _ := os.UserHomeDir()
-		SSHKey = filepath.Join(dirname, args.SSHKey[2:])
+		SSHKey = filepath.Join(dirname, SSHKey[2:])
 	}
 
 	//debug output from git cli
@@ -77,8 +78,8 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 
 	if args.AuthType == "ssh-key" {
 		logger.Debug("Making arrangements for an ssh-key fetching", "repo", info.Name, "branch", args.Branch)
-		if _, err := os.Stat(args.SSHKey); err != nil {
-			logger.Error("Reading file with a key is failed ", "path", args.SSHKey, "error", err.Error())
+		if _, err := os.Stat(SSHKey); err != nil {
+			logger.Error("Reading file with a key is failed ", "path", SSHKey, "error", err.Error())
 			return err
 		}
 
@@ -246,8 +247,17 @@ func ExtractRepositoryInfoFromURL(Url string, VCSPlugName string) (string, strin
 			return vcsUrl, namespace, repository, httpUrl, sshUrl, nil
 		}
 	case "gitlab":
-		//TODO
-		return "", "", "", "", "", fmt.Errorf("Gitlab s unsupported for work with an URL: %s", VCSPlugName)
+		// Only case with certain repo supported for now
+		if len(pathDirs) < 2 {
+			return "", "", "", "", "", fmt.Errorf("unsupported format of gitlab url for %s", VCSPlugName)
+		}
+		namespace = path.Join(pathDirs[0 : len(pathDirs)-1]...)
+		repository = pathDirs[len(pathDirs)-1]
+		httpUrl = fmt.Sprintf("https://%s/%s/%s.git", vcsUrl, namespace, repository)
+		// sshUrl = fmt.Sprintf("ssh://git@%s/%s/%s.git", vcsUrl, namespace, repository)
+		sshUrl = fmt.Sprintf("git@%s:%s/%s.git", vcsUrl, namespace, repository)
+		// sshUrl = fmt.Sprintf("ssh://git@%s:%s/%s.git", vcsUrl, namespace, repository)
+		return vcsUrl, namespace, repository, httpUrl, sshUrl, nil
 	default:
 		return "", "", "", "", "", fmt.Errorf("unsupported VCS plugin name: %s", VCSPlugName)
 	}
