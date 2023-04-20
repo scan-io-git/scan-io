@@ -45,6 +45,9 @@ Alternatively, you can use the following command to build a Docker image:
 ```
 docker build -t scanio .
 ```
+#### Custom Rules
+If you would like use in the image custom rules for scanners, place the rules to a ```/rules``` folder. 
+You will find your rules in the container in a ```/scanio-rules``` folder.
 
 ### Building the CLI from Source Code
 To build the CLI from the source code, use the following command:
