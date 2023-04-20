@@ -108,6 +108,7 @@ COPY --from=build-scanio-plugins /usr/bin/trufflehog3 $SCANIO_PLUGINS_FOLDER/tru
 # Copy TrufflehogGo binary
 COPY --from=build-scanio-plugins /usr/src/scanio/trufflehog /usr/local/bin
 
+COPY rules /scanio-rules
 COPY helm /scanio-helm
 COPY Dockerfile /Dockerfile
 
