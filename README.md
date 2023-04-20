@@ -64,6 +64,13 @@ These articles cover the different commands available in the application:
 * [Analyse](docs/scanio-analyse.md).
 
 ### Plugins
-These articles cover the different plugins supported by the application:
+These articles cover the different plugins supported by the application. <br>
+
+VCSs plugins:
 * [Bitbucket](plugins/bitbucket/README.md).
+
+Scanners plugins:
+* [Bandit](plugins/bandit/README.md).
 * [Semgrep](plugins/semgrep/README.md).
+* [Trufflehog](plugins/trufflehog/README.md).
+* [Trufflehog3](plugins/trufflehog3/README.md).
