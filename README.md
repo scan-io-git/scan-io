@@ -45,6 +45,9 @@ Alternatively, you can use the following command to build a Docker image:
 ```
 docker build -t scanio .
 ```
+#### Custom Rules
+If you would like use in the image custom rules for scanners, place the rules to a ```/rules``` folder. 
+You will find your rules in the container in a ```/scanio-rules``` folder.
 
 ### Building the CLI from Source Code
 To build the CLI from the source code, use the following command:
@@ -64,6 +67,13 @@ These articles cover the different commands available in the application:
 * [Analyse](docs/scanio-analyse.md).
 
 ### Plugins
-These articles cover the different plugins supported by the application:
+These articles cover the different plugins supported by the application. <br>
+
+VCSs plugins:
 * [Bitbucket](plugins/bitbucket/README.md).
+
+Scanners plugins:
+* [Bandit](plugins/bandit/README.md).
 * [Semgrep](plugins/semgrep/README.md).
+* [Trufflehog](plugins/trufflehog/README.md).
+* [Trufflehog3](plugins/trufflehog3/README.md).

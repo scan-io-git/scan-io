@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/go-hclog"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
@@ -38,13 +39,15 @@ func (s Scanner) PrepScanArgs(repos []shared.RepositoryParams, path string) ([]s
 
 	// make dinamic extension name, based on output format
 	reportExt := "raw"
+	rawStartTime := time.Now().UTC()
+	startTime := rawStartTime.Format(time.RFC3339)
 	if len(s.reportFormat) > 0 {
 		reportExt = s.reportFormat
 	}
 	if len(path) != 0 {
 		// in the case with a manual path the result will be written to the same folder
 		targetFolder = path
-		resultsPath = filepath.Join(path, fmt.Sprintf("%s.%s", s.scannerPluginName, reportExt))
+		resultsPath = filepath.Join(path, fmt.Sprintf("%s-%s.%s", s.scannerPluginName, startTime, reportExt))
 
 		scanArgs = append(scanArgs, shared.ScannerScanRequest{
 			RepoPath:       targetFolder,
@@ -70,7 +73,7 @@ func (s Scanner) PrepScanArgs(repos []shared.RepositoryParams, path string) ([]s
 			}
 
 			targetFolder = shared.GetRepoPath(strings.ToLower(domain), filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
-			resultsPath = filepath.Join(resultsFolderPath, fmt.Sprintf("%s.%s", s.scannerPluginName, reportExt))
+			resultsPath = filepath.Join(resultsFolderPath, fmt.Sprintf("%s-%s.%s", s.scannerPluginName, startTime, reportExt))
 
 			scanArgs = append(scanArgs, shared.ScannerScanRequest{
 				RepoPath:       targetFolder,

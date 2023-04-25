@@ -201,7 +201,7 @@ func ExtractRepositoryInfoFromURL(Url string, VCSPlugName string) (string, strin
 			namespace = pathDirs[1]
 			return vcsUrl, namespace, repository, Url, "", nil
 		} else if len(pathDirs) > 3 && pathDirs[0] == "projects" && pathDirs[2] == "repos" && isHTTP {
-			// Case is working with a certain repo form a Web UI URL format
+			// Case is working with a certain repo from a Web UI URL format
 			// https://bitbucket.com/projects/<project_name>/repos/<repo_name>/browse
 			namespace = pathDirs[1]
 			repository = pathDirs[3]
@@ -225,7 +225,7 @@ func ExtractRepositoryInfoFromURL(Url string, VCSPlugName string) (string, strin
 				port := u.Port()
 				repository = strings.TrimSuffix(lastElement, ".git")
 				httpUrl = fmt.Sprintf("https://%s/scm/%s/%s.git", vcsUrl, namespace, repository)
-				// User can override a port if he use an ssh scheme format of URL
+				// User can override a port if he uses an ssh scheme format of URL
 				sshUrl = fmt.Sprintf("ssh://git@%s:%s/%s/%s.git", vcsUrl, port, namespace, repository)
 			}
 			return vcsUrl, namespace, repository, httpUrl, sshUrl, nil
