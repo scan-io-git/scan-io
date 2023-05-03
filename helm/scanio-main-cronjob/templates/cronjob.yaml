@@ -1,7 +1,11 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: test-cronjob
+  name: scanio-main-cronjob
+  {{- with .Values.commonLabels }}
+  labels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   schedule: "{{ .Values.schedule }}"
   jobTemplate:
@@ -11,7 +15,7 @@ spec:
           restartPolicy: Never
           serviceAccountName: {{ include "scanio-main.serviceAccountName" . }}
           containers:
-          - name: test-cronjob
+          - name: scanio-main-cronjob
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
             imagePullPolicy: {{ .Values.image.pullPolicy }}
             env:
