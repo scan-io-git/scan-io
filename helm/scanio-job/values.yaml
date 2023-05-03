@@ -9,6 +9,9 @@ command:
   - sleep
   - infinity
 
+commonLabels:
+  scanio-key: scanio-value
+
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
@@ -70,7 +73,7 @@ suffix: ""
 #   tag: latest
 
 persistence:
-  enabled: true
+  enabled: false
   claimName: pv-claim
   mountPath: /data
   # capacity: 20Gi

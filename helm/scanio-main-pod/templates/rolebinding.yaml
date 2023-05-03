@@ -2,7 +2,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: scanio-main-rolebinding
-  namespace: default
+  # namespace: default
+  {{- with .Values.commonLabels }}
+  labels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -10,4 +14,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: {{ include "scanio-main.serviceAccountName" . }}
-  namespace: default
+  # namespace: default

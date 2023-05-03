@@ -1,11 +1,15 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: test-pod
+  name: scanio-main-pod
+  {{- with .Values.commonLabels }}
+  labels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   serviceAccountName: {{ include "scanio-main.serviceAccountName" . }}
   containers:
-  - name: test-pod
+  - name: scanio-main-pod
     image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
     imagePullPolicy: {{ .Values.image.pullPolicy }}
     env:

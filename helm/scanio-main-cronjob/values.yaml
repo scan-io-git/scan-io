@@ -18,6 +18,9 @@ command:
   - -c
   - scanio list --vcs github --vcs-url github.com --namespace juice-shop --output /tmp/juice-shop-projects.json && scanio run2 --auth-type http -f /tmp/juice-shop-projects.json --scanner bandit --vcs github --runtime helm -j 10
 
+commonLabels:
+  scanio-key: scanio-value
+
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
@@ -55,7 +58,7 @@ tolerations: []
 affinity: {}
 
 persistence:
-  enabled: true
+  enabled: false
   claimName: pv-claim
   mountPath: /data
   # capacity: 20Gi

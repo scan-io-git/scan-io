@@ -4,6 +4,9 @@ metadata:
   name: scanio-job-{{ if .Values.suffix }}{{ .Values.suffix }}{{ else }}{{ randAlphaNum 5 | lower }}{{ end }}
   labels:
     {{- include "scanio-job.labels" . | nindent 4 }}
+    {{- with .Values.commonLabels }}
+    {{ toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   backoffLimit: 1
   activeDeadlineSeconds: 1337
@@ -12,6 +15,9 @@ spec:
       name: scanio
       labels:
         {{- include "scanio-job.selectorLabels" . | nindent 8 }}
+        {{- with .Values.commonLabels }}
+        {{ toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       restartPolicy: Never
       containers:
