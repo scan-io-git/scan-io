@@ -1,2 +1,2 @@
 `scripts/prep_semgrep_rules.sh` is a script that prepares semgrep rules, by fetching remote repositories and copying rules into `/rules` folder. This could be used for preparing a list of verified rules to put into a docker container. A common scenario is when you prepare a list of rules, which provide good findings, which you want to show to developers.  
-After building a docker image, developers can use `semgrep -c /scanio-rules`.
+After building a docker image, one can use `scanio analyse --scanner semgrep -c /scanio-rules /path/to/project` or natively `semgrep -c /scanio-rules`.

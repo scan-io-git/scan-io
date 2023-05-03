@@ -7,8 +7,8 @@ set -x  # debug output feature
 
 ###
 
-DIR=$( dirname -- "$( readlink -f -- "$0"; )"; )
-PARENT_DIR=$( dirname -- $DIR )
+SCRIPT_DIR=$( dirname -- "$( readlink -f -- "$0"; )"; )
+PARENT_DIR=$( dirname -- $SCRIPT_DIR )
 RULES_DIR="$PARENT_DIR/rules"
 echo $RULES_DIR
 
