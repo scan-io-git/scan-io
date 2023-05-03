@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -257,16 +258,26 @@ func tryGetFromKubeConfig() (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
+func getNamespace() string {
+	namespaceFile := "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+	if data, err := ioutil.ReadFile(namespaceFile); err == nil {
+		if ns := strings.TrimSpace(string(data)); len(ns) > 0 {
+			return ns
+		}
+	}
+	return apiv1.NamespaceDefault
+}
+
 func getNewJobsClient() v1.JobInterface {
 
 	clientset, err1 := tryGetFromClusterConfig()
 	if err1 == nil {
-		return clientset.BatchV1().Jobs(apiv1.NamespaceDefault)
+		return clientset.BatchV1().Jobs(getNamespace())
 	}
 
 	clientset, err2 := tryGetFromKubeConfig()
 	if err2 == nil {
-		return clientset.BatchV1().Jobs(apiv1.NamespaceDefault)
+		return clientset.BatchV1().Jobs(getNamespace())
 	}
 
 	panic(fmt.Errorf("cant create kubernetes client. For cluster config: %w. For kube config: %w", err1, err2))
