@@ -2,7 +2,7 @@
 # For example, Semgrep is a really huge 3rd party dependency ~400MB. 
 # Here we are building a main binary file and plugins from Golang code
 
-# The docker file supports multi-arch building but be careful trufflehog and helm have binaries forlinux/arm64 and linux/amd64 only. Check versions of 3rd party before building!
+# The docker file supports multi-arch building but be careful trufflehog and helm have binaries for linux/arm64 and linux/amd64 only. Check versions of 3rd party before building!
 # Semgrep still doesn't support ARM - https://github.com/returntocorp/semgrep/issues/2252! 
 
 FROM golang:1.19.8-alpine3.17 AS build-scanio-plugins
@@ -91,8 +91,6 @@ RUN python3 -m pip install bandit
 
 RUN curl -LO -v "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/${TARGETOS}/${TARGETARCH}/kubectl" && \
     curl -LO -v "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/${TARGETOS}/${TARGETARCH}/kubectl.sha256" && \
-    cat kubectl.sha256 && \
-    # sha256sum kubectl && \
     (echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c ) && \
     chmod +x ./kubectl && \
     mv kubectl /usr/local/bin
