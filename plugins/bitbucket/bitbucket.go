@@ -40,7 +40,7 @@ func (g *VCSBitbucket) init(command string, authType string) (shared.EvnVariable
 	variables.Token = os.Getenv("SCANIO_BITBUCKET_TOKEN")
 	variables.SshKeyPassword = os.Getenv("SCANIO_BITBUCKET_SSH_KEY_PASSWORD")
 
-	if (len(variables.Username) == 0) || (len(variables.Token) == 0) {
+	if command == "list" && ((len(variables.Username) == 0) || (len(variables.Token) == 0)) {
 		err := fmt.Errorf("SCANIO_BITBUCKET_USERNAME or SCANIO_BITBUCKET_TOKEN is not provided in an environment.")
 		g.logger.Error("An insufficiently configured environment", "error", err)
 		return variables, err
@@ -49,6 +49,12 @@ func (g *VCSBitbucket) init(command string, authType string) (shared.EvnVariable
 	if command == "fetch" {
 		if len(variables.SshKeyPassword) == 0 && authType == "ssh-key" {
 			g.logger.Warn("SCANIO_BITBUCKET_SSH_KEY_PASSOWRD is empty or not provided.")
+		}
+
+		if authType == "http" && ((len(variables.Username) == 0) || (len(variables.Token) == 0)) {
+			err := fmt.Errorf("SCANIO_BITBUCKET_USERNAME or SCANIO_BITBUCKET_TOKEN is not provided in an environment.")
+			g.logger.Error("An insufficiently configured environment", "error", err)
+			return variables, err
 		}
 	}
 	return variables, nil
@@ -66,7 +72,7 @@ func (g *VCSBitbucket) listAllProjects(client *bitbucketv1.APIClient) ([]shared.
 	g.logger.Info("Projects is listed")
 	res, err := getProjectsResponse(response)
 	if err != nil {
-		g.logger.Error("A Response parsing function is failed", "error", err)
+		g.logger.Error("A response parsing function is failed", "error", err)
 		return nil, err
 	}
 
@@ -75,7 +81,7 @@ func (g *VCSBitbucket) listAllProjects(client *bitbucketv1.APIClient) ([]shared.
 		projectsList = append(projectsList, shared.ProjectParams{Key: bitbucketRepo.Key, Name: bitbucketRepo.Name, Link: bitbucketRepo.Links.Self[0].Href})
 	}
 
-	g.logger.Debug("A list of projects is ready")
+	g.logger.Debug("The list of projects is ready")
 
 	resultJson, _ := json.MarshalIndent(projectsList, "", "    ")
 	g.logger.Debug(string(resultJson))
@@ -117,7 +123,7 @@ func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project 
 		resultList = append(resultList, shared.RepositoryParams{Namespace: project, RepoName: repo.Name, HttpLink: httpLink, SshLink: sshLink})
 	}
 
-	g.logger.Debug("A list of repositories is ready")
+	g.logger.Debug("The list of repositories is ready")
 
 	resultJson, _ := json.MarshalIndent(resultList, "", "    ")
 	g.logger.Debug(string(resultJson))
@@ -126,7 +132,7 @@ func (g *VCSBitbucket) resolveOneProject(client *bitbucketv1.APIClient, project 
 }
 
 func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) ([]shared.RepositoryParams, error) {
-	g.logger.Debug("Starting an all-repositories listing function", "args", args)
+	g.logger.Debug("Starting execution of an all-repositories listing function", "args", args)
 	variables, err := g.init("list", "")
 	if err != nil {
 		g.logger.Error("An init stage of an all repositories listing function is failed", "error", err)
@@ -149,7 +155,7 @@ func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) ([]shared.Repo
 	if len(args.Namespace) != 0 {
 		oneProjectData, err := g.resolveOneProject(client, args.Namespace)
 		if err != nil {
-			g.logger.Error("A particular repository function is failed", "error", err)
+			g.logger.Error("The particular repository function is failed", "error", err)
 			return nil, err
 		}
 		for _, repo := range oneProjectData {
@@ -159,14 +165,14 @@ func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) ([]shared.Repo
 	} else {
 		projectsList, err := g.listAllProjects(client)
 		if err != nil {
-			g.logger.Error("An all-repositories listing function is failed", "error", err)
+			g.logger.Error("The all-repositories listing function is failed", "error", err)
 			return nil, err
 		}
 
 		for _, projectName := range projectsList {
 			oneProjectData, err := g.resolveOneProject(client, projectName.Key)
 			if err != nil {
-				g.logger.Error("Listing all repos is failed", "error", err)
+				g.logger.Error("The listing of all repositories function is failed", "error", err)
 				return nil, err
 			}
 			for _, repo := range oneProjectData {
@@ -188,7 +194,7 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) error {
 
 	err = shared.GitClone(args, variables, g.logger)
 	if err != nil {
-		g.logger.Error("A fetching function is failed", "error", err)
+		g.logger.Error("The fetching function is failed", "error", err)
 		return err
 	}
 	return nil
