@@ -32,20 +32,11 @@ RUN go build -o /usr/bin/bandit ./plugins/bandit
 RUN go build -o /usr/bin/trufflehog ./plugins/trufflehog/
 RUN go build -o /usr/bin/trufflehog3 ./plugins/trufflehog3/
 
-RUN apk update &&\
-    apk upgrade
+# RUN apk update &&\
+#     apk upgrade
 
-RUN apk add --no-cache \
-                curl 
-
-# Installing Trufflehog Go by unpacking binary
-# ENV TRUFFLEHOG_VERSION 3.31.3
-RUN export TRUFFLEHOG_VER="$(curl -s -qI https://github.com/trufflesecurity/trufflehog/releases/latest | awk -F '/' '/^location/ {print  substr($NF, 1, length($NF)-1)}' | awk -F 'v' '{print $2}')" && \
-    export TRUFFLEHOG_SHA="$(curl -Ls https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/trufflehog_${TRUFFLEHOG_VER}_checksums.txt | grep trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz | awk '{print $1}')"  && \
-    curl -LOs "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz" && \
-    echo "${TRUFFLEHOG_SHA}  trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz" | sha256sum -c - && \
-    tar -xzf trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz 
-
+# RUN apk add --no-cache \
+#                 curl 
 
 FROM python:alpine3.17
 # Here we are preparing a container with all 3rd party dependencies for Scanio 
@@ -89,16 +80,29 @@ RUN python3 -m pip install semgrep
 # Installing Bandit 
 RUN python3 -m pip install bandit
 
+# Installing Trufflehog Go by unpacking binary
+# ENV TRUFFLEHOG_VERSION 3.31.3
+RUN export TRUFFLEHOG_VER="$(curl -s -qI https://github.com/trufflesecurity/trufflehog/releases/latest | awk -F '/' '/^location/ {print  substr($NF, 1, length($NF)-1)}' | awk -F 'v' '{print $2}')" && \
+    export TRUFFLEHOG_SHA="$(curl -Ls https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/trufflehog_${TRUFFLEHOG_VER}_checksums.txt | grep trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz | awk '{print $1}')"  && \
+    curl -LOs "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz" && \
+    echo "${TRUFFLEHOG_SHA}  trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz" | sha256sum -c - && \
+    tar -xzf trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz  && \
+    rm -rf trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz  && \
+    mv trufflehog /usr/local/bin 
+
+# Installing Kubectl
 RUN curl -LO -v "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/${TARGETOS}/${TARGETARCH}/kubectl" && \
     curl -LO -v "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/${TARGETOS}/${TARGETARCH}/kubectl.sha256" && \
     (echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c ) && \
+    rm -rf kubectl.sha256 && \
     chmod +x ./kubectl && \
     mv kubectl /usr/local/bin
-    
 
+# Installing Helm
 RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
         chmod 700 get_helm.sh && \
-        ./get_helm.sh
+        ./get_helm.sh && \
+        rm -rf get_helm.sh
 
 ENV SCANIO_HOME=/data
 ENV SCANIO_PLUGINS_FOLDER=/scanio-plugins
@@ -116,9 +120,6 @@ COPY --from=build-scanio-plugins /usr/bin/semgrep $SCANIO_PLUGINS_FOLDER/semgrep
 COPY --from=build-scanio-plugins /usr/bin/bandit $SCANIO_PLUGINS_FOLDER/bandit
 COPY --from=build-scanio-plugins /usr/bin/trufflehog $SCANIO_PLUGINS_FOLDER/trufflehog
 COPY --from=build-scanio-plugins /usr/bin/trufflehog3 $SCANIO_PLUGINS_FOLDER/trufflehog3
-
-# Copy TrufflehogGo binary
-COPY --from=build-scanio-plugins /usr/src/scanio/trufflehog /usr/local/bin
 
 COPY rules /scanio-rules
 COPY helm /scanio-helm
