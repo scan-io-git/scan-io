@@ -56,3 +56,6 @@ terraform.rc
 
 #
 .terraform.lock.hcl
+
+# 
+__debug_bin

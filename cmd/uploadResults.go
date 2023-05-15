@@ -201,7 +201,7 @@ func uploadResultsToDefectDojo(reposDetails []shared.RepositoryParams) error {
 // uploadResultsCmd represents the uploadResults command
 var uploadResultsCmd = &cobra.Command{
 	Use:   "upload-results",
-	Short: "[EXPERIMENTAL] Upload results to defectdojo",
+	Short: "[DEPRICATED] Upload results to defectdojo",
 	// Long: `A longer description that spans multiple lines and likely contains examples
 	// and usage of using your command. For example:
 
