@@ -4,15 +4,15 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/scan-io-git/scan-io/internal/dojo"
+	"github.com/scan-io-git/scan-io/pkg/shared"
 
 	"github.com/spf13/cobra"
 )
 
-var DOJO_TOKEN = os.Getenv("DEFECTDOJO_TOKEN")
+var DOJO_TOKEN = os.Getenv("SCANIO_DEFECTDOJO_TOKEN")
 
 type UploadOptions struct {
 	URL         string
@@ -27,9 +27,17 @@ var allUploadOptions UploadOptions
 var uploadCmd = &cobra.Command{
 	Use:   "upload2",
 	Short: "[EXPERIMENTAL] Upload results to defectdojo",
+	Long: `CLI wrapper over defectdojo upload functionality.
+Make sure that default SLAConfiguration exists, and create if it does not.
+Create new type of products in defectdojo: "SCANIO-REPO".
+Create product if it's not exists yet.
+Create engagement and import results from file.`,
+	Example: `  # Upload json results of semgrep
+  scanio upload2 -u https://defectdojo.example.com -p github.com/juice-shop/juice-shop -f ~/.scanio/results/github.com/juice-shop/juice-shop/semgrep-2023-05-13T11:09:04Z.json -t "Semgrep JSON Report"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("uploadCmd called")
-		fmt.Printf("DefectDojo URL: %s\n", allUploadOptions.URL)
+
+		logger := shared.NewLogger("core")
+		logger.Info("DefectDojo", "URL", allUploadOptions.URL)
 
 		dojoClient := dojo.New(allUploadOptions.URL, DOJO_TOKEN)
 

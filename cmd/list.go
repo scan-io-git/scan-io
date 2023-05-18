@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
 )
