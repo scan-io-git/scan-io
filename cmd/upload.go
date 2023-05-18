@@ -23,9 +23,9 @@ type UploadOptions struct {
 
 var allUploadOptions UploadOptions
 
-// upload2Cmd represents the upload command
+// uploadCmd represents the upload command
 var uploadCmd = &cobra.Command{
-	Use:   "upload2",
+	Use:   "upload",
 	Short: "[EXPERIMENTAL] Upload results to defectdojo",
 	Long: `CLI wrapper over defectdojo upload functionality.
 Make sure that default SLAConfiguration exists, and create if it does not.
@@ -33,7 +33,7 @@ Create new type of products in defectdojo: "SCANIO-REPO".
 Create product if it's not exists yet.
 Create engagement and import results from file.`,
 	Example: `  # Upload json results of semgrep
-  scanio upload2 -u https://defectdojo.example.com -p github.com/juice-shop/juice-shop -f ~/.scanio/results/github.com/juice-shop/juice-shop/semgrep-2023-05-13T11:09:04Z.json -t "Semgrep JSON Report"`,
+  scanio upload -u https://defectdojo.example.com -p github.com/juice-shop/juice-shop -f ~/.scanio/results/github.com/juice-shop/juice-shop/semgrep-2023-05-13T11:09:04Z.json -t "Semgrep JSON Report"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		logger := shared.NewLogger("core")
