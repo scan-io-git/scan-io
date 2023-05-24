@@ -38,12 +38,17 @@ To build from the source code using Docker, use the following command:
 ```
 make docker
 ```
-
-<br>
-
+  
 Alternatively, you can use the following command to build a Docker image:
 ```
 docker build -t scanio .
+```
+  
+Multi arch build:
+```
+docker buildx create --name scaniobuilder
+docker buildx use scaniobuilder
+docker buildx build --platform linux/amd64,linux/arm64 -t scanio --push .
 ```
 #### Custom Rules
 If you would like use in the image custom rules for scanners, place the rules to a ```/rules``` folder. 
