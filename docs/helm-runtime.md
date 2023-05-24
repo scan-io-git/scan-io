@@ -26,7 +26,7 @@ The following guide describe some basic helm chart usage. And you can always cus
 
 # in case of using pvc, you can run `sleep infinity` pod and access fs with results:
 ❯ helm install scanio-main-pod helm/scanio-main-pod/
-❯ kubectl exec -it test-pod -- bash
+❯ kubectl exec -it scanio-main-pod -- bash
 
 # By default scanio saves results to `/data/results/` folder with respect to `vcs-url`, `namespace` and `repo-name`. For example
 ❯ ls /data/results/github.com/juice-shop/juice-shop/bandit.raw 
