@@ -11,8 +11,8 @@ If you would like work with mimikube you will have to setup some values in helm 
 
 On this step you have few different options:
 - Build a docker container manualy with ```docker build -t scanio .``` or ```make docker```. After a building you have to put the image to a minikube context with a ```minikube image load scanio:latest``` command. 
-- Build a docker container with ```minikube image build -t scanio .```.
-- Use ```eval $(minikube docker-env)``` and build a docker container manualy with ```docker build -t scanio .``` or ```make docker```. This approach may work not properly.
+- Build a docker container with ```minikube image build --build-opt=build-arg=TARGETOS=linux --build-opt=build-arg=TARGETARCH=arm64 -t scanio .```.
+- Use ```eval $(minikube docker-env)``` and build a docker container manualy with ```docker build --build-arg TARGETOS=linux --build-arg TARGETARCH=arm64 -t scanio .```. This approach may work not properly.
 
 Don't forget to load a new image every time after building.
 
