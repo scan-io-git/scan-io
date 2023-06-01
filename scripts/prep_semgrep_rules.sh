@@ -3,23 +3,125 @@
 set -o errexit   # abort on nonzero exitstatus
 set -o nounset   # abort on unbound variable
 set -o pipefail  # don't hide errors within pipes
-set -x  # debug output feature
 
-###
+Help() {
+   # Display Help
+   echo "The script prepares semgrep rules, by fetching remote repositories and copying rules into `/rules` folder."
+   echo "Be sure before using the script that you deleted a ../rules folder."
+   echo
+   echo "Syntax: prep_semgrep_rules.sh [-h|-d|-r rules_semgrep.txt https://github.com/returntocorp/semgrep-rules.git release |-m /path1 /path2|a /rules_semgrep.txt /rules_trailofbits.txt]"
+   echo "options:"
+   echo "-h     Print this Help."
+   echo "-d     Debug output."
+   echo "-r     Path to a rules list. Only rules from the list will be fetched. For example: -r example_rules.txt"
+#    echo "-e     Path to a exclude list with rules. It creates a diff between your deleted rules and existed rule and new rules in the repo."
+# ./prep_semgrep_rules.sh -e rules_semgrep.txt deleted_semgrep.txt https://github.com/returntocorp/semgrep-rules.git release
+   echo "-m     Mergin two directories."
+   echo "-a     Full auto mod. Downloads semgrep rules repo and trailofbits repo by lists. Mergin two dirictories."
+ 
+   echo
+}
 
-SCRIPT_DIR=$( dirname -- "$( readlink -f -- "$0"; )"; )
-PARENT_DIR=$( dirname -- $SCRIPT_DIR )
-RULES_DIR="$PARENT_DIR/rules"
-echo $RULES_DIR
+REPOSITORY="https://github.com/returntocorp/semgrep-rules.git";
+BRANCH="release";
+RULES_LIST="rules_semgrep.txt";
+MODE="rules";
+
+parse_url() {
+        local ARGS=("$@")
+        local REPOSITORY_TO_PARS="${ARGS[0]}"
+        # extract the protocol
+        proto="$(echo $REPOSITORY_TO_PARS | grep :// | sed -e's,^\(.*://\).*,\1,g')"
+        # remove the protocol
+        url="$(echo ${REPOSITORY_TO_PARS/$proto/})"
+        # extract the path
+        path="$(echo $url | grep / | cut -d/ -f2-)"
+        BASE_FOLDER="$(echo $path | awk -F / '{ print $(NR) }')"  
+}
+
+parse_url $REPOSITORY
+
+### Args handler
+while getopts hdmar:e: flag
+do
+   case "${flag}" in
+     h) # display Help
+         Help
+         exit;;
+     d) 
+         echo "Debug mode"
+         set -x;;  # debug output feature
+     r)
+         RULES_LIST=${OPTARG}
+         REPOSITORY=$3
+         BRANCH=$4
+         MODE="rules"
+
+         parse_url $REPOSITORY
+        
+         echo "Rule list: $RULES_LIST"
+         echo "Repository with rules: $REPOSITORY"
+         echo "Branch: $BRANCH";;
+    #  e)
+    #     RULES_LIST=${OPTARG}
+    #     EXCLUDE_LIST=$3
+    #     REPOSITORY=$4
+    #     BRANCH=$5
+    #     MODE="diff"
+
+    #     parse_url $REPOSITORY
+        
+    #     echo "Rule list: $RULES_LIST"
+    #     echo "Exclude list: $EXCLUDE_LIST"
+    #     echo "Repository with rules: $REPOSITORY"
+    #     echo "Branch: $BRANCH";;
+     m) 
+         MERGE_PATH=$2
+         MODE="merge"
+         echo "Merging rules $MERGE_PATH";;
+     a)
+         MODE="auto"
+         if [ $# -ge 2 ] && [ -n "$2" ]
+            then
+            SEMGREP_FILE_WITH_RULES=$2
+            echo "Semgrep files with rules is found - $SEMGREP_FILE_WITH_RULES"
+        else
+            SEMGREP_FILE_WITH_RULES="rules_semgrep.txt"
+        fi
+        if [ $# -ge 3 ] && [ -n "$3" ]
+            then
+            TRAILOFBITS_FILE_WITH_RULES=$3
+            echo "Trailofbits files with rules is found - $TRAILOFBITS_FILE_WITH_RULES"
+        else
+            TRAILOFBITS_FILE_WITH_RULES="rules_trailofbits.txt"
+        fi
+         echo "Full auto mod. For a rules source will be used $SEMGREP_FILE_WITH_RULES and $TRAILOFBITS_FILE_WITH_RULES";;
+     \?) # incorrect option
+         echo "Error: Invalid option"
+         exit;;
+   esac
+done
+
+
+handle_rules_from_file() {
+    local ARGS=("$@")
+    local RULES_FILE="${ARGS[0]}"
+    rules=()
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        echo "Text read from a rules file: $line"
+        rules+=("$line")
+    done < $RULES_FILE
+}
 
 handle_repo() {
     local ARGS=("$@")
     local REPO="${ARGS[0]}"
     local BRANCH_OR_HASH="${ARGS[1]}"
-    local RULES="${ARGS[@]:2}"
-    
+    local RULES_FILE_FOR_CP="${ARGS[2]}"
+    local RULES="${ARGS[@]:3}"
+
     local REPO_DIR=$(mktemp -d)
-    echo $REPO_DIR
+    echo "Directory of repository - $REPO_DIR"
     git clone $REPO $REPO_DIR
 
     pushd "${REPO_DIR}"
@@ -33,75 +135,90 @@ handle_repo() {
         mkdir -p $TARGET_FOLDER
         cp "$REPO_DIR/$rule" $TARGET_FILE
     done
+    cp "$RULES_FILE_FOR_CP" "$RULES_DIR"
+    
+    if [ "$MODE" = "diff" ];
+    then
+        handle_rules_from_file $EXCLUDE_LIST
+        echo "Exclude list: ${rules[@]}"
+        handle_diff $RULES_DIR $REPO_DIR
+        
+        
+    fi
+
+    echo "Deleting tempo directory with cloned rules $REPO_DIR "
+    rm -rf $REPO_DIR 
 }
 
-rules=(
-    "csharp/dotnet/security/use_weak_rng_for_keygeneration.yaml"
-    "csharp/dotnet/security/use_ecb_mode.yaml"
-    "generic/ci/security/bash-reverse-shell.yaml"
-    "go/grpc/security/grpc-client-insecure-connection.yaml"
-    "go/jwt-go/security/jwt-none-alg.yaml"
-    "go/lang/security/audit/crypto/ssl.yaml"
-    "go/lang/security/audit/crypto/tls.yaml"
-    "go/lang/security/audit/crypto/use_of_weak_rsa_key.yaml"
-    "go/lang/security/audit/net/bind_all.yaml"
-    "go/lang/security/injection/tainted-sql-string.yaml"
-    "java/java-jwt/security/jwt-hardcode.yaml"
-    "java/java-jwt/security/jwt-none-alg.yaml"
-    "java/lang/security/audit/blowfish-insufficient-key-size.yaml"
-    "java/lang/security/audit/cbc-padding-oracle.yaml"
-    "java/lang/security/audit/crypto/des-is-deprecated.yaml"
-    "java/lang/security/audit/crypto/desede-is-deprecated.yaml"
-    "java/lang/security/audit/crypto/ecb-cipher.yaml"
-    "java/lang/security/audit/crypto/gcm-nonce-reuse.yaml"
-    "java/lang/security/audit/crypto/no-null-cipher.yaml"
-    "java/lang/security/audit/crypto/rsa-no-padding.yaml"
-    "java/lang/security/audit/crypto/use-of-md5-digest-utils.yaml"
-    "java/lang/security/audit/crypto/use-of-sha1.yaml"
-    "java/lang/security/audit/crypto/weak-rsa.yaml"
-    "java/lang/security/audit/xxe/documentbuilderfactory-disallow-doctype-decl-false.yaml"
-    "java/lang/security/audit/xxe/documentbuilderfactory-external-general-entities-true.yaml"
-    "java/lang/security/audit/xxe/documentbuilderfactory-external-parameter-entities-true.yaml"
-    "java/spring/security/injection/tainted-file-path.yaml"
-    "java/spring/security/injection/tainted-system-command.yaml"
-    "javascript/angular/security/detect-angular-sce-disabled.yaml"
-    "javascript/express/security/audit/express-libxml-noent.yaml"
-    "javascript/express/security/audit/express-open-redirect.yaml"
-    "javascript/express/security/audit/express-third-party-object-deserialization.yaml"
-    "javascript/express/security/express-jwt-hardcoded-secret.yaml"
-    "javascript/jose/security/jwt-hardcode.yaml"
-    "javascript/jose/security/jwt-none-alg.yaml"
-    "javascript/passport-jwt/security/passport-hardcode.yaml"
-    "javascript/sequelize/security/audit/sequelize-injection-express.yaml"
-    "kotlin/lang/security/weak-rsa.yaml"
-    "php/lang/security/assert-use.yaml"
-    "php/lang/security/openssl-cbc-static-iv.yaml"
-    "python/django/security/injection/command/subprocess-injection.yaml"
-    "python/flask/security/audit/app-run-param-config.yaml"
-    "python/flask/security/audit/debug-enabled.yaml"
-    "python/flask/security/injection/subprocess-injection.yaml"
-    "python/jwt/security/jwt-hardcode.yaml"
-    "ruby/lang/security/force-ssl-false.yaml"
-    "ruby/lang/security/hardcoded-http-auth-in-controller.yaml"
-    "ruby/lang/security/hardcoded-secret-rsa-passphrase.yaml"
-    "ruby/lang/security/insufficient-rsa-key-size.yaml"
-    "scala/jwt-scala/security/jwt-scala-hardcode.yaml"
-    "scala/lang/security/audit/documentbuilder-dtd-enabled.yaml"
-    "scala/lang/security/audit/rsa-padding-set.yaml"
-    "scala/lang/security/audit/sax-dtd-enabled.yaml"
-    "scala/lang/security/audit/xmlinputfactory-dtd-enabled.yaml"
-    "scala/play/security/tainted-slick-sqli.yaml"
-    "scala/play/security/tainted-sql-from-http-request.yaml"
-    "scala/scala-jwt/security/jwt-hardcode.yaml"
-    "terraform/aws/security/aws-elasticsearch-insecure-tls-version.yaml"
-    "terraform/azure/security/appservice/appservice-use-secure-tls-policy.yaml"
-    "yaml/github-actions/security/github-script-injection.yaml"
-    "terraform/aws/security/aws-config-aggregator-not-all-regions.yaml"
-    "java/lang/security/audit/crypto/use-of-aes-ecb.yaml"
-    "java/lang/security/audit/crypto/use-of-blowfish.yaml"
-    "java/lang/security/audit/crypto/use-of-default-aes.yaml"
-    "java/lang/security/audit/crypto/use-of-rc2.yaml"
-    "java/lang/security/audit/crypto/use-of-rc4.yaml"
-)
+init_for_rules() {
+    SCRIPT_DIR=$( dirname -- "$( readlink -f -- "$0"; )"; )
+    PARENT_DIR=$( dirname -- $SCRIPT_DIR )
+    RULES_DIR="$PARENT_DIR/rules/$BASE_FOLDER"
+    echo "Rules directory to safe files - $RULES_DIR"
+}
 
-handle_repo "https://github.com/returntocorp/semgrep-rules.git" "release" ${rules[@]}
+handle_merging() {
+    local ARGS=("$@")
+    local MERGE_PATH="${ARGS[0]}"
+    MERGE_FOLDER="${MERGE_PATH%/*}/semgrep-rules"
+    echo "Merging $MERGE_PATH to $MERGE_FOLDER"
+    mkdir -p $MERGE_FOLDER
+    cp -R $MERGE_PATH/ $MERGE_FOLDER 
+    echo "Deleting $MERGE_PATH"
+    rm -rf $MERGE_PATH
+}
+
+# handle_diff() {
+#     local ARGS=("$@")
+#     local FOLDER_WITH_LISTED_RULES="${ARGS[0]}"
+#     local FOLDER_WITH_FETCHED_REPO="${ARGS[1]}"
+#     echo $FOLDER_WITH_LISTED_RULES
+#     echo $FOLDER_WITH_FETCHED_REPO
+#     local CCC=$(diff -Nqr $FOLDER_WITH_LISTED_RULES $FOLDER_WITH_FETCHED_REPO | grep ".yaml")
+
+#     for el in ${CCC[@]}; do
+#         if [[ "$el" == *".yaml" ]] || [[ "$el" == *".yml" ]]
+#         then  
+#             PARSED_RULES=$(echo "$el" | awk -F / '{print $(NF-1)"/"$NF}')   
+#             if [[ " ${rules[@]} " =~ "$PARSED_RULES" ]]
+#                 then 
+#                     echo "$el Not in Array"
+#             else
+#                 echo "$el is a New rule"
+#             fi
+#         fi
+#     done
+# }
+
+case $MODE in
+        "rules")
+             init_for_rules
+             handle_rules_from_file $RULES_LIST
+             handle_repo $REPOSITORY $BRANCH $RULES_LIST ${rules[@]};;
+        # "diff")
+        #      init_for_rules
+        #      handle_rules_from_file $RULES_LIST
+        #      handle_repo $REPOSITORY $BRANCH $RULES_LIST ${rules[@]};;
+        "merge")
+             handle_merging $MERGE_PATH;;
+        "auto")
+             parse_url $REPOSITORY
+             init_for_rules
+             handle_rules_from_file $SEMGREP_FILE_WITH_RULES
+             handle_repo $REPOSITORY $BRANCH $SEMGREP_FILE_WITH_RULES ${rules[@]}
+             MERGE_PATH=$RULES_DIR
+             handle_merging $MERGE_PATH
+
+             REPOSITORY="https://github.com/trailofbits/semgrep-rules.git"
+             BRANCH="main"
+
+             parse_url $REPOSITORY
+             init_for_rules
+             handle_rules_from_file $TRAILOFBITS_FILE_WITH_RULES
+             handle_repo $REPOSITORY $BRANCH $TRAILOFBITS_FILE_WITH_RULES ${rules[@]}
+             
+             MERGE_PATH=$RULES_DIR
+             handle_merging $MERGE_PATH;;
+esac
+
+
