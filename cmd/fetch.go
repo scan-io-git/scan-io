@@ -143,7 +143,7 @@ func init() {
 	rootCmd.AddCommand(fetchCmd)
 
 	fetchCmd.Flags().StringVar(&allArgumentsFetch.VCSPlugName, "vcs", "", "the plugin name of the VCS used. Eg. bitbucket, gitlab, github, etc.")
-	fetchCmd.Flags().StringVarP(&allArgumentsFetch.InputFile, "input-file", "i", "", "a file in scanio format with list of repositories to fetching. The list command could prepare this file.")
+	fetchCmd.Flags().StringVarP(&allArgumentsFetch.InputFile, "input-file", "i", "", "a file in Scanio format with list of repositories to fetching. The list command could prepare this file.")
 	fetchCmd.Flags().IntVarP(&allArgumentsFetch.Threads, "threads", "j", 1, "number of concurrent goroutines.")
 	fetchCmd.Flags().StringVar(&allArgumentsFetch.AuthType, "auth-type", "", "type of authentication: 'http', 'ssh-agent' or 'ssh-key'.")
 	fetchCmd.Flags().StringVar(&allArgumentsFetch.SSHKey, "ssh-key", "", "the path to an ssh key.")
