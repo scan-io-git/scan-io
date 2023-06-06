@@ -20,7 +20,7 @@ The following guide describe some basic helm chart usage. And you can always cus
 
 # Run scan with "helm" runtime
 # By default scanio get helm chart from "./helm/scanio-job" folder
-❯ scanio run2 --auth-type http -f /tmp/juice-shop-projects.json --scanner bandit --vcs github --runtime helm -j 5
+❯ scanio run2 --auth-type http -i /tmp/juice-shop-projects.json --scanner bandit --vcs github --runtime helm -j 5
 
 # It's always good idea to review "./helm/scanio-job/values.yaml" to update some variables to fit your environment requirements.
 

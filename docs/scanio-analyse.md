@@ -10,8 +10,8 @@ The main function is to present a top-level interface for a specified scanner. T
 
 ## Args of the Command
 - "scanner" is the plugin name of the scanner used. The default is semgrep.
-- "input-file" or "f" is a file in scanio format with a list of repositories to analyse. The list command could prepare this file.
-- "format" or "o" is a format for a report with results. 
+- "input-file" or "i" is a file in scanio format with a list of repositories to analyse. The list command could prepare this file.
+- "format" or "f" is a format for a report with results. 
 - "config" or "c" is a path or type of config for a scanner. The value depends on a particular scanner's used formats. The default is auto. 
 - "threads" or "j" is a number of concurrent goroutines. The default is 1.<br><br>
 

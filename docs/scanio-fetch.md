@@ -5,7 +5,7 @@ At the moment plugins fetch only the master/main branch.
 
 ## Args of the Command
 - "vcs" is the plugin name of the VCS used. Eg. bitbucket, gitlab, github, etc.
-- "input-file" or "f" is a file in scanio format with list of repositories to fetch. The list command could prepare this file.
+- "input-file" or "i" is a file in scanio format with list of repositories to fetch. The list command could prepare this file.
 - "auth-type" is a type for an authentication - "http", "ssh-agent" or "ssh-key".
 - "ssh-key" is a path to an SSH key.
 - "threads" or "j" is a number of concurrent goroutines. The default is 1. 

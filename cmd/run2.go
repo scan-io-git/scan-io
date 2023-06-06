@@ -236,7 +236,7 @@ func init() {
 	rootCmd.AddCommand(run2Cmd)
 
 	run2Cmd.Flags().StringVar(&allRun2Options.AuthType, "auth-type", "", "Type of authentication: 'http', 'ssh-agent' or 'ssh-key'")
-	run2Cmd.Flags().StringVarP(&allRun2Options.InputFile, "input", "f", "", "file with list of repos. Results of there repos will be uploaded")
+	run2Cmd.Flags().StringVarP(&allRun2Options.InputFile, "input", "i", "", "file with list of repos. Results of there repos will be uploaded")
 	run2Cmd.Flags().StringSliceVar(&allRun2Options.Repositories, "repos", []string{}, "list of repos to fetch - full path format")
 	run2Cmd.Flags().StringVar(&allRun2Options.RmExts, "rm-ext", "csv,png,ipynb,txt,md,mp4,zip,gif,gz,jpg,jpeg,cache,tar,svg,bin,lock,exe", "Files with extention to remove automatically after checkout")
 	run2Cmd.Flags().StringVar(&allRun2Options.ScannerPluginName, "scanner", "semgrep", "scanner plugin name")

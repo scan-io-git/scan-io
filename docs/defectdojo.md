@@ -66,12 +66,12 @@ Get list of project to scan, fetch and scan them. Get more details in `usecase-s
 ```bash
 ❯ scanio list --vcs github --vcs-url github.com --namespace juice-shop --output /tmp/juice-shop-projects.json
 
-❯ scanio fetch --vcs github --vcs-url github.com --auth-type http -f /tmp/juice-shop-projects.json -j 10
+❯ scanio fetch --vcs github --vcs-url github.com --auth-type http -i /tmp/juice-shop-projects.json -j 10
 
 ❯ cat /tmp/juice-shop-projects.json | jq .result[].http_link | sed -e 's#^"https://##g' | sed -e 's#.git"$##g' > /tmp/juice-shop-projects-local-paths.json
-❯ scanio analyse --scanner semgrep -f /tmp/juice-shop-projects-local-paths.json -j 10
+❯ scanio analyse --scanner semgrep -i /tmp/juice-shop-projects-local-paths.json -j 10
 
-❯ scanio upload-results -f /tmp/juice-shop-projects.json --vcs-url github.com
+❯ scanio upload-results -i /tmp/juice-shop-projects.json --vcs-url github.com
 ```
 
 # Watch results in DefectDojo UI.

@@ -21,16 +21,16 @@ var (
 	allArgumentsList RunOptionsList
 	resultVCS        shared.ListFuncResult
 	execExampleList  = `  # Listing all repositories in a VCS
-  scanio list --vcs bitbucket --vcs-url example.com -f /Users/root/.scanio/output.file
+  scanio list --vcs bitbucket --vcs-url example.com -o /Users/root/.scanio/output.file
   
   # Listing all repositories by a project in a VCS
-  scanio list --vcs bitbucket --vcs-url example.com --namespace PROJECT -f /Users/root/.scanio/PROJECT.file
+  scanio list --vcs bitbucket --vcs-url example.com --namespace PROJECT -o /Users/root/.scanio/PROJECT.file
 
   # Listing all repositories in a VCS using URL
-  scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/
+  scanio list --vcs bitbucket -o /Users/root/.scanio/PROJECT.file https://example.com/
 
   # Listing all repositories by a project using URL
-  scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/projects/PROJECT/`
+  scanio list --vcs bitbucket -o /Users/root/.scanio/PROJECT.file https://example.com/projects/PROJECT/`
 )
 
 func do() {
@@ -129,7 +129,7 @@ func init() {
 
 	listCmd.Flags().StringVar(&allArgumentsList.VCSPlugName, "vcs", "", "the plugin name of the VCS used. Eg. bitbucket, gitlab, github, etc.")
 	listCmd.Flags().StringVar(&allArgumentsList.VCSURL, "vcs-url", "", "URL to a root of the VCS API. Eg. github.com.")
-	listCmd.Flags().StringVarP(&allArgumentsList.OutputFile, "output", "f", "", "the path to an output file.")
+	listCmd.Flags().StringVarP(&allArgumentsList.OutputFile, "output", "o", "", "the path to an output file.")
 	listCmd.Flags().StringVar(&allArgumentsList.Namespace, "namespace", "", "the name of a specific namespace. Namespace for Gitlab is an organization, for Bitbucket_v1 is a project.")
 	listCmd.Flags().StringVarP(&allArgumentsList.Language, "language", "l", "", "collect only projects that have code on specified language. It's supported only for Giblab.")
 }
