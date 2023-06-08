@@ -539,7 +539,7 @@ func init() {
 	runCmd.Flags().StringVar(&o.VCSPlugin, "vcs-plugin", "github", "vcs plugin name")
 	runCmd.Flags().StringVar(&o.VCSURL, "vcs-url", "github.com", "vcs base url")
 	runCmd.Flags().StringSliceVar(&o.Repos, "repos", []string{}, "repo path to scan")
-	runCmd.Flags().StringVarP(&o.InputFile, "input", "f", "", "repo path to scan")
+	runCmd.Flags().StringVarP(&o.InputFile, "input", "i", "", "repo path to scan")
 	runCmd.Flags().StringSliceVar(&o.RmExts, "rm-ext", strings.Split("csv,png,ipynb,txt,md,mp4,zip,gif,gz,jpg,jpeg,cache,tar,svg,bin,lock,exe", ","), "Files with extention to remove automatically after checkout")
 	runCmd.Flags().StringVar(&o.ScannerPlugin, "scanner-plugin", "semgrep", "scanner plugin name")
 	runCmd.Flags().StringVar(&o.StorageType, "storage-type", "local", "storage type")

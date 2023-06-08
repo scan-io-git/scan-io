@@ -13,7 +13,7 @@ As a result scanio will generate a file with projects. On later stages scanio wo
   
 Now lets fetch projects.
 1. Generate ssh key and add it to your gitlab account: https://gitlab.com/-/profile/keys
-2. Command example: `scanio fetch --auth-type ssh-key --ssh-key ~/.ssh/id_rsa -f /tmp/demo-group-projects.json --vcs gitlab --vcs-url gitlab.com`
+2. Command example: `scanio fetch --auth-type ssh-key --ssh-key ~/.ssh/id_rsa -i /tmp/demo-group-projects.json --vcs gitlab --vcs-url gitlab.com`
 As a result scanio will create folder structure `~/.scanio/projects/` and clone all projects there saving full path with namespace.
 
 ## Step 2. K8S
@@ -65,11 +65,11 @@ Now interact with scanio:
 ```bash
 scanio list --vcs gitlab --vcs-url gitlab.com --namespace demo-group --output /tmp/demo-group-projects.json
 
-scanio fetch --vcs gitlab --vcs-url gitlab.com --auth-type ssh-key --ssh-key /ssh-key-volume/private -f /tmp/demo-group-projects.json
+scanio fetch --vcs gitlab --vcs-url gitlab.com --auth-type ssh-key --ssh-key /ssh-key-volume/private -i /tmp/demo-group-projects.json
 ```
 
 Or you can use umbrella command `run2`:  
-`scanio run2 --auth-type ssh-key --ssh-key /ssh-key-volume/private -f /tmp/demo-group-projects.json --vcs gitlab --scanner bandit --runtime helm`
+`scanio run2 --auth-type ssh-key --ssh-key /ssh-key-volume/private -i /tmp/demo-group-projects.json --vcs gitlab --scanner bandit --runtime helm`
 
 As a result you will find fetched project in `/data/projects` folder. Scan results in `/data/results`.
 
@@ -78,5 +78,5 @@ By looking into `scanio-main-pod` chart that we use, you can mention that defaul
 command:
   - bash
   - -c
-  - scanio list --vcs gitlab --vcs-url gitlab.com --namespace demo-group --output /tmp/demo-group-projects.json && scanio run2 --auth-type ssh-key --ssh-key /ssh-key-volume/private -f /tmp/demo-group-projects.json --vcs gitlab --scanner bandit --runtime helm
+  - scanio list --vcs gitlab --vcs-url gitlab.com --namespace demo-group --output /tmp/demo-group-projects.json && scanio run2 --auth-type ssh-key --ssh-key /ssh-key-volume/private -i /tmp/demo-group-projects.json --vcs gitlab --scanner bandit --runtime helm
 ```

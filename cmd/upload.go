@@ -33,10 +33,10 @@ Create new type of products in defectdojo: "SCANIO-REPO".
 Create product if it's not exists yet.
 Create engagement and import results from file.`,
 	Example: `  # Upload json results of semgrep:
-  scanio upload -u https://defectdojo.example.com -p github.com/juice-shop/juice-shop -f ~/.scanio/results/github.com/juice-shop/juice-shop/semgrep-2023-05-13T11:09:04Z.json -t "Semgrep JSON Report"
+  scanio upload -u https://defectdojo.example.com -p github.com/juice-shop/juice-shop -i ~/.scanio/results/github.com/juice-shop/juice-shop/semgrep-2023-05-13T11:09:04Z.json -t "Semgrep JSON Report"
   
   # Upload json results of trufflehog:
-  scanio upload -u https://defectdojo.example.com -p github.com/juice-shop/juice-shop -f ~/.scanio/results/github.com/juice-shop/juice-shop/trufflehog-2023-05-18T12:20:12Z.json -t "Trufflehog Scan"`,
+  scanio upload -u https://defectdojo.example.com -p github.com/juice-shop/juice-shop -i ~/.scanio/results/github.com/juice-shop/juice-shop/trufflehog-2023-05-18T12:20:12Z.json -t "Trufflehog Scan"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		logger := shared.NewLogger("core")
@@ -82,7 +82,7 @@ func init() {
 	rootCmd.AddCommand(uploadCmd)
 
 	uploadCmd.Flags().StringVarP(&allUploadOptions.URL, "url", "u", "http://defectdojo.example.com:8080", "DefectDojo URL")
-	uploadCmd.Flags().StringVarP(&allUploadOptions.InputFile, "input", "f", "", "report filepath")
+	uploadCmd.Flags().StringVarP(&allUploadOptions.InputFile, "input", "i", "", "report filepath")
 	uploadCmd.Flags().StringVarP(&allUploadOptions.ProductName, "product", "p", "", "product name")
 	uploadCmd.Flags().StringVarP(&allUploadOptions.ScanType, "scan-type", "t", "", "scan type")
 }
