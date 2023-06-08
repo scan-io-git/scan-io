@@ -42,10 +42,10 @@ The application supports a few different formats of url:
 * URL points to a specific project and repository using API format and ssh type - ```ssh://git@gexample.com:7989/<PROJECT_NAME>/<REPO_NAME>.git```<br>
 &emsp;You could use the format with **fetch** command to fetch a specific repository.<br>
 &emsp;You also can change the port using ssh scheme.<br>
-&emsp;```scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 ssh://git@git.acronis.com:7989/scanio_project/scanio.git```<br>
+&emsp;```scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 ssh://git@example.com:7989/scanio_project/scanio.git```<br>
 * URL points to a specific project and repository using API format and http type - ```https://example.com/scm/<PROJECT_NAME>/<REPO_NAME>.git```<br>
 &emsp;You could use the format with **fetch** command to fetch a specific repository.<br>
-&emsp;```scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 https://git.acronis.com/scm/scanio_project/scanio.git```<br>
+&emsp;```scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 https://example.com/scm/scanio_project/scanio.git```<br>
 
 ## Results of the Command
 ### Output of a "list" Command

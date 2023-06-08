@@ -78,7 +78,7 @@ To fetch a particular repository for scanning, you can use the following command
 
 Command for CLI.
 ```
-scanio fetch --vcs bitbucket --auth-type ssh-agent -j 1 https://git.acronis.com/projects/SEC/repos/passport/browse
+scanio fetch --vcs bitbucket --auth-type ssh-agent -j 1 https://example.com/projects/SEC/repos/passport/browse
 ```
 <br>
 

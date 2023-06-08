@@ -16,10 +16,10 @@ The script will download rules from a repo - https://github.com/trailofbits/semg
 
 **Mergin mode**<br>
 The command merges rules from a specified directory to a "semgrep-rules" folder.<br>
-```./prep_semgrep_rules.sh -m /Volumes/Files/AcronisJob/develop/rules/returntocorp```<br>
+```./prep_semgrep_rules.sh -m /scan-io/rules/returntocorp```<br>
 The script will copy all rules to a "semgrep-rules" folder and delete the "returntocorp" folder.<br><br>
 
-```./prep_semgrep_rules.sh -m /Volumes/Files/AcronisJob/develop/rules/trailofbits```<br>
+```./prep_semgrep_rules.sh -m /scan-io/rules/trailofbits```<br>
 The script will copy all rules to a "semgrep-rules" folder and delete the "trailofbits" folder.<br><br>
 
 **Auto mode**<br>
