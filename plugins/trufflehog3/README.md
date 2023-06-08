@@ -11,7 +11,7 @@ By defaul a plugin use this command:<br>
 Where:
 * AdditionalArgs is additional arguments in ```scanio analyse``` command after ```--```.
 * ConfigPath is a path to a custom config. Will be applied if you use ```--config``` or ```-c``` in ```scanio analyse``` command.
-* ReportFormat is a non-default format of a report. Will be applied if you use ```--format``` or ```-o```. 
+* ReportFormat is a non-default format of a report. Will be applied if you use ```--format``` or ```-f```. 
 * ```-z``` says to Trufflehog3 always exit with zero status code. WE use it because Trufflehog3 sends a not correct exit code even when it finished without errors. 
 * ```--output``` is a path on a local disk to file with results. Trufflehog3 will create or rewrite a file with results by using this path.
 

@@ -57,7 +57,7 @@ cat /tmp/juice-shop-projects.json | jq .result[].http_link | sed -e 's#^"https:/
 ```
 5. Run scanio with helm runtime
 ```bash
-scanio run --vcs-plugin github --vcs-url github.com -f /tmp/juice-shop-projects-paths.json --runtime helm --scanner-plugin bandit -j 10 --storage-type remote
+scanio run --vcs-plugin github --vcs-url github.com -i /tmp/juice-shop-projects-paths.json --runtime helm --scanner-plugin bandit -j 10 --storage-type remote
 ```
 6. After scan finished you can create helm chart, which by default run pod with command `sleep infinity` (when scanio run scan this value is overriden). After helm install release, you can get pod name and attach to it. Inspect PV.
 ```bash

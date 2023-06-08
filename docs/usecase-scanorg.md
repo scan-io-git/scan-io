@@ -23,7 +23,7 @@ These instructions should be a base for scanning you private repos.
     To clone projects we will reuse file `juice-shop-projects.json`.
     ```bash
     # fetch all projects multiple threads
-    ❯ scanio fetch --vcs github --vcs-url github.com --auth-type http -f /tmp/juice-shop-projects.json -j 10
+    ❯ scanio fetch --vcs github --vcs-url github.com --auth-type http -i /tmp/juice-shop-projects.json -j 10
     ```
     By default scanio clone in `$HOME/.scanio/projects` folder as a root. Path to every cloned object is comprised of `<vcs-url>/<namespace>/<repo_name>`:
     ```bash
@@ -48,7 +48,7 @@ These instructions should be a base for scanning you private repos.
     After scanio fetched all projects, we can run analysis tools. For example, semgrep.
     ```bash
     # run scan with semgrep in multiple threads
-    ❯ scanio analyse --scanner semgrep -f /tmp/juice-shop-projects.json -j 10
+    ❯ scanio analyse --scanner semgrep -i /tmp/juice-shop-projects.json -j 10
     ```
     By default scanio save all results in `$HOME/.scanio/results` folder. For every project with respest to `vcs-url`, `namespace` and `repo_name`.
     ```bash

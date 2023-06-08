@@ -62,7 +62,7 @@ This generic output is used as input for other commands in case of no manual int
 ## Args of the Command
 * "vcs" is the plugin name of the VCS used. Eg. bitbucket, gitlab, github, etc.
 * "vcs-url" is an URL to a root of the VCS API. Eg. github.com.
-* "output" or "f" is a path to an output file.
+* "output" or "o" is a path to an output file.
 * "namespace" is the name of a specific namespace. Namespace for Gitlab is an organization, for Bitbucket_v1 is a project.
 * "language" or "l" helps to collect only projects that have code in a specified language. It works only for Gitlab.<br><br>
 
@@ -75,7 +75,7 @@ When developing, we aimed at the fact that the program will be used primarily fo
 This scenario needs if you would like to list all repositories from your VCS.
 
 #### Bitbucket
-```scanio list --vcs bitbucket --vcs-url example.com -f /Users/root/.scanio/output.file```
+```scanio list --vcs bitbucket --vcs-url example.com -o /Users/root/.scanio/output.file```
 
 #### Github
 At the moment the plugin can't list a all VCS.
@@ -87,7 +87,7 @@ At the moment the plugin can't list a all VCS.
 This scenario needs if you would like to list all repositories from your VCS by using URL.
 
 #### Bitbucket
-```scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/```<br>
+```scanio list --vcs bitbucket -o /Users/root/.scanio/PROJECT.file https://example.com/```<br>
 You can find additional information about URL formats [here](../plugins/bitbucket/README.md#supported-url-formats)
 
 #### Github
@@ -100,10 +100,10 @@ You can find additional information about URL formats [here](../plugins/bitbucke
 This scenario needs if you would like to list repositories on a specified project/namespace. 
 
 #### Bitbucket
-```scanio list --vcs bitbucket --vcs-url example.com --namespace PROJECT -f /Users/root/.scanio/PROJECT.file```
+```scanio list --vcs bitbucket --vcs-url example.com --namespace PROJECT -o /Users/root/.scanio/PROJECT.file```
 
 #### Github
-```scanio list --vcs github --vcs-url example.com --namespace PROJECT -f /Users/root/.scanio/PROJECT.file```
+```scanio list --vcs github --vcs-url example.com --namespace PROJECT -o /Users/root/.scanio/PROJECT.file```
 
 #### Gitlab
 *TODO*
@@ -112,7 +112,7 @@ This scenario needs if you would like to list repositories on a specified projec
 This scenario needs if you would like to list repositories on a specified project/namespace by using URL. 
 
 #### Bitbucket
-```scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/projects/PROJECT/```<br>
+```scanio list --vcs bitbucket -o /Users/root/.scanio/PROJECT.file https://example.com/projects/PROJECT/```<br>
 You can find additional information about URL formats [here](../plugins/bitbucket/README.md#supported-url-formats)
 
 #### Github

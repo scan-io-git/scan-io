@@ -12,13 +12,13 @@ You may find additional information in our articles:
 
 ## Commands
 * Listing all repositories in a VCS.<br>
-```scanio list --vcs bitbucket --vcs-url example.com -f /Users/root/.scanio/output.file```
+```scanio list --vcs bitbucket --vcs-url example.com -i /Users/root/.scanio/output.file```
 * Listing all repositories by a project in a VCS.<br>
-```scanio list --vcs bitbucket --vcs-url example.com --namespace PROJECT -f /Users/root/.scanio/PROJECT.file```
+```scanio list --vcs bitbucket --vcs-url example.com --namespace PROJECT -i /Users/root/.scanio/PROJECT.file```
 * Listing all repositories in a VCS using URL.<br>
-```scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/```
+```scanio list --vcs bitbucket -i /Users/root/.scanio/PROJECT.file https://example.com/```
 * Listing all repositories by a project using URL.<br>
-```scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/projects/PROJECT/```
+```scanio list --vcs bitbucket -i /Users/root/.scanio/PROJECT.file https://example.com/projects/PROJECT/```
 * Fetching from an input file using an ssh-key authentification.<br>
 ```scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1```
 * Fetching using an ssh-key authentification and URL that points a specific repository.<br>
@@ -32,10 +32,10 @@ You may find additional information in our articles:
 The application supports a few different formats of url:
 * URL points to a VCS using Web UI format - ```https://example.com/```.<br>
 &emsp;You could use the format with **list** command to list all repositories from your VCS.<br>
-&emsp;```scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/```<br>
+&emsp;```scanio list --vcs bitbucket -i /Users/root/.scanio/PROJECT.file https://example.com/```<br>
 * URL points to a specific project using Web UI format - ```https://example.com/projects/<PROJECT_NAME>/```<br>
 &emsp;You could use the format with **list** command to list all repositories from the project.<br>
-&emsp;```scanio list --vcs bitbucket -f /Users/root/.scanio/PROJECT.file https://example.com/projects/scanio_project/```<br>
+&emsp;```scanio list --vcs bitbucket -i /Users/root/.scanio/PROJECT.file https://example.com/projects/scanio_project/```<br>
 * URL points to a specific project and repository using Web UI format - ```https://example.com/projects/<PROJECT_NAME>/repos/<REPO_NAME>/browse```<br>
 &emsp;You could use the format with **fetch** command to fetch a specific repository.<br>
 &emsp;```scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 https://example.com/projects/scanio_project/repos/scanio/browse```<br>

@@ -38,7 +38,7 @@ var (
 )
 
 var analyseCmd = &cobra.Command{
-	Use:                   "analyse --scanner PLUGIN_NAME [--config /local_path] [--format FILE_FORMAT] [-j THREADS_NUMBER] (--input-file /local_path/repositories.file | /local_path) -- [args...]",
+	Use:                   "analyse --scanner PLUGIN_NAME [--config /local_path] [--format/-f FILE_FORMAT] [-j THREADS_NUMBER] (--input-file/-i /local_path/repositories.file | /local_path) -- [args...]",
 	SilenceUsage:          true,
 	DisableFlagsInUseLine: true,
 	Example:               execExampleAnalyse,
@@ -118,8 +118,8 @@ func init() {
 	rootCmd.AddCommand(analyseCmd)
 
 	analyseCmd.Flags().StringVar(&allArgumentsAnalyse.ScannerPluginName, "scanner", "", "the plugin name of the scanner used.. Eg. semgrep, bandit etc.")
-	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.InputFile, "input-file", "f", "", "a file in scanio format with a list of repositories to analyse. The list command could prepare this file..")
+	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.InputFile, "input-file", "i", "", "a file in Scanio format with a list of repositories to analyse. The list command could prepare this file.")
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.Config, "config", "c", "", "a path or type of config for a scanner. The value depends on a particular scanner's used formats.")
-	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.ReportFormat, "format", "o", "", "a format for a report with results.") //doesn't have default for "Uses ASCII output if no format specified"
+	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.ReportFormat, "format", "f", "", "a format for a report with results.") //doesn't have default for "Uses ASCII output if no format specified"
 	analyseCmd.Flags().IntVarP(&allArgumentsAnalyse.Threads, "threads", "j", 1, "number of concurrent goroutines.")
 }
