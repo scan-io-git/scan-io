@@ -14,6 +14,7 @@ build-plugins: ## Build plugins
 	go build -o ~/.scanio/plugins/bandit ./plugins/bandit/
 	go build -o ~/.scanio/plugins/trufflehog ./plugins/trufflehog/
 	go build -o ~/.scanio/plugins/trufflehog3 ./plugins/trufflehog3/
+	go build -o ~/.scanio/plugins/codeql ./plugins/codeql/
 
 .PHONY: build-cli
 build-cli: ## Build scanio core
