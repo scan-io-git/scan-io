@@ -70,6 +70,11 @@ func (g *ScannerCodeQL) analyzeDatabase(databaseDir string, args shared.ScannerS
 
 	commandArgs := []string{"database", "analyze", databaseDir, "--format", args.ReportFormat, args.ConfigPath, "--output", args.ResultsPath}
 
+	// Add additional arguments
+	if len(args.AdditionalArgs) != 0 {
+		commandArgs = append(commandArgs, args.AdditionalArgs...)
+	}
+
 	cmd := exec.Command("codeql", commandArgs...)
 	mw := io.MultiWriter(g.logger.StandardWriter(&hclog.StandardLoggerOptions{
 		InferLevels: true,
