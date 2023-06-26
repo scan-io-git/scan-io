@@ -1,6 +1,6 @@
 # Rules preparation script 
 `scripts/prep_semgrep_rules.sh` is a script that prepares semgrep rules, by fetching remote repositories and copying rules into the `/rules` folder. This could be used for preparing a list of verified rules to put into a docker container. A common scenario is when you prepare a list of rules, which provide good findings, which you want to show to developers.  
-After building a docker image, one can use `scanio analyse --scanner semgrep -c /scanio-rules /path/to/project` or natively `semgrep -c /scanio-rules`.<br><br>
+After building a docker image, one can use `scanio analyse --scanner semgrep -c /scanio-rules/semgrep /path/to/project` or natively `semgrep -c /scanio-rules/semgrep`.<br><br>
 
 ## Examples
 **Default mode**<br>
@@ -16,10 +16,10 @@ The script will download rules from a repo - https://github.com/trailofbits/semg
 
 **Mergin mode**<br>
 The command merges rules from a specified directory to a "semgrep-rules" folder.<br>
-```./prep_semgrep_rules.sh -m /scan-io/rules/returntocorp```<br>
+```./prep_semgrep_rules.sh -m /scan-io/rules/semgrep/returntocorp```<br>
 The script will copy all rules to a "semgrep-rules" folder and delete the "returntocorp" folder.<br><br>
 
-```./prep_semgrep_rules.sh -m /scan-io/rules/trailofbits```<br>
+```./prep_semgrep_rules.sh -m /scan-io/rules/semgrep/trailofbits```<br>
 The script will copy all rules to a "semgrep-rules" folder and delete the "trailofbits" folder.<br><br>
 
 **Auto mode**<br>
