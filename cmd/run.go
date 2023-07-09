@@ -280,7 +280,7 @@ func getNewJobsClient() v1.JobInterface {
 		return clientset.BatchV1().Jobs(getNamespace())
 	}
 
-	panic(fmt.Errorf("cant create kubernetes client. For cluster config: %w. For kube config: %w", err1, err2))
+	panic(fmt.Errorf("cant create kubernetes client. For cluster config: %s. For kube config: %s", err1.Error(), err2.Error()))
 }
 
 func fetchResults(repo string) {
