@@ -6,6 +6,12 @@ import (
 	"testing"
 )
 
+func skipCI(t *testing.T) {
+	if os.Getenv("CI") != "" {
+		t.Skip("Skipping testing in CI environment")
+	}
+}
+
 func TestGithubClonePublic(t *testing.T) {
 
 	// temp dir for fetching
@@ -35,6 +41,8 @@ func TestGithubClonePublic(t *testing.T) {
 
 func TestGithubClonePrivateWithSSHKey(t *testing.T) {
 
+	skipCI(t)
+
 	// temp dir for fetching
 	dir, err := ioutil.TempDir("", "TestGithubClonePrivateWithSSHKey")
 	if err != nil {
@@ -62,6 +70,8 @@ func TestGithubClonePrivateWithSSHKey(t *testing.T) {
 
 func TestGithubClonePrivateWithSSHAgent(t *testing.T) {
 
+	skipCI(t)
+
 	// temp dir for fetching
 	dir, err := ioutil.TempDir("", "TestGithubClonePrivateWithSSHAgent")
 	if err != nil {
@@ -88,6 +98,8 @@ func TestGithubClonePrivateWithSSHAgent(t *testing.T) {
 }
 
 func TestGitlabClonePrivateWithSSHAgent(t *testing.T) {
+
+	skipCI(t)
 
 	// temp dir for fetching
 	dir, err := ioutil.TempDir("", "TestGitlabClonePrivateWithSSHAgent")
