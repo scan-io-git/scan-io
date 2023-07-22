@@ -7,7 +7,7 @@ jobs:
     steps:
       - name: scanio action step
         id: scanio-action
-        uses: scan-io-git/scanio-action/scanio@b8e8ed79ff47ec3b99e2cf17ac9131d250b46258
+        uses: scan-io-git/scanio-action/scanio@ea87f03d1859a52967a3a96e07479e70961eed8c
         # with:
         #   who-to-greet: 'Mona the Octocat'
       # Use the output from the `hello` step
