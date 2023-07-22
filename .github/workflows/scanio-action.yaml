@@ -4,6 +4,8 @@ jobs:
   hello_world_job:
     runs-on: ubuntu-latest
     name: A job to test scanio action
+    permissions:
+      packages: read
     steps:
       - name: scanio action step
         id: scanio-action
