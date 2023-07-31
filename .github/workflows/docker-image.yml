@@ -11,7 +11,7 @@ name: Create and publish a Docker image
 
 on:
   push:
-    branches: ['main', 'japroc/dockerimage-with-rules']
+    branches: ['main']
 
 env:
   REGISTRY: ghcr.io
