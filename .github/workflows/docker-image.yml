@@ -11,7 +11,7 @@ name: Create and publish a Docker image
 
 on:
   push:
-    branches: ['main']
+    branches: ['main', 'japroc/dockerimage-with-rules']
 
 env:
   REGISTRY: ghcr.io
@@ -40,6 +40,9 @@ jobs:
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      
+      - name: Prepare semgrep rules
+        run: cd scripts && ./prep_semgrep_rules.sh -r rules_semgrep.txt https://github.com/returntocorp/semgrep-rules.git release
 
       - name: Build and push Docker image
         uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
