@@ -1,11 +1,9 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
-	"time"
 
 	bitbucketv1 "github.com/gfleury/go-bitbucket-v1"
 	//bitbucketv2 "github.com/ktrysmt/go-bitbucket"
@@ -23,41 +21,14 @@ type VCSBitbucket struct {
 
 // Limit for Bitbucket v1 API page response
 var opts = map[string]interface{}{
-	"limit": 2000,
-	"start": 0,
+	"limit": maxLimitElements,
+	"start": startElement,
 }
 
 func getProjectsResponse(r *bitbucketv1.APIResponse) ([]bitbucketv1.Project, error) {
 	var m []bitbucketv1.Project
 	err := mapstructure.Decode(r.Values["values"], &m)
 	return m, err
-}
-
-// Init function for checking an environment
-func (g *VCSBitbucket) init(command string, authType string) (shared.EvnVariables, error) {
-	var variables shared.EvnVariables
-	variables.Username = os.Getenv("SCANIO_BITBUCKET_USERNAME")
-	variables.Token = os.Getenv("SCANIO_BITBUCKET_TOKEN")
-	variables.SshKeyPassword = os.Getenv("SCANIO_BITBUCKET_SSH_KEY_PASSWORD")
-
-	if command == "list" && ((len(variables.Username) == 0) || (len(variables.Token) == 0)) {
-		err := fmt.Errorf("SCANIO_BITBUCKET_USERNAME or SCANIO_BITBUCKET_TOKEN is not provided in an environment.")
-		g.logger.Error("An insufficiently configured environment", "error", err)
-		return variables, err
-	}
-
-	if command == "fetch" {
-		if len(variables.SshKeyPassword) == 0 && authType == "ssh-key" {
-			g.logger.Warn("SCANIO_BITBUCKET_SSH_KEY_PASSOWRD is empty or not provided.")
-		}
-
-		if authType == "http" && ((len(variables.Username) == 0) || (len(variables.Token) == 0)) {
-			err := fmt.Errorf("SCANIO_BITBUCKET_USERNAME or SCANIO_BITBUCKET_TOKEN is not provided in an environment.")
-			g.logger.Error("An insufficiently configured environment", "error", err)
-			return variables, err
-		}
-	}
-	return variables, nil
 }
 
 // Listing all project in Bitbucket v1 API
@@ -139,17 +110,8 @@ func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) ([]shared.Repo
 		return nil, err
 	}
 
-	baseURL := fmt.Sprintf("https://%s/rest", args.VCSURL)
-	basicAuth := bitbucketv1.BasicAuth{UserName: variables.Username, Password: variables.Token}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	ctx = context.WithValue(ctx, bitbucketv1.ContextBasicAuth, basicAuth)
+	client, cancel := BBClient(args.VCSURL, variables)
 	defer cancel()
-
-	client := bitbucketv1.NewAPIClient(
-		ctx,
-		bitbucketv1.NewConfiguration(baseURL),
-	)
 
 	var repositories []shared.RepositoryParams
 	if len(args.Namespace) != 0 {
@@ -183,6 +145,57 @@ func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) ([]shared.Repo
 	}
 
 	return repositories, nil
+}
+
+func (g *VCSBitbucket) RetrivePRInformation(args shared.VCSRetrivePRInformationRequest) (shared.PRParams, error) {
+	g.logger.Debug("Starting retrive information about a PR", "args", args)
+
+	var pr bitbucketv1.PullRequest
+	var result shared.PRParams
+	variables, err := g.init("list", "")
+	if err != nil {
+		g.logger.Error("An init stage of retriving information about a PR is failed", "error", err)
+		return result, err
+	}
+
+	client, cancel := BBClient(args.VCSURL, variables)
+	defer cancel()
+
+	g.logger.Info("Retriving information a particular PR", "PR", fmt.Sprintf("%v/%v/%v/%v", args.VCSURL, args.Namespace, args.Repository, args.PullRequestId))
+	rawResponse, err := client.DefaultApi.GetPullRequest(args.Namespace, args.Repository, args.PullRequestId)
+	if err != nil {
+		g.logger.Error("Getting information about PR is failed", "error", err)
+		return result, err
+	}
+
+	pr, err = bitbucketv1.GetPullRequestResponse(rawResponse)
+	if err != nil {
+		g.logger.Error("Parsing information about PR is failed", "error", err)
+		return result, err
+	}
+
+	result = shared.PRParams{
+		PullRequestId: pr.ID,
+		Title:         pr.Title,
+		Description:   pr.Description,
+		State:         pr.State,
+		AuthorEmail:   pr.Author.User.EmailAddress,
+		AuthorName:    pr.Author.User.DisplayName,
+		SelfLink:      pr.Links.Self[0].Href,
+		CreatedDate:   pr.CreatedDate,
+		UpdatedDate:   pr.UpdatedDate,
+		FromRef: shared.RefPRInf{
+			ID:           pr.FromRef.ID,
+			LatestCommit: pr.FromRef.LatestCommit,
+		},
+		ToRef: shared.RefPRInf{
+			ID:           pr.ToRef.ID,
+			LatestCommit: pr.ToRef.LatestCommit,
+		},
+	}
+	g.logger.Info("Information about particular PR is retrived", "PR", result.SelfLink)
+
+	return result, nil
 }
 
 func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) error {

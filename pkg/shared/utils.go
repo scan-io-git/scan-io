@@ -22,7 +22,9 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 )
 
-func WriteJsonFile(data ListFuncResult, outputFile string, logger hclog.Logger) {
+type CustomData interface{}
+
+func WriteJsonFile(outputFile string, logger hclog.Logger, data ...CustomData) {
 	file, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Fatalf("failed creating file: %s", err)
@@ -32,7 +34,7 @@ func WriteJsonFile(data ListFuncResult, outputFile string, logger hclog.Logger) 
 	datawriter := bufio.NewWriter(file)
 	defer datawriter.Flush()
 
-	resultJson, _ := json.MarshalIndent(data, "", "    ")
+	resultJson, _ := json.MarshalIndent(data[0], "", "    ")
 	datawriter.Write(resultJson)
 	logger.Info("Results saved to file", "path", outputFile)
 

@@ -136,6 +136,13 @@ func (g *VCSGitlab) ListRepos(args shared.VCSListReposRequest) ([]shared.Reposit
 	return reposParams, nil
 }
 
+func (g *VCSGitlab) RetrivePRInformation(args shared.VCSRetrivePRInformationRequest) (shared.PRParams, error) {
+	var result shared.PRParams
+	err := fmt.Errorf("The function is not implemented got Gitlab.")
+
+	return result, err
+}
+
 func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) error {
 	//variables, err := g.init("fetch")
 	variables := shared.EvnVariables{}

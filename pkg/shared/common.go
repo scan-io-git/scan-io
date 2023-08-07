@@ -40,7 +40,7 @@ func NewLogger(name string) hclog.Logger {
 	})
 }
 
-func getScanioHome() string {
+func GetScanioHome() string {
 	envScanioHome := os.Getenv("SCANIO_HOME")
 	if envScanioHome != "" {
 		return envScanioHome
@@ -108,7 +108,7 @@ func ForEveryStringWithBoundedGoroutines(limit int, values []interface{}, f func
 }
 
 func GetProjectsHome() string {
-	projectsFolder := filepath.Join(getScanioHome(), "/projects")
+	projectsFolder := filepath.Join(GetScanioHome(), "/projects")
 	if _, err := os.Stat(projectsFolder); os.IsNotExist(err) {
 		NewLogger("core").Info("projectsFolder does not exists. Creating...", "projectsFolder", projectsFolder)
 		if err := os.MkdirAll(projectsFolder, os.ModePerm); err != nil {
@@ -119,7 +119,7 @@ func GetProjectsHome() string {
 }
 
 func GetResultsHome() string {
-	resultsFolder := filepath.Join(getScanioHome(), "/results")
+	resultsFolder := filepath.Join(GetScanioHome(), "/results")
 	if _, err := os.Stat(resultsFolder); os.IsNotExist(err) {
 		NewLogger("core").Info("resultsFolder does not exists. Creating...", "resultsFolder", resultsFolder)
 		if err := os.MkdirAll(resultsFolder, os.ModePerm); err != nil {
