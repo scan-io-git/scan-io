@@ -198,6 +198,57 @@ func (g *VCSBitbucket) RetrivePRInformation(args shared.VCSRetrivePRInformationR
 	return result, nil
 }
 
+func (g *VCSBitbucket) AddReviewerToPR(args shared.VCSAddReviewerToPRRequest) (shared.PRParams, error) {
+	g.logger.Debug("Starting retrive information about a PR", "args", args)
+
+	var pr bitbucketv1.PullRequest
+	var result shared.PRParams
+	variables, err := g.init("list", "")
+	if err != nil {
+		g.logger.Error("An init stage of retriving information about a PR is failed", "error", err)
+		return result, err
+	}
+
+	client, cancel := BBClient(args.VCSURL, variables)
+	defer cancel()
+
+	g.logger.Info("Retriving information a particular PR", "PR", fmt.Sprintf("%v/%v/%v/%v", args.VCSURL, args.Namespace, args.Repository, args.PullRequestId))
+	rawResponse, err := client.DefaultApi.GetPullRequest(args.Namespace, args.Repository, args.PullRequestId)
+	if err != nil {
+		g.logger.Error("Getting information about PR is failed", "error", err)
+		return result, err
+	}
+
+	pr, err = bitbucketv1.GetPullRequestResponse(rawResponse)
+	if err != nil {
+		g.logger.Error("Parsing information about PR is failed", "error", err)
+		return result, err
+	}
+
+	result = shared.PRParams{
+		PullRequestId: pr.ID,
+		Title:         pr.Title,
+		Description:   pr.Description,
+		State:         pr.State,
+		AuthorEmail:   pr.Author.User.EmailAddress,
+		AuthorName:    pr.Author.User.DisplayName,
+		SelfLink:      pr.Links.Self[0].Href,
+		CreatedDate:   pr.CreatedDate,
+		UpdatedDate:   pr.UpdatedDate,
+		FromRef: shared.RefPRInf{
+			ID:           pr.FromRef.ID,
+			LatestCommit: pr.FromRef.LatestCommit,
+		},
+		ToRef: shared.RefPRInf{
+			ID:           pr.ToRef.ID,
+			LatestCommit: pr.ToRef.LatestCommit,
+		},
+	}
+	g.logger.Info("Information about particular PR is retrived", "PR", result.SelfLink)
+
+	return result, nil
+}
+
 func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) error {
 	variables, err := g.init("fetch", args.AuthType)
 	if err != nil {

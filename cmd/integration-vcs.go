@@ -17,6 +17,8 @@ type RunOptionsIntegrationVCS struct {
 	PullRequestId int
 }
 
+type Arguments interface{}
+
 var (
 	allArgumentsIntegrationVCS RunOptionsIntegrationVCS
 	resultIntegrationVCS       shared.GenericResult
@@ -46,61 +48,57 @@ List of actions for github:
 - nothing is implemented`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
+		var arguments Arguments
 		checkArgs := func() error {
-			if len(allArgumentsIntegrationVCS.VCSPlugName) == 0 {
-				return fmt.Errorf("'vcs' flag must be specified!")
-			}
-			if len(allArgumentsIntegrationVCS.Action) == 0 {
-				return fmt.Errorf("'action' flag must be specified!")
-			}
-			if len(allArgumentsIntegrationVCS.VCSURL) == 0 {
-				return fmt.Errorf("'vcs-url' flag must be specified!")
-			}
-
 			if err := validateCommonArguments(); err != nil {
 				return err
 			}
 			switch allArgumentsIntegrationVCS.Action {
 			case "checkPR":
-
+				arguments = shared.VCSRetrivePRInformationRequest{
+					VCSRequestBase: shared.VCSRequestBase{
+						VCSURL:        allArgumentsIntegrationVCS.VCSURL,
+						Action:        allArgumentsIntegrationVCS.Action,
+						Namespace:     allArgumentsIntegrationVCS.Namespace,
+						Repository:    allArgumentsIntegrationVCS.Repository,
+						PullRequestId: allArgumentsIntegrationVCS.PullRequestId,
+					},
+				}
 			case "addReviewerToPR":
 				if len(allArgumentsIntegrationVCS.Login) == 0 {
-					return fmt.Errorf("'login' flag must be specified!")
+					return fmt.Errorf("The 'login' flag must be specified!")
+				}
+				arguments = shared.VCSAddReviewerToPRRequest{
+					VCSRequestBase: shared.VCSRequestBase{
+						VCSURL:        allArgumentsIntegrationVCS.VCSURL,
+						Action:        allArgumentsIntegrationVCS.Action,
+						Namespace:     allArgumentsIntegrationVCS.Namespace,
+						Repository:    allArgumentsIntegrationVCS.Repository,
+						PullRequestId: allArgumentsIntegrationVCS.PullRequestId,
+					},
+					Login: allArgumentsIntegrationVCS.Login,
 				}
 			default:
-				return nil
+				return fmt.Errorf("The action is not implemented %v", allArgumentsIntegrationVCS.Action)
+
 			}
 
 			logger := shared.NewLogger("core-integration-vcs")
-			args := shared.VCSRetrivePRInformationRequest{
-				VCSRequestBase: shared.VCSRequestBase{
-					VCSURL:        allArgumentsIntegrationVCS.VCSURL,
-					Action:        allArgumentsIntegrationVCS.Action,
-					Namespace:     allArgumentsIntegrationVCS.Namespace,
-					Repository:    allArgumentsIntegrationVCS.Repository,
-					PullRequestId: allArgumentsIntegrationVCS.PullRequestId,
-				},
-			}
 
-			switch allArgumentsIntegrationVCS.Action {
-			case "checkPR", "addReviewerToPR":
-				shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsIntegrationVCS.VCSPlugName, func(raw interface{}) {
-					vcsName := raw.(shared.VCS)
-					//result, err := vcsName.RetrivePRInformation(args)
-					result, err := performAction(allArgumentsIntegrationVCS.Action, vcsName, args)
+			shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsIntegrationVCS.VCSPlugName, func(raw interface{}) {
+				vcsName := raw.(shared.VCS)
+				result, err := performAction(allArgumentsIntegrationVCS.Action, vcsName, arguments)
 
-					if err != nil {
-						resultIntegrationVCS = shared.GenericResult{Args: args, Result: result, Status: "FAILED", Message: err.Error()}
-						logger.Error("A function of VCS integrations is failed", "action", allArgumentsIntegrationVCS.Action)
-						logger.Error("Error", "message", resultIntegrationVCS.Message)
-					} else {
-						resultIntegrationVCS = shared.GenericResult{Args: args, Result: result, Status: "OK", Message: ""}
-						logger.Info("A function of VCS integrations finished with", "status", resultIntegrationVCS.Status, "action", allArgumentsIntegrationVCS.Action)
-					}
-				})
-			default:
-				return fmt.Errorf("The action is not implemented %v", allArgumentsIntegrationVCS.Action)
-			}
+				if err != nil {
+					resultIntegrationVCS = shared.GenericResult{Args: arguments, Result: result, Status: "FAILED", Message: err.Error()}
+					logger.Error("A function of VCS integrations is failed", "action", allArgumentsIntegrationVCS.Action)
+					logger.Error("Error", "message", resultIntegrationVCS.Message)
+				} else {
+					resultIntegrationVCS = shared.GenericResult{Args: arguments, Result: result, Status: "OK", Message: ""}
+					logger.Info("A function of VCS integrations finished with", "status", resultIntegrationVCS.Status, "action", allArgumentsIntegrationVCS.Action)
+				}
+			})
+
 			shared.WriteJsonFile(fmt.Sprintf("%v/PR.result", shared.GetScanioHome()), logger, resultIntegrationVCS)
 			return nil
 		}
@@ -113,26 +111,43 @@ List of actions for github:
 }
 
 func validateCommonArguments() error {
+	if len(allArgumentsIntegrationVCS.VCSPlugName) == 0 {
+		return fmt.Errorf("The 'vcs' flag must be specified!")
+	}
+	if len(allArgumentsIntegrationVCS.Action) == 0 {
+		return fmt.Errorf("The 'action' flag must be specified!")
+	}
+	if len(allArgumentsIntegrationVCS.VCSURL) == 0 {
+		return fmt.Errorf("The 'vcs-url' flag must be specified!")
+	}
 	if len(allArgumentsIntegrationVCS.Namespace) == 0 {
-		return fmt.Errorf("'namespace' flag must be specified!")
+		return fmt.Errorf("The 'namespace' flag must be specified!")
 	}
 	if len(allArgumentsIntegrationVCS.Repository) == 0 {
-		return fmt.Errorf("'repository' flag must be specified!")
+		return fmt.Errorf("The 'repository' flag must be specified!")
 	}
 	if allArgumentsIntegrationVCS.PullRequestId == 0 {
-		return fmt.Errorf("'pull-request-id' flag must be specified!")
+		return fmt.Errorf("The 'pull-request-id' flag must be specified!")
 	}
 	return nil
 }
 
-func performAction(action string, vcsName shared.VCS, args shared.VCSRetrivePRInformationRequest) (interface{}, error) {
+func performAction(action string, vcsName shared.VCS, args Arguments) (interface{}, error) {
 	switch action {
 	case "checkPR":
-		return vcsName.RetrivePRInformation(args)
+		checkPRArgs, ok := args.(shared.VCSRetrivePRInformationRequest)
+		if !ok {
+			return nil, fmt.Errorf("Invalid argument type for action 'checkPR'")
+		}
+		return vcsName.RetrivePRInformation(checkPRArgs)
 	case "addReviewerToPR":
-		//return vcsName.AddReviewerToPR(args)
+		addReviewArgs, ok := args.(shared.VCSAddReviewerToPRRequest)
+		if !ok {
+			return nil, fmt.Errorf("Invalid argument type for action 'addReviewerToPR'")
+		}
+		return vcsName.AddReviewerToPR(addReviewArgs)
 	default:
-		return nil, fmt.Errorf("unsupported action: %s", action)
+		return nil, fmt.Errorf("Unsupported action: %s", action)
 	}
 	return nil, nil
 }

@@ -117,6 +117,7 @@ type VCS interface {
 	Fetch(req VCSFetchRequest) error
 	ListRepos(args VCSListReposRequest) ([]RepositoryParams, error)
 	RetrivePRInformation(req VCSRetrivePRInformationRequest) (PRParams, error)
+	AddReviewerToPR(req VCSAddReviewerToPRRequest) (PRParams, error)
 }
 
 type VCSRPCClient struct{ client *rpc.Client }
@@ -157,6 +158,18 @@ func (g *VCSRPCClient) RetrivePRInformation(req VCSRetrivePRInformationRequest) 
 	return resp.PR, nil
 }
 
+func (g *VCSRPCClient) AddReviewerToPR(req VCSAddReviewerToPRRequest) (PRParams, error) {
+	var resp VCSRetrivePRInformationResponse
+
+	err := g.client.Call("Plugin.AddReviewerToPR", req, &resp)
+
+	if err != nil {
+		return resp.PR, err
+	}
+
+	return resp.PR, nil
+}
+
 type VCSRPCServer struct {
 	Impl VCS
 }
@@ -173,6 +186,12 @@ func (s *VCSRPCServer) ListRepos(args VCSListReposRequest, resp *VCSListReposRes
 
 func (s *VCSRPCServer) RetrivePRInformation(args VCSRetrivePRInformationRequest, resp *VCSRetrivePRInformationResponse) error {
 	pr, err := s.Impl.RetrivePRInformation(args)
+	resp.PR = pr
+	return err
+}
+
+func (s *VCSRPCServer) AddReviewerToPR(args VCSAddReviewerToPRRequest, resp *VCSRetrivePRInformationResponse) error {
+	pr, err := s.Impl.AddReviewerToPR(args)
 	resp.PR = pr
 	return err
 }
