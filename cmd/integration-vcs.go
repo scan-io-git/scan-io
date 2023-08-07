@@ -19,7 +19,7 @@ type RunOptionsIntegrationVCS struct {
 
 var (
 	allArgumentsIntegrationVCS RunOptionsIntegrationVCS
-	resultIntegrationVCS       shared.VCSRetrivePRInformationResult
+	resultIntegrationVCS       shared.GenericResult
 	execExampleIntegrationVCS  = `  TODO # VCS plugin integrations for different actions
   scanio integration-vcs --vcs bitbucket --vcs-url example.com -o /Users/root/.scanio/output.file
   
@@ -57,6 +57,20 @@ List of actions for github:
 				return fmt.Errorf("'vcs-url' flag must be specified!")
 			}
 
+			if err := validateCommonArguments(); err != nil {
+				return err
+			}
+			switch allArgumentsIntegrationVCS.Action {
+			case "checkPR":
+
+			case "addReviewerToPR":
+				if len(allArgumentsIntegrationVCS.Login) == 0 {
+					return fmt.Errorf("'login' flag must be specified!")
+				}
+			default:
+				return nil
+			}
+
 			logger := shared.NewLogger("core-integration-vcs")
 			args := shared.VCSRetrivePRInformationRequest{
 				VCSRequestBase: shared.VCSRequestBase{
@@ -68,52 +82,22 @@ List of actions for github:
 				},
 			}
 
-			// args := shared.VCSRetrivePRInformationRequest{
-			// 	VCSURL:        allArgumentsIntegrationVCS.VCSURL,
-			// 	Action:        allArgumentsIntegrationVCS.Action,
-			// 	Namespace:     allArgumentsIntegrationVCS.Namespace,
-			// 	Repository:    allArgumentsIntegrationVCS.Repository,
-			// 	PullRequestId: allArgumentsIntegrationVCS.PullRequestId,
-			// }
-
 			switch allArgumentsIntegrationVCS.Action {
-			case "checkPR":
-				if len(allArgumentsIntegrationVCS.Namespace) == 0 {
-					return fmt.Errorf("'namespace' flag must be specified!")
-				}
-				if len(allArgumentsIntegrationVCS.Repository) == 0 {
-					return fmt.Errorf("'repository' flag must be specified!")
-				}
-				if allArgumentsIntegrationVCS.PullRequestId == 0 {
-					return fmt.Errorf("'pull-request-id' flag must be specified!")
-				}
+			case "checkPR", "addReviewerToPR":
 				shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsIntegrationVCS.VCSPlugName, func(raw interface{}) {
 					vcsName := raw.(shared.VCS)
-					result, err := vcsName.RetrivePRInformation(args)
+					//result, err := vcsName.RetrivePRInformation(args)
+					result, err := performAction(allArgumentsIntegrationVCS.Action, vcsName, args)
 
 					if err != nil {
-						resultIntegrationVCS = shared.VCSRetrivePRInformationResult{Args: args, Result: result, Status: "FAILED", Message: err.Error()}
+						resultIntegrationVCS = shared.GenericResult{Args: args, Result: result, Status: "FAILED", Message: err.Error()}
 						logger.Error("A function of VCS integrations is failed", "action", allArgumentsIntegrationVCS.Action)
 						logger.Error("Error", "message", resultIntegrationVCS.Message)
 					} else {
-						resultIntegrationVCS = shared.VCSRetrivePRInformationResult{Args: args, Result: result, Status: "OK", Message: ""}
+						resultIntegrationVCS = shared.GenericResult{Args: args, Result: result, Status: "OK", Message: ""}
 						logger.Info("A function of VCS integrations finished with", "status", resultIntegrationVCS.Status, "action", allArgumentsIntegrationVCS.Action)
 					}
 				})
-			case "addReviewerToPR":
-				if len(allArgumentsIntegrationVCS.Namespace) == 0 {
-					return fmt.Errorf("'namespace' flag must be specified!")
-				}
-				if len(allArgumentsIntegrationVCS.Repository) == 0 {
-					return fmt.Errorf("'repository' flag must be specified!")
-				}
-				if allArgumentsIntegrationVCS.PullRequestId == 0 {
-					return fmt.Errorf("'pull-request-id' flag must be specified!")
-				}
-				if len(allArgumentsIntegrationVCS.Login) == 0 {
-					return fmt.Errorf("'login' flag must be specified!")
-				}
-
 			default:
 				return fmt.Errorf("The action is not implemented %v", allArgumentsIntegrationVCS.Action)
 			}
@@ -126,6 +110,31 @@ List of actions for github:
 		}
 		return nil
 	},
+}
+
+func validateCommonArguments() error {
+	if len(allArgumentsIntegrationVCS.Namespace) == 0 {
+		return fmt.Errorf("'namespace' flag must be specified!")
+	}
+	if len(allArgumentsIntegrationVCS.Repository) == 0 {
+		return fmt.Errorf("'repository' flag must be specified!")
+	}
+	if allArgumentsIntegrationVCS.PullRequestId == 0 {
+		return fmt.Errorf("'pull-request-id' flag must be specified!")
+	}
+	return nil
+}
+
+func performAction(action string, vcsName shared.VCS, args shared.VCSRetrivePRInformationRequest) (interface{}, error) {
+	switch action {
+	case "checkPR":
+		return vcsName.RetrivePRInformation(args)
+	case "addReviewerToPR":
+		//return vcsName.AddReviewerToPR(args)
+	default:
+		return nil, fmt.Errorf("unsupported action: %s", action)
+	}
+	return nil, nil
 }
 
 func init() {

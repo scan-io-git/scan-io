@@ -6,6 +6,9 @@ import (
 	"github.com/hashicorp/go-plugin"
 )
 
+type Args interface {
+}
+
 type RepositoryParams struct {
 	Namespace string `json:"namespace"`
 	RepoName  string `json:"repo_name"`
@@ -53,23 +56,6 @@ type VCSFetchRequest struct {
 	TargetFolder string
 }
 
-// type VCSRetrivePRInformationRequest struct {
-// 	Namespace     string
-// 	VCSURL        string
-// 	Action        string
-// 	Repository    string
-// 	PullRequestId int
-// }
-
-// type VCSAddReviewerToPR struct {
-// 	Namespace     string
-// 	VCSURL        string
-// 	Action        string
-// 	Repository    string
-// 	PullRequestId int
-// 	Login string
-// }
-
 type VCSRequestBase struct {
 	Namespace     string
 	VCSURL        string
@@ -87,6 +73,9 @@ type VCSAddReviewerToPRRequest struct {
 	Login string
 }
 
+type Result interface {
+}
+
 type ListFuncResult struct {
 	Args    VCSListReposRequest `json:"args"`
 	Result  []RepositoryParams  `json:"result"`
@@ -101,11 +90,11 @@ type FetchFuncResult struct {
 	Message string
 }
 
-type VCSRetrivePRInformationResult struct {
-	Args    VCSRetrivePRInformationRequest `json:"args"`
-	Result  PRParams                       `json:"result"`
-	Status  string                         `json:"status"`
-	Message string                         `json:"message"`
+type GenericResult struct {
+	Args    interface{} `json:"args"`
+	Result  interface{} `json:"result"`
+	Status  string      `json:"status"`
+	Message string      `json:"message"`
 }
 
 type EvnVariables struct {
