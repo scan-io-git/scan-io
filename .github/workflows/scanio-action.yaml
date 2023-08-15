@@ -13,10 +13,10 @@ jobs:
       - name: Scanio analyze
         id: scanio-action
         # uses: scan-io-git/scanio-action/scanio@8da1e4e202241b83aa49610fc36619ed77b52230
-        uses: scan-io-git/scanio-action/analyze@f097dc6990d0849da77f6ab3bfa75c6f7c96dd33
+        uses: scan-io-git/scanio-action/analyze@48c2da9041882fd7c61e19e41362d17701865688
         # run: scanio analyse --help
-        # with:
-        #   who-to-greet: 'Mona the Octocat'
+        with:
+          scanner: semgrep
       # Use the output from the `hello` step
       # - name: Get the output time
       #   run: echo "The time was ${{ steps.hello.outputs.time }}"
