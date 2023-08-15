@@ -14,9 +14,11 @@ jobs:
         id: scanio-action
         # uses: scan-io-git/scanio-action/scanio@8da1e4e202241b83aa49610fc36619ed77b52230
         # run: scanio analyse --help
-        uses: scan-io-git/scanio-action/analyze@624e6b6f6dd03957ec1536a0dfaf788714356f1b
+        uses: scan-io-git/scanio-action/analyze@56dbbd3e944f2e9b348ce2353e83254e25cb0aba
         with:
           scanner: semgrep
-      # Use the output from the `hello` step
-      # - name: Get the output time
-      #   run: echo "The time was ${{ steps.hello.outputs.time }}"
+
+      - name: Upload SARIF results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: ${{ github.workspace }}
