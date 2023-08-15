@@ -2,10 +2,13 @@ package common
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/fs"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -13,6 +16,63 @@ import (
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
 )
+
+type HTTPClient struct {
+	Client *http.Client
+}
+
+func NewHTTPClient(proxyUrl string, skipVerification bool) *HTTPClient {
+	// Disable or not SSL/TLS verification
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerification},
+	}
+	// Create a proxy URL
+	proxyURL, err := url.Parse(proxyUrl)
+	if err != nil {
+		fmt.Println("Error parsing proxy URL:", err)
+		return nil
+	}
+
+	// Set the proxy for the transport
+	tr.Proxy = http.ProxyURL(proxyURL)
+
+	// Create an HTTP client with the custom transport
+	client := &http.Client{Transport: tr}
+
+	return &HTTPClient{Client: client}
+}
+
+func (c *HTTPClient) DoRequest(method, url string, headers http.Header, body []byte) (*http.Response, []byte, error) {
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
+	var response *http.Response
+	var responseBody []byte
+
+	if err != nil {
+		return response, responseBody, err
+	}
+
+	// Add custom headers
+	for key, values := range headers {
+		for _, value := range values {
+			req.Header.Add(key, value)
+		}
+	}
+
+	// Send the request using the shared client
+	response, err = c.Client.Do(req)
+	if err != nil {
+		return response, responseBody, err
+	}
+
+	responseBody, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		return response, responseBody, err
+	}
+
+	defer response.Body.Close()
+
+	return response, responseBody, nil
+}
 
 func ReadReposFile(inputFile string) ([]string, error) {
 	readFile, err := os.Open(inputFile)

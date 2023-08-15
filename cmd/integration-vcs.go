@@ -15,6 +15,8 @@ type RunOptionsIntegrationVCS struct {
 	Repository    string
 	Login         string
 	PullRequestId int
+	Role          string
+	Status        string
 }
 
 type Arguments interface{}
@@ -64,11 +66,14 @@ List of actions for github:
 						PullRequestId: allArgumentsIntegrationVCS.PullRequestId,
 					},
 				}
-			case "addReviewerToPR":
+			case "addRoleToPR":
 				if len(allArgumentsIntegrationVCS.Login) == 0 {
 					return fmt.Errorf("The 'login' flag must be specified!")
 				}
-				arguments = shared.VCSAddReviewerToPRRequest{
+				if len(allArgumentsIntegrationVCS.Role) == 0 {
+					return fmt.Errorf("The 'role' flag must be specified!")
+				}
+				arguments = shared.VCSAddRoleToPRRequest{
 					VCSRequestBase: shared.VCSRequestBase{
 						VCSURL:        allArgumentsIntegrationVCS.VCSURL,
 						Action:        allArgumentsIntegrationVCS.Action,
@@ -77,6 +82,25 @@ List of actions for github:
 						PullRequestId: allArgumentsIntegrationVCS.PullRequestId,
 					},
 					Login: allArgumentsIntegrationVCS.Login,
+					Role:  allArgumentsIntegrationVCS.Role,
+				}
+			case "setStatusOfPR":
+				if len(allArgumentsIntegrationVCS.Login) == 0 {
+					return fmt.Errorf("The 'login' flag must be specified!")
+				}
+				if len(allArgumentsIntegrationVCS.Status) == 0 {
+					return fmt.Errorf("The 'status' flag must be specified!")
+				}
+				arguments = shared.VCSSetStatusOfPRRequest{
+					VCSRequestBase: shared.VCSRequestBase{
+						VCSURL:        allArgumentsIntegrationVCS.VCSURL,
+						Action:        allArgumentsIntegrationVCS.Action,
+						Namespace:     allArgumentsIntegrationVCS.Namespace,
+						Repository:    allArgumentsIntegrationVCS.Repository,
+						PullRequestId: allArgumentsIntegrationVCS.PullRequestId,
+					},
+					Login:  allArgumentsIntegrationVCS.Login,
+					Status: allArgumentsIntegrationVCS.Status,
 				}
 			default:
 				return fmt.Errorf("The action is not implemented %v", allArgumentsIntegrationVCS.Action)
@@ -140,16 +164,21 @@ func performAction(action string, vcsName shared.VCS, args Arguments) (interface
 			return nil, fmt.Errorf("Invalid argument type for action 'checkPR'")
 		}
 		return vcsName.RetrivePRInformation(checkPRArgs)
-	case "addReviewerToPR":
-		addReviewArgs, ok := args.(shared.VCSAddReviewerToPRRequest)
+	case "addRoleToPR":
+		addReviewArgs, ok := args.(shared.VCSAddRoleToPRRequest)
 		if !ok {
-			return nil, fmt.Errorf("Invalid argument type for action 'addReviewerToPR'")
+			return nil, fmt.Errorf("Invalid argument type for action 'addRoleToPR'")
 		}
-		return vcsName.AddReviewerToPR(addReviewArgs)
+		return vcsName.AddRoleToPR(addReviewArgs)
+	case "setStatusOfPR":
+		setStatusArgs, ok := args.(shared.VCSSetStatusOfPRRequest)
+		if !ok {
+			return nil, fmt.Errorf("Invalid argument type for action 'addRoleToPR'")
+		}
+		return vcsName.SetStatusOfPR(setStatusArgs)
 	default:
 		return nil, fmt.Errorf("Unsupported action: %s", action)
 	}
-	return nil, nil
 }
 
 func init() {
@@ -161,5 +190,7 @@ func init() {
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Namespace, "namespace", "", "the name of a specific namespace. Namespace for Gitlab is an organization, for Bitbucket_v1 is a project.")
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Repository, "repository", "", "the name of a specific repository.")
 	integrationVcsCmd.Flags().IntVar(&allArgumentsIntegrationVCS.PullRequestId, "pull-request-id", 0, "the id of specific PR form the repository.")
-	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Login, "login", "", "login for integrations. For example, add reviewer wth this login to PR")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Login, "login", "", "login for integrations. For example, add reviewer with this login to PR.")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Role, "role", "", "role for integrations. For example, add a person with specific role to PR.")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Status, "status", "", "status for integrations. For example, set a status of PR.")
 }

@@ -68,9 +68,16 @@ type VCSRetrivePRInformationRequest struct {
 	VCSRequestBase
 }
 
-type VCSAddReviewerToPRRequest struct {
+type VCSAddRoleToPRRequest struct {
 	VCSRequestBase
 	Login string
+	Role  string
+}
+
+type VCSSetStatusOfPRRequest struct {
+	VCSRequestBase
+	Login  string
+	Status string
 }
 
 type Result interface {
@@ -117,7 +124,8 @@ type VCS interface {
 	Fetch(req VCSFetchRequest) error
 	ListRepos(args VCSListReposRequest) ([]RepositoryParams, error)
 	RetrivePRInformation(req VCSRetrivePRInformationRequest) (PRParams, error)
-	AddReviewerToPR(req VCSAddReviewerToPRRequest) (PRParams, error)
+	AddRoleToPR(req VCSAddRoleToPRRequest) (bool, error)
+	SetStatusOfPR(req VCSSetStatusOfPRRequest) (bool, error)
 }
 
 type VCSRPCClient struct{ client *rpc.Client }
@@ -158,16 +166,28 @@ func (g *VCSRPCClient) RetrivePRInformation(req VCSRetrivePRInformationRequest) 
 	return resp.PR, nil
 }
 
-func (g *VCSRPCClient) AddReviewerToPR(req VCSAddReviewerToPRRequest) (PRParams, error) {
+func (g *VCSRPCClient) AddRoleToPR(req VCSAddRoleToPRRequest) (bool, error) {
 	var resp VCSRetrivePRInformationResponse
 
-	err := g.client.Call("Plugin.AddReviewerToPR", req, &resp)
+	err := g.client.Call("Plugin.AddRoleToPR", req, &resp)
 
 	if err != nil {
-		return resp.PR, err
+		return false, err
 	}
 
-	return resp.PR, nil
+	return true, nil
+}
+
+func (g *VCSRPCClient) SetStatusOfPR(req VCSSetStatusOfPRRequest) (bool, error) {
+	var resp VCSRetrivePRInformationResponse
+
+	err := g.client.Call("Plugin.SetStatusOfPR", req, &resp)
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 type VCSRPCServer struct {
@@ -190,9 +210,19 @@ func (s *VCSRPCServer) RetrivePRInformation(args VCSRetrivePRInformationRequest,
 	return err
 }
 
-func (s *VCSRPCServer) AddReviewerToPR(args VCSAddReviewerToPRRequest, resp *VCSRetrivePRInformationResponse) error {
-	pr, err := s.Impl.AddReviewerToPR(args)
-	resp.PR = pr
+func (s *VCSRPCServer) AddRoleToPR(args VCSAddRoleToPRRequest, resp *VCSRetrivePRInformationResponse) error {
+	a, err := s.Impl.AddRoleToPR(args)
+	if a == false {
+
+	}
+	return err
+}
+
+func (s *VCSRPCServer) SetStatusOfPR(args VCSSetStatusOfPRRequest, resp *VCSRetrivePRInformationResponse) error {
+	a, err := s.Impl.SetStatusOfPR(args)
+	if a == false {
+
+	}
 	return err
 }
 

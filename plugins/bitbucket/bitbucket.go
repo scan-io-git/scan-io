@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 
 	bitbucketv1 "github.com/gfleury/go-bitbucket-v1"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
+	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 )
 
@@ -198,55 +201,92 @@ func (g *VCSBitbucket) RetrivePRInformation(args shared.VCSRetrivePRInformationR
 	return result, nil
 }
 
-func (g *VCSBitbucket) AddReviewerToPR(args shared.VCSAddReviewerToPRRequest) (shared.PRParams, error) {
-	g.logger.Debug("Starting retrive information about a PR", "args", args)
+func (g *VCSBitbucket) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error) {
+	g.logger.Debug("Starting add a reviewer PR", "args", args)
 
-	var pr bitbucketv1.PullRequest
-	var result shared.PRParams
 	variables, err := g.init("list", "")
 	if err != nil {
-		g.logger.Error("An init stage of retriving information about a PR is failed", "error", err)
-		return result, err
+		g.logger.Error("An init stage of adding a reviewer to a PR is failed", "error", err)
+		return false, err
+	}
+
+	client := utils.NewHTTPClient("http://127.0.0.1:8080", true)
+
+	urlReq := fmt.Sprintf("https://%s/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d/participants/", args.VCSURL, args.Namespace, args.Repository, args.PullRequestId)
+	authValue := variables.Username + ":" + variables.Token
+	authHeader := base64.StdEncoding.EncodeToString([]byte(authValue))
+	headers := http.Header{
+		"Content-Type":  {"application/json"},
+		"Authorization": {"Bearer " + authHeader},
+	}
+	postData := []byte(fmt.Sprintf(`{"user": {"name": "%s"}, "role": "%s", "approved": false}`, args.Login, args.Role))
+	g.logger.Info("Sending a request to add a user to a PR", "user", args.Login, "role", args.Role, "PR_url", urlReq)
+
+	response, responseBody, err := client.DoRequest("POST", urlReq, headers, postData)
+	if err != nil {
+		g.logger.Error("An send a request stage of adding a user to a PR is failed", "error", err)
+		return false, err
+	}
+
+	if response.StatusCode == http.StatusConflict {
+		text := fmt.Sprintf("The request's returned with a 409 response code. User %s is an author of the PR.", args.Login)
+		g.logger.Error(text)
+		g.logger.Debug("Debug details", "Body response", string(responseBody))
+		return false, fmt.Errorf(text)
+	}
+
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		text := fmt.Sprintf("The request's returned with not a 2xx response code. Response body: %s", string(responseBody))
+		g.logger.Error(text)
+		g.logger.Debug("Debug details", "Body response", string(responseBody))
+		return false, fmt.Errorf(text)
+	}
+	g.logger.Info("The user is successfuly added to the PR", "user", args.Login, "role", args.Role, "PR_url", urlReq)
+	return true, nil
+}
+
+func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, error) {
+	g.logger.Debug("Starting changin a status of PR", "args", args)
+	var approval bool
+
+	variables, err := g.init("list", "")
+	if err != nil {
+		g.logger.Error("An init stage of changing a status to a PR is failed", "error", err)
+		return false, err
 	}
 
 	client, cancel := BBClient(args.VCSURL, variables)
 	defer cancel()
 
-	g.logger.Info("Retriving information a particular PR", "PR", fmt.Sprintf("%v/%v/%v/%v", args.VCSURL, args.Namespace, args.Repository, args.PullRequestId))
-	rawResponse, err := client.DefaultApi.GetPullRequest(args.Namespace, args.Repository, args.PullRequestId)
+	g.logger.Info("Changin status of a particular PR", "PR", fmt.Sprintf("%v/%v/%v/%v", args.VCSURL, args.Namespace, args.Repository, args.PullRequestId))
+
+	if args.Status == "APPROVED" {
+		approval = true
+	}
+
+	userBB := bitbucketv1.UserWithMetadata{User: bitbucketv1.UserWithLinks{
+		Name: args.Login,
+		Slug: args.Login,
+	},
+		Approved: approval,
+		Status:   args.Status,
+	}
+
+	rawResponse, err := client.DefaultApi.UpdateStatus(args.Namespace, args.Repository, int64(args.PullRequestId), args.Login, userBB)
 	if err != nil {
 		g.logger.Error("Getting information about PR is failed", "error", err)
-		return result, err
+		return false, err
 	}
+	fmt.Println(rawResponse)
 
-	pr, err = bitbucketv1.GetPullRequestResponse(rawResponse)
+	participant, err := bitbucketv1.GetUserWithMetadataResponse(rawResponse)
 	if err != nil {
 		g.logger.Error("Parsing information about PR is failed", "error", err)
-		return result, err
+		return false, err
 	}
+	g.logger.Info("PR sucessfully moved to status", "status", args.Status, "PR_id", args.PullRequestId, "last_commit", participant.LastReviewedCommit)
 
-	result = shared.PRParams{
-		PullRequestId: pr.ID,
-		Title:         pr.Title,
-		Description:   pr.Description,
-		State:         pr.State,
-		AuthorEmail:   pr.Author.User.EmailAddress,
-		AuthorName:    pr.Author.User.DisplayName,
-		SelfLink:      pr.Links.Self[0].Href,
-		CreatedDate:   pr.CreatedDate,
-		UpdatedDate:   pr.UpdatedDate,
-		FromRef: shared.RefPRInf{
-			ID:           pr.FromRef.ID,
-			LatestCommit: pr.FromRef.LatestCommit,
-		},
-		ToRef: shared.RefPRInf{
-			ID:           pr.ToRef.ID,
-			LatestCommit: pr.ToRef.LatestCommit,
-		},
-	}
-	g.logger.Info("Information about particular PR is retrived", "PR", result.SelfLink)
-
-	return result, nil
+	return true, nil
 }
 
 func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) error {
