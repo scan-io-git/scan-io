@@ -13,8 +13,8 @@ jobs:
       - name: Scanio analyze
         id: scanio-action
         # uses: scan-io-git/scanio-action/scanio@8da1e4e202241b83aa49610fc36619ed77b52230
-        uses: scan-io-git/scanio-action/analyze@48c2da9041882fd7c61e19e41362d17701865688
         # run: scanio analyse --help
+        uses: scan-io-git/scanio-action/analyze@624e6b6f6dd03957ec1536a0dfaf788714356f1b
         with:
           scanner: semgrep
       # Use the output from the `hello` step
