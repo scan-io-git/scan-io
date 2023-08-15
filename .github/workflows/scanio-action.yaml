@@ -12,8 +12,9 @@ jobs:
 
       - name: Scanio analyze
         id: scanio-action
-        uses: scan-io-git/scanio-action/scanio@8da1e4e202241b83aa49610fc36619ed77b52230
-        run: scanio analyse --help
+        # uses: scan-io-git/scanio-action/scanio@8da1e4e202241b83aa49610fc36619ed77b52230
+        uses: scan-io-git/scanio-action/analyze@7466f46
+        # run: scanio analyse --help
         # with:
         #   who-to-greet: 'Mona the Octocat'
       # Use the output from the `hello` step
