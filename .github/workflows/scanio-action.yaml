@@ -12,11 +12,9 @@ jobs:
 
       - name: Scanio analyze
         id: scanio-action
-        uses: scan-io-git/scanio-action/analyze@c447ee75a218afc1f7f2df30cb6f233e8452f91c
+        uses: scan-io-git/scanio-action/analyze@5231362f5022754d329b40aa04050858bc77e123
         with:
           scanner: semgrep
 
       - name: Upload SARIF results
         uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: ${{ github.workspace }}
