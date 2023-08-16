@@ -16,10 +16,11 @@ type ScannerSemgrep struct {
 	logger hclog.Logger
 }
 
+const SEMGREP_RULES_FOLDER = "/scanio-rules/semgrep"
+
 func getDefaultConfig() string {
 
-	if os.Getenv("CI") == "true" {
-		SEMGREP_RULES_FOLDER := "/scanio-rules/semgrep"
+	if shared.IsCI() {
 		if _, err := os.Stat(SEMGREP_RULES_FOLDER); !os.IsNotExist(err) {
 			return SEMGREP_RULES_FOLDER
 		}
