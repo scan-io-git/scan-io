@@ -16,6 +16,20 @@ type ScannerSemgrep struct {
 	logger hclog.Logger
 }
 
+const SEMGREP_RULES_FOLDER = "/scanio-rules/semgrep"
+
+func getDefaultConfig() string {
+
+	if shared.IsCI() {
+		if _, err := os.Stat(SEMGREP_RULES_FOLDER); !os.IsNotExist(err) {
+			return SEMGREP_RULES_FOLDER
+		}
+		return "p/ci"
+	}
+
+	return "p/default"
+}
+
 func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
 	g.logger.Info("Scan is starting", "project", args.RepoPath)
 	g.logger.Debug("Debug info", "args", args)
@@ -40,7 +54,7 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
 	// use "p/deafult" by default to not send metrics
 	configPath := args.ConfigPath
 	if args.ConfigPath == "" {
-		configPath = "p/default"
+		configPath = getDefaultConfig()
 	}
 
 	// auto config requires sendings metrics
