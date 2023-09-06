@@ -60,6 +60,12 @@ func (g *VCSGithub) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, er
 	return false, err
 }
 
+func (g *VCSGithub) AddComment(args shared.VCSAddCommentToPRRequest) (bool, error) {
+	err := fmt.Errorf("The function is not implemented got Github.")
+
+	return false, err
+}
+
 func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) error {
 	//variables, err := g.init("fetch")
 	variables := shared.EvnVariables{}

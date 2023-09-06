@@ -80,6 +80,11 @@ type VCSSetStatusOfPRRequest struct {
 	Status string
 }
 
+type VCSAddCommentToPRRequest struct {
+	VCSRequestBase
+	Comment string
+}
+
 type Result interface {
 }
 
@@ -126,6 +131,7 @@ type VCS interface {
 	RetrivePRInformation(req VCSRetrivePRInformationRequest) (PRParams, error)
 	AddRoleToPR(req VCSAddRoleToPRRequest) (bool, error)
 	SetStatusOfPR(req VCSSetStatusOfPRRequest) (bool, error)
+	AddComment(req VCSAddCommentToPRRequest) (bool, error)
 }
 
 type VCSRPCClient struct{ client *rpc.Client }
@@ -190,6 +196,18 @@ func (g *VCSRPCClient) SetStatusOfPR(req VCSSetStatusOfPRRequest) (bool, error) 
 	return true, nil
 }
 
+func (g *VCSRPCClient) AddComment(req VCSAddCommentToPRRequest) (bool, error) {
+	var resp VCSRetrivePRInformationResponse
+
+	err := g.client.Call("Plugin.AddComment", req, &resp)
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 type VCSRPCServer struct {
 	Impl VCS
 }
@@ -220,6 +238,14 @@ func (s *VCSRPCServer) AddRoleToPR(args VCSAddRoleToPRRequest, resp *VCSRetriveP
 
 func (s *VCSRPCServer) SetStatusOfPR(args VCSSetStatusOfPRRequest, resp *VCSRetrivePRInformationResponse) error {
 	a, err := s.Impl.SetStatusOfPR(args)
+	if a == false {
+
+	}
+	return err
+}
+
+func (s *VCSRPCServer) AddComment(args VCSAddCommentToPRRequest, resp *VCSRetrivePRInformationResponse) error {
+	a, err := s.Impl.AddComment(args)
 	if a == false {
 
 	}

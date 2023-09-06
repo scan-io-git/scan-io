@@ -4,4 +4,5 @@ package main
 const (
 	maxLimitElements = 2000
 	startElement     = 0
+	maxCommentLength = 32768
 )

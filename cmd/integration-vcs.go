@@ -17,6 +17,7 @@ type RunOptionsIntegrationVCS struct {
 	PullRequestId int
 	Role          string
 	Status        string
+	Comment       string
 }
 
 type Arguments interface{}
@@ -102,6 +103,20 @@ List of actions for github:
 					Login:  allArgumentsIntegrationVCS.Login,
 					Status: allArgumentsIntegrationVCS.Status,
 				}
+			case "addComment":
+				if len(allArgumentsIntegrationVCS.Comment) == 0 {
+					return fmt.Errorf("The 'comment' flag must be specified!")
+				}
+				arguments = shared.VCSAddCommentToPRRequest{
+					VCSRequestBase: shared.VCSRequestBase{
+						VCSURL:        allArgumentsIntegrationVCS.VCSURL,
+						Action:        allArgumentsIntegrationVCS.Action,
+						Namespace:     allArgumentsIntegrationVCS.Namespace,
+						Repository:    allArgumentsIntegrationVCS.Repository,
+						PullRequestId: allArgumentsIntegrationVCS.PullRequestId,
+					},
+					Comment: allArgumentsIntegrationVCS.Comment,
+				}
 			default:
 				return fmt.Errorf("The action is not implemented %v", allArgumentsIntegrationVCS.Action)
 
@@ -176,6 +191,12 @@ func performAction(action string, vcsName shared.VCS, args Arguments) (interface
 			return nil, fmt.Errorf("Invalid argument type for action 'addRoleToPR'")
 		}
 		return vcsName.SetStatusOfPR(setStatusArgs)
+	case "addComment":
+		addComment, ok := args.(shared.VCSAddCommentToPRRequest)
+		if !ok {
+			return nil, fmt.Errorf("Invalid argument type for action 'addComment'")
+		}
+		return vcsName.AddComment(addComment)
 	default:
 		return nil, fmt.Errorf("Unsupported action: %s", action)
 	}
@@ -193,4 +214,5 @@ func init() {
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Login, "login", "", "login for integrations. For example, add reviewer with this login to PR.")
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Role, "role", "", "role for integrations. For example, add a person with specific role to PR.")
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Status, "status", "", "status for integrations. For example, set a status of PR.")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Comment, "comment", "", "comment for integrations. The text will be used like a comment to PR")
 }

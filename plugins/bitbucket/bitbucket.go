@@ -277,7 +277,6 @@ func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool,
 		g.logger.Error("Getting information about PR is failed", "error", err)
 		return false, err
 	}
-	fmt.Println(rawResponse)
 
 	participant, err := bitbucketv1.GetUserWithMetadataResponse(rawResponse)
 	if err != nil {
@@ -286,6 +285,34 @@ func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool,
 	}
 	g.logger.Info("PR sucessfully moved to status", "status", args.Status, "PR_id", args.PullRequestId, "last_commit", participant.LastReviewedCommit)
 
+	return true, nil
+}
+
+func (g *VCSBitbucket) AddComment(args shared.VCSAddCommentToPRRequest) (bool, error) {
+	g.logger.Debug("Starting changin a status of PR", "args", args)
+
+	variables, err := g.init("list", "")
+	if err != nil {
+		g.logger.Error("An init stage of adding a comment to a PR is failed", "error", err)
+		return false, err
+	}
+
+	client, cancel := BBClient(args.VCSURL, variables)
+	defer cancel()
+
+	g.logger.Info("Commenting a particular PR", "PR", fmt.Sprintf("%v/%v/%v/%v", args.VCSURL, args.Namespace, args.Repository, args.PullRequestId))
+
+	comment := bitbucketv1.Comment{
+		Text: args.Comment,
+	}
+
+	_, err = client.DefaultApi.CreatePullRequestComment(args.Namespace, args.Repository, args.PullRequestId, comment, []string{"application/json"})
+	if err != nil {
+		g.logger.Error("Commenting PR is failed", "error", err)
+		return false, err
+	}
+
+	g.logger.Info("Comment is done")
 	return true, nil
 }
 
