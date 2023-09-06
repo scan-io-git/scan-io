@@ -123,7 +123,7 @@ List of actions for github:
 				}
 			})
 
-			shared.WriteJsonFile(fmt.Sprintf("%v/PR.result", shared.GetScanioHome()), logger, resultIntegrationVCS)
+			shared.WriteJsonFile(fmt.Sprintf("%v/VCS-integration.result", shared.GetScanioHome()), logger, resultIntegrationVCS)
 			return nil
 		}
 
