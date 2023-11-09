@@ -17,7 +17,7 @@ import (
 
 func doGate() {
 
-	reportPath := "/Users/eprotsenko/ghq/github.com/juice-shop/juice-shop/codeql-2023-06-17T15:01:17Z.sarifv2.1.0"
+	reportPath := "codeql-2023-06-17T15:01:17Z.sarifv2.1.0"
 	jsonFile, err := os.Open(reportPath)
 	if err != nil {
 		log.Fatalf("error: %s", err)
