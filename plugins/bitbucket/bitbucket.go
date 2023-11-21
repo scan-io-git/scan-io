@@ -210,7 +210,11 @@ func (g *VCSBitbucket) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, err
 		return false, err
 	}
 
-	client := utils.NewHTTPClient("http://127.0.0.1:8080", true)
+	client, err := utils.NewHTTPClient(false, "")
+	if err != nil {
+		g.logger.Error("Creating HTTP client finished unsuccessfuly", "error", err)
+		return false, err
+	}
 
 	urlReq := fmt.Sprintf("https://%s/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d/participants/", args.VCSURL, args.Namespace, args.Repository, args.PullRequestId)
 	authValue := variables.Username + ":" + variables.Token

@@ -137,7 +137,7 @@ List of actions for github:
 					logger.Info("A function of VCS integrations finished with", "status", resultIntegrationVCS.Status, "action", allArgumentsIntegrationVCS.Action)
 				}
 			})
-
+			logger.Debug("Integration result", "result", resultIntegrationVCS)
 			shared.WriteJsonFile(fmt.Sprintf("%v/VCS-integration.result", shared.GetScanioHome()), logger, resultIntegrationVCS)
 			return nil
 		}

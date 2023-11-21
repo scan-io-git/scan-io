@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -29,14 +30,17 @@ var PluginMap = map[string]plugin.Plugin{
 
 func NewLogger(name string) hclog.Logger {
 	loglevel := hclog.Info
+	jsonFormat := false
 	if os.Getenv("SCANIO_LOGLEVEL") == "DEBUG" {
 		loglevel = hclog.Debug
+		jsonFormat = true
 	}
 	return hclog.New(&hclog.LoggerOptions{
 		Name:        name,
 		DisableTime: true,
 		Output:      os.Stdout,
 		Level:       loglevel,
+		JSONFormat:  jsonFormat,
 	})
 }
 

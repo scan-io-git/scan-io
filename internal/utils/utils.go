@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"io/fs"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
 )
@@ -21,25 +23,29 @@ type HTTPClient struct {
 	Client *http.Client
 }
 
-func NewHTTPClient(proxyUrl string, skipVerification bool) *HTTPClient {
-	// Disable or not SSL/TLS verification
+func dialTimeout(network, addr string) (net.Conn, error) {
+	return net.DialTimeout(network, addr, 1*time.Second)
+}
+
+func NewHTTPClient(skipVerification bool, proxyURL string) (*HTTPClient, error) {
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerification},
-	}
-	// Create a proxy URL
-	proxyURL, err := url.Parse(proxyUrl)
-	if err != nil {
-		fmt.Println("Error parsing proxy URL:", err)
-		return nil
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: skipVerification},
+		TLSHandshakeTimeout: 1 * time.Second,
+		Dial:                dialTimeout,
 	}
 
-	// Set the proxy for the transport
-	tr.Proxy = http.ProxyURL(proxyURL)
+	if proxyURL != "" {
+		proxy, err := url.Parse(proxyURL)
+		if err != nil {
+			return nil, err
+		}
+		tr.Proxy = http.ProxyURL(proxy)
+	}
 
-	// Create an HTTP client with the custom transport
-	client := &http.Client{Transport: tr}
-
-	return &HTTPClient{Client: client}
+	client := &http.Client{
+		Transport: tr,
+	}
+	return &HTTPClient{Client: client}, nil
 }
 
 func (c *HTTPClient) DoRequest(method, url string, headers http.Header, body []byte) (*http.Response, []byte, error) {
