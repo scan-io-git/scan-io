@@ -25,15 +25,22 @@ type Arguments interface{}
 var (
 	allArgumentsIntegrationVCS RunOptionsIntegrationVCS
 	resultIntegrationVCS       shared.GenericResult
-	execExampleIntegrationVCS  = `  TODO # VCS plugin integrations for different actions
-  scanio integration-vcs --vcs bitbucket --vcs-url example.com -o /Users/root/.scanio/output.file
-  
-  # Listing all repositories by a project in a VCS
-  scanio list --vcs bitbucket --vcs-url example.com --namespace PROJECT -o /Users/root/.scanio/PROJECT.file`
+	execExampleIntegrationVCS  = `# Checking the PR existence
+  scanio integration-vcs --vcs bitbucket --action checkPR --vcs-url example.com --namespace PROJECT --repository REPOSITORY --pull-request-id ID
+
+  # Add a user to the PR
+  scanio integration-vcs --vcs bitbucket --action addRoleToPR --vcs-url example.com --namespace PROJECT --repository REPOSITORY --pull-request-id ID --login scanio-bot --role REVIWER
+
+  # Change a status of the PR
+  scanio integration-vcs --vcs bitbucket --action setStatusOfPR --vcs-url example.com --namespace PROJECT --repository REPOSITORY --pull-request-id ID --login scanio-bot --status UNAPPROVED
+
+  # Leave a comment in the PR
+  scanio integration-vcs --vcs bitbucket --action addComment --vcs-url example.com --namespace PROJECT --repository REPOSITORY --pull-request-id ID --comment "Test text"
+  `
 )
 
 var integrationVcsCmd = &cobra.Command{
-	Use:                   "integration-vcs --vcs PLUGIN_NAME --output /local_path/output.file [--language LANGUAGE] (--vcs-url VCS_DOMAIN_NAME --namespace NAMESPACE | <url>)",
+	Use:                   "integration-vcs --vcs PLUGIN_NAME --vcs-url VCS_DOMAIN_NAME --namespace NAMESPACE --repository REPOSITORY --pull-request-id ID ...",
 	SilenceUsage:          true,
 	DisableFlagsInUseLine: true,
 	Example:               execExampleIntegrationVCS,
@@ -41,14 +48,16 @@ var integrationVcsCmd = &cobra.Command{
 	Long: `The command's function is VCS integrations for different actions
 
 List of actions for bitbucket:
-- Check a pull request existence and retrieve information
-- Add reviewer to a pull request
+- Check the PR existence and retrieve information about the PR
+- Add a user to the PR
+- Change a status of the PR
+- Leave a comment in the PR
   
 List of actions for gitlab:
-- nothing is implemented
+- Not implemented
 
 List of actions for github:
-- nothing is implemented`,
+- Not implemented`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var arguments Arguments
