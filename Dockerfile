@@ -23,14 +23,14 @@ COPY internal internal
 COPY pkg pkg
 COPY main.go main.go
 
-RUN go build -o /usr/bin/scanio .
-RUN go build -o /usr/bin/github ./plugins/github 
-RUN go build -o /usr/bin/gitlab ./plugins/gitlab 
-RUN go build -o /usr/bin/bitbucket ./plugins/bitbucket 
-RUN go build -o /usr/bin/semgrep ./plugins/semgrep 
-RUN go build -o /usr/bin/bandit ./plugins/bandit 
-RUN go build -o /usr/bin/trufflehog ./plugins/trufflehog/
-RUN go build -o /usr/bin/trufflehog3 ./plugins/trufflehog3/
+RUN go build -o /usr/bin/scanio . && \
+    go build -o /usr/bin/github ./plugins/github && \
+    go build -o /usr/bin/gitlab ./plugins/gitlab && \
+    go build -o /usr/bin/bitbucket ./plugins/bitbucket && \
+    go build -o /usr/bin/semgrep ./plugins/semgrep && \
+    go build -o /usr/bin/bandit ./plugins/bandit && \
+    go build -o /usr/bin/trufflehog ./plugins/trufflehog/ && \
+    go build -o /usr/bin/trufflehog3 ./plugins/trufflehog3/
 
 # RUN apk update &&\
 #     apk upgrade
