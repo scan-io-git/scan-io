@@ -59,7 +59,7 @@ func do() {
 			logger.Info("The amount of repositories is", "numbers", len(projects))
 		}
 
-		shared.WriteJsonFile(resultVCS, allArgumentsList.OutputFile, logger)
+		shared.WriteJsonFile(allArgumentsList.OutputFile, logger, resultVCS)
 	})
 }
 

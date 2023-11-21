@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 
@@ -38,6 +39,31 @@ func (g *VCSGithub) ListRepos(args shared.VCSListReposRequest) ([]shared.Reposit
 	}
 
 	return reposParams, nil
+}
+
+func (g *VCSGithub) RetrivePRInformation(args shared.VCSRetrivePRInformationRequest) (shared.PRParams, error) {
+	var result shared.PRParams
+	err := fmt.Errorf("The function is not implemented got Github.")
+
+	return result, err
+}
+
+func (g *VCSGithub) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error) {
+	err := fmt.Errorf("The function is not implemented got Github.")
+
+	return false, err
+}
+
+func (g *VCSGithub) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, error) {
+	err := fmt.Errorf("The function is not implemented got Github.")
+
+	return false, err
+}
+
+func (g *VCSGithub) AddComment(args shared.VCSAddCommentToPRRequest) (bool, error) {
+	err := fmt.Errorf("The function is not implemented got Github.")
+
+	return false, err
 }
 
 func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) error {
