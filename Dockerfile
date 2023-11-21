@@ -38,7 +38,8 @@ RUN go build -o /usr/bin/trufflehog3 ./plugins/trufflehog3/
 # RUN apk add --no-cache \
 #                 curl 
 
-FROM python:alpine3.17
+# FROM python:alpine3.17
+FROM python:3.11-alpine3.17
 # Here we are preparing a container with all 3rd party dependencies for Scanio 
 
 # RUN addgroup -g 101 scanio && \
