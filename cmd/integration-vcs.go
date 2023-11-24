@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
-
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
+	"strings"
 )
 
 type RunOptionsIntegrationVCS struct {
@@ -61,6 +63,7 @@ List of actions for github:
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var arguments Arguments
+		var outputBuffer bytes.Buffer
 		checkArgs := func() error {
 			if err := validateCommonArguments(); err != nil {
 				return err
@@ -133,7 +136,7 @@ List of actions for github:
 
 			logger := shared.NewLogger("core-integration-vcs")
 
-			shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsIntegrationVCS.VCSPlugName, func(raw interface{}) {
+			shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsIntegrationVCS.VCSPlugName, func(raw interface{}) error {
 				vcsName := raw.(shared.VCS)
 				result, err := performAction(allArgumentsIntegrationVCS.Action, vcsName, arguments)
 
@@ -145,9 +148,23 @@ List of actions for github:
 					resultIntegrationVCS = shared.GenericResult{Args: arguments, Result: result, Status: "OK", Message: ""}
 					logger.Info("A function of VCS integrations finished with", "status", resultIntegrationVCS.Status, "action", allArgumentsIntegrationVCS.Action)
 				}
+				return nil
+
 			})
+			resultJSON, err := json.Marshal(resultIntegrationVCS)
+			outputBuffer.Write(resultJSON)
+			if err != nil {
+				logger.Error("Error", "message", err)
+				return err
+			}
+
+			shared.ResultBufferMutex.Lock()
+			shared.ResultBuffer = outputBuffer
+			shared.ResultBufferMutex.Unlock()
+			outputBuffer.Write(resultJSON)
+
 			logger.Debug("Integration result", "result", resultIntegrationVCS)
-			shared.WriteJsonFile(fmt.Sprintf("%v/VCS-integration.result", shared.GetScanioHome()), logger, resultIntegrationVCS)
+			shared.WriteJsonFile(fmt.Sprintf("%v/VCS-INTEGRATION-%v.scanio-result", shared.GetScanioHome(), strings.ToUpper(allArgumentsIntegrationVCS.Action)), logger, resultIntegrationVCS)
 			return nil
 		}
 

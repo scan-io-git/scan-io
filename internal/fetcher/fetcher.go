@@ -61,25 +61,27 @@ func (f Fetcher) PrepFetchArgs(repos []shared.RepositoryParams) ([]shared.VCSFet
 	return fetchArgs, nil
 }
 
-func (f Fetcher) fetchRepo(fetchArg shared.VCSFetchRequest) error {
-
-	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, f.vcsPluginName, func(raw interface{}) {
+func (f Fetcher) fetchRepo(fetchArgs shared.VCSFetchRequest) error {
+	err := shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, f.vcsPluginName, func(raw interface{}) error {
 		vcsName := raw.(shared.VCS)
-		err := vcsName.Fetch(fetchArg)
+		err := vcsName.Fetch(fetchArgs)
 		if err != nil {
 			f.logger.Error("vcs plugin failed on fetch", "err", err)
-		} else {
-			utils.FindByExtAndRemove(fetchArg.TargetFolder, f.rmExts)
+			return err
 		}
+
+		utils.FindByExtAndRemove(fetchArgs.TargetFolder, f.rmExts)
+		return nil
 	})
 
-	return nil
+	return err
 }
 
-func (f Fetcher) FetchRepos(fetchArgs []shared.VCSFetchRequest) error {
-
+func (f Fetcher) FetchRepos(fetchArgs []shared.VCSFetchRequest) []shared.GenericResult {
 	f.logger.Info("Fetching starting", "total", len(fetchArgs), "goroutines", f.jobs)
 
+	var results []shared.GenericResult
+	resultsChannel := make(chan shared.GenericResult, len(fetchArgs))
 	values := make([]interface{}, len(fetchArgs))
 	for i := range fetchArgs {
 		values[i] = fetchArgs[i]
@@ -91,9 +93,18 @@ func (f Fetcher) FetchRepos(fetchArgs []shared.VCSFetchRequest) error {
 
 		err := f.fetchRepo(fetchArgs)
 		if err != nil {
-			f.logger.Error("fetcher's fetchRepo() failed", "err", err)
+			f.logger.Error("VCS plugin failed on fetch", "err", err)
+			resultFetch := shared.GenericResult{Args: fetchArgs, Result: "", Status: "FAILED", Message: err.Error()}
+			resultsChannel <- resultFetch
+		} else {
+			resultFetch := shared.GenericResult{Args: fetchArgs, Result: "", Status: "OK", Message: ""}
+			resultsChannel <- resultFetch
 		}
 	})
 
-	return nil
+	close(resultsChannel)
+	for result := range resultsChannel {
+		results = append(results, result)
+	}
+	return results
 }

@@ -82,7 +82,7 @@ func fetch(repo string) {
 
 	targetFolder := shared.GetRepoPath(o.VCSURL, repo)
 
-	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, o.VCSPlugin, func(raw interface{}) {
+	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, o.VCSPlugin, func(raw interface{}) error {
 
 		vcs := raw.(shared.VCS)
 		args := shared.VCSFetchRequest{
@@ -97,6 +97,7 @@ func fetch(repo string) {
 			logger.Debug("Removing files with some extentions", "extentions", o.RmExts)
 			utils.FindByExtAndRemove(targetFolder, o.RmExts)
 		}
+		return nil
 	})
 
 	logger.Info("All fetch operations are finished.")
@@ -114,11 +115,12 @@ func scan(repo string) {
 		panic(err)
 	}
 
-	shared.WithPlugin("plugin-scanner", shared.PluginTypeScanner, o.ScannerPlugin, func(raw interface{}) {
+	shared.WithPlugin("plugin-scanner", shared.PluginTypeScanner, o.ScannerPlugin, func(raw interface{}) error {
 		raw.(shared.Scanner).Scan(shared.ScannerScanRequest{
 			RepoPath:    repoPath,
 			ResultsPath: getResultsPath(repo),
 		})
+		return nil
 	})
 
 	logger.Debug("Scan finished.")

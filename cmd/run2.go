@@ -68,10 +68,7 @@ func run2fetchRepos(repos []shared.RepositoryParams) error {
 		return err
 	}
 
-	err = f.FetchRepos(fetchArgs)
-	if err != nil {
-		return err
-	}
+	_ = f.FetchRepos(fetchArgs)
 
 	return nil
 }

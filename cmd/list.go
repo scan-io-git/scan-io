@@ -36,7 +36,7 @@ var (
 func do() {
 	logger := shared.NewLogger("core")
 
-	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsList.VCSPlugName, func(raw interface{}) {
+	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsList.VCSPlugName, func(raw interface{}) error {
 		vcsName := raw.(shared.VCS)
 		args := shared.VCSListReposRequest{
 			VCSURL:    allArgumentsList.VCSURL,
@@ -60,6 +60,7 @@ func do() {
 		}
 
 		shared.WriteJsonFile(allArgumentsList.OutputFile, logger, resultVCS)
+		return nil
 	})
 }
 

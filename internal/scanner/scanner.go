@@ -90,12 +90,13 @@ func (s Scanner) PrepScanArgs(repos []shared.RepositoryParams, path string) ([]s
 
 func (s Scanner) scanRepo(scanArg shared.ScannerScanRequest) error {
 
-	shared.WithPlugin("plugin-scanner", shared.PluginTypeScanner, s.scannerPluginName, func(raw interface{}) {
+	shared.WithPlugin("plugin-scanner", shared.PluginTypeScanner, s.scannerPluginName, func(raw interface{}) error {
 		scanner := raw.(shared.Scanner)
 		err := scanner.Scan(scanArg)
 		if err != nil {
 			s.logger.Error("Scanner plugin is failed")
 		}
+		return nil
 	})
 
 	return nil

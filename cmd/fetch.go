@@ -21,8 +21,10 @@ type RunOptionsFetch struct {
 	Threads     int
 }
 
-var allArgumentsFetch RunOptionsFetch
-var execExampleFetch = `  # Fetching from an input file using an ssh-key authentification
+var (
+	allArgumentsFetch RunOptionsFetch
+	resultFetch       []shared.GenericResult
+	execExampleFetch  = `  # Fetching from an input file using an ssh-key authentification
   scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1
 
   # Fetching using an ssh-key authentification, branch and URL that points a specific repository.
@@ -33,6 +35,7 @@ var execExampleFetch = `  # Fetching from an input file using an ssh-key authent
 
   # Fetching from an input file with an HTTP.
   scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-type http -j 1`
+)
 
 var fetchCmd = &cobra.Command{
 	Use:                   "fetch --vcs PLUGIN_NAME --output /local_path/output.file --auth-type AUTH_TYPE [--ssh-key /local_path/.ssh/id_ed25519] [--rm-ext LIST_OF_EXTENTIONS] [-j THREADS_NUMBER] (--input-file/-i /local_path/repositories.file | [-b BRANCH] <url>)",
@@ -130,11 +133,8 @@ List of plugins:
 			return err
 		}
 
-		err = fetcher.FetchRepos(fetchArgs)
-		if err != nil {
-			return err
-		}
-
+		resultFetch = fetcher.FetchRepos(fetchArgs)
+		shared.WriteJsonFile(fmt.Sprintf("%v/FETCH.scanio-result", shared.GetScanioHome()), logger, resultFetch)
 		return nil
 	},
 }
