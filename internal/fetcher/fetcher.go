@@ -92,12 +92,13 @@ func (f Fetcher) FetchRepos(fetchArgs []shared.VCSFetchRequest) []shared.Generic
 		f.logger.Info("Goroutine started", "#", i+1, "args", fetchArgs)
 
 		err := f.fetchRepo(fetchArgs)
-		if err != nil {
+		message := err.Error()
+		if err != nil && err.Error() != "already up-to-date" {
 			f.logger.Error("VCS plugin failed on fetch", "err", err)
-			resultFetch := shared.GenericResult{Args: fetchArgs, Result: "", Status: "FAILED", Message: err.Error()}
+			resultFetch := shared.GenericResult{Args: fetchArgs, Result: "", Status: "FAILED", Message: message}
 			resultsChannel <- resultFetch
 		} else {
-			resultFetch := shared.GenericResult{Args: fetchArgs, Result: "", Status: "OK", Message: ""}
+			resultFetch := shared.GenericResult{Args: fetchArgs, Result: "", Status: "OK", Message: message}
 			resultsChannel <- resultFetch
 		}
 	})
