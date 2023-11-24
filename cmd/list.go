@@ -19,7 +19,7 @@ type RunOptionsList struct {
 var (
 	limit            int
 	allArgumentsList RunOptionsList
-	resultVCS        shared.ListFuncResult
+	resultVCS        shared.GenericResult
 	execExampleList  = `  # Listing all repositories in a VCS
   scanio list --vcs bitbucket --vcs-url example.com -o /Users/root/.scanio/output.file
   
@@ -51,10 +51,11 @@ func do() {
 		projects, err := vcsName.ListRepos(args)
 
 		if err != nil {
-			resultVCS = shared.ListFuncResult{Args: args, Result: projects, Status: "FAILED", Message: err.Error()}
+			resultVCS = shared.GenericResult{Args: args, Result: projects, Status: "FAILED", Message: err.Error()}
 			logger.Error("A function of listing repositories is failed")
 		} else {
-			resultVCS = shared.ListFuncResult{Args: args, Result: projects, Status: "OK", Message: ""}
+			resultVCS = shared.GenericResult{Args: args, Result: projects, Status: "OK", Message: ""}
+
 			logger.Info("A function of listing repositories finished with", "status", resultVCS.Status)
 			logger.Info("The amount of repositories is", "numbers", len(projects))
 		}

@@ -95,13 +95,6 @@ type ListFuncResult struct {
 	Message string              `json:"message"`
 }
 
-type FetchFuncResult struct {
-	Args    VCSFetchRequest
-	Result  []string
-	Status  string
-	Message string
-}
-
 type GenericResult struct {
 	Args    interface{} `json:"args"`
 	Result  interface{} `json:"result"`
