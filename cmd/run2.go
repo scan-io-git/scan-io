@@ -49,13 +49,9 @@ func run2analyzeRepos(repos []shared.RepositoryParams) error {
 		return err
 	}
 
-	err = s.ScanRepos(scanArgs)
-	if err != nil {
-		return err
-	}
+	_ = s.ScanRepos(scanArgs)
 
 	return nil
-
 }
 
 func run2fetchRepos(repos []shared.RepositoryParams) error {

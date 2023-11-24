@@ -19,10 +19,10 @@ type RunOptionsAnalyse struct {
 	Threads           int
 }
 
-var allArgumentsAnalyse RunOptionsAnalyse
-
 var (
-	execExampleAnalyse = `  # Analysing using semgrep with an input file argument
+	allArgumentsAnalyse RunOptionsAnalyse
+	resultAnalyse       []shared.GenericResult
+	execExampleAnalyse  = `  # Analysing using semgrep with an input file argument
   scanio analyse --scanner semgrep --input-file /Users/root/.scanio/output.file --format sarif -j 1
   
   # Analysing using semgrep with a specific path
@@ -105,10 +105,8 @@ List of plugins:
 			return err
 		}
 
-		err = s.ScanRepos(analyseArgs)
-		if err != nil {
-			return err
-		}
+		resultAnalyse = s.ScanRepos(analyseArgs)
+		shared.WriteJsonFile(fmt.Sprintf("%v/ANALYSE.scanio-result", shared.GetScanioHome()), logger, resultAnalyse)
 
 		return nil
 	},

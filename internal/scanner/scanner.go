@@ -90,22 +90,25 @@ func (s Scanner) PrepScanArgs(repos []shared.RepositoryParams, path string) ([]s
 
 func (s Scanner) scanRepo(scanArg shared.ScannerScanRequest) error {
 
-	shared.WithPlugin("plugin-scanner", shared.PluginTypeScanner, s.scannerPluginName, func(raw interface{}) error {
+	err := shared.WithPlugin("plugin-scanner", shared.PluginTypeScanner, s.scannerPluginName, func(raw interface{}) error {
 		scanner := raw.(shared.Scanner)
 		err := scanner.Scan(scanArg)
 		if err != nil {
 			s.logger.Error("Scanner plugin is failed")
+			return err
 		}
 		return nil
 	})
 
-	return nil
+	return err
 }
 
-func (s Scanner) ScanRepos(scanArgs []shared.ScannerScanRequest) error {
+func (s Scanner) ScanRepos(scanArgs []shared.ScannerScanRequest) []shared.GenericResult {
 
 	s.logger.Info("Scan starting", "total", len(scanArgs), "goroutines", s.jobs)
 
+	var results []shared.GenericResult
+	resultsChannel := make(chan shared.GenericResult, len(scanArgs))
 	values := make([]interface{}, len(scanArgs))
 	for i := range scanArgs {
 		values[i] = scanArgs[i]
@@ -118,8 +121,16 @@ func (s Scanner) ScanRepos(scanArgs []shared.ScannerScanRequest) error {
 		err := s.scanRepo(scanArg)
 		if err != nil {
 			s.logger.Error("scanners's scanRepo() failed", "err", err)
+			resultAnalyse := shared.GenericResult{Args: scanArg, Result: "", Status: "FAILED", Message: err.Error()}
+			resultsChannel <- resultAnalyse
+		} else {
+			resultAnalyse := shared.GenericResult{Args: scanArg, Result: "", Status: "OK", Message: ""}
+			resultsChannel <- resultAnalyse
 		}
 	})
-
-	return nil
+	close(resultsChannel)
+	for result := range resultsChannel {
+		results = append(results, result)
+	}
+	return results
 }
