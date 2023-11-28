@@ -27,6 +27,7 @@ type Arguments interface{}
 var (
 	allArgumentsIntegrationVCS RunOptionsIntegrationVCS
 	resultIntegrationVCS       shared.GenericResult
+	resultsIntegrationVCS      shared.GenericLaunchesResult
 	execExampleIntegrationVCS  = `# Checking the PR existence
   scanio integration-vcs --vcs bitbucket --action checkPR --vcs-url example.com --namespace PROJECT --repository REPOSITORY --pull-request-id ID
 
@@ -151,7 +152,9 @@ List of actions for github:
 				return nil
 
 			})
-			resultJSON, err := json.Marshal(resultIntegrationVCS)
+
+			resultsIntegrationVCS.Launches = append(resultsIntegrationVCS.Launches, resultIntegrationVCS)
+			resultJSON, err := json.Marshal(resultsIntegrationVCS)
 			outputBuffer.Write(resultJSON)
 			if err != nil {
 				logger.Error("Error", "message", err)
@@ -163,8 +166,8 @@ List of actions for github:
 			shared.ResultBufferMutex.Unlock()
 			outputBuffer.Write(resultJSON)
 
-			logger.Debug("Integration result", "result", resultIntegrationVCS)
-			shared.WriteJsonFile(fmt.Sprintf("%v/VCS-INTEGRATION-%v.scanio-result", shared.GetScanioHome(), strings.ToUpper(allArgumentsIntegrationVCS.Action)), logger, resultIntegrationVCS)
+			logger.Debug("Integration result", "result", resultsIntegrationVCS)
+			shared.WriteJsonFile(fmt.Sprintf("%v/VCS-INTEGRATION-%v.scanio-result", shared.GetScanioHome(), strings.ToUpper(allArgumentsIntegrationVCS.Action)), logger, resultsIntegrationVCS)
 			return nil
 		}
 

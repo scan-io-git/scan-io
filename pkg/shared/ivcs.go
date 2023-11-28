@@ -95,6 +95,10 @@ type ListFuncResult struct {
 	Message string              `json:"message"`
 }
 
+type GenericLaunchesResult struct {
+	Launches []GenericResult `json:"launches"`
+}
+
 type GenericResult struct {
 	Args    interface{} `json:"args"`
 	Result  interface{} `json:"result"`

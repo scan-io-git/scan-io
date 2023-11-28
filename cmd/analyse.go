@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -21,7 +23,7 @@ type RunOptionsAnalyse struct {
 
 var (
 	allArgumentsAnalyse RunOptionsAnalyse
-	resultAnalyse       []shared.GenericResult
+	resultAnalyse       shared.GenericLaunchesResult
 	execExampleAnalyse  = `  # Analysing using semgrep with an input file argument
   scanio analyse --scanner semgrep --input-file /Users/root/.scanio/output.file --format sarif -j 1
   
@@ -52,10 +54,13 @@ List of plugins:
   - trufflehog3`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var reposInf []shared.RepositoryParams
-		argsLenAtDash := cmd.ArgsLenAtDash()
-		var path string
+		var (
+			reposInf     []shared.RepositoryParams
+			path         string
+			outputBuffer bytes.Buffer
+		)
 
+		argsLenAtDash := cmd.ArgsLenAtDash()
 		checkArgs := func() error {
 			if len(allArgumentsAnalyse.ScannerPluginName) == 0 {
 				return fmt.Errorf("A 'scanner' flag must be specified!")
@@ -106,8 +111,19 @@ List of plugins:
 		}
 
 		resultAnalyse = s.ScanRepos(analyseArgs)
-		shared.WriteJsonFile(fmt.Sprintf("%v/ANALYSE.scanio-result", shared.GetScanioHome()), logger, resultAnalyse)
+		resultJSON, err := json.Marshal(resultAnalyse)
+		outputBuffer.Write(resultJSON)
+		if err != nil {
+			logger.Error("Error", "message", err)
+			return err
+		}
 
+		shared.ResultBufferMutex.Lock()
+		shared.ResultBuffer = outputBuffer
+		shared.ResultBufferMutex.Unlock()
+		outputBuffer.Write(resultJSON)
+
+		shared.WriteJsonFile(fmt.Sprintf("%v/ANALYSE.scanio-result", shared.GetScanioHome()), logger, resultAnalyse)
 		return nil
 	},
 }

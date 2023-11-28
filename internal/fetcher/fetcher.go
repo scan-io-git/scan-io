@@ -77,10 +77,10 @@ func (f Fetcher) fetchRepo(fetchArgs shared.VCSFetchRequest) error {
 	return err
 }
 
-func (f Fetcher) FetchRepos(fetchArgs []shared.VCSFetchRequest) []shared.GenericResult {
+func (f Fetcher) FetchRepos(fetchArgs []shared.VCSFetchRequest) shared.GenericLaunchesResult {
 	f.logger.Info("Fetching starting", "total", len(fetchArgs), "goroutines", f.jobs)
 
-	var results []shared.GenericResult
+	var results shared.GenericLaunchesResult
 	resultsChannel := make(chan shared.GenericResult, len(fetchArgs))
 	values := make([]interface{}, len(fetchArgs))
 	for i := range fetchArgs {
@@ -105,7 +105,7 @@ func (f Fetcher) FetchRepos(fetchArgs []shared.VCSFetchRequest) []shared.Generic
 
 	close(resultsChannel)
 	for result := range resultsChannel {
-		results = append(results, result)
+		results.Launches = append(results.Launches, result)
 	}
 	return results
 }

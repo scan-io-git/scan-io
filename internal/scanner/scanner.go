@@ -103,11 +103,11 @@ func (s Scanner) scanRepo(scanArg shared.ScannerScanRequest) error {
 	return err
 }
 
-func (s Scanner) ScanRepos(scanArgs []shared.ScannerScanRequest) []shared.GenericResult {
+func (s Scanner) ScanRepos(scanArgs []shared.ScannerScanRequest) shared.GenericLaunchesResult {
 
 	s.logger.Info("Scan starting", "total", len(scanArgs), "goroutines", s.jobs)
 
-	var results []shared.GenericResult
+	var results shared.GenericLaunchesResult
 	resultsChannel := make(chan shared.GenericResult, len(scanArgs))
 	values := make([]interface{}, len(scanArgs))
 	for i := range scanArgs {
@@ -128,9 +128,10 @@ func (s Scanner) ScanRepos(scanArgs []shared.ScannerScanRequest) []shared.Generi
 			resultsChannel <- resultAnalyse
 		}
 	})
+
 	close(resultsChannel)
 	for result := range resultsChannel {
-		results = append(results, result)
+		results.Launches = append(results.Launches, result)
 	}
 	return results
 }

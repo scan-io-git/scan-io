@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -23,7 +25,7 @@ type RunOptionsFetch struct {
 
 var (
 	allArgumentsFetch RunOptionsFetch
-	resultFetch       []shared.GenericResult
+	resultFetch       shared.GenericLaunchesResult
 	execExampleFetch  = `  # Fetching from an input file using an ssh-key authentification
   scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1
 
@@ -51,6 +53,7 @@ List of plugins:
   - github`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
+		var outputBuffer bytes.Buffer
 		reposParams := []shared.RepositoryParams{}
 
 		checkArgs := func() error {
@@ -134,6 +137,20 @@ List of plugins:
 		}
 
 		resultFetch = fetcher.FetchRepos(fetchArgs)
+		resultJSON, err := json.Marshal(resultFetch)
+		outputBuffer.Write(resultJSON)
+		if err != nil {
+			logger.Error("Error", "message", err)
+			return err
+		}
+
+		shared.ResultBufferMutex.Lock()
+		shared.ResultBuffer = outputBuffer
+		shared.ResultBufferMutex.Unlock()
+		outputBuffer.Write(resultJSON)
+
+		logger.Debug("Integration result", "result", resultIntegrationVCS)
+
 		shared.WriteJsonFile(fmt.Sprintf("%v/FETCH.scanio-result", shared.GetScanioHome()), logger, resultFetch)
 		return nil
 	},
