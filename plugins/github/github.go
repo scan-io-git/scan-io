@@ -48,10 +48,10 @@ func (g *VCSGithub) RetrivePRInformation(args shared.VCSRetrivePRInformationRequ
 	return result, err
 }
 
-func (g *VCSGithub) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error) {
+func (g *VCSGithub) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (interface{}, error) {
 	err := fmt.Errorf("The function is not implemented got Github.")
 
-	return false, err
+	return nil, err
 }
 
 func (g *VCSGithub) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, error) {

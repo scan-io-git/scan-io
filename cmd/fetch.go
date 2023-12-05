@@ -65,7 +65,7 @@ List of plugins:
 			}
 
 			if len(allArgumentsFetch.InputFile) == 0 && len(args) == 0 {
-				return fmt.Errorf(("'vcs-url' flag or 'input-file' flag or URL must be specified!"))
+				return fmt.Errorf(("'input-file' flag or URL must be specified!"))
 			}
 
 			if len(allArgumentsFetch.InputFile) != 0 && len(args) != 0 {
@@ -78,7 +78,7 @@ List of plugins:
 				}
 
 				URL := args[0]
-				_, namespace, repository, httpLink, sshLink, err := shared.ExtractRepositoryInfoFromURL(URL, allArgumentsFetch.VCSPlugName)
+				_, namespace, repository, pullRequestId, httpLink, sshLink, err := shared.ExtractRepositoryInfoFromURL(URL, allArgumentsFetch.VCSPlugName)
 				if err != nil {
 					return err
 				}
@@ -88,10 +88,10 @@ List of plugins:
 				} else if len(repository) == 0 {
 					return fmt.Errorf(("A fetch function for fetching a whole project is not supported."))
 				}
-
 				reposParams = append(reposParams, shared.RepositoryParams{
 					Namespace: namespace,
 					RepoName:  repository,
+					PRID:      pullRequestId,
 					HttpLink:  httpLink,
 					SshLink:   sshLink,
 				})
@@ -149,7 +149,7 @@ List of plugins:
 		shared.ResultBufferMutex.Unlock()
 		outputBuffer.Write(resultJSON)
 
-		logger.Debug("Integration result", "result", resultIntegrationVCS)
+		logger.Debug("Integration result", "result", resultFetch)
 
 		shared.WriteJsonFile(fmt.Sprintf("%v/FETCH.scanio-result", shared.GetScanioHome()), logger, resultFetch)
 		return nil

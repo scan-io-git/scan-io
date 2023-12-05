@@ -93,7 +93,7 @@ List of plugins:
 				}
 
 				URL := args[0]
-				hostname, namespace, repository, _, _, err := shared.ExtractRepositoryInfoFromURL(URL, allArgumentsList.VCSPlugName)
+				hostname, namespace, repository, _, _, _, err := shared.ExtractRepositoryInfoFromURL(URL, allArgumentsList.VCSPlugName)
 				if err != nil {
 					return err
 				}

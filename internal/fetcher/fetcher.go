@@ -33,7 +33,10 @@ func New(authType string, sshKey string, jobs int, branch string, vcsPluginName 
 }
 
 func (f Fetcher) PrepFetchArgs(repos []shared.RepositoryParams) ([]shared.VCSFetchRequest, error) {
-	var fetchArgs []shared.VCSFetchRequest
+	var (
+		fetchArgs []shared.VCSFetchRequest
+	)
+	mode := "basic"
 
 	for _, repo := range repos {
 
@@ -47,6 +50,9 @@ func (f Fetcher) PrepFetchArgs(repos []shared.RepositoryParams) ([]shared.VCSFet
 			return nil, err
 		}
 
+		if repo.PRID != "" {
+			mode = "PRscan"
+		}
 		targetFolder := shared.GetRepoPath(strings.ToLower(domain), filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
 
 		fetchArgs = append(fetchArgs, shared.VCSFetchRequest{
@@ -55,6 +61,8 @@ func (f Fetcher) PrepFetchArgs(repos []shared.RepositoryParams) ([]shared.VCSFet
 			AuthType:     f.authType,
 			SSHKey:       f.sshKey,
 			TargetFolder: targetFolder,
+			Mode:         mode,
+			RepoParam:    repo,
 		})
 
 	}
@@ -88,11 +96,15 @@ func (f Fetcher) FetchRepos(fetchArgs []shared.VCSFetchRequest) shared.GenericLa
 	}
 
 	shared.ForEveryStringWithBoundedGoroutines(f.jobs, values, func(i int, value interface{}) {
+		var message string
 		fetchArgs := value.(shared.VCSFetchRequest)
 		f.logger.Info("Goroutine started", "#", i+1, "args", fetchArgs)
 
 		err := f.fetchRepo(fetchArgs)
-		message := err.Error()
+		if err != nil {
+			message = err.Error()
+		}
+
 		if err != nil && err.Error() != "already up-to-date" {
 			f.logger.Error("VCS plugin failed on fetch", "err", err)
 			resultFetch := shared.GenericResult{Args: fetchArgs, Result: "", Status: "FAILED", Message: message}

@@ -26,8 +26,6 @@ type Arguments interface{}
 
 var (
 	allArgumentsIntegrationVCS RunOptionsIntegrationVCS
-	resultIntegrationVCS       shared.GenericResult
-	resultsIntegrationVCS      shared.GenericLaunchesResult
 	execExampleIntegrationVCS  = `# Checking the PR existence
   scanio integration-vcs --vcs bitbucket --action checkPR --vcs-url example.com --namespace PROJECT --repository REPOSITORY --pull-request-id ID
 
@@ -63,8 +61,12 @@ List of actions for github:
 - Not implemented`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var arguments Arguments
-		var outputBuffer bytes.Buffer
+		var (
+			arguments             Arguments
+			outputBuffer          bytes.Buffer
+			resultIntegrationVCS  shared.GenericResult
+			resultsIntegrationVCS shared.GenericLaunchesResult
+		)
 		checkArgs := func() error {
 			if err := validateCommonArguments(); err != nil {
 				return err
