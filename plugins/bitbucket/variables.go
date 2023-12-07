@@ -7,6 +7,10 @@ const (
 	maxCommentLength = 32768
 )
 
+var (
+	changeTypes = []string{"ADD", "MODIFY"}
+)
+
 type Changes struct {
 	FromHash      string             `json:"fromHash"`
 	ToHash        string             `json:"toHash"`

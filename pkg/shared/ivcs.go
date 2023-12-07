@@ -13,6 +13,7 @@ type RepositoryParams struct {
 	Namespace string `json:"namespace"`
 	RepoName  string `json:"repo_name"`
 	PRID      string `json:"pr_id"`
+	VCSURL    string `json:"vcs_url"`
 	HttpLink  string `json:"http_link"`
 	SshLink   string `json:"ssh_link"`
 }
@@ -127,7 +128,7 @@ type VCSRetrivePRInformationResponse struct {
 }
 
 type VCS interface {
-	Fetch(req VCSFetchRequest) error
+	Fetch(req VCSFetchRequest) (string, error)
 	ListRepos(args VCSListReposRequest) ([]RepositoryParams, error)
 	RetrivePRInformation(req VCSRetrivePRInformationRequest) (PRParams, error)
 	AddRoleToPR(req VCSAddRoleToPRRequest) (interface{}, error)
@@ -137,16 +138,16 @@ type VCS interface {
 
 type VCSRPCClient struct{ client *rpc.Client }
 
-func (g *VCSRPCClient) Fetch(req VCSFetchRequest) error {
+func (g *VCSRPCClient) Fetch(req VCSFetchRequest) (string, error) {
 	var resp VCSFetchResponse
 
 	err := g.client.Call("Plugin.Fetch", req, &resp)
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return "", nil
 }
 
 func (g *VCSRPCClient) ListRepos(req VCSListReposRequest) ([]RepositoryParams, error) {
@@ -214,7 +215,8 @@ type VCSRPCServer struct {
 }
 
 func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) error {
-	return s.Impl.Fetch(args)
+	_, err := s.Impl.Fetch(args)
+	return err
 }
 
 func (s *VCSRPCServer) ListRepos(args VCSListReposRequest, resp *VCSListReposResponse) error {

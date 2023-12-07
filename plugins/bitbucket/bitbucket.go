@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
-	// "strconv"
+	"strconv"
+	"strings"
 	"time"
 
 	bitbucketv1 "github.com/gfleury/go-bitbucket-v1"
@@ -325,70 +327,179 @@ func (g *VCSBitbucket) AddComment(args shared.VCSAddCommentToPRRequest) (bool, e
 	return true, nil
 }
 
-// func (g *VCSBitbucket) fetchPRChanges(args *shared.VCSFetchRequest, client *bitbucketv1.APIClient) ([]*Change, error) {
-// 	g.logger.Info("Fetching PR changes")
+func (g *VCSBitbucket) fetchPRChanges(args *shared.VCSFetchRequest, variables *shared.EvnVariables) ([]*Change, error) {
+	g.logger.Info("Fetching PR changes")
+	var prData interface{}
+	changes := []*Change{}
 
-// 	prId, _ := strconv.ParseInt(args.RepoParam.PRID, 10, 64)
-
-// 	response, err := client.DefaultApi.StreamChanges_35(args.RepoParam.Namespace, args.RepoParam.RepoName, prId, nil)
-// 	//GetPullRequestDiffRaw?
-// 	if err != nil {
-// 		g.logger.Error("A PR changes function is failed", "error", err)
-// 		return nil, err
-// 	}
-
-// 	g.logger.Info("Changes are fetched")
-// 	res, err := getProjectsResponse(response)
-// 	if err != nil {
-// 		g.logger.Error("A response parsing function is failed", "error", err)
-// 		return nil, err
-// 	}
-
-// 	return nil
-// }
-
-func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) error {
-	g.logger.Info("Handling PR changes fetching")
-	rawStartTime := time.Now().UTC()
-	startTime := rawStartTime.Format(time.RFC3339)
-
-	targetPRFolder := filepath.Join(args.TargetFolder, "scanio-pr-tmp", args.RepoParam.PRID, startTime)
-	if err := os.MkdirAll(targetPRFolder, os.ModePerm); err != nil {
-		g.logger.Error("Creating directory for PR is failed", "error", err)
-		return err
+	client, err := utils.NewHTTPClient(false, "")
+	if err != nil {
+		g.logger.Error("Creating HTTP client finished unsuccessfuly", "error", err)
+		return nil, err
 	}
+
+	start := "0"
+	baseUrl := fmt.Sprintf("https://%s/rest/api/1.0/projects/%s/repos/%s/pull-requests/%s", args.RepoParam.VCSURL, args.RepoParam.Namespace, args.RepoParam.RepoName, args.RepoParam.PRID)
+	urlReqDiff := fmt.Sprintf("%s/changes", baseUrl)
+	authValue := variables.Username + ":" + variables.Token
+	authHeader := base64.StdEncoding.EncodeToString([]byte(authValue))
+	headers := http.Header{
+		"Content-Type":  {"application/json"},
+		"Authorization": {"Basic " + authHeader},
+	}
+	response, responseBody, err := client.DoRequest("GET", baseUrl, headers, nil)
+	if err != nil {
+		g.logger.Error("A PR changes function is failed by doing a request", "error", err)
+		return nil, err
+	}
+
+	if response.StatusCode >= http.StatusBadRequest {
+		g.logger.Error("HTTP request failed with status", "code", response.StatusCode, "error", err)
+		return nil, fmt.Errorf("Response body %v", string(responseBody))
+	}
+
+	if err = json.Unmarshal(responseBody, &prData); err != nil {
+		g.logger.Error("A PR changes function is failed by parsing json", "error", err)
+		return nil, err
+	}
+
+	pr := prData.(map[string]interface{})
+	fromRef, _ := pr["fromRef"].(map[string]interface{})
+	branch, _ := fromRef["id"].(string)
+	args.Branch = branch
+
+	for {
+		g.logger.Debug("Starting extracting PR changes")
+		changesReponse := new(Changes)
+
+		params := url.Values{
+			"withComments": []string{"false"},
+			"start":        []string{start},
+			"limit":        []string{"100"},
+		}
+		fullURL := fmt.Sprintf("%s?%s", urlReqDiff, params.Encode())
+		response, responseBody, err := client.DoRequest("GET", fullURL, headers, nil)
+		if err != nil {
+			g.logger.Error("A PR changes function is failed by doing a request", "error", err)
+			return nil, err
+		}
+
+		if response.StatusCode >= http.StatusBadRequest {
+			g.logger.Error("HTTP request failed with status", "code", response.StatusCode, "responseBody", responseBody)
+			return nil, fmt.Errorf("Response body %v", string(responseBody))
+		}
+		if err = json.Unmarshal(responseBody, &changesReponse); err != nil {
+			g.logger.Error("A PR changes function is failed by parsing json", "error", err)
+			return nil, err
+		}
+
+		changes = append(changes, changesReponse.Values...)
+		if changesReponse.IsLastPage || changesReponse.NextPageStart == nil {
+			break
+		}
+		start = strconv.Itoa(*changesReponse.NextPageStart)
+	}
+
+	return changes, nil
+}
+
+func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest, variables *shared.EvnVariables) (string, error) {
+	g.logger.Info("Handling PR changes fetching")
 
 	_, err := g.init("list", "")
 	if err != nil {
 		g.logger.Error("An init stage of retriving information about a PR is failed", "error", err)
-		return err
+		return "", err
 	}
 
-	// client, cancel := BBClient(args.VCSURL, variables)
-	// defer cancel()
-	// changes, _, err := g.fetchPRChanges(args, client)
+	changes, err := g.fetchPRChanges(args, variables)
+	if err != nil {
+		return "", err
+	}
 
-	return nil
+	g.logger.Info("Strating fetching PR code")
+	_, err = shared.GitClone(*args, *variables, g.logger)
+	if err != nil && err.Error() != "already up-to-date" {
+		g.logger.Error("The fetching PR function is failed", "error", err)
+		return "", err
+	}
+
+	// Create a folder for scanning changed files from the PR
+	// TODO move to core
+	rawStartTime := time.Now().UTC()
+	startTime := rawStartTime.Format(time.RFC3339)
+	targetPRFolder := filepath.Join(shared.GetScanioHome(), "tmp", strings.ToLower(args.RepoParam.VCSURL), strings.ToLower(args.RepoParam.Namespace),
+		strings.ToLower(args.RepoParam.RepoName), "scanio-pr-tmp", args.RepoParam.PRID, startTime)
+	if err := os.MkdirAll(targetPRFolder, os.ModePerm); err != nil {
+		g.logger.Error("Creating a folde for PR function is failed", "error", err)
+		return "", err
+	}
+
+	g.logger.Debug("Copy files which are changed")
+	for _, val := range changes {
+		if !shared.ContainsSubstring(val.Type, changeTypes) {
+			g.logger.Debug("Skipping", "type", val.Type, "path", val.Path.ToString)
+			continue
+		}
+
+		srcPath := filepath.Join(args.TargetFolder, val.Path.ToString)
+		destPath := filepath.Join(targetPRFolder, val.Path.ToString)
+		err := shared.Copy(srcPath, destPath)
+		if err != nil {
+			g.logger.Error("Error copying file", "error", err)
+		}
+	}
+
+	g.logger.Debug("Copy usefull files which are started with dot")
+	files, err := os.ReadDir(args.TargetFolder)
+	if err != nil {
+		return "", err
+	}
+
+	for _, file := range files {
+		if file.IsDir() && file.Name()[0] == '.' {
+			sourceFolder := filepath.Join(args.TargetFolder, file.Name())
+			targetFolder2 := filepath.Join(targetPRFolder, file.Name())
+			if err := shared.CreateIfNotExists((targetFolder2), 0755); err != nil {
+				return "", err
+			}
+			if err := shared.CopyDirs(sourceFolder, targetFolder2); err != nil {
+				fmt.Printf("Error copying directory: %v\n", err)
+			}
+		} else if file.Name()[0] == '.' {
+			sourceFolder := filepath.Join(args.TargetFolder, file.Name())
+			err := shared.Copy(sourceFolder, targetPRFolder)
+			if err != nil {
+				fmt.Printf("Error copying file: %v\n", err)
+			}
+		}
+	}
+
+	g.logger.Info("Files for PR scan are copied", "folder", targetPRFolder)
+	return targetPRFolder, nil
 }
 
-func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) error {
+func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (string, error) {
+	var path string
 	variables, err := g.init("fetch", args.AuthType)
 	if err != nil {
 		g.logger.Error("An init function for a fetching function is failed", "error", err)
-		return err
+		return "", err
 	}
 	if args.Mode == "PRscan" {
-		// _ = g.fetchPR(&args)
+		path, err = g.fetchPR(&args, &variables)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		path, err = shared.GitClone(args, variables, g.logger)
+		if err != nil {
+			g.logger.Error("The fetching function is failed", "error", err)
+			return "", err
+		}
 	}
-	// pdid
 
-	err = shared.GitClone(args, variables, g.logger)
-	if err != nil {
-		g.logger.Error("The fetching function is failed", "error", err)
-		return err
-	}
-
-	return nil
+	return path, nil
 }
 
 func main() {

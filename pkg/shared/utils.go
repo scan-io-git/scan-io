@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/hashicorp/go-hclog"
 
@@ -99,18 +101,18 @@ func getGitAuth(args *VCSFetchRequest, variables *EvnVariables, logger hclog.Log
 	return auth, err
 }
 
-func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger) error {
+func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger) (string, error) {
 	info, err := vcsurl.Parse(args.CloneURL)
 	if err != nil {
 		logger.Error("Unable to parse VCS url", "VCSURL", args.CloneURL, "err", err)
-		return err
+		return "", err
 	}
 
 	branch := plumbing.ReferenceName(args.Branch)
 	auth, err := getGitAuth(&args, &variables, logger)
 	if err != nil {
 		logger.Error("Unable to set up auth", "err", err)
-		return err
+		return "", err
 	}
 
 	// debug output from git cli
@@ -151,13 +153,13 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 	_, errClone := git.PlainClone(args.TargetFolder, false, gitCloneOptions)
 	if errClone != nil && errClone != git.ErrRepositoryAlreadyExists {
 		logger.Error("Error on Clone occured", "err", err, "targetFolder", args.TargetFolder, "remote", gitCloneOptions.URL)
-		return err
+		return "", err
 	}
 
 	r, err := git.PlainOpen(args.TargetFolder)
 	if err != nil {
 		logger.Error("Can't open repository on a disk", "err", err, "targetFolder", args.TargetFolder)
-		return err
+		return "", err
 	}
 
 	_ = r.Fetch(gitFetchOptions) // updating list of references
@@ -165,31 +167,31 @@ func GitClone(args VCSFetchRequest, variables EvnVariables, logger hclog.Logger)
 	w, err := r.Worktree()
 	if err != nil {
 		logger.Error("Error on Worktree occured", "err", err, "targetFolder", args.TargetFolder)
-		return err
+		return "", err
 	}
 
 	logger.Debug("Checkout a branch", "repo", info.Name, "targetFolder", args.TargetFolder, "branch", args.Branch)
 	if err = w.Checkout(gitCheckoutOptions); err != nil {
 		logger.Error("Error on Checkout occured", "err", err, "targetFolder", args.TargetFolder)
-		return err
+		return "", err
 	}
 
 	logger.Debug("Reseting local repo", "repo", info.Name, "targetFolder", args.TargetFolder)
 	if err := w.Reset(&git.ResetOptions{Mode: git.HardReset}); err != nil {
 		fmt.Println("Error on Checkout occured", "err", err, "targetFolder", args.TargetFolder)
-		return err
+		return "", err
 	}
 
 	if errClone != nil && errClone == git.ErrRepositoryAlreadyExists {
 		logger.Debug("Pulling repo", "repo", info.Name, "targetFolder", args.TargetFolder, "branch", args.Branch)
 		if err = w.Pull(gitPullOptions); err != nil {
 			logger.Error("Error on Pull occured", "err", err, "targetFolder", args.TargetFolder)
-			return err
+			return "", err
 		}
 	}
 
 	logger.Info("A fetch function finished", "repo", info.Name, "branch", args.Branch, "targetFolder", args.TargetFolder)
-	return nil
+	return args.TargetFolder, nil
 }
 
 func ExtractRepositoryInfoFromURL(Url string, VCSPlugName string) (string, string, string, string, string, string, error) {
@@ -243,7 +245,9 @@ func ExtractRepositoryInfoFromURL(Url string, VCSPlugName string) (string, strin
 			namespace = pathDirs[1]
 			repository = pathDirs[3]
 			pullRequestId = pathDirs[5]
-			return vcsUrl, namespace, repository, pullRequestId, Url, "", nil
+			httpUrl := fmt.Sprintf("https://%s/scm/%s/%s.git", vcsUrl, namespace, repository)
+			sshUrl := fmt.Sprintf("ssh://git@%s:7989/%s/%s.git", vcsUrl, namespace, repository)
+			return vcsUrl, namespace, repository, pullRequestId, httpUrl, sshUrl, nil
 		} else if len(pathDirs) > 3 && pathDirs[0] == "projects" && pathDirs[2] == "repos" && isHTTP {
 			// Case is working with a certain repo from a Web UI URL format
 			// https://bitbucket.com/projects/<project_name>/repos/<repo_name>/browse
@@ -318,5 +322,123 @@ func IsCI() bool {
 		return true
 	}
 
+	return false
+}
+
+func CopyDirs(scrDir, dest string) error {
+
+	entries, err := os.ReadDir(scrDir)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		sourcePath := filepath.Join(scrDir, entry.Name())
+		destPath := filepath.Join(dest, entry.Name())
+
+		fileInfo, err := os.Stat(sourcePath)
+		if err != nil {
+			return err
+		}
+
+		stat, ok := fileInfo.Sys().(*syscall.Stat_t)
+		if !ok {
+			return fmt.Errorf("failed to get raw syscall.Stat_t data for '%s'", sourcePath)
+		}
+
+		switch fileInfo.Mode() & os.ModeType {
+		case os.ModeDir:
+			if err := CreateIfNotExists(destPath, 0755); err != nil {
+				return err
+			}
+			if err := CopyDirs(sourcePath, destPath); err != nil {
+				return err
+			}
+		case os.ModeSymlink:
+			if err := CopySymLink(sourcePath, destPath); err != nil {
+				return err
+			}
+		default:
+			if err := Copy(sourcePath, destPath); err != nil {
+				return err
+			}
+		}
+
+		if err := os.Lchown(destPath, int(stat.Uid), int(stat.Gid)); err != nil {
+			return err
+		}
+
+		fInfo, err := entry.Info()
+		if err != nil {
+			return err
+		}
+
+		isSymlink := fInfo.Mode()&os.ModeSymlink != 0
+		if !isSymlink {
+			if err := os.Chmod(destPath, fInfo.Mode()); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func Copy(srcFile, dstFile string) error {
+	out, err := os.Create(dstFile)
+	if err != nil {
+		return err
+	}
+
+	defer out.Close()
+
+	in, err := os.Open(srcFile)
+	if err != nil {
+		return err
+	}
+
+	defer in.Close()
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return err
+	}
+	// fmt.Printf("Copied: %s to %s\n", srcFile, dstFile)
+
+	return nil
+}
+
+func Exists(filePath string) bool {
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return false
+	}
+
+	return true
+}
+
+func CreateIfNotExists(dir string, perm os.FileMode) error {
+	if Exists(dir) {
+		return nil
+	}
+
+	if err := os.MkdirAll(dir, perm); err != nil {
+		return fmt.Errorf("failed to create directory: '%s', error: '%s'", dir, err.Error())
+	}
+
+	return nil
+}
+
+func CopySymLink(source, dest string) error {
+	link, err := os.Readlink(source)
+	if err != nil {
+		return err
+	}
+	return os.Symlink(link, dest)
+}
+
+func ContainsSubstring(target string, substrings []string) bool {
+	for _, substring := range substrings {
+		if strings.Contains(target, substring) {
+			return true
+		}
+	}
 	return false
 }

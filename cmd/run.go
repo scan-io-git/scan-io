@@ -90,7 +90,7 @@ func fetch(repo string) {
 			//VCSURL:       o.VCSURL,
 			TargetFolder: targetFolder,
 		}
-		err := vcs.Fetch(args)
+		_, err := vcs.Fetch(args)
 		if err != nil {
 			logger.Debug("Fetch error", "err", err)
 		} else {

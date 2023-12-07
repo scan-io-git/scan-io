@@ -33,7 +33,7 @@ func TestGithubClonePublic(t *testing.T) {
 	logger := NewLogger("test")
 
 	// function check
-	err = GitClone(args, vars, logger)
+	_, err = GitClone(args, vars, logger)
 	if err != nil {
 		t.Error(err)
 	}
@@ -62,7 +62,7 @@ func TestGithubClonePrivateWithSSHKey(t *testing.T) {
 	logger := NewLogger("test")
 
 	// function check
-	err = GitClone(args, vars, logger)
+	_, err = GitClone(args, vars, logger)
 	if err != nil {
 		t.Error(err)
 	}
@@ -91,7 +91,7 @@ func TestGithubClonePrivateWithSSHAgent(t *testing.T) {
 	logger := NewLogger("test")
 
 	// function check
-	err = GitClone(args, vars, logger)
+	_, err = GitClone(args, vars, logger)
 	if err != nil {
 		t.Error(err)
 	}
@@ -120,7 +120,7 @@ func TestGitlabClonePrivateWithSSHAgent(t *testing.T) {
 	logger := NewLogger("test")
 
 	// function check
-	err = GitClone(args, vars, logger)
+	_, err = GitClone(args, vars, logger)
 	if err != nil {
 		t.Error(err)
 	}

@@ -49,6 +49,7 @@ func (f Fetcher) PrepFetchArgs(repos []shared.RepositoryParams) ([]shared.VCSFet
 		if err != nil {
 			return nil, err
 		}
+		repo.VCSURL = domain
 
 		if repo.PRID != "" {
 			mode = "PRscan"
@@ -72,7 +73,7 @@ func (f Fetcher) PrepFetchArgs(repos []shared.RepositoryParams) ([]shared.VCSFet
 func (f Fetcher) fetchRepo(fetchArgs shared.VCSFetchRequest) error {
 	err := shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, f.vcsPluginName, func(raw interface{}) error {
 		vcsName := raw.(shared.VCS)
-		err := vcsName.Fetch(fetchArgs)
+		_, err := vcsName.Fetch(fetchArgs)
 		if err != nil {
 			f.logger.Error("vcs plugin failed on fetch", "err", err)
 			return err
