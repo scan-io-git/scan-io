@@ -459,11 +459,11 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest, variables *shared.E
 	for _, file := range files {
 		if file.IsDir() && file.Name()[0] == '.' {
 			sourceFolder := filepath.Join(args.TargetFolder, file.Name())
-			targetFolder2 := filepath.Join(targetPRFolder, file.Name())
-			if err := shared.CreateIfNotExists((targetFolder2), 0755); err != nil {
+			targetFolderNext := filepath.Join(targetPRFolder, file.Name())
+			if err := shared.CreateIfNotExists((targetFolderNext), 0755); err != nil {
 				return "", err
 			}
-			if err := shared.CopyDirs(sourceFolder, targetFolder2); err != nil {
+			if err := shared.CopyDirs(sourceFolder, targetFolderNext); err != nil {
 				fmt.Printf("Error copying directory: %v\n", err)
 			}
 		} else if file.Name()[0] == '.' {
@@ -479,27 +479,33 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest, variables *shared.E
 	return targetPRFolder, nil
 }
 
-func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (string, error) {
-	var path string
+func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
+	var (
+		result shared.VCSFetchResponse
+		path   string
+	)
+
 	variables, err := g.init("fetch", args.AuthType)
 	if err != nil {
 		g.logger.Error("An init function for a fetching function is failed", "error", err)
-		return "", err
+		return result, err
 	}
 	if args.Mode == "PRscan" {
 		path, err = g.fetchPR(&args, &variables)
 		if err != nil {
-			return "", err
+			return result, err
 		}
+		result.Path = path
 	} else {
 		path, err = shared.GitClone(args, variables, g.logger)
 		if err != nil {
 			g.logger.Error("The fetching function is failed", "error", err)
-			return "", err
+			return result, err
 		}
+		result.Path = path
 	}
 
-	return path, nil
+	return result, nil
 }
 
 func main() {

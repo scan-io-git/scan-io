@@ -66,7 +66,9 @@ func (g *VCSGithub) AddComment(args shared.VCSAddCommentToPRRequest) (bool, erro
 	return false, err
 }
 
-func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) (string, error) {
+func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
+	var result shared.VCSFetchResponse
+
 	//variables, err := g.init("fetch")
 	variables := shared.EvnVariables{}
 	// if err != nil {
@@ -77,9 +79,11 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) (string, error) {
 	path, err := shared.GitClone(args, variables, g.logger)
 	if err != nil {
 		g.logger.Error("A fetching function is failed", "error", err)
-		return "", err
+		return result, err
 	}
-	return path, nil
+	result.Path = path
+
+	return result, nil
 }
 
 func main() {

@@ -98,9 +98,12 @@ func WithPlugin(loggerName string, pluginType string, pluginName string, f func(
 		return err
 	}
 
-	if err := f(raw); err != nil {
+	// result, err := f(raw)
+	err = f(raw)
+	if err != nil {
 		return err
 	}
+
 	return nil
 }
 

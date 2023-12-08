@@ -161,7 +161,8 @@ func (g *VCSGitlab) AddComment(args shared.VCSAddCommentToPRRequest) (bool, erro
 	return false, err
 }
 
-func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (string, error) {
+func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
+	var result shared.VCSFetchResponse
 	//variables, err := g.init("fetch")
 	variables := shared.EvnVariables{}
 	// if err != nil {
@@ -171,9 +172,10 @@ func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (string, error) {
 
 	path, err := shared.GitClone(args, variables, g.logger)
 	if err != nil {
-		return "", err
+		return result, err
 	}
-	return path, nil
+	result.Path = path
+	return result, nil
 }
 
 func main() {

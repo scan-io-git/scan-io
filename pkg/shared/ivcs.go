@@ -116,7 +116,7 @@ type EvnVariables struct {
 }
 
 type VCSFetchResponse struct {
-	Dummy bool
+	Path string
 }
 
 type VCSListReposResponse struct {
@@ -128,7 +128,7 @@ type VCSRetrivePRInformationResponse struct {
 }
 
 type VCS interface {
-	Fetch(req VCSFetchRequest) (string, error)
+	Fetch(req VCSFetchRequest) (VCSFetchResponse, error)
 	ListRepos(args VCSListReposRequest) ([]RepositoryParams, error)
 	RetrivePRInformation(req VCSRetrivePRInformationRequest) (PRParams, error)
 	AddRoleToPR(req VCSAddRoleToPRRequest) (interface{}, error)
@@ -137,18 +137,6 @@ type VCS interface {
 }
 
 type VCSRPCClient struct{ client *rpc.Client }
-
-func (g *VCSRPCClient) Fetch(req VCSFetchRequest) (string, error) {
-	var resp VCSFetchResponse
-
-	err := g.client.Call("Plugin.Fetch", req, &resp)
-
-	if err != nil {
-		return "", err
-	}
-
-	return "", nil
-}
 
 func (g *VCSRPCClient) ListRepos(req VCSListReposRequest) ([]RepositoryParams, error) {
 	var resp VCSListReposResponse
@@ -160,6 +148,18 @@ func (g *VCSRPCClient) ListRepos(req VCSListReposRequest) ([]RepositoryParams, e
 	}
 
 	return resp.Repositories, nil
+}
+
+func (g *VCSRPCClient) Fetch(req VCSFetchRequest) (VCSFetchResponse, error) {
+	var resp VCSFetchResponse
+
+	err := g.client.Call("Plugin.Fetch", req, &resp)
+
+	if err != nil {
+		return resp, err
+	}
+
+	return resp, nil
 }
 
 func (g *VCSRPCClient) RetrivePRInformation(req VCSRetrivePRInformationRequest) (PRParams, error) {
@@ -214,9 +214,9 @@ type VCSRPCServer struct {
 	Impl VCS
 }
 
-func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) error {
-	_, err := s.Impl.Fetch(args)
-	return err
+func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) (VCSFetchResponse, error) {
+	result, err := s.Impl.Fetch(args)
+	return result, err
 }
 
 func (s *VCSRPCServer) ListRepos(args VCSListReposRequest, resp *VCSListReposResponse) error {
