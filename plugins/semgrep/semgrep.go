@@ -30,7 +30,8 @@ func getDefaultConfig() string {
 	return "p/default"
 }
 
-func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
+func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
+	var result shared.ScannerScanResponse
 	g.logger.Info("Scan is starting", "project", args.RepoPath)
 	g.logger.Debug("Debug info", "args", args)
 
@@ -84,13 +85,14 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
 	if err != nil {
 		err := fmt.Errorf(stdBuffer.String())
 		g.logger.Error("Semgrep execution error", "error", err)
-		return err
+		return result, err
 	}
 
+	result.ResultsPath = args.ResultsPath
 	g.logger.Info("Scan finished for", "project", args.RepoPath)
 	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
 	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
-	return nil
+	return result, nil
 }
 
 func main() {

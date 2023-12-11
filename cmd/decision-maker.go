@@ -80,7 +80,7 @@ func scanioHandler(logger hclog.Logger) error {
 	}
 
 	// #2 Add reviewer to the repo: scanio integration-vcs --vcs bitbucket --action addRoleToPR --vcs-url git.com --namespace TEST --repository test --pull-request-id ID --login --role REVIWER
-	addReviewerResult, err := executeCommand("integration-vcs",
+	_, err = executeCommand("integration-vcs",
 		"--vcs", allDecisionMakerOptions.VCSPlugName,
 		"--action", "addRoleToPR",
 		"--vcs-url", allDecisionMakerOptions.VCSURL,
@@ -93,14 +93,14 @@ func scanioHandler(logger hclog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("The subcommand execution is failed %w", err)
 	}
-	addReviewerResultStatus := addReviewerResult[0].Status
-	if addReviewerResultStatus != "OK" {
-		errorMessage := addReviewerResult[0].Message
-		return fmt.Errorf("The subcommand execution is failed %v", errorMessage)
-	}
+	// addReviewerResultStatus := addReviewerResult[0].Status
+	// if addReviewerResultStatus != "OK" {
+	// 	errorMessage := addReviewerResult[0].Message
+	// 	return fmt.Errorf("The subcommand execution is failed %v", errorMessage)
+	// }
 
 	//????? #3 Block the PR: scanio integration-vcs --vcs bitbucket --action setStatusOfPR --vcs-url git.com --namespace TEST --repository test --pull-request-id ID --login LOGIN --status UNAPPROVED
-	changingStatusResult, err := executeCommand("integration-vcs",
+	_, err = executeCommand("integration-vcs",
 		"--vcs", allDecisionMakerOptions.VCSPlugName,
 		"--action", "setStatusOfPR",
 		"--vcs-url", allDecisionMakerOptions.VCSURL,
@@ -113,11 +113,11 @@ func scanioHandler(logger hclog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("The subcommand execution is failed %w", err)
 	}
-	changingStatusResultStatus := changingStatusResult[0].Status
-	if changingStatusResultStatus != "OK" {
-		errorMessage := changingStatusResult[0].Message
-		return fmt.Errorf("The subcommand execution is failed %v", errorMessage)
-	}
+	// changingStatusResultStatus := changingStatusResult[0].Status
+	// if changingStatusResultStatus != "OK" {
+	// 	errorMessage := changingStatusResult[0].Message
+	// 	return fmt.Errorf("The subcommand execution is failed %v", errorMessage)
+	// }
 
 	// #4 Add a comment to the PR: scanio integration-vcs --vcs bitbucket --action addComment --vcs-url git.com --namespace TEST --repository test --comment "Test text"
 	commentingPRResult, err := executeCommand("integration-vcs",
@@ -149,12 +149,12 @@ func scanioHandler(logger hclog.Logger) error {
 		return fmt.Errorf("The subcommand execution is failed %v", errorMessage)
 	}
 
-	resultAsserted, ok = fetchingResult[0].Args.(map[string]interface{})
+	resultAsserted, ok = fetchingResult[0].Result.(map[string]interface{})
 	if !ok {
 		return fmt.Errorf("Assertion error for results of command")
 	}
 
-	scaningFolder := resultAsserted["TargetFolder"].(string)
+	scaningFolder := resultAsserted["Path"].(string)
 	if !ok {
 		return fmt.Errorf("Assertion error")
 	}

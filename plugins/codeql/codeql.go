@@ -16,7 +16,10 @@ type ScannerCodeQL struct {
 	logger hclog.Logger
 }
 
-var CODEQL_SUPPORTED_LANGUAGES = []string{"cpp", "csharp", "go", "java", "javascript", "python", "ruby", "swift"}
+var (
+	CODEQL_SUPPORTED_LANGUAGES = []string{"cpp", "csharp", "go", "java", "javascript", "python", "ruby", "swift"}
+	result                     shared.ScannerScanResponse
+)
 
 func isLanguageSupported(language string) bool {
 	for _, l := range CODEQL_SUPPORTED_LANGUAGES {
@@ -93,29 +96,30 @@ func (g *ScannerCodeQL) analyzeDatabase(databaseDir string, args shared.ScannerS
 	return nil
 }
 
-func (g *ScannerCodeQL) Scan(args shared.ScannerScanRequest) error {
+func (g *ScannerCodeQL) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
 
 	g.logger.Info("CodeQL flow starting", "project", args.RepoPath)
 	g.logger.Debug("Debug info", "args", args)
 
 	databaseDir, err := os.MkdirTemp("", "codeqdb")
 	if err != nil {
-		return err
+		return result, err
 	}
 	defer os.RemoveAll(databaseDir)
 
 	if err = g.createDatabase(databaseDir, args); err != nil {
-		return err
+		return result, err
 	}
 
 	if err = g.analyzeDatabase(databaseDir, args); err != nil {
-		return err
+		return result, err
 	}
 
+	result.ResultsPath = args.ResultsPath
 	g.logger.Info("Scan finished for", "project", args.RepoPath)
 	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
 	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath)
-	return nil
+	return result, nil
 }
 
 func main() {

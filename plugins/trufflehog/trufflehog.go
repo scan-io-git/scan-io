@@ -16,12 +16,16 @@ type ScannerTrufflehog struct {
 	logger hclog.Logger
 }
 
-func (g *ScannerTrufflehog) Scan(args shared.ScannerScanRequest) error {
+func (g *ScannerTrufflehog) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
+	var (
+		commandArgs []string
+		cmd         *exec.Cmd
+		stdBuffer   bytes.Buffer
+		result      shared.ScannerScanResponse
+	)
+
 	g.logger.Info("Scan is starting", "project", args.RepoPath)
 	g.logger.Debug("Debug info", "args", args)
-	var commandArgs []string
-	var cmd *exec.Cmd
-	var stdBuffer bytes.Buffer
 
 	// Add additional arguments
 	if len(args.AdditionalArgs) != 0 {
@@ -47,7 +51,7 @@ func (g *ScannerTrufflehog) Scan(args shared.ScannerScanRequest) error {
 	// writing stdout to a file with results
 	resultsFile, err := os.Create(args.ResultsPath)
 	if err != nil {
-		return err
+		return result, err
 	}
 	defer resultsFile.Close()
 
@@ -62,12 +66,14 @@ func (g *ScannerTrufflehog) Scan(args shared.ScannerScanRequest) error {
 	if err != nil {
 		err := fmt.Errorf(stdBuffer.String())
 		g.logger.Error("Trufflehog execution error", "error", err)
-		return err
+		return result, err
 	}
+
+	result.ResultsPath = args.RepoPath
 	g.logger.Info("Scan finished for", "project", args.RepoPath)
 	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
 	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
-	return nil
+	return result, nil
 }
 
 func main() {
