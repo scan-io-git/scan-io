@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/scan-io-git/scan-io/pkg/shared"
@@ -49,8 +50,8 @@ func executeCommand(command string, args ...string) ([]shared.GenericResult, err
 }
 
 func scanioHandler(logger hclog.Logger) error {
+	//Ad-hoc predefined scenario for MVP
 	//Base command: scanio decision-maker --scenario scanPR --vcs bitbucket --vcs-url git.com --namespace TEST --repository test --pull-request-id ID
-
 	// #1 CheckPR: scanio integration-vcs --vcs bitbucket --action checkPR --vcs-url git.com --namespace TEST --repository test --pull-request-id ID
 	checkPRResult, err := executeCommand("integration-vcs",
 		"--vcs", allDecisionMakerOptions.VCSPlugName,
@@ -80,19 +81,19 @@ func scanioHandler(logger hclog.Logger) error {
 	}
 
 	// #2 Add reviewer to the repo: scanio integration-vcs --vcs bitbucket --action addRoleToPR --vcs-url git.com --namespace TEST --repository test --pull-request-id ID --login --role REVIWER
-	_, err = executeCommand("integration-vcs",
-		"--vcs", allDecisionMakerOptions.VCSPlugName,
-		"--action", "addRoleToPR",
-		"--vcs-url", allDecisionMakerOptions.VCSURL,
-		"--namespace", allDecisionMakerOptions.Namespace,
-		"--repository", allDecisionMakerOptions.Repository,
-		"--pull-request-id", fmt.Sprintf("%v", allDecisionMakerOptions.PullRequestId),
-		"--login", allDecisionMakerOptions.Login,
-		"--role", "REVIWER",
-	)
-	if err != nil {
-		return fmt.Errorf("The subcommand execution is failed %w", err)
-	}
+	// addReviewerResult, err = executeCommand("integration-vcs",
+	// 	"--vcs", allDecisionMakerOptions.VCSPlugName,
+	// 	"--action", "addRoleToPR",
+	// 	"--vcs-url", allDecisionMakerOptions.VCSURL,
+	// 	"--namespace", allDecisionMakerOptions.Namespace,
+	// 	"--repository", allDecisionMakerOptions.Repository,
+	// 	"--pull-request-id", fmt.Sprintf("%v", allDecisionMakerOptions.PullRequestId),
+	// 	"--login", allDecisionMakerOptions.Login,
+	// 	"--role", "REVIWER",
+	// )
+	// if err != nil {
+	// 	return fmt.Errorf("The subcommand execution is failed %w", err)
+	// }
 	// addReviewerResultStatus := addReviewerResult[0].Status
 	// if addReviewerResultStatus != "OK" {
 	// 	errorMessage := addReviewerResult[0].Message
@@ -100,19 +101,19 @@ func scanioHandler(logger hclog.Logger) error {
 	// }
 
 	//????? #3 Block the PR: scanio integration-vcs --vcs bitbucket --action setStatusOfPR --vcs-url git.com --namespace TEST --repository test --pull-request-id ID --login LOGIN --status UNAPPROVED
-	_, err = executeCommand("integration-vcs",
-		"--vcs", allDecisionMakerOptions.VCSPlugName,
-		"--action", "setStatusOfPR",
-		"--vcs-url", allDecisionMakerOptions.VCSURL,
-		"--namespace", allDecisionMakerOptions.Namespace,
-		"--repository", allDecisionMakerOptions.Repository,
-		"--pull-request-id", fmt.Sprintf("%v", allDecisionMakerOptions.PullRequestId),
-		"--login", allDecisionMakerOptions.Login,
-		"--status", "UNAPPROVED",
-	)
-	if err != nil {
-		return fmt.Errorf("The subcommand execution is failed %w", err)
-	}
+	// changingStatusResult, err = executeCommand("integration-vcs",
+	// 	"--vcs", allDecisionMakerOptions.VCSPlugName,
+	// 	"--action", "setStatusOfPR",
+	// 	"--vcs-url", allDecisionMakerOptions.VCSURL,
+	// 	"--namespace", allDecisionMakerOptions.Namespace,
+	// 	"--repository", allDecisionMakerOptions.Repository,
+	// 	"--pull-request-id", fmt.Sprintf("%v", allDecisionMakerOptions.PullRequestId),
+	// 	"--login", allDecisionMakerOptions.Login,
+	// 	"--status", "UNAPPROVED",
+	// )
+	// if err != nil {
+	// 	return fmt.Errorf("The subcommand execution is failed %w", err)
+	// }
 	// changingStatusResultStatus := changingStatusResult[0].Status
 	// if changingStatusResultStatus != "OK" {
 	// 	errorMessage := changingStatusResult[0].Message
@@ -120,23 +121,23 @@ func scanioHandler(logger hclog.Logger) error {
 	// }
 
 	// #4 Add a comment to the PR: scanio integration-vcs --vcs bitbucket --action addComment --vcs-url git.com --namespace TEST --repository test --comment "Test text"
-	commentingPRResult, err := executeCommand("integration-vcs",
-		"--vcs", allDecisionMakerOptions.VCSPlugName,
-		"--action", "addComment",
-		"--vcs-url", allDecisionMakerOptions.VCSURL,
-		"--namespace", allDecisionMakerOptions.Namespace,
-		"--repository", allDecisionMakerOptions.Repository,
-		"--pull-request-id", fmt.Sprintf("%v", allDecisionMakerOptions.PullRequestId),
-		"--comment", "Started",
-	)
-	if err != nil {
-		return fmt.Errorf("The subcommand execution is failed %w", err)
-	}
-	commentingPRResultStatus := commentingPRResult[0].Status
-	if commentingPRResultStatus != "OK" {
-		errorMessage := commentingPRResult[0].Message
-		return fmt.Errorf("The subcommand execution is failed %v", errorMessage)
-	}
+	// commentingPRResult, err := executeCommand("integration-vcs",
+	// 	"--vcs", allDecisionMakerOptions.VCSPlugName,
+	// 	"--action", "addComment",
+	// 	"--vcs-url", allDecisionMakerOptions.VCSURL,
+	// 	"--namespace", allDecisionMakerOptions.Namespace,
+	// 	"--repository", allDecisionMakerOptions.Repository,
+	// 	"--pull-request-id", fmt.Sprintf("%v", allDecisionMakerOptions.PullRequestId),
+	// 	"--comment", "Started",
+	// )
+	// if err != nil {
+	// 	return fmt.Errorf("The subcommand execution is failed %w", err)
+	// }
+	// commentingPRResultStatus := commentingPRResult[0].Status
+	// if commentingPRResultStatus != "OK" {
+	// 	errorMessage := commentingPRResult[0].Message
+	// 	return fmt.Errorf("The subcommand execution is failed %v", errorMessage)
+	// }
 
 	// #5 Fetch repo: scanio integration-vcs --vcs bitbucket --action checkPR --vcs-url git.com --namespace TEST --repository test --pull-request-id 9
 	fetchingResult, err := executeCommand("fetch", "--vcs", "bitbucket", "--auth-type", "ssh-agent", fetchingLink)
@@ -159,41 +160,67 @@ func scanioHandler(logger hclog.Logger) error {
 		return fmt.Errorf("Assertion error")
 	}
 
+	//Ad-hoc executing scanners one by one
 	// #3.1 Scan code: scanio analyse --scanner semgrep --format sarif /[scanio]/test
-	scanningResult, err := executeCommand("analyse",
+	rulesPathSemgrep := os.Getenv("SCANIO_SEMGREP_RULES")
+	scanningResultSemgrep, err := executeCommand("analyse",
 		"--scanner", "semgrep",
+		"-c", rulesPathSemgrep,
 		"--format", "sarif",
 		scaningFolder,
 	)
 	if err != nil {
 		return fmt.Errorf("The subcommand execution is failed %w", err)
 	}
-	scanningResultStatus := scanningResult[0].Status
-	if scanningResultStatus != "OK" {
-		errorMessage := scanningResult[0].Message
+	scanningResultStatusSemgrep := scanningResultSemgrep[0].Status
+	if scanningResultStatusSemgrep != "OK" {
+		errorMessage := scanningResultSemgrep[0].Message
 		return fmt.Errorf("The subcommand execution is failed %v", errorMessage)
 	}
 
-	// 	// #3.2 Scan code: scanio analyse --scanner trufflehog3 -c /scanio-rules/trufflehog-rules/rules.yaml /[scanio]/test -- --no-history
-	// 	outputBytes, err = executeCommand("analyse",
-	// 		"--scanner", "trufflehog3",
-	// 		"--format", "json",
-	// 		"--config", "",
-	// 		scanPath,
-	// 		"--", "--no-history",
-	// 	)
-	// 	if err != nil {
-	// 		return err
-	// 	}
+	resultAsserted, ok = scanningResultSemgrep[0].Result.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("Assertion error for results of command")
+	}
 
-	// 	if err := json.Unmarshal(outputBytes, &resultOfSubcommandList); err != nil {
-	// 		return fmt.Errorf("Failed to parse integration-vcs output: %w", err)
-	// 	}
-	// 	asserted, ok = resultOfSubcommandList[0].Args.(map[string]interface{})
-	// 	fmt.Print(asserted)
-	// }
+	semgrepReportPath := resultAsserted["ResultsPath"].(string)
+	if !ok {
+		return fmt.Errorf("Assertion error")
+	}
 
-	// Parsing reports
+	// #3.2 Scan code: scanio analyse --scanner trufflehog3 -c /scanio-rules/trufflehog-rules/rules.yaml /[scanio]/test -- --no-history
+	rulesPathTrufflehog3 := os.Getenv("SCANIO_TRUFFLEHOG3_RULES")
+	scanningResultTrufflehog3, err := executeCommand("analyse",
+		"--scanner", "trufflehog3",
+		"--format", "json",
+		"--config", rulesPathTrufflehog3,
+		scaningFolder,
+		"--", "--no-history",
+	)
+	if err != nil {
+		return fmt.Errorf("The subcommand execution is failed %w", err)
+	}
+
+	scanningResultStatusTrufflehog3 := scanningResultTrufflehog3[0].Status
+	if scanningResultStatusTrufflehog3 != "OK" {
+		errorMessage := scanningResultTrufflehog3[0].Message
+		return fmt.Errorf("The subcommand execution is failed %v", errorMessage)
+	}
+
+	resultAsserted, ok = scanningResultTrufflehog3[0].Result.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("Assertion error for results of command")
+	}
+
+	trufflehog3ReportPath := resultAsserted["ResultsPath"].(string)
+	if !ok {
+		return fmt.Errorf("Assertion error")
+	}
+
+	fmt.Print(semgrepReportPath)
+	fmt.Print(trufflehog3ReportPath)
+
+	// //Ad-hoc parsing reports
 	// Comment PR
 	// Unblock if ok
 	// Handler if something happend

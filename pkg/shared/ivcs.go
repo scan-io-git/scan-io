@@ -214,9 +214,10 @@ type VCSRPCServer struct {
 	Impl VCS
 }
 
-func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) (VCSFetchResponse, error) {
-	result, err := s.Impl.Fetch(args)
-	return result, err
+func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) error {
+	var err error
+	*resp, err = s.Impl.Fetch(args)
+	return err
 }
 
 func (s *VCSRPCServer) ListRepos(args VCSListReposRequest, resp *VCSListReposResponse) error {

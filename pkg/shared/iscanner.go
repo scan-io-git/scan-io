@@ -47,9 +47,10 @@ type ScannerRPCServer struct {
 	Impl Scanner
 }
 
-func (s *ScannerRPCServer) Scan(args ScannerScanRequest, resp *ScannerScanResult) (ScannerScanResponse, error) {
-	result, err := s.Impl.Scan(args)
-	return result, err
+func (s *ScannerRPCServer) Scan(args ScannerScanRequest, resp *ScannerScanResponse) error {
+	var err error
+	*resp, err = s.Impl.Scan(args)
+	return err
 }
 
 type ScannerPlugin struct {
