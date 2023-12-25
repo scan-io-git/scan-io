@@ -1,10 +1,16 @@
 # Tutorial for a manual scan
 
-In this tutorial, we will learn how to scan a project with scanio cli.
+In this tutorial, we will learn how to scan a project with scanio cli.  
+As an experimental project we will use [OWASP's juice-shop](https://github.com/juice-shop/juice-shop).
 
-Let's choose some project for this lesson. For example [OWASP's juice-shop](https://github.com/juice-shop/juice-shop).
+## Prerequisites
+
+In this lesson we are going to analyze a project from github using semgrep.  
+Make sure to get scanio cli and plugins installed in your system.
+Make sure to [install semgrep](https://semgrep.dev/docs/getting-started/quickstart/). For examples with `pip install semgrep`. To be able to run any other scanning tool, you have to install it before running scanio. You should follow specific tool installation instructions for that.  
 
 ## Step 1. Clone the repo
+
 To clone a repo, you can use tools you are used to. Or we can go with a built-in command `fetch`. This is how it would look like:  
 `scanio fetch --vcs github --auth-type http https://github.com/juice-shop/juice-shop`  
 In the output, you will see the target folder, where the project was cloned to, like:  
@@ -16,6 +22,7 @@ In the output, you will see the target folder, where the project was cloned to, 
 The scanio cli preserves the vcs url, path structure and adds a prefix `~/.scanio/projects` as a clone to the folder.
 
 ## Step 2. Scan the repo
+
 To be able to run any scanning tool, you have to install it before running a scanio analyze command. You should follow specific tool installation instructions for that.  
 In this tutorial, we will use `semgrep` as a scanning tool. Let's install it with `pip install semgrep` if it was not installed on your system yet.  
 
