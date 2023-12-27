@@ -93,38 +93,6 @@ type VCSAddCommentToPRRequest struct {
 type Result interface {
 }
 
-type VCSRequestBase struct {
-	Namespace     string
-	VCSURL        string
-	Action        string
-	Repository    string
-	PullRequestId int
-}
-
-type VCSRetrivePRInformationRequest struct {
-	VCSRequestBase
-}
-
-type VCSAddRoleToPRRequest struct {
-	VCSRequestBase
-	Login string
-	Role  string
-}
-
-type VCSSetStatusOfPRRequest struct {
-	VCSRequestBase
-	Login  string
-	Status string
-}
-
-type VCSAddCommentToPRRequest struct {
-	VCSRequestBase
-	Comment string
-}
-
-type Result interface {
-}
-
 type ListFuncResult struct {
 	Args    VCSListReposRequest `json:"args"`
 	Result  []RepositoryParams  `json:"result"`
@@ -134,13 +102,6 @@ type ListFuncResult struct {
 
 type GenericLaunchesResult struct {
 	Launches []GenericResult `json:"launches"`
-}
-
-type GenericResult struct {
-	Args    interface{} `json:"args"`
-	Result  interface{} `json:"result"`
-	Status  string      `json:"status"`
-	Message string      `json:"message"`
 }
 
 type GenericResult struct {
@@ -223,54 +184,6 @@ func (g *VCSRPCClient) AddRoleToPR(req VCSAddRoleToPRRequest) (interface{}, erro
 	}
 
 	return nil, nil
-}
-
-func (g *VCSRPCClient) SetStatusOfPR(req VCSSetStatusOfPRRequest) (bool, error) {
-	var resp VCSRetrivePRInformationResponse
-
-	err := g.client.Call("Plugin.SetStatusOfPR", req, &resp)
-
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
-}
-
-func (g *VCSRPCClient) AddComment(req VCSAddCommentToPRRequest) (bool, error) {
-	var resp VCSRetrivePRInformationResponse
-
-	err := g.client.Call("Plugin.AddComment", req, &resp)
-
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
-}
-
-func (g *VCSRPCClient) RetrivePRInformation(req VCSRetrivePRInformationRequest) (PRParams, error) {
-	var resp VCSRetrivePRInformationResponse
-
-	err := g.client.Call("Plugin.RetrivePRInformation", req, &resp)
-
-	if err != nil {
-		return resp.PR, err
-	}
-
-	return resp.PR, nil
-}
-
-func (g *VCSRPCClient) AddRoleToPR(req VCSAddRoleToPRRequest) (bool, error) {
-	var resp VCSRetrivePRInformationResponse
-
-	err := g.client.Call("Plugin.AddRoleToPR", req, &resp)
-
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
 }
 
 func (g *VCSRPCClient) SetStatusOfPR(req VCSSetStatusOfPRRequest) (bool, error) {
