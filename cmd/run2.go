@@ -44,7 +44,7 @@ func run2analyzeRepos(repos []shared.RepositoryParams) error {
 	logger := shared.NewLogger("core-run2-scanner")
 	s := scanner.New(allRun2Options.ScannerPluginName, allRun2Options.Jobs, allRun2Options.Config, allRun2Options.ReportFormat, allRun2Options.AdditionalArgs, logger)
 
-	scanArgs, err := s.PrepScanArgs(repos, "")
+	scanArgs, err := s.PrepScanArgs(repos, "", "")
 	if err != nil {
 		return err
 	}

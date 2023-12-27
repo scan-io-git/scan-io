@@ -18,6 +18,7 @@ type RunOptionsAnalyse struct {
 	ReportFormat      string
 	Config            string
 	AdditionalArgs    []string
+	OutputPrefix      string
 	Threads           int
 }
 
@@ -105,7 +106,7 @@ List of plugins:
 		logger := shared.NewLogger("core-analyze-scanner")
 		s := scanner.New(allArgumentsAnalyse.ScannerPluginName, allArgumentsAnalyse.Threads, allArgumentsAnalyse.Config, allArgumentsAnalyse.ReportFormat, allArgumentsAnalyse.AdditionalArgs, logger)
 
-		analyseArgs, err := s.PrepScanArgs(reposInf, path)
+		analyseArgs, err := s.PrepScanArgs(reposInf, path, allArgumentsAnalyse.OutputPrefix)
 		if err != nil {
 			return err
 		}
@@ -135,5 +136,6 @@ func init() {
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.InputFile, "input-file", "i", "", "a file in Scanio format with a list of repositories to analyse. The list command could prepare this file.")
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.Config, "config", "c", "", "a path or type of config for a scanner. The value depends on a particular scanner's used formats.")
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.ReportFormat, "format", "f", "", "a format for a report with results.") //doesn't have default for "Uses ASCII output if no format specified"
+	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.OutputPrefix, "output", "o", "", "a path for scanner's output. The path will be used like a prefix for a scanner's report.")
 	analyseCmd.Flags().IntVarP(&allArgumentsAnalyse.Threads, "threads", "j", 1, "number of concurrent goroutines.")
 }

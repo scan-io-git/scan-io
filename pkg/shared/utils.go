@@ -2,6 +2,7 @@ package shared
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,7 +12,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"syscall"
+	"text/template"
 
 	"github.com/hashicorp/go-hclog"
 
@@ -27,6 +28,16 @@ import (
 )
 
 type CustomData interface{}
+
+type ScanReportData struct {
+	ScanStarted  bool
+	ScanPassed   bool
+	ScanFailed   bool
+	ScanCrashed  bool
+	ScanDetails  interface{}
+	ScanResults  interface{}
+	ErrorDetails interface{}
+}
 
 func WriteJsonFile(outputFile string, logger hclog.Logger, data ...CustomData) {
 	file, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
@@ -325,113 +336,84 @@ func IsCI() bool {
 	return false
 }
 
-func CopyDirs(scrDir, dest string) error {
-
-	entries, err := os.ReadDir(scrDir)
+func Copy(srcPath, destPath string) error {
+	srcInfo, err := os.Lstat(srcPath)
 	if err != nil {
 		return err
 	}
-	for _, entry := range entries {
-		sourcePath := filepath.Join(scrDir, entry.Name())
-		destPath := filepath.Join(dest, entry.Name())
 
-		fileInfo, err := os.Stat(sourcePath)
-		if err != nil {
-			return err
-		}
-
-		stat, ok := fileInfo.Sys().(*syscall.Stat_t)
-		if !ok {
-			return fmt.Errorf("failed to get raw syscall.Stat_t data for '%s'", sourcePath)
-		}
-
-		switch fileInfo.Mode() & os.ModeType {
-		case os.ModeDir:
-			if err := CreateIfNotExists(destPath, 0755); err != nil {
-				return err
-			}
-			if err := CopyDirs(sourcePath, destPath); err != nil {
-				return err
-			}
-		case os.ModeSymlink:
-			if err := CopySymLink(sourcePath, destPath); err != nil {
-				return err
-			}
-		default:
-			if err := Copy(sourcePath, destPath); err != nil {
-				return err
-			}
-		}
-
-		if err := os.Lchown(destPath, int(stat.Uid), int(stat.Gid)); err != nil {
-			return err
-		}
-
-		fInfo, err := entry.Info()
-		if err != nil {
-			return err
-		}
-
-		isSymlink := fInfo.Mode()&os.ModeSymlink != 0
-		if !isSymlink {
-			if err := os.Chmod(destPath, fInfo.Mode()); err != nil {
-				return err
-			}
-		}
+	// Check if the source is a directory
+	if srcInfo.IsDir() {
+		return CopyDir(srcPath, destPath)
 	}
-	return nil
+
+	// Check if the source is a symlink
+	if srcInfo.Mode()&os.ModeSymlink != 0 {
+		return CopySymLink(srcPath, destPath)
+	}
+
+	// Assume the source is a regular file if not a directory or symlink
+	return CopyFile(srcPath, destPath)
 }
 
-func Copy(srcFile, dstFile string) error {
-	out, err := os.Create(dstFile)
-	if err != nil {
+func CopyFile(srcFile, destFile string) error {
+	destDir := filepath.Dir(destFile)
+	if err := CreateIfNotExists(destDir, os.ModePerm); err != nil {
 		return err
 	}
-
-	defer out.Close()
 
 	in, err := os.Open(srcFile)
 	if err != nil {
 		return err
 	}
-
 	defer in.Close()
 
+	out, err := os.Create(destFile)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
 	_, err = io.Copy(out, in)
+	return err
+}
+
+func CopyDir(srcDir, destDir string) error {
+	entries, err := os.ReadDir(srcDir)
 	if err != nil {
 		return err
 	}
-	// fmt.Printf("Copied: %s to %s\n", srcFile, dstFile)
+
+	if err := CreateIfNotExists(destDir, os.ModePerm); err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		srcPath := filepath.Join(srcDir, entry.Name())
+		destPath := filepath.Join(destDir, entry.Name())
+
+		if err := Copy(srcPath, destPath); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
 
-func Exists(filePath string) bool {
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return false
-	}
-
-	return true
-}
-
-func CreateIfNotExists(dir string, perm os.FileMode) error {
-	if Exists(dir) {
-		return nil
-	}
-
-	if err := os.MkdirAll(dir, perm); err != nil {
-		return fmt.Errorf("failed to create directory: '%s', error: '%s'", dir, err.Error())
-	}
-
-	return nil
-}
-
-func CopySymLink(source, dest string) error {
-	link, err := os.Readlink(source)
+func CopySymLink(srcLink, destLink string) error {
+	linkTarget, err := os.Readlink(srcLink)
 	if err != nil {
 		return err
 	}
-	return os.Symlink(link, dest)
+
+	return os.Symlink(linkTarget, destLink)
+}
+
+func CreateIfNotExists(path string, perm os.FileMode) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return os.MkdirAll(path, perm)
+	}
+	return nil
 }
 
 func ContainsSubstring(target string, substrings []string) bool {
@@ -441,4 +423,32 @@ func ContainsSubstring(target string, substrings []string) bool {
 		}
 	}
 	return false
+}
+
+func loadTemplateFromFile(filename string) (*template.Template, error) {
+	templateData, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	tpl, err := template.New("comment").Parse(string(templateData))
+	if err != nil {
+		return nil, err
+	}
+	return tpl, nil
+}
+
+func CommentBuilder(data interface{}, path string) (string, error) {
+
+	template, err := loadTemplateFromFile(path)
+	if err != nil {
+		return "", err
+	}
+
+	var result bytes.Buffer
+	if err := template.Execute(&result, data); err != nil {
+		return "", err
+	}
+
+	return result.String(), nil
 }

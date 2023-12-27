@@ -257,7 +257,7 @@ func (g *VCSBitbucket) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (interface
 }
 
 func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, error) {
-	g.logger.Debug("Starting changin a status of PR", "args", args)
+	g.logger.Debug("Starting changing a status of PR", "args", args)
 	var approval bool
 
 	variables, err := g.init("list", "")
@@ -300,7 +300,7 @@ func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool,
 }
 
 func (g *VCSBitbucket) AddComment(args shared.VCSAddCommentToPRRequest) (bool, error) {
-	g.logger.Debug("Starting changin a status of PR", "args", args)
+	g.logger.Debug("Starting changing a status of PR", "args", args)
 
 	variables, err := g.init("list", "")
 	if err != nil {
@@ -368,8 +368,8 @@ func (g *VCSBitbucket) fetchPRChanges(args *shared.VCSFetchRequest, variables *s
 	branch, _ := fromRef["id"].(string)
 	args.Branch = branch
 
+	g.logger.Debug("Starting extracting PR changes")
 	for {
-		g.logger.Debug("Starting extracting PR changes")
 		changesReponse := new(Changes)
 
 		params := url.Values{
@@ -418,6 +418,7 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest, variables *shared.E
 	}
 
 	g.logger.Info("Strating fetching PR code")
+	//TODO there is a strange bug when it fetchs only pr changes without all other files in case of PR fetch ???
 	_, err = shared.GitClone(*args, *variables, g.logger)
 	if err != nil && err.Error() != "already up-to-date" {
 		g.logger.Error("The fetching PR function is failed", "error", err)
@@ -460,10 +461,7 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest, variables *shared.E
 		if file.IsDir() && file.Name()[0] == '.' {
 			sourceFolder := filepath.Join(args.TargetFolder, file.Name())
 			targetFolderNext := filepath.Join(targetPRFolder, file.Name())
-			if err := shared.CreateIfNotExists((targetFolderNext), 0755); err != nil {
-				return "", err
-			}
-			if err := shared.CopyDirs(sourceFolder, targetFolderNext); err != nil {
+			if err := shared.Copy(sourceFolder, targetFolderNext); err != nil {
 				fmt.Printf("Error copying directory: %v\n", err)
 			}
 		} else if file.Name()[0] == '.' {

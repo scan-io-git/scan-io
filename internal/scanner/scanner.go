@@ -32,22 +32,31 @@ func New(scannerPluginName string, jobs int, config string, reportFormat string,
 	}
 }
 
-func (s Scanner) PrepScanArgs(repos []shared.RepositoryParams, path string) ([]shared.ScannerScanRequest, error) {
-	var scanArgs []shared.ScannerScanRequest
-	var targetFolder string
-	var resultsPath string
+func (s Scanner) PrepScanArgs(repos []shared.RepositoryParams, path, outputPrefix string) ([]shared.ScannerScanRequest, error) {
+	var (
+		scanArgs     []shared.ScannerScanRequest
+		targetFolder string
+		resultsPath  string
+		prefix       string
+	)
 
-	// make dinamic extension name, based on output format
+	// make dynamic extension name, based on output format
 	reportExt := "raw"
 	rawStartTime := time.Now().UTC()
 	startTime := rawStartTime.Format(time.RFC3339)
 	if len(s.reportFormat) > 0 {
 		reportExt = s.reportFormat
 	}
+
 	if len(path) != 0 {
-		// in the case with a manual path the result will be written to the same folder
+		prefix = path
+		if outputPrefix != "" {
+			// in the case with a manual path the result will be written to the same folder
+			prefix = outputPrefix
+		}
+
 		targetFolder = path
-		resultsPath = filepath.Join(path, fmt.Sprintf("%s-%s.%s", s.scannerPluginName, startTime, reportExt))
+		resultsPath = filepath.Join(prefix, fmt.Sprintf("%s-%s.%s", s.scannerPluginName, startTime, reportExt))
 
 		scanArgs = append(scanArgs, shared.ScannerScanRequest{
 			RepoPath:       targetFolder,

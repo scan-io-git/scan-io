@@ -62,6 +62,8 @@ func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) (shared.Scanne
 		g.logger.Error("Trufflehog3 execution error", "error", err)
 		return result, err
 	}
+
+	result.ResultsPath = args.ResultsPath
 	g.logger.Info("Scan finished for", "project", args.RepoPath)
 	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
 	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
