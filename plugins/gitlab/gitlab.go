@@ -143,9 +143,10 @@ func (g *VCSGitlab) RetrivePRInformation(args shared.VCSRetrivePRInformationRequ
 	return result, err
 }
 
+
 func (g *VCSGitlab) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (interface{}, error) {
 	err := fmt.Errorf("The function is not implemented got Github.")
-
+  
 	return nil, err
 }
 
@@ -161,8 +162,10 @@ func (g *VCSGitlab) AddComment(args shared.VCSAddCommentToPRRequest) (bool, erro
 	return false, err
 }
 
+
 func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
 	var result shared.VCSFetchResponse
+
 	//variables, err := g.init("fetch")
 	variables := shared.EvnVariables{}
 	// if err != nil {

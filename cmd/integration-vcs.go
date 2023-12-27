@@ -26,6 +26,7 @@ type Arguments interface{}
 
 var (
 	allArgumentsIntegrationVCS RunOptionsIntegrationVCS
+
 	execExampleIntegrationVCS  = `# Checking the PR existence
   scanio integration-vcs --vcs bitbucket --action checkPR --vcs-url example.com --namespace PROJECT --repository REPOSITORY --pull-request-id ID
 
@@ -67,6 +68,7 @@ List of actions for github:
 			resultIntegrationVCS  shared.GenericResult
 			resultsIntegrationVCS shared.GenericLaunchesResult
 		)
+
 		checkArgs := func() error {
 			if err := validateCommonArguments(); err != nil {
 				return err
@@ -151,6 +153,7 @@ List of actions for github:
 					resultIntegrationVCS = shared.GenericResult{Args: arguments, Result: result, Status: "OK", Message: ""}
 					logger.Info("A function of VCS integrations finished with", "status", resultIntegrationVCS.Status, "action", allArgumentsIntegrationVCS.Action)
 				}
+        
 				return nil
 
 			})
@@ -170,6 +173,7 @@ List of actions for github:
 
 			logger.Debug("Integration result", "result", resultsIntegrationVCS)
 			shared.WriteJsonFile(fmt.Sprintf("%v/VCS-INTEGRATION-%v.scanio-result", shared.GetScanioHome(), strings.ToUpper(allArgumentsIntegrationVCS.Action)), logger, resultsIntegrationVCS)
+
 			return nil
 		}
 
