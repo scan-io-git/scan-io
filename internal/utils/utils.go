@@ -2,17 +2,83 @@ package common
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/fs"
 	"io/ioutil"
+	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
 )
+
+type HTTPClient struct {
+	Client *http.Client
+}
+
+func dialTimeout(network, addr string) (net.Conn, error) {
+	return net.DialTimeout(network, addr, 1*time.Second)
+}
+
+func NewHTTPClient(skipVerification bool, proxyURL string) (*HTTPClient, error) {
+	tr := &http.Transport{
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: skipVerification},
+		TLSHandshakeTimeout: 1 * time.Second,
+		Dial:                dialTimeout,
+	}
+
+	if proxyURL != "" {
+		proxy, err := url.Parse(proxyURL)
+		if err != nil {
+			return nil, err
+		}
+		tr.Proxy = http.ProxyURL(proxy)
+	}
+
+	client := &http.Client{
+		Transport: tr,
+	}
+	return &HTTPClient{Client: client}, nil
+}
+
+func (c *HTTPClient) DoRequest(method, url string, headers http.Header, body []byte) (*http.Response, []byte, error) {
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
+	var response *http.Response
+	var responseBody []byte
+
+	if err != nil {
+		return response, responseBody, err
+	}
+
+	// Add custom headers
+	for key, values := range headers {
+		for _, value := range values {
+			req.Header.Add(key, value)
+		}
+	}
+
+	// Send the request using the shared client
+	response, err = c.Client.Do(req)
+	if err != nil {
+		return response, responseBody, err
+	}
+
+	responseBody, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		return response, responseBody, err
+	}
+
+	defer response.Body.Close()
+
+	return response, responseBody, nil
+}
 
 func ReadReposFile(inputFile string) ([]string, error) {
 	readFile, err := os.Open(inputFile)

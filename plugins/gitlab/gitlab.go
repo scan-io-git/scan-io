@@ -136,6 +136,31 @@ func (g *VCSGitlab) ListRepos(args shared.VCSListReposRequest) ([]shared.Reposit
 	return reposParams, nil
 }
 
+func (g *VCSGitlab) RetrivePRInformation(args shared.VCSRetrivePRInformationRequest) (shared.PRParams, error) {
+	var result shared.PRParams
+	err := fmt.Errorf("The function is not implemented got Gitlab.")
+
+	return result, err
+}
+
+func (g *VCSGitlab) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error) {
+	err := fmt.Errorf("The function is not implemented got Github.")
+
+	return false, err
+}
+
+func (g *VCSGitlab) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, error) {
+	err := fmt.Errorf("The function is not implemented got Github.")
+
+	return false, err
+}
+
+func (g *VCSGitlab) AddComment(args shared.VCSAddCommentToPRRequest) (bool, error) {
+	err := fmt.Errorf("The function is not implemented got Github.")
+
+	return false, err
+}
+
 func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) error {
 	//variables, err := g.init("fetch")
 	variables := shared.EvnVariables{}
