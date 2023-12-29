@@ -58,7 +58,7 @@ List of plugins:
 		var (
 			reposInf     []shared.RepositoryParams
 			path         string
-			outputBuffer bytes.Buffer
+			outputBuffer bytes.Buffer // Decision maker MVP needs
 		)
 
 		argsLenAtDash := cmd.ArgsLenAtDash()
@@ -119,6 +119,7 @@ List of plugins:
 			return err
 		}
 
+		// Decision maker MVP needs
 		shared.ResultBufferMutex.Lock()
 		shared.ResultBuffer = outputBuffer
 		shared.ResultBufferMutex.Unlock()

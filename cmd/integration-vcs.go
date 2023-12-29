@@ -27,7 +27,7 @@ type Arguments interface{}
 var (
 	allArgumentsIntegrationVCS RunOptionsIntegrationVCS
 
-	execExampleIntegrationVCS  = `# Checking the PR existence
+	execExampleIntegrationVCS = `# Checking the PR existence
   scanio integration-vcs --vcs bitbucket --action checkPR --vcs-url example.com --namespace PROJECT --repository REPOSITORY --pull-request-id ID
 
   # Add a user to the PR
@@ -64,7 +64,7 @@ List of actions for github:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
 			arguments             Arguments
-			outputBuffer          bytes.Buffer
+			outputBuffer          bytes.Buffer // Decision maker MVP needs
 			resultIntegrationVCS  shared.GenericResult
 			resultsIntegrationVCS shared.GenericLaunchesResult
 		)
@@ -153,7 +153,7 @@ List of actions for github:
 					resultIntegrationVCS = shared.GenericResult{Args: arguments, Result: result, Status: "OK", Message: ""}
 					logger.Info("A function of VCS integrations finished with", "status", resultIntegrationVCS.Status, "action", allArgumentsIntegrationVCS.Action)
 				}
-        
+
 				return nil
 
 			})
@@ -166,6 +166,7 @@ List of actions for github:
 				return err
 			}
 
+			// Decision maker MVP needs
 			shared.ResultBufferMutex.Lock()
 			shared.ResultBuffer = outputBuffer
 			shared.ResultBufferMutex.Unlock()

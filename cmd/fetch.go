@@ -53,6 +53,7 @@ List of plugins:
   - github`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Decision maker MVP needs
 		var outputBuffer bytes.Buffer
 		reposParams := []shared.RepositoryParams{}
 
@@ -144,6 +145,7 @@ List of plugins:
 			return err
 		}
 
+		// Decision maker MVP needs
 		shared.ResultBufferMutex.Lock()
 		shared.ResultBuffer = outputBuffer
 		shared.ResultBufferMutex.Unlock()
