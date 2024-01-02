@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
-
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
+	"strings"
 )
 
 type RunOptionsIntegrationVCS struct {
@@ -24,8 +26,8 @@ type Arguments interface{}
 
 var (
 	allArgumentsIntegrationVCS RunOptionsIntegrationVCS
-	resultIntegrationVCS       shared.GenericResult
-	execExampleIntegrationVCS  = `# Checking the PR existence
+
+	execExampleIntegrationVCS = `# Checking the PR existence
   scanio integration-vcs --vcs bitbucket --action checkPR --vcs-url example.com --namespace PROJECT --repository REPOSITORY --pull-request-id ID
 
   # Add a user to the PR
@@ -60,7 +62,13 @@ List of actions for github:
 - Not implemented`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var arguments Arguments
+		var (
+			arguments             Arguments
+			outputBuffer          bytes.Buffer // Decision maker MVP needs
+			resultIntegrationVCS  shared.GenericResult
+			resultsIntegrationVCS shared.GenericLaunchesResult
+		)
+
 		checkArgs := func() error {
 			if err := validateCommonArguments(); err != nil {
 				return err
@@ -133,7 +141,7 @@ List of actions for github:
 
 			logger := shared.NewLogger("core-integration-vcs")
 
-			shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsIntegrationVCS.VCSPlugName, func(raw interface{}) {
+			shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsIntegrationVCS.VCSPlugName, func(raw interface{}) error {
 				vcsName := raw.(shared.VCS)
 				result, err := performAction(allArgumentsIntegrationVCS.Action, vcsName, arguments)
 
@@ -145,9 +153,28 @@ List of actions for github:
 					resultIntegrationVCS = shared.GenericResult{Args: arguments, Result: result, Status: "OK", Message: ""}
 					logger.Info("A function of VCS integrations finished with", "status", resultIntegrationVCS.Status, "action", allArgumentsIntegrationVCS.Action)
 				}
+
+				return nil
+
 			})
-			logger.Debug("Integration result", "result", resultIntegrationVCS)
-			shared.WriteJsonFile(fmt.Sprintf("%v/VCS-integration.result", shared.GetScanioHome()), logger, resultIntegrationVCS)
+
+			resultsIntegrationVCS.Launches = append(resultsIntegrationVCS.Launches, resultIntegrationVCS)
+			resultJSON, err := json.Marshal(resultsIntegrationVCS)
+			outputBuffer.Write(resultJSON)
+			if err != nil {
+				logger.Error("Error", "message", err)
+				return err
+			}
+
+			// Decision maker MVP needs
+			shared.ResultBufferMutex.Lock()
+			shared.ResultBuffer = outputBuffer
+			shared.ResultBufferMutex.Unlock()
+			outputBuffer.Write(resultJSON)
+
+			logger.Debug("Integration result", "result", resultsIntegrationVCS)
+			shared.WriteJsonFile(fmt.Sprintf("%v/VCS-INTEGRATION-%v.scanio-result", shared.GetScanioHome(), strings.ToUpper(allArgumentsIntegrationVCS.Action)), logger, resultsIntegrationVCS)
+
 			return nil
 		}
 

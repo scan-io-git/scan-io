@@ -7,7 +7,7 @@ import (
 )
 
 type Scanner interface {
-	Scan(args ScannerScanRequest) error
+	Scan(args ScannerScanRequest) (ScannerScanResponse, error)
 }
 
 type ScannerScanResult struct {
@@ -25,26 +25,32 @@ type ScannerScanRequest struct {
 	AdditionalArgs []string
 }
 
+type ScannerScanResponse struct {
+	ResultsPath string
+}
+
 type ScannerRPCClient struct{ client *rpc.Client }
 
-func (g *ScannerRPCClient) Scan(req ScannerScanRequest) error {
-	var resp ScannerScanResult
+func (g *ScannerRPCClient) Scan(req ScannerScanRequest) (ScannerScanResponse, error) {
+	var resp ScannerScanResponse
 
 	err := g.client.Call("Plugin.Scan", req, &resp)
 
 	if err != nil {
-		return err
+		return resp, err
 	}
 
-	return nil
+	return resp, nil
 }
 
 type ScannerRPCServer struct {
 	Impl Scanner
 }
 
-func (s *ScannerRPCServer) Scan(args ScannerScanRequest, resp *ScannerScanResult) error {
-	return s.Impl.Scan(args)
+func (s *ScannerRPCServer) Scan(args ScannerScanRequest, resp *ScannerScanResponse) error {
+	var err error
+	*resp, err = s.Impl.Scan(args)
+	return err
 }
 
 type ScannerPlugin struct {

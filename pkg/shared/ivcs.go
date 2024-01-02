@@ -12,6 +12,8 @@ type Args interface {
 type RepositoryParams struct {
 	Namespace string `json:"namespace"`
 	RepoName  string `json:"repo_name"`
+	PRID      string `json:"pr_id"`
+	VCSURL    string `json:"vcs_url"`
 	HttpLink  string `json:"http_link"`
 	SshLink   string `json:"ssh_link"`
 }
@@ -38,6 +40,7 @@ type PRParams struct {
 
 type RefPRInf struct {
 	ID           string
+	DisplayId    string
 	LatestCommit string
 }
 
@@ -54,6 +57,8 @@ type VCSFetchRequest struct {
 	AuthType     string
 	SSHKey       string
 	TargetFolder string
+	Mode         string
+	RepoParam    RepositoryParams
 }
 
 type VCSRequestBase struct {
@@ -95,11 +100,8 @@ type ListFuncResult struct {
 	Message string              `json:"message"`
 }
 
-type FetchFuncResult struct {
-	Args    VCSFetchRequest
-	Result  []string
-	Status  string
-	Message string
+type GenericLaunchesResult struct {
+	Launches []GenericResult `json:"launches"`
 }
 
 type GenericResult struct {
@@ -114,7 +116,7 @@ type EvnVariables struct {
 }
 
 type VCSFetchResponse struct {
-	Dummy bool
+	Path string
 }
 
 type VCSListReposResponse struct {
@@ -126,27 +128,15 @@ type VCSRetrivePRInformationResponse struct {
 }
 
 type VCS interface {
-	Fetch(req VCSFetchRequest) error
+	Fetch(req VCSFetchRequest) (VCSFetchResponse, error)
 	ListRepos(args VCSListReposRequest) ([]RepositoryParams, error)
 	RetrivePRInformation(req VCSRetrivePRInformationRequest) (PRParams, error)
-	AddRoleToPR(req VCSAddRoleToPRRequest) (bool, error)
+	AddRoleToPR(req VCSAddRoleToPRRequest) (interface{}, error)
 	SetStatusOfPR(req VCSSetStatusOfPRRequest) (bool, error)
 	AddComment(req VCSAddCommentToPRRequest) (bool, error)
 }
 
 type VCSRPCClient struct{ client *rpc.Client }
-
-func (g *VCSRPCClient) Fetch(req VCSFetchRequest) error {
-	var resp VCSFetchResponse
-
-	err := g.client.Call("Plugin.Fetch", req, &resp)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 func (g *VCSRPCClient) ListRepos(req VCSListReposRequest) ([]RepositoryParams, error) {
 	var resp VCSListReposResponse
@@ -158,6 +148,18 @@ func (g *VCSRPCClient) ListRepos(req VCSListReposRequest) ([]RepositoryParams, e
 	}
 
 	return resp.Repositories, nil
+}
+
+func (g *VCSRPCClient) Fetch(req VCSFetchRequest) (VCSFetchResponse, error) {
+	var resp VCSFetchResponse
+
+	err := g.client.Call("Plugin.Fetch", req, &resp)
+
+	if err != nil {
+		return resp, err
+	}
+
+	return resp, nil
 }
 
 func (g *VCSRPCClient) RetrivePRInformation(req VCSRetrivePRInformationRequest) (PRParams, error) {
@@ -172,16 +174,16 @@ func (g *VCSRPCClient) RetrivePRInformation(req VCSRetrivePRInformationRequest) 
 	return resp.PR, nil
 }
 
-func (g *VCSRPCClient) AddRoleToPR(req VCSAddRoleToPRRequest) (bool, error) {
+func (g *VCSRPCClient) AddRoleToPR(req VCSAddRoleToPRRequest) (interface{}, error) {
 	var resp VCSRetrivePRInformationResponse
 
 	err := g.client.Call("Plugin.AddRoleToPR", req, &resp)
 
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	return true, nil
+	return nil, nil
 }
 
 func (g *VCSRPCClient) SetStatusOfPR(req VCSSetStatusOfPRRequest) (bool, error) {
@@ -213,7 +215,9 @@ type VCSRPCServer struct {
 }
 
 func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) error {
-	return s.Impl.Fetch(args)
+	var err error
+	*resp, err = s.Impl.Fetch(args)
+	return err
 }
 
 func (s *VCSRPCServer) ListRepos(args VCSListReposRequest, resp *VCSListReposResponse) error {
@@ -229,9 +233,9 @@ func (s *VCSRPCServer) RetrivePRInformation(args VCSRetrivePRInformationRequest,
 }
 
 func (s *VCSRPCServer) AddRoleToPR(args VCSAddRoleToPRRequest, resp *VCSRetrivePRInformationResponse) error {
-	a, err := s.Impl.AddRoleToPR(args)
-	if a == false {
-
+	_, err := s.Impl.AddRoleToPR(args)
+	if err != nil {
+		return err
 	}
 	return err
 }

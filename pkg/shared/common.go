@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"bytes"
 	"log"
 	"os"
 	"os/exec"
@@ -15,6 +16,9 @@ const (
 	PluginTypeVCS     string = "vcs"
 	PluginTypeScanner string = "scanner"
 )
+
+var ResultBuffer bytes.Buffer
+var ResultBufferMutex sync.Mutex
 
 var HandshakeConfig = plugin.HandshakeConfig{
 	ProtocolVersion:  1,
@@ -32,7 +36,7 @@ func NewLogger(name string) hclog.Logger {
 	jsonFormat := false
 	if os.Getenv("SCANIO_LOGLEVEL") == "DEBUG" {
 		loglevel = hclog.Debug
-		jsonFormat = true
+		jsonFormat = false
 	}
 	return hclog.New(&hclog.LoggerOptions{
 		Name:        name,
@@ -69,7 +73,7 @@ func getScanioPluginsFolder() string {
 	return defaultScanioPlugins
 }
 
-func WithPlugin(loggerName string, pluginType string, pluginName string, f func(interface{})) {
+func WithPlugin(loggerName string, pluginType string, pluginName string, f func(interface{}) error) error {
 	logger := NewLogger(loggerName)
 
 	pluginPath := filepath.Join(getScanioPluginsFolder(), pluginName)
@@ -84,15 +88,23 @@ func WithPlugin(loggerName string, pluginType string, pluginName string, f func(
 	rpcClient, err := client.Client()
 	if err != nil {
 		log.Fatal(err)
+		return err
 	}
 
 	// Request the plugin
 	raw, err := rpcClient.Dispense(pluginType)
 	if err != nil {
 		log.Fatal(err)
+		return err
 	}
 
-	f(raw)
+	// result, err := f(raw)
+	err = f(raw)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func ForEveryStringWithBoundedGoroutines(limit int, values []interface{}, f func(i int, value interface{})) {

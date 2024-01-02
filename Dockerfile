@@ -125,6 +125,7 @@ COPY --from=build-scanio-plugins /usr/bin/trufflehog3 $SCANIO_PLUGINS_FOLDER/tru
 COPY rules /scanio-rules
 COPY helm /scanio-helm
 COPY Dockerfile /Dockerfile
+COPY templates /templates
 
 ENTRYPOINT ["/bin/scanio"]
 CMD ["--help"]

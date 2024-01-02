@@ -16,7 +16,8 @@ type ScannerBandit struct {
 	logger hclog.Logger
 }
 
-func (g *ScannerBandit) Scan(args shared.ScannerScanRequest) error {
+func (g *ScannerBandit) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
+	var result shared.ScannerScanResponse
 	g.logger.Info("Scan is starting", "project", args.RepoPath)
 	g.logger.Debug("Debug info", "args", args)
 
@@ -51,14 +52,14 @@ func (g *ScannerBandit) Scan(args shared.ScannerScanRequest) error {
 		err := fmt.Errorf(stdBuffer.String())
 		if exitError, ok := err.(*exec.ExitError); ok && exitError.ExitCode() != 1 {
 			g.logger.Error("Bandit execution error", "exitError.ExitCode()", exitError.ExitCode(), "error", err)
-			return err
+			return result, err
 		}
 	}
-
+	result.ResultsPath = args.ResultsPath
 	g.logger.Info("Scan finished for", "project", args.RepoPath)
 	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
 	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
-	return nil
+	return result, nil
 }
 
 func main() {
