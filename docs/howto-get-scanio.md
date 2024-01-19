@@ -17,3 +17,11 @@ docker run --rm ghcr.io/scan-io-git/scan-io:latest --help
 ```  
 
 Or build the Docker image from the sources with the following command: `make docker`.
+
+## With Go Install
+It's also possible to use the built-in Go feature to install projects. Use this command:
+```
+go install github.com/scan-io-git/scan-io@latest
+```
+This command installs Scanio CLI and all its dependencies. The tool can be executed by calling `scan-io --help`.  
+> Note that this method installs only the Scanio CLI core, not the plugins.
