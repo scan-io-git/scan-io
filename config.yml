@@ -1,0 +1,18 @@
+# Scanio config
+
+# Logger config
+logger:
+  level: DEBUG
+
+# HttpClient config
+http_client:
+  debug: false
+  retry_count: 5 # seconds
+  retry_wait_time: 1 # seconds
+  retry_max_wait_time: 2 # seconds
+  timeout: 10 # seconds
+  tls_client_config:
+    verify: true
+  proxy:
+    host: "http://127.0.0.1"
+    port: 8080

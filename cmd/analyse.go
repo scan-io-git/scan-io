@@ -6,8 +6,11 @@ import (
 
 	"github.com/scan-io-git/scan-io/internal/scanner"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
-	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
+
+	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 type RunOptionsAnalyse struct {
@@ -56,6 +59,14 @@ List of plugins:
 		argsLenAtDash := cmd.ArgsLenAtDash()
 		var path string
 
+		// init config
+		cfg, err := config.NewConfig("config.yml")
+		if err != nil {
+			return fmt.Errorf("initializing config file is crashed - %v", err)
+		}
+
+		logger := logger.NewLogger(cfg, "core-analyze-scanner")
+
 		checkArgs := func() error {
 			if len(allArgumentsAnalyse.ScannerPluginName) == 0 {
 				return fmt.Errorf("A 'scanner' flag must be specified!")
@@ -97,7 +108,6 @@ List of plugins:
 			return err
 		}
 
-		logger := shared.NewLogger("core-analyze-scanner")
 		s := scanner.New(allArgumentsAnalyse.ScannerPluginName, allArgumentsAnalyse.Threads, allArgumentsAnalyse.Config, allArgumentsAnalyse.ReportFormat, allArgumentsAnalyse.AdditionalArgs, logger)
 
 		analyseArgs, err := s.PrepScanArgs(reposInf, path)
