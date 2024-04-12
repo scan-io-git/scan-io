@@ -16,7 +16,7 @@ func NewLogger(config *config.Config, name string) hclog.Logger {
 	} else {
 		// env variables has the second priority
 		logLevelEnv := os.Getenv("SCANIO_LOG_LEVEL")
-		logLevel = getLogLevel(logLevelEnv)
+		logLevel = getLogLevel(strings.ToUpper(logLevelEnv))
 	}
 
 	logger := hclog.New(&hclog.LoggerOptions{

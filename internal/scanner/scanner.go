@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
 type Scanner struct {
@@ -66,13 +67,13 @@ func (s Scanner) PrepScanArgs(repos []shared.RepositoryParams, path string) ([]s
 				}
 			}
 
-			resultsFolderPath := filepath.Join(shared.GetResultsHome(), strings.ToLower(domain), filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
+			resultsFolderPath := filepath.Join(shared.GetResultsHome(s.logger), strings.ToLower(domain), filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
 			// ensure that folder for results exists, some scanners don't create it themselves and just exit with an error
 			if err := os.MkdirAll(resultsFolderPath, os.ModePerm); err != nil {
 				return nil, err
 			}
 
-			targetFolder = shared.GetRepoPath(strings.ToLower(domain), filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
+			targetFolder = shared.GetRepoPath(s.logger, strings.ToLower(domain), filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
 			resultsPath = filepath.Join(resultsFolderPath, fmt.Sprintf("%s-%s.%s", s.scannerPluginName, startTime, reportExt))
 
 			scanArgs = append(scanArgs, shared.ScannerScanRequest{
@@ -88,9 +89,9 @@ func (s Scanner) PrepScanArgs(repos []shared.RepositoryParams, path string) ([]s
 	return scanArgs, nil
 }
 
-func (s Scanner) scanRepo(scanArg shared.ScannerScanRequest) error {
+func (s Scanner) scanRepo(cfg *config.Config, scanArg shared.ScannerScanRequest) error {
 
-	shared.WithPlugin("plugin-scanner", shared.PluginTypeScanner, s.scannerPluginName, func(raw interface{}) {
+	shared.WithPlugin(cfg, "plugin-scanner", shared.PluginTypeScanner, s.scannerPluginName, func(raw interface{}) {
 		scanner := raw.(shared.Scanner)
 		err := scanner.Scan(scanArg)
 		if err != nil {
@@ -101,7 +102,7 @@ func (s Scanner) scanRepo(scanArg shared.ScannerScanRequest) error {
 	return nil
 }
 
-func (s Scanner) ScanRepos(scanArgs []shared.ScannerScanRequest) error {
+func (s Scanner) ScanRepos(cfg *config.Config, scanArgs []shared.ScannerScanRequest) error {
 
 	s.logger.Info("Scan starting", "total", len(scanArgs), "goroutines", s.jobs)
 
@@ -114,7 +115,7 @@ func (s Scanner) ScanRepos(scanArgs []shared.ScannerScanRequest) error {
 		scanArg := value.(shared.ScannerScanRequest)
 		s.logger.Info("Goroutine started", "#", i+1, "args", scanArg)
 
-		err := s.scanRepo(scanArg)
+		err := s.scanRepo(cfg, scanArg)
 		if err != nil {
 			s.logger.Error("scanners's scanRepo() failed", "err", err)
 		}

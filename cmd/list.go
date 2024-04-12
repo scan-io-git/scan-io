@@ -3,8 +3,10 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
+
+	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 type RunOptionsList struct {
@@ -34,9 +36,9 @@ var (
 )
 
 func do() {
-	logger := shared.NewLogger("core")
+	logger := logger.NewLogger(AppConfig, "core-list")
 
-	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsList.VCSPlugName, func(raw interface{}) {
+	shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, allArgumentsList.VCSPlugName, func(raw interface{}) {
 		vcsName := raw.(shared.VCS)
 		args := shared.VCSListReposRequest{
 			VCSURL:    allArgumentsList.VCSURL,

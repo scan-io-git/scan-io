@@ -9,6 +9,9 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
+
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 const (
@@ -25,19 +28,6 @@ var HandshakeConfig = plugin.HandshakeConfig{
 var PluginMap = map[string]plugin.Plugin{
 	PluginTypeVCS:     &VCSPlugin{},
 	PluginTypeScanner: &ScannerPlugin{},
-}
-
-func NewLogger(name string) hclog.Logger {
-	loglevel := hclog.Info
-	if os.Getenv("SCANIO_LOGLEVEL") == "DEBUG" {
-		loglevel = hclog.Debug
-	}
-	return hclog.New(&hclog.LoggerOptions{
-		Name:        name,
-		DisableTime: true,
-		Output:      os.Stdout,
-		Level:       loglevel,
-	})
 }
 
 func getScanioHome() string {
@@ -66,8 +56,8 @@ func getScanioPluginsFolder() string {
 	return defaultScanioPlugins
 }
 
-func WithPlugin(loggerName string, pluginType string, pluginName string, f func(interface{})) {
-	logger := NewLogger(loggerName)
+func WithPlugin(cfg *config.Config, loggerName string, pluginType string, pluginName string, f func(interface{})) {
+	logger := logger.NewLogger(cfg, loggerName)
 
 	pluginPath := filepath.Join(getScanioPluginsFolder(), pluginName)
 	client := plugin.NewClient(&plugin.ClientConfig{
@@ -107,10 +97,10 @@ func ForEveryStringWithBoundedGoroutines(limit int, values []interface{}, f func
 	wg.Wait()
 }
 
-func GetProjectsHome() string {
+func GetProjectsHome(logger hclog.Logger) string {
 	projectsFolder := filepath.Join(getScanioHome(), "/projects")
 	if _, err := os.Stat(projectsFolder); os.IsNotExist(err) {
-		NewLogger("core").Info("projectsFolder does not exists. Creating...", "projectsFolder", projectsFolder)
+		logger.Info("projectsFolder does not exists. Creating...", "projectsFolder", projectsFolder)
 		if err := os.MkdirAll(projectsFolder, os.ModePerm); err != nil {
 			panic(err)
 		}
@@ -118,10 +108,10 @@ func GetProjectsHome() string {
 	return projectsFolder
 }
 
-func GetResultsHome() string {
+func GetResultsHome(logger hclog.Logger) string {
 	resultsFolder := filepath.Join(getScanioHome(), "/results")
 	if _, err := os.Stat(resultsFolder); os.IsNotExist(err) {
-		NewLogger("core").Info("resultsFolder does not exists. Creating...", "resultsFolder", resultsFolder)
+		logger.Info("resultsFolder does not exists. Creating...", "resultsFolder", resultsFolder)
 		if err := os.MkdirAll(resultsFolder, os.ModePerm); err != nil {
 			panic(err)
 		}
@@ -129,6 +119,6 @@ func GetResultsHome() string {
 	return resultsFolder
 }
 
-func GetRepoPath(VCSURL, repoWithNamespace string) string {
-	return filepath.Join(GetProjectsHome(), VCSURL, repoWithNamespace)
+func GetRepoPath(logger hclog.Logger, VCSURL, repoWithNamespace string) string {
+	return filepath.Join(GetProjectsHome(logger), VCSURL, repoWithNamespace)
 }

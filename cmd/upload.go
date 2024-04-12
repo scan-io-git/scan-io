@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/scan-io-git/scan-io/internal/dojo"
-	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 
 	"github.com/spf13/cobra"
 )
@@ -39,7 +39,7 @@ Create engagement and import results from file.`,
   scanio upload -u https://defectdojo.example.com -p github.com/juice-shop/juice-shop -i ~/.scanio/results/github.com/juice-shop/juice-shop/trufflehog-2023-05-18T12:20:12Z.json -t "Trufflehog Scan"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		logger := shared.NewLogger("core")
+		logger := logger.NewLogger(AppConfig, "core-upload")
 		logger.Info("DefectDojo", "URL", allUploadOptions.URL)
 
 		dojoClient := dojo.New(allUploadOptions.URL, DOJO_TOKEN)

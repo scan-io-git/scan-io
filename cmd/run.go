@@ -14,9 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	utils "github.com/scan-io-git/scan-io/internal/utils"
-	// ivcs "github.com/scan-io-git/scan-io/internal/vcs"
-	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -35,6 +33,11 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/utils/pointer"
+
+	utils "github.com/scan-io-git/scan-io/internal/utils"
+	// ivcs "github.com/scan-io-git/scan-io/internal/vcs"
+	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 // const IMAGE = "356918957485.dkr.ecr.eu-west-2.amazonaws.com/i-am-first"
@@ -68,21 +71,21 @@ func getS3Path(repo string) string {
 	return filepath.Join(getRepoID(repo), fmt.Sprintf("%s.raw", o.ScannerPlugin))
 }
 
-func getResultsFolder(repo string) string {
-	return filepath.Join(shared.GetResultsHome(), getRepoID(repo))
+func getResultsFolder(logger hclog.Logger, repo string) string {
+	return filepath.Join(shared.GetResultsHome(logger), getRepoID(repo))
 }
 
-func getResultsPath(repo string) string {
-	return filepath.Join(shared.GetResultsHome(), getS3Path(repo))
+func getResultsPath(logger hclog.Logger, repo string) string {
+	return filepath.Join(shared.GetResultsHome(logger), getS3Path(repo))
 }
 
 func fetch(repo string) {
-	logger := shared.NewLogger("core")
+	logger := logger.NewLogger(AppConfig, "core-run")
 	logger.Info("Fetching starting", "VCSURL", o.VCSURL, "repo", repo)
 
-	targetFolder := shared.GetRepoPath(o.VCSURL, repo)
+	targetFolder := shared.GetRepoPath(logger, o.VCSURL, repo)
 
-	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, o.VCSPlugin, func(raw interface{}) {
+	shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, o.VCSPlugin, func(raw interface{}) {
 
 		vcs := raw.(shared.VCS)
 		args := shared.VCSFetchRequest{
@@ -103,21 +106,21 @@ func fetch(repo string) {
 }
 
 func scan(repo string) {
-	logger := shared.NewLogger("core")
+	logger := logger.NewLogger(AppConfig, "core-run")
 	logger.Info("Scan starting", "scanner", o.ScannerPlugin, "VCSURL", o.VCSURL, "repo", repo)
 
-	repoPath := shared.GetRepoPath(o.VCSURL, repo)
+	repoPath := shared.GetRepoPath(logger, o.VCSURL, repo)
 
-	err := os.MkdirAll(getResultsFolder(repo), 0666)
+	err := os.MkdirAll(getResultsFolder(logger, repo), 0666)
 	if err != nil {
 		// logger.Warn("error creating results folder", "err", err)
 		panic(err)
 	}
 
-	shared.WithPlugin("plugin-scanner", shared.PluginTypeScanner, o.ScannerPlugin, func(raw interface{}) {
+	shared.WithPlugin(AppConfig, "plugin-scanner", shared.PluginTypeScanner, o.ScannerPlugin, func(raw interface{}) {
 		raw.(shared.Scanner).Scan(shared.ScannerScanRequest{
 			RepoPath:    repoPath,
-			ResultsPath: getResultsPath(repo),
+			ResultsPath: getResultsPath(logger, repo),
 		})
 	})
 
@@ -125,8 +128,8 @@ func scan(repo string) {
 }
 
 func uploadResults(repo string) {
-	logger := shared.NewLogger("core")
-	logger.Info("Uploading results", "resultsPath", getResultsPath(repo), "storage-type", o.StorageType, "bucket", o.S3Bucket, "path", getS3Path(repo))
+	logger := logger.NewLogger(AppConfig, "core-run")
+	logger.Info("Uploading results", "resultsPath", getResultsPath(logger, repo), "storage-type", o.StorageType, "bucket", o.S3Bucket, "path", getS3Path(repo))
 
 	// The session the S3 Uploader will use
 	sess := session.Must(session.NewSession(&aws.Config{
@@ -136,7 +139,7 @@ func uploadResults(repo string) {
 	// Create an uploader with the session and default options
 	uploader := s3manager.NewUploader(sess)
 
-	path := getResultsPath(repo)
+	path := getResultsPath(logger, repo)
 	// if o.Experiment == "upload" {
 	// 	path = filepath.Join(os.Getenv("HOME"), ".bashrc")
 	// }
@@ -284,7 +287,7 @@ func getNewJobsClient() v1.JobInterface {
 }
 
 func fetchResults(repo string) {
-	logger := shared.NewLogger("core")
+	logger := logger.NewLogger(AppConfig, "core-run")
 	sess, err := session.NewSessionWithOptions(session.Options{
 		Profile: "s3",
 		Config: aws.Config{
@@ -327,13 +330,13 @@ func fetchResults(repo string) {
 	defer result.Body.Close()
 
 	// fmt.Println(result)
-	err = os.MkdirAll(getResultsFolder(repo), 0777)
+	err = os.MkdirAll(getResultsFolder(logger, repo), 0777)
 	if err != nil {
 		logger.Warn("error creating results folder", "err", err)
 		return
 	}
 
-	f, err := os.Create(getResultsPath(repo))
+	f, err := os.Create(getResultsPath(logger, repo))
 	if err != nil {
 		logger.Warn("failed to create file with results", "file", f, "err", err)
 		return
@@ -348,7 +351,7 @@ func fetchResults(repo string) {
 }
 
 func runWithHelm(repos []string) {
-	logger := shared.NewLogger("core")
+	logger := logger.NewLogger(AppConfig, "core-run")
 	logger.Info("runWithHelm")
 
 	values := make([]interface{}, len(repos))
@@ -425,7 +428,7 @@ func runWithHelm(repos []string) {
 }
 
 func runInK8S(repos []string) {
-	logger := shared.NewLogger("core")
+	logger := logger.NewLogger(AppConfig, "core-run")
 
 	values := make([]interface{}, len(repos))
 	for i := range repos {
@@ -499,7 +502,7 @@ var runCmd = &cobra.Command{
 		fmt.Println("run called")
 		cmd.Flags().Parse(args)
 		repos := getReposToProcess()
-		shared.NewLogger("core").Info("Run", "vcsPlugin", o.VCSPlugin, "VCSURL", o.VCSURL, "Runtime", o.Runtime)
+		logger.NewLogger(AppConfig, "core-run").Info("Run", "vcsPlugin", o.VCSPlugin, "VCSURL", o.VCSURL, "Runtime", o.Runtime)
 		// if o.Experiment == "upload" {
 		// 	for _, repo := range repos {
 		// 		uploadResults(repo)

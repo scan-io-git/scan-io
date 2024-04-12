@@ -9,6 +9,7 @@ import (
 	"github.com/scan-io-git/scan-io/internal/fetcher"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 type RunOptionsFetch struct {
@@ -122,15 +123,15 @@ List of plugins:
 			return err
 		}
 
-		logger := shared.NewLogger("core-fetcher")
+		logger := logger.NewLogger(AppConfig, "core-fetcher")
 		fetcher := fetcher.New(allArgumentsFetch.AuthType, allArgumentsFetch.SSHKey, allArgumentsFetch.Threads, allArgumentsFetch.Branch, allArgumentsFetch.VCSPlugName, strings.Split(allArgumentsFetch.RmExts, ","), logger)
 
-		fetchArgs, err := fetcher.PrepFetchArgs(reposParams)
+		fetchArgs, err := fetcher.PrepFetchArgs(logger, reposParams)
 		if err != nil {
 			return err
 		}
 
-		err = fetcher.FetchRepos(fetchArgs)
+		err = fetcher.FetchRepos(AppConfig, fetchArgs)
 		if err != nil {
 			return err
 		}

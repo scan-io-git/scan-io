@@ -4,7 +4,12 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
+
+var TestAppConfig *config.Config
 
 func TestGithubClonePublic(t *testing.T) {
 
@@ -24,7 +29,7 @@ func TestGithubClonePublic(t *testing.T) {
 		TargetFolder: dir,
 	}
 	vars := EvnVariables{}
-	logger := NewLogger("test")
+	logger := logger.NewLogger(TestAppConfig, "test")
 
 	// function check
 	err = GitClone(args, vars, logger)
@@ -51,7 +56,7 @@ func TestGithubClonePrivateWithSSHKey(t *testing.T) {
 		TargetFolder: dir,
 	}
 	vars := EvnVariables{}
-	logger := NewLogger("test")
+	logger := logger.NewLogger(TestAppConfig, "test")
 
 	// function check
 	err = GitClone(args, vars, logger)
@@ -78,7 +83,7 @@ func TestGithubClonePrivateWithSSHAgent(t *testing.T) {
 		TargetFolder: dir,
 	}
 	vars := EvnVariables{}
-	logger := NewLogger("test")
+	logger := logger.NewLogger(TestAppConfig, "test")
 
 	// function check
 	err = GitClone(args, vars, logger)
@@ -105,7 +110,7 @@ func TestGitlabClonePrivateWithSSHAgent(t *testing.T) {
 		TargetFolder: dir,
 	}
 	vars := EvnVariables{}
-	logger := NewLogger("test")
+	logger := logger.NewLogger(TestAppConfig, "test")
 
 	// function check
 	err = GitClone(args, vars, logger)

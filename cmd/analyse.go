@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/scan-io-git/scan-io/internal/scanner"
-	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/spf13/cobra"
 
+	"github.com/scan-io-git/scan-io/internal/scanner"
+	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
@@ -58,7 +58,7 @@ List of plugins:
 		var reposInf []shared.RepositoryParams
 		argsLenAtDash := cmd.ArgsLenAtDash()
 
-		logger := logger.NewLogger(AppConfig, "core-analyze-scanner")
+		logger := logger.NewLogger(AppConfig, "core-analyze")
 		checkArgs := func() error {
 			if len(allArgumentsAnalyse.ScannerPluginName) == 0 {
 				return fmt.Errorf("A 'scanner' flag must be specified!")
@@ -107,7 +107,7 @@ List of plugins:
 			return err
 		}
 
-		err = s.ScanRepos(analyseArgs)
+		err = s.ScanRepos(AppConfig, analyseArgs)
 		if err != nil {
 			return err
 		}

@@ -8,6 +8,7 @@ import (
 
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
 type Fetcher struct {
@@ -32,7 +33,7 @@ func New(authType string, sshKey string, jobs int, branch string, vcsPluginName 
 	}
 }
 
-func (f Fetcher) PrepFetchArgs(repos []shared.RepositoryParams) ([]shared.VCSFetchRequest, error) {
+func (f Fetcher) PrepFetchArgs(logger hclog.Logger, repos []shared.RepositoryParams) ([]shared.VCSFetchRequest, error) {
 	var fetchArgs []shared.VCSFetchRequest
 
 	for _, repo := range repos {
@@ -47,7 +48,7 @@ func (f Fetcher) PrepFetchArgs(repos []shared.RepositoryParams) ([]shared.VCSFet
 			return nil, err
 		}
 
-		targetFolder := shared.GetRepoPath(strings.ToLower(domain), filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
+		targetFolder := shared.GetRepoPath(logger, strings.ToLower(domain), filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
 
 		fetchArgs = append(fetchArgs, shared.VCSFetchRequest{
 			CloneURL:     cloneURL,
@@ -61,9 +62,9 @@ func (f Fetcher) PrepFetchArgs(repos []shared.RepositoryParams) ([]shared.VCSFet
 	return fetchArgs, nil
 }
 
-func (f Fetcher) fetchRepo(fetchArg shared.VCSFetchRequest) error {
+func (f Fetcher) fetchRepo(cfg *config.Config, fetchArg shared.VCSFetchRequest) error {
 
-	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, f.vcsPluginName, func(raw interface{}) {
+	shared.WithPlugin(cfg, "plugin-vcs", shared.PluginTypeVCS, f.vcsPluginName, func(raw interface{}) {
 		vcsName := raw.(shared.VCS)
 		err := vcsName.Fetch(fetchArg)
 		if err != nil {
@@ -76,7 +77,7 @@ func (f Fetcher) fetchRepo(fetchArg shared.VCSFetchRequest) error {
 	return nil
 }
 
-func (f Fetcher) FetchRepos(fetchArgs []shared.VCSFetchRequest) error {
+func (f Fetcher) FetchRepos(cfg *config.Config, fetchArgs []shared.VCSFetchRequest) error {
 
 	f.logger.Info("Fetching starting", "total", len(fetchArgs), "goroutines", f.jobs)
 
@@ -89,7 +90,7 @@ func (f Fetcher) FetchRepos(fetchArgs []shared.VCSFetchRequest) error {
 		fetchArgs := value.(shared.VCSFetchRequest)
 		f.logger.Info("Goroutine started", "#", i+1, "args", fetchArgs)
 
-		err := f.fetchRepo(fetchArgs)
+		err := f.fetchRepo(cfg, fetchArgs)
 		if err != nil {
 			f.logger.Error("fetcher's fetchRepo() failed", "err", err)
 		}
