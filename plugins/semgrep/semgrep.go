@@ -16,7 +16,22 @@ type ScannerSemgrep struct {
 	logger hclog.Logger
 }
 
-func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
+const SEMGREP_RULES_FOLDER = "/scanio-rules/semgrep"
+
+func getDefaultConfig() string {
+
+	if shared.IsCI() {
+		if _, err := os.Stat(SEMGREP_RULES_FOLDER); !os.IsNotExist(err) {
+			return SEMGREP_RULES_FOLDER
+		}
+		return "p/ci"
+	}
+
+	return "p/default"
+}
+
+func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
+	var result shared.ScannerScanResponse
 	g.logger.Info("Scan is starting", "project", args.RepoPath)
 	g.logger.Debug("Debug info", "args", args)
 
@@ -40,7 +55,7 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
 	// use "p/deafult" by default to not send metrics
 	configPath := args.ConfigPath
 	if args.ConfigPath == "" {
-		configPath = "p/default"
+		configPath = getDefaultConfig()
 	}
 
 	// auto config requires sendings metrics
@@ -70,13 +85,14 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) error {
 	if err != nil {
 		err := fmt.Errorf(stdBuffer.String())
 		g.logger.Error("Semgrep execution error", "error", err)
-		return err
+		return result, err
 	}
 
+	result.ResultsPath = args.ResultsPath
 	g.logger.Info("Scan finished for", "project", args.RepoPath)
 	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
 	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
-	return nil
+	return result, nil
 }
 
 func main() {

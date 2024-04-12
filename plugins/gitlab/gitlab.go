@@ -136,7 +136,36 @@ func (g *VCSGitlab) ListRepos(args shared.VCSListReposRequest) ([]shared.Reposit
 	return reposParams, nil
 }
 
-func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) error {
+func (g *VCSGitlab) RetrivePRInformation(args shared.VCSRetrivePRInformationRequest) (shared.PRParams, error) {
+	var result shared.PRParams
+	err := fmt.Errorf("The function is not implemented got Gitlab.")
+
+	return result, err
+}
+
+
+func (g *VCSGitlab) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (interface{}, error) {
+	err := fmt.Errorf("The function is not implemented got Github.")
+  
+	return nil, err
+}
+
+func (g *VCSGitlab) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, error) {
+	err := fmt.Errorf("The function is not implemented got Github.")
+
+	return false, err
+}
+
+func (g *VCSGitlab) AddComment(args shared.VCSAddCommentToPRRequest) (bool, error) {
+	err := fmt.Errorf("The function is not implemented got Github.")
+
+	return false, err
+}
+
+
+func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
+	var result shared.VCSFetchResponse
+
 	//variables, err := g.init("fetch")
 	variables := shared.EvnVariables{}
 	// if err != nil {
@@ -144,11 +173,12 @@ func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) error {
 	// 	return err
 	// }
 
-	err := shared.GitClone(args, variables, g.logger)
+	path, err := shared.GitClone(args, variables, g.logger)
 	if err != nil {
-		return err
+		return result, err
 	}
-	return nil
+	result.Path = path
+	return result, nil
 }
 
 func main() {

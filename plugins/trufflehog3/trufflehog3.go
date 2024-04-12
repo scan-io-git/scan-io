@@ -16,12 +16,16 @@ type ScannerTrufflehog3 struct {
 	logger hclog.Logger
 }
 
-func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) error {
+func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
+	var (
+		commandArgs []string
+		cmd         *exec.Cmd
+		stdBuffer   bytes.Buffer
+		result      shared.ScannerScanResponse
+	)
+
 	g.logger.Info("Scan is starting", "project", args.RepoPath)
 	g.logger.Debug("Debug info", "args", args)
-	var commandArgs []string
-	var cmd *exec.Cmd
-	var stdBuffer bytes.Buffer
 
 	// Add additional arguments
 	if len(args.AdditionalArgs) != 0 {
@@ -56,12 +60,14 @@ func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) error {
 	if err != nil {
 		err := fmt.Errorf(stdBuffer.String())
 		g.logger.Error("Trufflehog3 execution error", "error", err)
-		return err
+		return result, err
 	}
+
+	result.ResultsPath = args.ResultsPath
 	g.logger.Info("Scan finished for", "project", args.RepoPath)
 	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
 	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
-	return nil
+	return result, nil
 }
 
 func main() {

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -18,13 +20,14 @@ type RunOptionsAnalyse struct {
 	ReportFormat      string
 	Config            string
 	AdditionalArgs    []string
+	OutputPrefix      string
 	Threads           int
 }
 
-var allArgumentsAnalyse RunOptionsAnalyse
-
 var (
-	execExampleAnalyse = `  # Analysing using semgrep with an input file argument
+	allArgumentsAnalyse RunOptionsAnalyse
+	resultAnalyse       shared.GenericLaunchesResult
+	execExampleAnalyse  = `  # Analysing using semgrep with an input file argument
   scanio analyse --scanner semgrep --input-file /Users/root/.scanio/output.file --format sarif -j 1
   
   # Analysing using semgrep with a specific path
@@ -54,11 +57,14 @@ List of plugins:
   - trufflehog3`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var path string
-		var reposInf []shared.RepositoryParams
-		argsLenAtDash := cmd.ArgsLenAtDash()
+		var (
+			reposInf     []shared.RepositoryParams
+			path         string
+			outputBuffer bytes.Buffer // Decision maker MVP needs
+		)
 
 		logger := logger.NewLogger(AppConfig, "core-analyze")
+		argsLenAtDash := cmd.ArgsLenAtDash()
 		checkArgs := func() error {
 			if len(allArgumentsAnalyse.ScannerPluginName) == 0 {
 				return fmt.Errorf("A 'scanner' flag must be specified!")
@@ -102,16 +108,26 @@ List of plugins:
 
 		s := scanner.New(allArgumentsAnalyse.ScannerPluginName, allArgumentsAnalyse.Threads, allArgumentsAnalyse.Config, allArgumentsAnalyse.ReportFormat, allArgumentsAnalyse.AdditionalArgs, logger)
 
-		analyseArgs, err := s.PrepScanArgs(reposInf, path)
+		analyseArgs, err := s.PrepScanArgs(reposInf, path, allArgumentsAnalyse.OutputPrefix)
 		if err != nil {
 			return err
 		}
 
-		err = s.ScanRepos(AppConfig, analyseArgs)
+		resultAnalyse = s.ScanRepos(AppConfig, analyseArgs)
+		resultJSON, err := json.Marshal(resultAnalyse)
+		outputBuffer.Write(resultJSON)
 		if err != nil {
+			logger.Error("Error", "message", err)
 			return err
 		}
 
+		// Decision maker MVP needs
+		shared.ResultBufferMutex.Lock()
+		shared.ResultBuffer = outputBuffer
+		shared.ResultBufferMutex.Unlock()
+		outputBuffer.Write(resultJSON)
+
+		shared.WriteJsonFile(fmt.Sprintf("%v/ANALYSE.scanio-result", shared.GetScanioHome()), logger, resultAnalyse)
 		return nil
 	},
 }
@@ -123,5 +139,6 @@ func init() {
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.InputFile, "input-file", "i", "", "a file in Scanio format with a list of repositories to analyse. The list command could prepare this file.")
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.Config, "config", "c", "", "a path or type of config for a scanner. The value depends on a particular scanner's used formats.")
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.ReportFormat, "format", "f", "", "a format for a report with results.") //doesn't have default for "Uses ASCII output if no format specified"
+	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.OutputPrefix, "output", "o", "", "a path for scanner's output. The path will be used like a prefix for a scanner's report.")
 	analyseCmd.Flags().IntVarP(&allArgumentsAnalyse.Threads, "threads", "j", 1, "number of concurrent goroutines.")
 }

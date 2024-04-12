@@ -85,7 +85,7 @@ func fetch(repo string) {
 
 	targetFolder := shared.GetRepoPath(logger, o.VCSURL, repo)
 
-	shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, o.VCSPlugin, func(raw interface{}) {
+	shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, o.VCSPlugin, func(raw interface{}) error {
 
 		vcs := raw.(shared.VCS)
 		args := shared.VCSFetchRequest{
@@ -93,13 +93,14 @@ func fetch(repo string) {
 			//VCSURL:       o.VCSURL,
 			TargetFolder: targetFolder,
 		}
-		err := vcs.Fetch(args)
+		_, err := vcs.Fetch(args)
 		if err != nil {
 			logger.Debug("Fetch error", "err", err)
 		} else {
 			logger.Debug("Removing files with some extentions", "extentions", o.RmExts)
 			utils.FindByExtAndRemove(targetFolder, o.RmExts)
 		}
+		return nil
 	})
 
 	logger.Info("All fetch operations are finished.")
@@ -117,11 +118,12 @@ func scan(repo string) {
 		panic(err)
 	}
 
-	shared.WithPlugin(AppConfig, "plugin-scanner", shared.PluginTypeScanner, o.ScannerPlugin, func(raw interface{}) {
+	shared.WithPlugin(AppConfig, "plugin-scanner", shared.PluginTypeScanner, o.ScannerPlugin, func(raw interface{}) error {
 		raw.(shared.Scanner).Scan(shared.ScannerScanRequest{
 			RepoPath:    repoPath,
 			ResultsPath: getResultsPath(logger, repo),
 		})
+		return nil
 	})
 
 	logger.Debug("Scan finished.")
@@ -283,7 +285,7 @@ func getNewJobsClient() v1.JobInterface {
 		return clientset.BatchV1().Jobs(getNamespace())
 	}
 
-	panic(fmt.Errorf("cant create kubernetes client. For cluster config: %w. For kube config: %w", err1, err2))
+	panic(fmt.Errorf("cant create kubernetes client. For cluster config: %s. For kube config: %s", err1.Error(), err2.Error()))
 }
 
 func fetchResults(repo string) {

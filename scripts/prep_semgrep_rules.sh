@@ -153,7 +153,7 @@ handle_repo() {
 init_for_rules() {
     SCRIPT_DIR=$( dirname -- "$( readlink -f -- "$0"; )"; )
     PARENT_DIR=$( dirname -- $SCRIPT_DIR )
-    RULES_DIR="$PARENT_DIR/rules/$BASE_FOLDER"
+    RULES_DIR="$PARENT_DIR/rules/semgrep/$BASE_FOLDER"
     echo "Rules directory to safe files - $RULES_DIR"
 }
 

@@ -21,7 +21,7 @@ type RunOptionsList struct {
 var (
 	limit            int
 	allArgumentsList RunOptionsList
-	resultVCS        shared.ListFuncResult
+	resultVCS        shared.GenericResult
 	execExampleList  = `  # Listing all repositories in a VCS
   scanio list --vcs bitbucket --vcs-url example.com -o /Users/root/.scanio/output.file
   
@@ -38,7 +38,7 @@ var (
 func do() {
 	logger := logger.NewLogger(AppConfig, "core-list")
 
-	shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, allArgumentsList.VCSPlugName, func(raw interface{}) {
+	shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, allArgumentsList.VCSPlugName, func(raw interface{}) error {
 		vcsName := raw.(shared.VCS)
 		args := shared.VCSListReposRequest{
 			VCSURL:    allArgumentsList.VCSURL,
@@ -53,15 +53,17 @@ func do() {
 		projects, err := vcsName.ListRepos(args)
 
 		if err != nil {
-			resultVCS = shared.ListFuncResult{Args: args, Result: projects, Status: "FAILED", Message: err.Error()}
+			resultVCS = shared.GenericResult{Args: args, Result: projects, Status: "FAILED", Message: err.Error()}
 			logger.Error("A function of listing repositories is failed")
 		} else {
-			resultVCS = shared.ListFuncResult{Args: args, Result: projects, Status: "OK", Message: ""}
+			resultVCS = shared.GenericResult{Args: args, Result: projects, Status: "OK", Message: ""}
+
 			logger.Info("A function of listing repositories finished with", "status", resultVCS.Status)
 			logger.Info("The amount of repositories is", "numbers", len(projects))
 		}
 
-		shared.WriteJsonFile(resultVCS, allArgumentsList.OutputFile, logger)
+		shared.WriteJsonFile(allArgumentsList.OutputFile, logger, resultVCS)
+		return nil
 	})
 }
 
@@ -93,7 +95,7 @@ List of plugins:
 				}
 
 				URL := args[0]
-				hostname, namespace, repository, _, _, err := shared.ExtractRepositoryInfoFromURL(URL, allArgumentsList.VCSPlugName)
+				hostname, namespace, repository, _, _, _, err := shared.ExtractRepositoryInfoFromURL(URL, allArgumentsList.VCSPlugName)
 				if err != nil {
 					return err
 				}

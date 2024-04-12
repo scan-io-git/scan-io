@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -22,8 +24,10 @@ type RunOptionsFetch struct {
 	Threads     int
 }
 
-var allArgumentsFetch RunOptionsFetch
-var execExampleFetch = `  # Fetching from an input file using an ssh-key authentification
+var (
+	allArgumentsFetch RunOptionsFetch
+	resultFetch       shared.GenericLaunchesResult
+	execExampleFetch  = `  # Fetching from an input file using an ssh-key authentification
   scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1
 
   # Fetching using an ssh-key authentification, branch and URL that points a specific repository.
@@ -34,6 +38,7 @@ var execExampleFetch = `  # Fetching from an input file using an ssh-key authent
 
   # Fetching from an input file with an HTTP.
   scanio fetch --vcs bitbucket --input-file /Users/root/.scanio/output.file --auth-type http -j 1`
+)
 
 var fetchCmd = &cobra.Command{
 	Use:                   "fetch --vcs PLUGIN_NAME --output /local_path/output.file --auth-type AUTH_TYPE [--ssh-key /local_path/.ssh/id_ed25519] [--rm-ext LIST_OF_EXTENTIONS] [-j THREADS_NUMBER] (--input-file/-i /local_path/repositories.file | [-b BRANCH] <url>)",
@@ -49,6 +54,8 @@ List of plugins:
   - github`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Decision maker MVP needs
+		var outputBuffer bytes.Buffer
 		reposParams := []shared.RepositoryParams{}
 
 		checkArgs := func() error {
@@ -60,7 +67,7 @@ List of plugins:
 			}
 
 			if len(allArgumentsFetch.InputFile) == 0 && len(args) == 0 {
-				return fmt.Errorf(("'vcs-url' flag or 'input-file' flag or URL must be specified!"))
+				return fmt.Errorf(("'input-file' flag or URL must be specified!"))
 			}
 
 			if len(allArgumentsFetch.InputFile) != 0 && len(args) != 0 {
@@ -73,7 +80,7 @@ List of plugins:
 				}
 
 				URL := args[0]
-				_, namespace, repository, httpLink, sshLink, err := shared.ExtractRepositoryInfoFromURL(URL, allArgumentsFetch.VCSPlugName)
+				_, namespace, repository, pullRequestId, httpLink, sshLink, err := shared.ExtractRepositoryInfoFromURL(URL, allArgumentsFetch.VCSPlugName)
 				if err != nil {
 					return err
 				}
@@ -83,10 +90,10 @@ List of plugins:
 				} else if len(repository) == 0 {
 					return fmt.Errorf(("A fetch function for fetching a whole project is not supported."))
 				}
-
 				reposParams = append(reposParams, shared.RepositoryParams{
 					Namespace: namespace,
 					RepoName:  repository,
+					PRID:      pullRequestId,
 					HttpLink:  httpLink,
 					SshLink:   sshLink,
 				})
@@ -131,11 +138,23 @@ List of plugins:
 			return err
 		}
 
-		err = fetcher.FetchRepos(AppConfig, fetchArgs)
+		resultFetch = fetcher.FetchRepos(AppConfig, fetchArgs)
+		resultJSON, err := json.Marshal(resultFetch)
+		outputBuffer.Write(resultJSON)
 		if err != nil {
+			logger.Error("Error", "message", err)
 			return err
 		}
 
+		// Decision maker MVP needs
+		shared.ResultBufferMutex.Lock()
+		shared.ResultBuffer = outputBuffer
+		shared.ResultBufferMutex.Unlock()
+		outputBuffer.Write(resultJSON)
+
+		logger.Debug("Integration result", "result", resultFetch)
+
+		shared.WriteJsonFile(fmt.Sprintf("%v/FETCH.scanio-result", shared.GetScanioHome()), logger, resultFetch)
 		return nil
 	},
 }

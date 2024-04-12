@@ -33,22 +33,31 @@ func New(scannerPluginName string, jobs int, config string, reportFormat string,
 	}
 }
 
-func (s Scanner) PrepScanArgs(repos []shared.RepositoryParams, path string) ([]shared.ScannerScanRequest, error) {
-	var scanArgs []shared.ScannerScanRequest
-	var targetFolder string
-	var resultsPath string
+func (s Scanner) PrepScanArgs(repos []shared.RepositoryParams, path, outputPrefix string) ([]shared.ScannerScanRequest, error) {
+	var (
+		scanArgs     []shared.ScannerScanRequest
+		targetFolder string
+		resultsPath  string
+		prefix       string
+	)
 
-	// make dinamic extension name, based on output format
+	// make dynamic extension name, based on output format
 	reportExt := "raw"
 	rawStartTime := time.Now().UTC()
 	startTime := rawStartTime.Format(time.RFC3339)
 	if len(s.reportFormat) > 0 {
 		reportExt = s.reportFormat
 	}
+
 	if len(path) != 0 {
-		// in the case with a manual path the result will be written to the same folder
+		prefix = path
+		if outputPrefix != "" {
+			// in the case with a manual path the result will be written to the same folder
+			prefix = outputPrefix
+		}
+
 		targetFolder = path
-		resultsPath = filepath.Join(path, fmt.Sprintf("%s-%s.%s", s.scannerPluginName, startTime, reportExt))
+		resultsPath = filepath.Join(prefix, fmt.Sprintf("%s-%s.%s", s.scannerPluginName, startTime, reportExt))
 
 		scanArgs = append(scanArgs, shared.ScannerScanRequest{
 			RepoPath:       targetFolder,
@@ -89,23 +98,31 @@ func (s Scanner) PrepScanArgs(repos []shared.RepositoryParams, path string) ([]s
 	return scanArgs, nil
 }
 
-func (s Scanner) scanRepo(cfg *config.Config, scanArg shared.ScannerScanRequest) error {
+func (s Scanner) scanRepo(cfg *config.Config, scanArg shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
+	var (
+		result shared.ScannerScanResponse
+		err    error
+	)
 
-	shared.WithPlugin(cfg, "plugin-scanner", shared.PluginTypeScanner, s.scannerPluginName, func(raw interface{}) {
+	err = shared.WithPlugin(cfg, "plugin-scanner", shared.PluginTypeScanner, s.scannerPluginName, func(raw interface{}) error {
 		scanner := raw.(shared.Scanner)
-		err := scanner.Scan(scanArg)
+		result, err = scanner.Scan(scanArg)
 		if err != nil {
 			s.logger.Error("Scanner plugin is failed")
+			return err
 		}
+		return nil
 	})
 
-	return nil
+	return result, err
 }
 
-func (s Scanner) ScanRepos(cfg *config.Config, scanArgs []shared.ScannerScanRequest) error {
+func (s Scanner) ScanRepos(cfg *config.Config, scanArgs []shared.ScannerScanRequest) shared.GenericLaunchesResult {
 
 	s.logger.Info("Scan starting", "total", len(scanArgs), "goroutines", s.jobs)
 
+	var results shared.GenericLaunchesResult
+	resultsChannel := make(chan shared.GenericResult, len(scanArgs))
 	values := make([]interface{}, len(scanArgs))
 	for i := range scanArgs {
 		values[i] = scanArgs[i]
@@ -115,11 +132,20 @@ func (s Scanner) ScanRepos(cfg *config.Config, scanArgs []shared.ScannerScanRequ
 		scanArg := value.(shared.ScannerScanRequest)
 		s.logger.Info("Goroutine started", "#", i+1, "args", scanArg)
 
-		err := s.scanRepo(cfg, scanArg)
+		result, err := s.scanRepo(cfg, scanArg)
 		if err != nil {
 			s.logger.Error("scanners's scanRepo() failed", "err", err)
+			resultAnalyse := shared.GenericResult{Args: scanArg, Result: result, Status: "FAILED", Message: err.Error()}
+			resultsChannel <- resultAnalyse
+		} else {
+			resultAnalyse := shared.GenericResult{Args: scanArg, Result: result, Status: "OK", Message: ""}
+			resultsChannel <- resultAnalyse
 		}
 	})
 
-	return nil
+	close(resultsChannel)
+	for result := range resultsChannel {
+		results.Launches = append(results.Launches, result)
+	}
+	return results
 }

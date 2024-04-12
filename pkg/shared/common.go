@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"bytes"
 	"log"
 	"os"
 	"os/exec"
@@ -19,6 +20,9 @@ const (
 	PluginTypeScanner string = "scanner"
 )
 
+var ResultBuffer bytes.Buffer
+var ResultBufferMutex sync.Mutex
+
 var HandshakeConfig = plugin.HandshakeConfig{
 	ProtocolVersion:  1,
 	MagicCookieKey:   "SCANIO",
@@ -30,7 +34,7 @@ var PluginMap = map[string]plugin.Plugin{
 	PluginTypeScanner: &ScannerPlugin{},
 }
 
-func getScanioHome() string {
+func GetScanioHome() string {
 	envScanioHome := os.Getenv("SCANIO_HOME")
 	if envScanioHome != "" {
 		return envScanioHome
@@ -56,7 +60,7 @@ func getScanioPluginsFolder() string {
 	return defaultScanioPlugins
 }
 
-func WithPlugin(cfg *config.Config, loggerName string, pluginType string, pluginName string, f func(interface{})) {
+func WithPlugin(cfg *config.Config, loggerName string, pluginType string, pluginName string, f func(interface{}) error) error {
 	logger := logger.NewLogger(cfg, loggerName)
 
 	pluginPath := filepath.Join(getScanioPluginsFolder(), pluginName)
@@ -71,15 +75,23 @@ func WithPlugin(cfg *config.Config, loggerName string, pluginType string, plugin
 	rpcClient, err := client.Client()
 	if err != nil {
 		log.Fatal(err)
+		return err
 	}
 
 	// Request the plugin
 	raw, err := rpcClient.Dispense(pluginType)
 	if err != nil {
 		log.Fatal(err)
+		return err
 	}
 
-	f(raw)
+	// result, err := f(raw)
+	err = f(raw)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func ForEveryStringWithBoundedGoroutines(limit int, values []interface{}, f func(i int, value interface{})) {
@@ -98,7 +110,7 @@ func ForEveryStringWithBoundedGoroutines(limit int, values []interface{}, f func
 }
 
 func GetProjectsHome(logger hclog.Logger) string {
-	projectsFolder := filepath.Join(getScanioHome(), "/projects")
+	projectsFolder := filepath.Join(GetScanioHome(), "/projects")
 	if _, err := os.Stat(projectsFolder); os.IsNotExist(err) {
 		logger.Info("projectsFolder does not exists. Creating...", "projectsFolder", projectsFolder)
 		if err := os.MkdirAll(projectsFolder, os.ModePerm); err != nil {
@@ -109,7 +121,7 @@ func GetProjectsHome(logger hclog.Logger) string {
 }
 
 func GetResultsHome(logger hclog.Logger) string {
-	resultsFolder := filepath.Join(getScanioHome(), "/results")
+	resultsFolder := filepath.Join(GetScanioHome(), "/results")
 	if _, err := os.Stat(resultsFolder); os.IsNotExist(err) {
 		logger.Info("resultsFolder does not exists. Creating...", "resultsFolder", resultsFolder)
 		if err := os.MkdirAll(resultsFolder, os.ModePerm); err != nil {

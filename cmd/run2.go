@@ -46,18 +46,14 @@ func run2analyzeRepos(repos []shared.RepositoryParams) error {
 	logger := logger.NewLogger(AppConfig, "core-run2-scanner")
 	s := scanner.New(allRun2Options.ScannerPluginName, allRun2Options.Jobs, allRun2Options.Config, allRun2Options.ReportFormat, allRun2Options.AdditionalArgs, logger)
 
-	scanArgs, err := s.PrepScanArgs(repos, "")
+	scanArgs, err := s.PrepScanArgs(repos, "", "")
 	if err != nil {
 		return err
 	}
 
-	err = s.ScanRepos(AppConfig, scanArgs)
-	if err != nil {
-		return err
-	}
+	_ = s.ScanRepos(AppConfig, scanArgs)
 
 	return nil
-
 }
 
 func run2fetchRepos(repos []shared.RepositoryParams) error {
@@ -70,10 +66,7 @@ func run2fetchRepos(repos []shared.RepositoryParams) error {
 		return err
 	}
 
-	err = f.FetchRepos(AppConfig, fetchArgs)
-	if err != nil {
-		return err
-	}
+	_ = f.FetchRepos(AppConfig, fetchArgs)
 
 	return nil
 }

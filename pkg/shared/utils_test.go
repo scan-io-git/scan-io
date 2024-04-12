@@ -11,6 +11,12 @@ import (
 
 var TestAppConfig *config.Config
 
+func skipCI(t *testing.T) {
+	if os.Getenv("CI") != "" {
+		t.Skip("Skipping testing in CI environment")
+	}
+}
+
 func TestGithubClonePublic(t *testing.T) {
 
 	// temp dir for fetching
@@ -32,13 +38,15 @@ func TestGithubClonePublic(t *testing.T) {
 	logger := logger.NewLogger(TestAppConfig, "test")
 
 	// function check
-	err = GitClone(args, vars, logger)
+	_, err = GitClone(args, vars, logger)
 	if err != nil {
 		t.Error(err)
 	}
 }
 
 func TestGithubClonePrivateWithSSHKey(t *testing.T) {
+
+	skipCI(t)
 
 	// temp dir for fetching
 	dir, err := ioutil.TempDir("", "TestGithubClonePrivateWithSSHKey")
@@ -59,13 +67,15 @@ func TestGithubClonePrivateWithSSHKey(t *testing.T) {
 	logger := logger.NewLogger(TestAppConfig, "test")
 
 	// function check
-	err = GitClone(args, vars, logger)
+	_, err = GitClone(args, vars, logger)
 	if err != nil {
 		t.Error(err)
 	}
 }
 
 func TestGithubClonePrivateWithSSHAgent(t *testing.T) {
+
+	skipCI(t)
 
 	// temp dir for fetching
 	dir, err := ioutil.TempDir("", "TestGithubClonePrivateWithSSHAgent")
@@ -86,13 +96,15 @@ func TestGithubClonePrivateWithSSHAgent(t *testing.T) {
 	logger := logger.NewLogger(TestAppConfig, "test")
 
 	// function check
-	err = GitClone(args, vars, logger)
+	_, err = GitClone(args, vars, logger)
 	if err != nil {
 		t.Error(err)
 	}
 }
 
 func TestGitlabClonePrivateWithSSHAgent(t *testing.T) {
+
+	skipCI(t)
 
 	// temp dir for fetching
 	dir, err := ioutil.TempDir("", "TestGitlabClonePrivateWithSSHAgent")
@@ -113,7 +125,7 @@ func TestGitlabClonePrivateWithSSHAgent(t *testing.T) {
 	logger := logger.NewLogger(TestAppConfig, "test")
 
 	// function check
-	err = GitClone(args, vars, logger)
+	_, err = GitClone(args, vars, logger)
 	if err != nil {
 		t.Error(err)
 	}
