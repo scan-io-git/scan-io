@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
-	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
@@ -55,18 +54,11 @@ List of plugins:
   - trufflehog3`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
+		var path string
 		var reposInf []shared.RepositoryParams
 		argsLenAtDash := cmd.ArgsLenAtDash()
-		var path string
 
-		// init config
-		cfg, err := config.NewConfig("config.yml")
-		if err != nil {
-			return fmt.Errorf("initializing config file is crashed - %v", err)
-		}
-
-		logger := logger.NewLogger(cfg, "core-analyze-scanner")
-
+		logger := logger.NewLogger(AppConfig, "core-analyze-scanner")
 		checkArgs := func() error {
 			if len(allArgumentsAnalyse.ScannerPluginName) == 0 {
 				return fmt.Errorf("A 'scanner' flag must be specified!")
