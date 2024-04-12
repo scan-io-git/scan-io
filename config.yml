@@ -2,7 +2,10 @@
 
 # Logger config
 logger:
-  level: DEBUG
+  level: info # default value: info
+  disable_time: true # default value: true
+  json_format: false # default value: false
+  include_location: false # default value: false
 
 # HttpClient config
 http_client:

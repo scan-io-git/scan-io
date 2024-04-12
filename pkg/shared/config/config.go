@@ -14,7 +14,10 @@ type Config struct {
 }
 
 type Logger struct {
-	Level string `yaml:"level"`
+	Level           string `yaml:"level"`
+	DisableTime     *bool  `yaml:"disable_time"`
+	JSONFormat      *bool  `yaml:"json_format"`
+	IncludeLocation *bool  `yaml:"include_location"`
 }
 
 type HttpClient struct {
