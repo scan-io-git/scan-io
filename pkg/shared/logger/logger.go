@@ -23,13 +23,13 @@ func NewLogger(config *config.Config, name string) hclog.Logger {
 	return logger
 }
 
-// determineLogLevel return a log level which is determined first by the configuration provided, and if not set, by an environment variable.
+// determineLogLevel return a log level which is determined first by an environment variable, and if not set, by the configuration provided.
 // If neither configuration nor environment variable specifies a log level, it defaults to INFO.
 func determineLogLevel(config *config.Config) hclog.Level {
-	if config != nil && config.Logger.Level != "" {
-		return getLogLevel(strings.ToUpper(config.Logger.Level))
+	if os.Getenv("SCANIO_LOG_LEVEL") != "" {
+		return getLogLevel(strings.ToUpper(os.Getenv("SCANIO_LOG_LEVEL")))
 	}
-	return getLogLevel(strings.ToUpper(os.Getenv("SCANIO_LOG_LEVEL")))
+	return getLogLevel(strings.ToUpper(config.Logger.Level))
 }
 
 // getBoolValue retrieves a boolean value based on the specified field from the LoggerConfig struct.
