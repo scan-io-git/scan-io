@@ -48,7 +48,7 @@ func getBoolValue(config *config.Config, field string, defaultValue bool) bool {
 	return defaultValue
 }
 
-// getLogLevel converts a string level to hclog.Level
+// getLogLevel converts a string level to hclog.Level.
 func getLogLevel(levelStr string) hclog.Level {
 	switch levelStr {
 	case "TRACE":

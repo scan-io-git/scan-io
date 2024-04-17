@@ -23,27 +23,26 @@ var (
 	}
 )
 
-func Execute() {
-	rootCmd.CompletionOptions.DisableDefaultCmd = true
-	err := rootCmd.Execute()
-	if err != nil {
-		os.Exit(1)
-	}
-}
-
 func init() {
 	cobra.OnInitialize(initConfig)
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is .config.yml)")
 }
 
+func Execute() {
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error executing command: %v\n", err)
+		os.Exit(1)
+	}
+}
+
 func initConfig() {
 	var err error
 
-	if len(cfgFile) == 0 {
+	if cfgFile == "" {
 		cfgFile = "config.yml"
 	}
-
-	AppConfig, err = config.NewConfig(cfgFile)
+	AppConfig, err = config.LoadConfig(cfgFile)
 	if err != nil {
 		fmt.Println("initializing config file function is crashed - %v", err)
 		os.Exit(1)

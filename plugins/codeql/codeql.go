@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -9,11 +10,14 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
+
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
 type ScannerCodeQL struct {
-	logger hclog.Logger
+	logger       hclog.Logger
+	globalConfig *config.Config
 }
 
 var (
@@ -120,6 +124,15 @@ func (g *ScannerCodeQL) Scan(args shared.ScannerScanRequest) (shared.ScannerScan
 	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
 	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath)
 	return result, nil
+}
+
+func (g *ScannerCodeQL) Setup(configData []byte) (bool, error) {
+	var cfg config.Config
+	if err := json.Unmarshal(configData, &cfg); err != nil {
+		return false, err
+	}
+	g.globalConfig = &cfg
+	return true, nil
 }
 
 func main() {

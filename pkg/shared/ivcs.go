@@ -128,6 +128,7 @@ type VCSRetrivePRInformationResponse struct {
 }
 
 type VCS interface {
+	Setup(configData []byte) (bool, error)
 	Fetch(req VCSFetchRequest) (VCSFetchResponse, error)
 	ListRepos(args VCSListReposRequest) ([]RepositoryParams, error)
 	RetrivePRInformation(req VCSRetrivePRInformationRequest) (PRParams, error)
@@ -137,6 +138,15 @@ type VCS interface {
 }
 
 type VCSRPCClient struct{ client *rpc.Client }
+
+func (g *VCSRPCClient) Setup(configData []byte) (bool, error) {
+	var resp bool
+	err := g.client.Call("Plugin.Setup", configData, &resp)
+	if err != nil {
+		return false, err
+	}
+	return resp, nil
+}
 
 func (g *VCSRPCClient) ListRepos(req VCSListReposRequest) ([]RepositoryParams, error) {
 	var resp VCSListReposResponse
@@ -212,6 +222,12 @@ func (g *VCSRPCClient) AddComment(req VCSAddCommentToPRRequest) (bool, error) {
 
 type VCSRPCServer struct {
 	Impl VCS
+}
+
+func (s *VCSRPCServer) Setup(configData []byte, resp *bool) error {
+	var err error
+	*resp, err = s.Impl.Setup(configData)
+	return err
 }
 
 func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) error {

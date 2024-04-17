@@ -1,5 +1,11 @@
 # Scanio config
 
+# Bitbucket plugin config
+bitbucket_plugin:
+  bitbucket_username: ""
+  bitbucket_token: ""
+  ssh_key_password: ""
+
 # Logger config
 logger:
   level: info # default value: info
@@ -10,7 +16,7 @@ logger:
 # HttpClient config
 http_client:
   debug: false
-  retry_count: 5 # seconds
+  retry_count: 5
   retry_wait_time: 1 # seconds
   retry_max_wait_time: 2 # seconds
   timeout: 10 # seconds

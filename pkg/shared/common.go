@@ -2,6 +2,8 @@ package shared
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -72,6 +74,11 @@ func WithPlugin(cfg *config.Config, loggerName string, pluginType string, plugin
 	})
 	defer client.Kill()
 
+	cfgBytes, err := json.Marshal(cfg)
+	if err != nil {
+		log.Fatalf("Failed to serialize configuration: %v", err)
+	}
+
 	rpcClient, err := client.Client()
 	if err != nil {
 		log.Fatal(err)
@@ -85,7 +92,19 @@ func WithPlugin(cfg *config.Config, loggerName string, pluginType string, plugin
 		return err
 	}
 
-	// result, err := f(raw)
+	pluginInstance, ok := raw.(VCS)
+	if !ok {
+		err := fmt.Errorf("plugin does not implement VCS interface")
+		logger.Error(err.Error())
+		return err
+	}
+
+	// Setup the plugin with configuration
+	if _, err := pluginInstance.Setup(cfgBytes); err != nil {
+		logger.Error("Failed to setup plugin", "error", err)
+		return err
+	}
+
 	err = f(raw)
 	if err != nil {
 		return err

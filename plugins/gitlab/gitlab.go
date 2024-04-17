@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -9,12 +10,14 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/xanzy/go-gitlab"
 )
 
 // Here is a real implementation of VCS
 type VCSGitlab struct {
-	logger hclog.Logger
+	logger       hclog.Logger
+	globalConfig *config.Config
 }
 
 func getGitlabClient(vcsBaseURL string) (*gitlab.Client, error) {
@@ -143,10 +146,9 @@ func (g *VCSGitlab) RetrivePRInformation(args shared.VCSRetrivePRInformationRequ
 	return result, err
 }
 
-
 func (g *VCSGitlab) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (interface{}, error) {
 	err := fmt.Errorf("The function is not implemented got Github.")
-  
+
 	return nil, err
 }
 
@@ -161,7 +163,6 @@ func (g *VCSGitlab) AddComment(args shared.VCSAddCommentToPRRequest) (bool, erro
 
 	return false, err
 }
-
 
 func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
 	var result shared.VCSFetchResponse
@@ -179,6 +180,15 @@ func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse,
 	}
 	result.Path = path
 	return result, nil
+}
+
+func (g *VCSGitlab) Setup(configData []byte) (bool, error) {
+	var cfg config.Config
+	if err := json.Unmarshal(configData, &cfg); err != nil {
+		return false, err
+	}
+	g.globalConfig = &cfg
+	return true, nil
 }
 
 func main() {

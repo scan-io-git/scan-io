@@ -21,10 +21,12 @@ import (
 	"github.com/hashicorp/go-plugin"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
 type VCSBitbucket struct {
-	logger hclog.Logger
+	logger       hclog.Logger
+	globalConfig *config.Config
 }
 
 // Limit for Bitbucket v1 API page response
@@ -506,7 +508,17 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchRespon
 	return result, nil
 }
 
+func (g *VCSBitbucket) Setup(configData []byte) (bool, error) {
+	var cfg config.Config
+	if err := json.Unmarshal(configData, &cfg); err != nil {
+		return false, err
+	}
+	g.globalConfig = &cfg
+	return true, nil
+}
+
 func main() {
+
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level:      hclog.Trace,
 		Output:     os.Stderr,

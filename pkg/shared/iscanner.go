@@ -7,6 +7,7 @@ import (
 )
 
 type Scanner interface {
+	Setup(configData []byte) (bool, error)
 	Scan(args ScannerScanRequest) (ScannerScanResponse, error)
 }
 
@@ -31,6 +32,15 @@ type ScannerScanResponse struct {
 
 type ScannerRPCClient struct{ client *rpc.Client }
 
+func (g *ScannerRPCClient) Setup(configData []byte) (bool, error) {
+	var resp bool
+	err := g.client.Call("Plugin.Setup", configData, &resp)
+	if err != nil {
+		return false, err
+	}
+	return resp, nil
+}
+
 func (g *ScannerRPCClient) Scan(req ScannerScanRequest) (ScannerScanResponse, error) {
 	var resp ScannerScanResponse
 
@@ -45,6 +55,12 @@ func (g *ScannerRPCClient) Scan(req ScannerScanRequest) (ScannerScanResponse, er
 
 type ScannerRPCServer struct {
 	Impl Scanner
+}
+
+func (s *ScannerRPCServer) Setup(configData []byte, resp *bool) error {
+	var err error
+	*resp, err = s.Impl.Setup(configData)
+	return err
 }
 
 func (s *ScannerRPCServer) Scan(args ScannerScanRequest, resp *ScannerScanResponse) error {
