@@ -59,3 +59,6 @@ terraform.rc
 
 # 
 __debug_bin
+
+# vagrant
+.vagrant/
