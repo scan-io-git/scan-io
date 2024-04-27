@@ -83,7 +83,9 @@ Vagrant.configure("2") do |config|
     # setup scanio core path
     echo "export PATH=\$PATH:\$HOME/.local/bin" >> /home/vagrant/.bash_profile 
     # install semgrep
-    apt-get install -y python3 python3-pip
+    apt-get install -y python3.8
+    pip3 install --upgrade pip
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 20
     python3 -m pip install semgrep
   SHELL
 end
