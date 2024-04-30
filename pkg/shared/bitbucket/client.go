@@ -23,34 +23,6 @@ type AuthInfo struct {
 	Token    string // Token for basic authentication
 }
 
-// TODO implement passing hclogger instead of using a default log
-type (
-	HTTPConfig struct {
-		Debug            bool
-		RetryCount       int
-		RetryWaitTime    time.Duration
-		RetryMaxWaitTime time.Duration
-		Timeout          time.Duration
-		// Certificates     tls.Certificate
-		// RootCertificate  string
-		TLSClientConfig *tls.Config
-		Proxy           string
-		// ErrorLog hclog.Logger
-	}
-)
-
-// DefaultConfig provides a default configuration for the http client, used when no specific settings are provided.
-func defaultConfig() HTTPConfig {
-	return HTTPConfig{
-		RetryCount:       5,
-		RetryWaitTime:    1 * time.Second,
-		RetryMaxWaitTime: 2 * time.Second,
-		Timeout:          10 * time.Second,
-		TLSClientConfig:  &tls.Config{}, // TODO add safe defaults. the default is not really safe in terms of tls versions and cipher suites
-		Proxy:            "",
-	}
-}
-
 // NewClient initializes a new Bitbucket v1 API client
 func NewClient(VCSURL string, auth AuthInfo, globalConfig *config.Config) (*Client, context.CancelFunc) {
 	baseURL := fmt.Sprintf("https://%s/rest", VCSURL)
@@ -76,13 +48,13 @@ func NewClient(VCSURL string, auth AuthInfo, globalConfig *config.Config) (*Clie
 func setupBitbucketClientConfiguration(baseURL string, httpConfig *config.HttpClient) *bitbucketv1.Configuration {
 	// Create a retryable client
 	retryClient := retryablehttp.NewClient()
-	retryClient.RetryMax = config.SetThen(httpConfig.RetryCount, defaultConfig().RetryCount)
-	retryClient.RetryWaitMin = config.SetThen(httpConfig.RetryWaitTime, defaultConfig().RetryWaitTime)
-	retryClient.RetryWaitMax = config.SetThen(httpConfig.RetryMaxWaitTime, defaultConfig().RetryMaxWaitTime)
+	retryClient.RetryMax = config.SetThen(httpConfig.RetryCount, config.DefaultBitbucketConfig().RetryCount)
+	retryClient.RetryWaitMin = config.SetThen(httpConfig.RetryWaitTime, config.DefaultBitbucketConfig().RetryWaitTime)
+	retryClient.RetryWaitMax = config.SetThen(httpConfig.RetryMaxWaitTime, config.DefaultBitbucketConfig().RetryMaxWaitTime)
 
 	// Get a standard http.Client with retry logic
 	standardClient := retryClient.StandardClient()
-	standardClient.Timeout = config.SetThen(httpConfig.Timeout, defaultConfig().Timeout)
+	standardClient.Timeout = config.SetThen(httpConfig.Timeout, config.DefaultBitbucketConfig().Timeout)
 
 	var proxyFunc func(*http.Request) (*url.URL, error)
 	if httpConfig.Proxy.Host != "" && httpConfig.Proxy.Port != "" {
