@@ -25,20 +25,24 @@ type ProjectParams struct {
 }
 
 type PRParams struct {
-	PullRequestId int
-	Title         string
-	Description   string
-	State         string
-	AuthorEmail   string
-	AuthorName    string
-	SelfLink      string
-	CreatedDate   int64
-	UpdatedDate   int64
-	FromRef       RefPRInf
-	ToRef         RefPRInf
+	Id          int       `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	State       string    `json:"state"`
+	Author      User      `json:"author"`
+	SelfLink    string    `json:"self_link"`
+	Source      Reference `json:"source"`
+	Destination Reference `json:"destination"`
+	CreatedDate int64     `json:"created_date"`
+	UpdatedDate int64     `json:"updated_date"`
 }
 
-type RefPRInf struct {
+type User struct {
+	DisplayName string `json:"display_name"`
+	Email       string `json:"email"`
+}
+
+type Reference struct {
 	ID           string
 	DisplayId    string
 	LatestCommit string
@@ -132,7 +136,7 @@ type VCS interface {
 	Fetch(req VCSFetchRequest) (VCSFetchResponse, error)
 	ListRepos(args VCSListReposRequest) ([]RepositoryParams, error)
 	RetrivePRInformation(req VCSRetrivePRInformationRequest) (PRParams, error)
-	AddRoleToPR(req VCSAddRoleToPRRequest) (interface{}, error)
+	AddRoleToPR(req VCSAddRoleToPRRequest) (interface{}, error) // TODO change return to bool
 	SetStatusOfPR(req VCSSetStatusOfPRRequest) (bool, error)
 	AddComment(req VCSAddCommentToPRRequest) (bool, error)
 }

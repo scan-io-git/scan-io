@@ -1,12 +1,8 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"time"
-
-	bitbucketv1 "github.com/gfleury/go-bitbucket-v1"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
 )
@@ -36,17 +32,4 @@ func (g *VCSBitbucket) init(command string, authType string) (shared.EvnVariable
 		}
 	}
 	return variables, nil
-}
-func BBClient(VCSURL string, variables shared.EvnVariables) (*bitbucketv1.APIClient, context.CancelFunc) {
-	baseURL := fmt.Sprintf("https://%s/rest", VCSURL)
-	basicAuth := bitbucketv1.BasicAuth{UserName: variables.Username, Password: variables.Token}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	ctx = context.WithValue(ctx, bitbucketv1.ContextBasicAuth, basicAuth)
-
-	client := bitbucketv1.NewAPIClient(
-		ctx,
-		bitbucketv1.NewConfiguration(baseURL),
-	)
-	return client, cancel
 }
