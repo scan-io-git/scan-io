@@ -111,7 +111,7 @@ func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) ([]shared.Repo
 		Username: variables.Username,
 		Token:    variables.Token,
 	}
-	client, cancel := bitbucket.NewClient(args.VCSURL, authInfo)
+	client, cancel := bitbucket.NewClient(args.VCSURL, authInfo, g.globalConfig)
 	defer cancel()
 
 	var result []shared.RepositoryParams
@@ -146,7 +146,7 @@ func (g *VCSBitbucket) RetrivePRInformation(args shared.VCSRetrivePRInformationR
 		Username: variables.Username,
 		Token:    variables.Token,
 	}
-	client, cancel := bitbucket.NewClient(args.VCSURL, authInfo)
+	client, cancel := bitbucket.NewClient(args.VCSURL, authInfo, g.globalConfig)
 	defer cancel()
 
 	prData, err := client.GetPullRequest(args.Namespace, args.Repository, args.PullRequestId)
@@ -188,7 +188,7 @@ func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool,
 		Username: variables.Username,
 		Token:    variables.Token,
 	}
-	client, cancel := bitbucket.NewClient(args.VCSURL, authInfo)
+	client, cancel := bitbucket.NewClient(args.VCSURL, authInfo, g.globalConfig)
 	defer cancel()
 
 	g.logger.Info("Changing status of a particular PR", "PR", fmt.Sprintf("%v/%v/%v/%v", args.VCSURL, args.Namespace, args.Repository, args.PullRequestId))
@@ -217,7 +217,7 @@ func (g *VCSBitbucket) AddComment(args shared.VCSAddCommentToPRRequest) (bool, e
 		Username: variables.Username,
 		Token:    variables.Token,
 	}
-	client, cancel := bitbucket.NewClient(args.VCSURL, authInfo)
+	client, cancel := bitbucket.NewClient(args.VCSURL, authInfo, g.globalConfig)
 	defer cancel()
 
 	g.logger.Info("Commenting on a particular PR", "PR URL", fmt.Sprintf("%v/%v/%v/%v", args.VCSURL, args.Namespace, args.Repository, args.PullRequestId))

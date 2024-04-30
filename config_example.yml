@@ -17,9 +17,9 @@ logger:
 http_client:
   debug: false # default value: false
   retry_count: 5 # default value: 5
-  retry_wait_time: 1 # seconds. default value: 1
-  retry_max_wait_time: 2 # seconds. default value: 2
-  timeout: 10 # seconds. default value: 10
+  retry_wait_time: "1s" # default value: 1s
+  retry_max_wait_time: "2s" # default value: 2s
+  timeout: "10s" # default value: 10s
   tls_client_config:
     verify: true # default value: true
   proxy:

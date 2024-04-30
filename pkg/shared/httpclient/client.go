@@ -104,6 +104,7 @@ func InitializeRestyClient(logger hclog.Logger, cfg *config.Config) *resty.Clien
 func applyHttpClientConfig(httpConfig *config.HttpClient) RestyConfig {
 	var cfg RestyConfig
 
+	//TODO check time.duration values * with time.Second
 	if httpConfig != nil {
 		cfg.Debug = config.GetBoolValue(httpConfig, "Debug", defaultConfig().Debug)
 		cfg.RetryCount = config.SetThen(httpConfig.RetryCount, defaultConfig().RetryCount)
