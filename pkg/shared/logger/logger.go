@@ -2,7 +2,6 @@ package logger
 
 import (
 	"os"
-	"reflect"
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
@@ -10,13 +9,13 @@ import (
 )
 
 // NewLogger creates a new hclog.Logger instance based on the yml configuration and the provided name.
-func NewLogger(config *config.Config, name string) hclog.Logger {
-	logLevel := determineLogLevel(config)
+func NewLogger(cfg *config.Config, name string) hclog.Logger {
+	logLevel := determineLogLevel(cfg)
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:            name,
-		DisableTime:     getBoolValue(config, "DisableTime", true),
-		JSONFormat:      getBoolValue(config, "JSONFormat", false),
-		IncludeLocation: getBoolValue(config, "IncludeLocation", false),
+		DisableTime:     config.GetBoolValue(cfg, "Logger.DisableTime", true),
+		JSONFormat:      config.GetBoolValue(cfg, "Logger.JSONFormat", false),
+		IncludeLocation: config.GetBoolValue(cfg, "Logger.IncludeLocation", false),
 		Output:          os.Stdout,
 		Level:           logLevel,
 	})
@@ -25,27 +24,11 @@ func NewLogger(config *config.Config, name string) hclog.Logger {
 
 // determineLogLevel return a log level which is determined first by an environment variable, and if not set, by the configuration provided.
 // If neither configuration nor environment variable specifies a log level, it defaults to INFO.
-func determineLogLevel(config *config.Config) hclog.Level {
+func determineLogLevel(cfg *config.Config) hclog.Level {
 	if os.Getenv("SCANIO_LOG_LEVEL") != "" {
 		return getLogLevel(strings.ToUpper(os.Getenv("SCANIO_LOG_LEVEL")))
 	}
-	return getLogLevel(strings.ToUpper(config.Logger.Level))
-}
-
-// getBoolValue retrieves a boolean value based on the specified field from the LoggerConfig struct.
-// It uses the provided defaultValue if the specific boolean field is not explicitly set.
-func getBoolValue(config *config.Config, field string, defaultValue bool) bool {
-	if config == nil {
-		return defaultValue
-	}
-
-	val := reflect.ValueOf(config.Logger)
-	valueField := val.FieldByName(field)
-
-	if valueField.IsValid() && !valueField.IsNil() {
-		return valueField.Elem().Bool()
-	}
-	return defaultValue
+	return getLogLevel(strings.ToUpper(cfg.Logger.Level))
 }
 
 // getLogLevel converts a string level to hclog.Level.
@@ -62,8 +45,9 @@ func getLogLevel(levelStr string) hclog.Level {
 	case "ERROR":
 		return hclog.Error
 	default:
-		hclog.New(&hclog.LoggerOptions{Level: hclog.Warn, DisableTime: true, Output: os.Stdout}).
-			Warn("Unrecognized log level, defaulting to INFO", "providedLevel", levelStr)
+		// TODO get rid of or change. It breaks plugins due to sending the message as an RPC message
+		// hclog.New(&hclog.LoggerOptions{Level: hclog.Warn, DisableTime: true, Output: os.Stdout}).
+		// 	Warn("Unrecognized log level, defaulting to INFO", "providedLevel", levelStr)
 		return hclog.Info
 	}
 }

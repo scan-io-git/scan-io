@@ -1,27 +1,7 @@
-# Scanio config
-
-# Bitbucket plugin config
-bitbucket_plugin:
-  bitbucket_username: ""
-  bitbucket_token: ""
-  ssh_key_password: ""
+# Scanio default config
 
 # Logger config
 logger:
-  level: info # default value: info
-  disable_time: true # default value: true
-  json_format: false # default value: false
-  include_location: false # default value: false
-
-# HttpClient config
-http_client:
-  debug: false
-  retry_count: 5
-  retry_wait_time: 1 # seconds
-  retry_max_wait_time: 2 # seconds
-  timeout: 10 # seconds
-  tls_client_config:
-    verify: true
-  proxy:
-    host: "http://127.0.0.1"
-    port: 8080
+  level: info 
+  disable_time: true 
+  json_format: false 

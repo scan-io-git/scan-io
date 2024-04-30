@@ -1,0 +1,27 @@
+# Scanio config
+
+# Bitbucket plugin config
+bitbucket_plugin:
+  bitbucket_username: "" # no default value. possible to redifine by using env variable SCANIO_BITBUCKET_USERNAME
+  bitbucket_token: "" # no default value. possible to redifine by using env variable SCANIO_BITBUCKET_TOKEN
+  ssh_key_password: "" # no default value. possible to redifine by using env variable SCANIO_BITBUCKET_SSH_KEY_PASSWORD
+
+# Logger config
+logger:
+  level: info # default value: info. possible to redifine by using env variable SCANIO_LOG_LEVEL
+  disable_time: true # default value: true
+  json_format: false # default value: false
+  include_location: false # default value: false
+
+# HttpClient config
+http_client:
+  debug: false # default value: false
+  retry_count: 5 # default value: 5
+  retry_wait_time: 1 # seconds. default value: 1
+  retry_max_wait_time: 2 # seconds. default value: 2
+  timeout: 10 # seconds. default value: 10
+  tls_client_config:
+    verify: true # default value: true
+  proxy:
+    host: "127.0.0.1" # no default value
+    port: 8080 # no default value

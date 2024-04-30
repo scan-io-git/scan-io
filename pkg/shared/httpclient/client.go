@@ -102,31 +102,20 @@ func InitializeRestyClient(logger hclog.Logger, cfg *config.Config) *resty.Clien
 
 // applyHttpClientConfig applies the HttpClient configuration or uses default values.
 func applyHttpClientConfig(httpConfig *config.HttpClient) RestyConfig {
-	config := defaultConfig()
+	var cfg RestyConfig
 
 	if httpConfig != nil {
-		if httpConfig.Debug != nil {
-			config.Debug = *httpConfig.Debug
-		}
-		if httpConfig.RetryCount != 0 {
-			config.RetryCount = httpConfig.RetryCount
-		}
-		if httpConfig.RetryWaitTime != 0 {
-			config.RetryWaitTime = httpConfig.RetryWaitTime
-		}
-		if httpConfig.RetryMaxWaitTime != 0 {
-			config.RetryMaxWaitTime = httpConfig.RetryMaxWaitTime
-		}
-		if httpConfig.Timeout != 0 {
-			config.Timeout = httpConfig.Timeout
-		}
-		if httpConfig.TlsClientConfig.Verify != nil {
-			config.TLSClientConfig.InsecureSkipVerify = !*httpConfig.TlsClientConfig.Verify
-		}
+		cfg.Debug = config.GetBoolValue(httpConfig, "Debug", defaultConfig().Debug)
+		cfg.RetryCount = config.SetThen(httpConfig.RetryCount, defaultConfig().RetryCount)
+		cfg.RetryWaitTime = config.SetThen(httpConfig.RetryWaitTime, defaultConfig().RetryWaitTime)
+		cfg.RetryMaxWaitTime = config.SetThen(httpConfig.RetryMaxWaitTime, defaultConfig().RetryMaxWaitTime)
+		cfg.Timeout = config.SetThen(httpConfig.Timeout, defaultConfig().Timeout)
+		cfg.TLSClientConfig.InsecureSkipVerify = !config.GetBoolValue(httpConfig.TlsClientConfig, "Verify", true)
+
 		if httpConfig.Proxy.Host != "" && httpConfig.Proxy.Port != "" {
-			config.Proxy = fmt.Sprintf("%s:%s", httpConfig.Proxy.Host, httpConfig.Proxy.Port)
+			cfg.Proxy = fmt.Sprintf("%s:%s", httpConfig.Proxy.Host, httpConfig.Proxy.Port)
 		}
 	}
 
-	return config
+	return cfg
 }
