@@ -62,3 +62,9 @@ __debug_bin
 
 # vagrant
 .vagrant/
+
+# test files
+*.sarif
+*.json
+snyk-to-html-report.html
+scanio-report.html
