@@ -15,12 +15,6 @@ type BaseHTTPConfig struct {
 	Proxy            string
 }
 
-// BitbucketHttpClientConfig holds additional configuration settings for the Bitbucket http client.
-type BitbucketHttpClientConfig struct {
-	BaseHTTPConfig
-	// ErrorLog hclog.Logger `json:"logger"`
-}
-
 // RestyHttpClientConfig holds additional configuration settings for the resty http client.
 type RestyHttpClientConfig struct {
 	BaseHTTPConfig
@@ -28,7 +22,7 @@ type RestyHttpClientConfig struct {
 }
 
 // General base configuration applicable to all HTTP clients.
-func defaultHttpConfig() BaseHTTPConfig {
+func DefaultHttpConfig() BaseHTTPConfig {
 	return BaseHTTPConfig{
 		RetryCount:       5,
 		RetryWaitTime:    1 * time.Second,
@@ -41,17 +35,9 @@ func defaultHttpConfig() BaseHTTPConfig {
 	}
 }
 
-// DefaultBitbucketConfig function returns a specific http config to Bitbucket
-func DefaultBitbucketConfig() BitbucketHttpClientConfig {
-	baseConfig := defaultHttpConfig()
-	return BitbucketHttpClientConfig{
-		BaseHTTPConfig: baseConfig,
-	}
-}
-
 // DefaultRestyConfig function returns a specific http config to Resty
 func DefaultRestyConfig() RestyHttpClientConfig {
-	baseConfig := defaultHttpConfig()
+	baseConfig := DefaultHttpConfig()
 	return RestyHttpClientConfig{
 		BaseHTTPConfig: baseConfig,
 		Debug:          false,
