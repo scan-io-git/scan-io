@@ -1,27 +1,26 @@
 # Scanio config
 
-# Bitbucket plugin config
+## Bitbucket plugin config
 bitbucket_plugin:
-  bitbucket_username: "" # no default value. possible to redifine by using env variable SCANIO_BITBUCKET_USERNAME
-  bitbucket_token: "" # no default value. possible to redifine by using env variable SCANIO_BITBUCKET_TOKEN
-  ssh_key_password: "" # no default value. possible to redifine by using env variable SCANIO_BITBUCKET_SSH_KEY_PASSWORD
+  bitbucket_username: "" # Default: none. Can be overridden with environment variable SCANIO_BITBUCKET_USERNAME.
+  bitbucket_token: "" # Default: none. Can be overridden with environment variable SCANIO_BITBUCKET_TOKEN.
+  ssh_key_password: "" # Default: none. Can be overridden with environment variable SCANIO_BITBUCKET_SSH_KEY_PASSWORD.
 
-# Logger config
+## Logger config
 logger:
-  level: info # default value: info. possible to redifine by using env variable SCANIO_LOG_LEVEL
-  disable_time: true # default value: true
-  json_format: false # default value: false
-  include_location: false # default value: false
+  level: info # Logging level. Default: info. Can be overridden with SCANIO_LOG_LEVEL.
+  disable_time: true # Whether to disable time in logs. Default: true.
+  json_format: false # Whether to format logs in JSON. Default: false.
+  include_location: false # Whether to include file and line number in logs. Default: false.
 
-# HttpClient config
+## HttpClient config
 http_client:
-  debug: false # default value: false
-  retry_count: 5 # default value: 5
-  retry_wait_time: "1s" # default value: 1s
-  retry_max_wait_time: "2s" # default value: 2s
-  timeout: "10s" # default value: 10s
+  retry_count: 5 # Number of retries for HTTP requests. Default: 5.
+  retry_wait_time: "1s" # Time to wait before retrying an HTTP request. Default: 1s.
+  retry_max_wait_time: "2s" # Maximum time to wait before retrying an HTTP request. Default: 2s.
+  timeout: "10s" # Time before an HTTP request times out. Default: 10s.
   tls_client_config:
-    verify: true # default value: true
+    verify: true # Whether to verify TLS certificates. Default: true.
   proxy:
-    host: "127.0.0.1" # no default value
-    port: 8080 # no default value
+    host: "127.0.0.1" # Proxy server address. Default: none. Can include scheme; defaults to http:// if unspecified.
+    port: 8080 # Proxy server port. Default: none.

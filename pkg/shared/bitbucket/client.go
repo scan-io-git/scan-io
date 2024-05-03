@@ -45,6 +45,7 @@ func NewClient(VCSURL string, auth AuthInfo, globalConfig *config.Config) (*Clie
 }
 
 // go-bitbucket-v1 dosen't implement retrying
+// TODO comments
 func setupBitbucketClientConfiguration(baseURL string, httpConfig *config.HttpClient) *bitbucketv1.Configuration {
 	// Create a retryable client
 	retryClient := retryablehttp.NewClient()
@@ -56,17 +57,21 @@ func setupBitbucketClientConfiguration(baseURL string, httpConfig *config.HttpCl
 	standardClient := retryClient.StandardClient()
 	standardClient.Timeout = config.SetThen(httpConfig.Timeout, config.DefaultHttpConfig().Timeout)
 
+	// TODO use default value form default configuration
 	var proxyFunc func(*http.Request) (*url.URL, error)
-	if httpConfig.Proxy.Host != "" && httpConfig.Proxy.Port != "" {
-		proxyURL, err := url.Parse(fmt.Sprintf("%s:%s", httpConfig.Proxy.Host, httpConfig.Proxy.Port))
-		if err == nil {
-			proxyFunc = http.ProxyURL(proxyURL)
-		}
+	if httpConfig.Proxy.Host != "" && httpConfig.Proxy.Port != 0 {
+		// Proxy value is already validated. No need to handle an error
+		proxyURL, _ := url.Parse(fmt.Sprintf("%s:%v", httpConfig.Proxy.Host, httpConfig.Proxy.Port))
+		proxyFunc = http.ProxyURL(proxyURL)
 	}
 
 	tr := &http.Transport{
-		Proxy:           proxyFunc,
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: !config.GetBoolValue(httpConfig.TlsClientConfig, "Verify", true)},
+		Proxy: proxyFunc,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: !config.GetBoolValue(
+				httpConfig.TlsClientConfig, "Verify", config.DefaultHttpConfig().TLSClientConfig.InsecureSkipVerify,
+			),
+		},
 	}
 	standardClient.Transport = tr
 

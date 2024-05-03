@@ -1,6 +1,6 @@
 # Scanio default config
 
-# Logger config
+## Logger config
 logger:
   level: info 
   disable_time: true 

@@ -18,12 +18,6 @@ func NewHclogAdapter(logger hclog.Logger) resty.Logger {
 	return &HclogAdapter{logger: logger}
 }
 
-// // Write implements the io.Writer interface which is required by log.Logger.
-// func (a *HclogAdapter) Write(p []byte) (n int, err error) {
-// 	a.logger.Info(string(p))
-// 	return len(p), nil
-// }
-
 // Errorf logs a message at error level.
 func (a *HclogAdapter) Errorf(format string, v ...interface{}) {
 	a.logger.Error(fmt.Sprintf(format, v...))
@@ -50,7 +44,7 @@ func SetLoggerForResty(client *resty.Client, logger hclog.Logger) {
 }
 
 // InitializeRestyClient initializes and configures a resty client based on the provided configuration.
-func InitializeRestyClient(logger hclog.Logger, cfg *config.Config) *resty.Client {
+func InitializeRestyClient(logger hclog.Logger, cfg *config.Config) (*resty.Client, error) {
 	client := resty.New()
 	if logger != nil {
 		SetLoggerForResty(client, logger)
@@ -58,34 +52,38 @@ func InitializeRestyClient(logger hclog.Logger, cfg *config.Config) *resty.Clien
 
 	// Apply the configuration settings from the config file or use defaults
 	restyConfig := applyHttpClientConfig(&cfg.HttpClient)
+
 	client.
 		SetDebug(restyConfig.Debug).
 		SetRetryCount(restyConfig.RetryCount).
 		SetRetryWaitTime(restyConfig.RetryWaitTime).
 		SetRetryMaxWaitTime(restyConfig.RetryMaxWaitTime).
 		SetTimeout(restyConfig.Timeout).
-		SetTLSClientConfig(restyConfig.TLSClientConfig).
-		SetProxy(restyConfig.Proxy)
+		SetTLSClientConfig(restyConfig.TLSClientConfig)
 
-	return client
+	if restyConfig.Proxy != "" {
+		client.SetProxy(restyConfig.Proxy)
+	}
+
+	return client, nil
 }
 
 // applyHttpClientConfig applies the HttpClient configuration or uses default values.
 func applyHttpClientConfig(httpConfig *config.HttpClient) config.RestyHttpClientConfig {
-	var cfg config.RestyHttpClientConfig
+	defaultCfg := config.DefaultRestyConfig()
+	cfg := defaultCfg
 
-	//TODO check time.duration values * with time.Second
-	if httpConfig != nil {
-		cfg.Debug = config.GetBoolValue(httpConfig, "Debug", config.DefaultRestyConfig().Debug)
-		cfg.RetryCount = config.SetThen(httpConfig.RetryCount, config.DefaultRestyConfig().RetryCount)
-		cfg.RetryWaitTime = config.SetThen(httpConfig.RetryWaitTime, config.DefaultRestyConfig().RetryWaitTime)
-		cfg.RetryMaxWaitTime = config.SetThen(httpConfig.RetryMaxWaitTime, config.DefaultRestyConfig().RetryMaxWaitTime)
-		cfg.Timeout = config.SetThen(httpConfig.Timeout, config.DefaultRestyConfig().Timeout)
-		cfg.TLSClientConfig.InsecureSkipVerify = !config.GetBoolValue(httpConfig.TlsClientConfig, "Verify", true)
+	cfg.Debug = config.GetBoolValue(httpConfig, "Debug", defaultCfg.Debug)
+	cfg.RetryCount = config.SetThen(httpConfig.RetryCount, defaultCfg.RetryCount)
+	cfg.RetryWaitTime = config.SetThen(httpConfig.RetryWaitTime, defaultCfg.RetryWaitTime)
+	cfg.RetryMaxWaitTime = config.SetThen(httpConfig.RetryMaxWaitTime, defaultCfg.RetryMaxWaitTime)
+	cfg.Timeout = config.SetThen(httpConfig.Timeout, defaultCfg.Timeout)
+	cfg.TLSClientConfig.InsecureSkipVerify = !config.GetBoolValue(
+		httpConfig.TlsClientConfig, "Verify", defaultCfg.TLSClientConfig.InsecureSkipVerify)
 
-		if httpConfig.Proxy.Host != "" && httpConfig.Proxy.Port != "" {
-			cfg.Proxy = fmt.Sprintf("%s:%s", httpConfig.Proxy.Host, httpConfig.Proxy.Port)
-		}
+	// TODO use default value from default config
+	if httpConfig.Proxy.Host != "" && httpConfig.Proxy.Port != 0 {
+		cfg.Proxy = fmt.Sprintf("%s:%v", httpConfig.Proxy.Host, httpConfig.Proxy.Port)
 	}
 
 	return cfg

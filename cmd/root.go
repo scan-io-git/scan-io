@@ -44,7 +44,11 @@ func initConfig() {
 	}
 	AppConfig, err = config.LoadConfig(cfgFile)
 	if err != nil {
-		fmt.Println("initializing config file function is crashed - %v", err)
+		fmt.Printf("initializing config file function is crashed - %v \n", err)
+		os.Exit(1)
+	}
+	if err := config.ValidateConfig(AppConfig); err != nil {
+		fmt.Println(err)
 		os.Exit(1)
 	}
 }

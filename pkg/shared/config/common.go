@@ -29,13 +29,14 @@ func DefaultHttpConfig() BaseHTTPConfig {
 		RetryMaxWaitTime: 2 * time.Second,
 		Timeout:          10 * time.Second,
 		TLSClientConfig: &tls.Config{
-			MinVersion: tls.VersionTLS12, // Enforce a minimum TLS version
+			MinVersion:         tls.VersionTLS12, // Enforce a minimum TLS version
+			InsecureSkipVerify: false,
 		},
 		Proxy: "",
 	}
 }
 
-// DefaultRestyConfig function returns a specific http config to Resty
+// DefaultRestyConfig function returns a specific http config to Resty.
 func DefaultRestyConfig() RestyHttpClientConfig {
 	baseConfig := DefaultHttpConfig()
 	return RestyHttpClientConfig{

@@ -136,7 +136,7 @@ type VCS interface {
 	Fetch(req VCSFetchRequest) (VCSFetchResponse, error)
 	ListRepos(args VCSListReposRequest) ([]RepositoryParams, error)
 	RetrivePRInformation(req VCSRetrivePRInformationRequest) (PRParams, error)
-	AddRoleToPR(req VCSAddRoleToPRRequest) (interface{}, error) // TODO change return to bool
+	AddRoleToPR(req VCSAddRoleToPRRequest) (bool, error) // TODO change return to bool
 	SetStatusOfPR(req VCSSetStatusOfPRRequest) (bool, error)
 	AddComment(req VCSAddCommentToPRRequest) (bool, error)
 }
@@ -188,16 +188,16 @@ func (g *VCSRPCClient) RetrivePRInformation(req VCSRetrivePRInformationRequest) 
 	return resp.PR, nil
 }
 
-func (g *VCSRPCClient) AddRoleToPR(req VCSAddRoleToPRRequest) (interface{}, error) {
+func (g *VCSRPCClient) AddRoleToPR(req VCSAddRoleToPRRequest) (bool, error) {
 	var resp VCSRetrivePRInformationResponse
 
 	err := g.client.Call("Plugin.AddRoleToPR", req, &resp)
 
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
-	return nil, nil
+	return true, nil
 }
 
 func (g *VCSRPCClient) SetStatusOfPR(req VCSSetStatusOfPRRequest) (bool, error) {

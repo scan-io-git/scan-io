@@ -111,6 +111,7 @@ func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) ([]shared.Repo
 		Username: variables.Username,
 		Token:    variables.Token,
 	}
+
 	client, cancel := bitbucket.NewClient(args.VCSURL, authInfo, g.globalConfig)
 	defer cancel()
 
@@ -160,18 +161,22 @@ func (g *VCSBitbucket) RetrivePRInformation(args shared.VCSRetrivePRInformationR
 }
 
 // AddRoleToPR handles adding specified role to PR based on the provided VCSAddRoleToPRRequest.
-func (g *VCSBitbucket) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (interface{}, error) {
+func (g *VCSBitbucket) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error) {
 	g.logger.Debug("Starting to add a reviewer to a PR", "args", args)
 
-	client := httpclient.InitializeRestyClient(g.logger, g.globalConfig) // TODO implement env variables defining without init func
+	client, err := httpclient.InitializeRestyClient(g.logger, g.globalConfig) // TODO implement env variables defining without init func
+	if err != nil {
+		g.logger.Error("Failed to initialize http client", "error", err)
+		return false, err
+	}
 
 	if err := bitbucket.AddReviewerToPR(client, args.VCSURL, args.Namespace, args.Repository, args.PullRequestId, args.Login, args.Role, g.globalConfig.BitbucketPlugin); err != nil {
 		g.logger.Error("Failed to add role to PR", "error", err)
-		return nil, err
+		return false, err
 	}
 
 	g.logger.Info("User successfully added to the PR", "user", args.Login, "role", args.Role)
-	return nil, nil
+	return true, nil
 }
 
 // SetStatusOfPR handles setting a status of PR based on the provided VCSSetStatusOfPRRequest.

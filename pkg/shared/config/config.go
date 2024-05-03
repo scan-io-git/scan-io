@@ -32,7 +32,6 @@ type Logger struct {
 
 // HttpClient configures settings for the HTTP client used within the application.
 type HttpClient struct {
-	Debug            *bool           `yaml:"debug"`               // Boolean flag to enable detailed logging of HTTP requests.
 	RetryCount       int             `yaml:"retry_count"`         // The number of times to retry an HTTP request before failing.
 	RetryWaitTime    time.Duration   `yaml:"retry_wait_time"`     // The duration to wait before the first retry of a failed HTTP request.
 	RetryMaxWaitTime time.Duration   `yaml:"retry_max_wait_time"` // The maximum duration to wait before subsequent retries of a failed HTTP request.
@@ -49,7 +48,7 @@ type TlsClientConfig struct {
 // Proxy defines the parameters to set up a proxy settings for HTTP connections.
 type Proxy struct {
 	Host string `yaml:"host"` // Hostname or IP address of the proxy server with a scheme or without.
-	Port string `yaml:"port"` // Port number of the proxy server.
+	Port int    `yaml:"port"` // Port number of the proxy server.
 }
 
 // LoadConfig reads a YAML config file and decodes it into a Config struct.
