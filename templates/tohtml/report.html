@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Language" content="en-us">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>{{ .Title }}</title>
+  <base target="_blank">
+  <!-- inline css goes here -->
+  <style type="text/css">
+    .main-body {
+      margin: 0 auto;
+      padding: 20px;
+      max-width: 1200px;
+      position: relative;
+    }
+
+    .issue-card {
+      left: 0;
+      /* position: absolute; */
+      top: 10px;
+      padding-top: 20px;
+      padding-left: 10px;
+      padding-right: 10px;
+      border-radius: 0 0.25rem 0.25rem 0;
+      border: 2px solid #767676;
+    }
+  </style>
+
+</head>
+
+<body>
+  <!-- header goes here -->
+  <div class="main-container">
+    {{range .Report.Runs}}
+    <div class="main-body">
+
+      <div class="main-body-summary">
+        There are {{len .Results}} issues.
+      </div>
+
+      <div class="issue-cards">
+        {{range .Results}}
+        <div class="issue-card">
+          <div class="issue-card-header">
+            <h2 class="issue-card-title">{{.RuleID}}</h2>
+          </div>
+          <div class="issue-card-body">
+            Location: {{with $location := index .Locations 0}}{{$location.PhysicalLocation.ArtifactLocation.URI}} (line : {{$location.PhysicalLocation.Region.StartLine}}){{end}}<br><br>
+          </div>
+        </div>
+        {{end}}
+      </div>
+    
+    </div>
+    {{end}}
+  </div>
+</body>
