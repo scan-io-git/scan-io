@@ -14,11 +14,11 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
+
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/bitbucket"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
-	"github.com/scan-io-git/scan-io/pkg/shared/httpclient"
 )
 
 type VCSBitbucket struct {
@@ -27,14 +27,15 @@ type VCSBitbucket struct {
 }
 
 // toRepositoryParams converts a slice of internal Repository type to a slice of external RepositoryParams type.
-func toRepositoryParams(repos []bitbucket.Repository) []shared.RepositoryParams {
+func toRepositoryParams(repos *[]bitbucket.Repository) []shared.RepositoryParams {
 	var repoParams []shared.RepositoryParams
-	for _, repo := range repos {
+	for _, repo := range *repos {
+		httpLink, sshLink := bitbucket.ExtractCloneLinks(repo.Links.Clone)
 		repoParams = append(repoParams, shared.RepositoryParams{
 			Namespace: repo.Project.Name,
 			RepoName:  repo.Name,
-			HttpLink:  repo.HTTPLink,
-			SshLink:   repo.SSHLink,
+			HttpLink:  httpLink,
+			SshLink:   sshLink,
 		})
 	}
 	return repoParams
@@ -47,17 +48,17 @@ func convertToPRParams(pr *bitbucket.PullRequest) shared.PRParams {
 		Title:       pr.Title,
 		Description: pr.Description,
 		State:       pr.State,
-		Author:      shared.User{DisplayName: pr.Author.DisplayName, Email: pr.Author.Email},
-		SelfLink:    pr.SelfLink,
+		Author:      shared.User{DisplayName: pr.Author.User.DisplayName, Email: pr.Author.User.EmailAddress},
+		SelfLink:    pr.Links.Self[0].Href,
 		Source: shared.Reference{
-			ID:           pr.Source.ID,
-			DisplayId:    pr.Source.DisplayId,
-			LatestCommit: pr.Source.LatestCommit,
+			ID:           pr.FromReference.ID,
+			DisplayId:    pr.FromReference.DisplayID,
+			LatestCommit: pr.FromReference.LatestCommit,
 		},
 		Destination: shared.Reference{
-			ID:           pr.Destination.ID,
-			DisplayId:    pr.Destination.DisplayId,
-			LatestCommit: pr.Destination.LatestCommit,
+			ID:           pr.ToReference.ID,
+			DisplayId:    pr.ToReference.DisplayID,
+			LatestCommit: pr.ToReference.LatestCommit,
 		},
 		CreatedDate: pr.CreatedDate,
 		UpdatedDate: pr.UpdatedDate,
@@ -66,9 +67,9 @@ func convertToPRParams(pr *bitbucket.PullRequest) shared.PRParams {
 
 // listRepositoriesForProject fetches repositories for a given project.
 func (g *VCSBitbucket) listRepositoriesForProject(client *bitbucket.Client, project string) ([]shared.RepositoryParams, error) {
-	repositories, err := client.GetProject(project)
+	repositories, err := client.Repositories.List(project)
 	if err != nil {
-		g.logger.Error("Failed to retrieve repository for the project", "project", project, "error", err)
+		g.logger.Error("failed to retrieve repository for the project", "project", project, "error", err)
 		return nil, err
 	}
 	return toRepositoryParams(repositories), nil
@@ -77,22 +78,25 @@ func (g *VCSBitbucket) listRepositoriesForProject(client *bitbucket.Client, proj
 // listReposForAllProjects fetches repositories for all projects.
 func (g *VCSBitbucket) listRepositoriesForAllProjects(client *bitbucket.Client) ([]shared.RepositoryParams, error) {
 	// Fetch all projects from the Bitbucket API
-	projects, err := client.GetProjects()
+	projects, err := client.Projects.List()
 	if err != nil {
-		g.logger.Error("Failed to list all projects", "error", err)
+		g.logger.Error("failed to list all projects", "error", err)
 		return nil, err
 	}
 
 	var result []shared.RepositoryParams
-	for _, project := range projects {
-		repos, err := g.listRepositoriesForProject(client, project.Name)
+	for _, project := range *projects {
+		repos, err := g.listRepositoriesForProject(client, project.Key)
 		if err != nil {
 			g.logger.Error("Failed to list repositories for project. Continue...", "project", project.Key, "error", err)
-			return nil, err
+			continue
 		}
 		result = append(result, repos...)
 	}
 
+	if len(result) == 0 {
+		return nil, fmt.Errorf("list of repositories is empty")
+	}
 	return result, nil
 }
 
@@ -112,8 +116,11 @@ func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) ([]shared.Repo
 		Token:    variables.Token,
 	}
 
-	client, cancel := bitbucket.NewClient(args.VCSURL, authInfo, g.globalConfig)
-	defer cancel()
+	client, err := bitbucket.New(g.logger, args.VCSURL, authInfo, g.globalConfig)
+	if err != nil {
+		g.logger.Error("initialization bitbucket client failed", "error", err)
+		return nil, err
+	}
 
 	var result []shared.RepositoryParams
 	if len(args.Namespace) > 0 {
@@ -147,16 +154,18 @@ func (g *VCSBitbucket) RetrivePRInformation(args shared.VCSRetrivePRInformationR
 		Username: variables.Username,
 		Token:    variables.Token,
 	}
-	client, cancel := bitbucket.NewClient(args.VCSURL, authInfo, g.globalConfig)
-	defer cancel()
+	client, err := bitbucket.New(g.logger, args.VCSURL, authInfo, g.globalConfig)
+	if err != nil {
+		g.logger.Error("initialization bitbucket client failed", "error", err)
+		return shared.PRParams{}, err
+	}
 
-	prData, err := client.GetPullRequest(args.Namespace, args.Repository, args.PullRequestId)
+	prData, err := client.PullRequests.Get(args.Namespace, args.Repository, args.PullRequestId)
 	if err != nil {
 		g.logger.Error("Failed to retrieve information about the PR", "PRID", args.PullRequestId, "error", err)
 		return shared.PRParams{}, err
 	}
 
-	g.logger.Info("Information about particular PR is retrived", "PR", prData.SelfLink)
 	return convertToPRParams(prData), nil
 }
 
@@ -164,13 +173,30 @@ func (g *VCSBitbucket) RetrivePRInformation(args shared.VCSRetrivePRInformationR
 func (g *VCSBitbucket) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error) {
 	g.logger.Debug("Starting to add a reviewer to a PR", "args", args)
 
-	client, err := httpclient.InitializeRestyClient(g.logger, g.globalConfig) // TODO implement env variables defining without init func
+	variables, err := g.init("list", "")
 	if err != nil {
-		g.logger.Error("Failed to initialize http client", "error", err)
+		g.logger.Error("An init stage of an all repositories listing function is failed", "error", err)
 		return false, err
 	}
 
-	if err := bitbucket.AddReviewerToPR(client, args.VCSURL, args.Namespace, args.Repository, args.PullRequestId, args.Login, args.Role, g.globalConfig.BitbucketPlugin); err != nil {
+	authInfo := bitbucket.AuthInfo{
+		Username: variables.Username,
+		Token:    variables.Token,
+	}
+
+	client, err := bitbucket.New(g.logger, args.VCSURL, authInfo, g.globalConfig)
+	if err != nil {
+		g.logger.Error("initialization bitbucket client failed", "error", err)
+		return false, err
+	}
+
+	prData, err := client.PullRequests.Get(args.Namespace, args.Repository, args.PullRequestId)
+	if err != nil {
+		g.logger.Error("Failed to retrieve information about the PR", "PRID", args.PullRequestId, "error", err)
+		return false, err
+	}
+
+	if _, err := prData.AddRole(args.Login, args.Role); err != nil {
 		g.logger.Error("Failed to add role to PR", "error", err)
 		return false, err
 	}
@@ -193,18 +219,27 @@ func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool,
 		Username: variables.Username,
 		Token:    variables.Token,
 	}
-	client, cancel := bitbucket.NewClient(args.VCSURL, authInfo, g.globalConfig)
-	defer cancel()
 
+	client, err := bitbucket.New(g.logger, args.VCSURL, authInfo, g.globalConfig)
+	if err != nil {
+		g.logger.Error("initialization bitbucket client failed", "error", err)
+		return false, err
+	}
+
+	prData, err := client.PullRequests.Get(args.Namespace, args.Repository, args.PullRequestId)
+	if err != nil {
+		g.logger.Error("Failed to retrieve information about the PR", "PRID", args.PullRequestId, "error", err)
+		return false, err
+	}
 	g.logger.Info("Changing status of a particular PR", "PR", fmt.Sprintf("%v/%v/%v/%v", args.VCSURL, args.Namespace, args.Repository, args.PullRequestId))
 
-	participant, err := client.SetPRStatus(args.Namespace, args.Repository, args.PullRequestId, args.Login, args.Status)
+	user, err := prData.SetStatus(args.Status, args.Login)
 	if err != nil {
 		g.logger.Error("Failed to set the status of the PR", "error", err)
 		return false, err
 	}
 
-	g.logger.Info("PR successfully moved to status", "status", args.Status, "PR_id", args.PullRequestId, "last_commit", participant.LastReviewedCommit)
+	g.logger.Info("PR successfully moved to status", "status", args.Status, "PR_id", args.PullRequestId, "last_commit", user.Author.LastReviewedCommit)
 	return true, nil
 }
 
@@ -222,11 +257,21 @@ func (g *VCSBitbucket) AddComment(args shared.VCSAddCommentToPRRequest) (bool, e
 		Username: variables.Username,
 		Token:    variables.Token,
 	}
-	client, cancel := bitbucket.NewClient(args.VCSURL, authInfo, g.globalConfig)
-	defer cancel()
 
+	client, err := bitbucket.New(g.logger, args.VCSURL, authInfo, g.globalConfig)
+	if err != nil {
+		g.logger.Error("initialization bitbucket client failed", "error", err)
+		return false, err
+	}
+
+	prData, err := client.PullRequests.Get(args.Namespace, args.Repository, args.PullRequestId)
+	if err != nil {
+		g.logger.Error("Failed to retrieve information about the PR", "PRID", args.PullRequestId, "error", err)
+		return false, err
+	}
 	g.logger.Info("Commenting on a particular PR", "PR URL", fmt.Sprintf("%v/%v/%v/%v", args.VCSURL, args.Namespace, args.Repository, args.PullRequestId))
-	if err := client.AddCommentToPR(args.Namespace, args.Repository, args.PullRequestId, args.Comment); err != nil {
+
+	if _, err := prData.AddComment(args.Comment); err != nil {
 		g.logger.Error("Failed to add comment to PR", "error", err)
 		return false, err
 	}

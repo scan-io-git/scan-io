@@ -26,8 +26,8 @@ func DefaultHttpConfig() BaseHTTPConfig {
 	return BaseHTTPConfig{
 		RetryCount:       5,
 		RetryWaitTime:    1 * time.Second,
-		RetryMaxWaitTime: 2 * time.Second,
-		Timeout:          10 * time.Second,
+		RetryMaxWaitTime: 5 * time.Second,
+		Timeout:          30 * time.Second,
 		TLSClientConfig: &tls.Config{
 			MinVersion:         tls.VersionTLS12, // Enforce a minimum TLS version
 			InsecureSkipVerify: false,

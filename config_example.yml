@@ -17,8 +17,8 @@ logger:
 http_client:
   retry_count: 5 # Number of retries for HTTP requests. Default: 5.
   retry_wait_time: "1s" # Time to wait before retrying an HTTP request. Default: 1s.
-  retry_max_wait_time: "2s" # Maximum time to wait before retrying an HTTP request. Default: 2s.
-  timeout: "10s" # Time before an HTTP request times out. Default: 10s.
+  retry_max_wait_time: "2s" # Maximum time to wait before retrying an HTTP request. Default: 5s.
+  timeout: "10s" # Time before an HTTP request times out. Default: 30s.
   tls_client_config:
     verify: true # Whether to verify TLS certificates. Default: true.
   proxy:

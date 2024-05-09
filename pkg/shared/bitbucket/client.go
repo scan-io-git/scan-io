@@ -1,84 +1,130 @@
 package bitbucket
 
 import (
-	"context"
-	"crypto/tls"
+	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/url"
-	"time"
+	"strings"
 
-	bitbucketv1 "github.com/gfleury/go-bitbucket-v1"
+	"github.com/go-resty/resty/v2"
+	"github.com/hashicorp/go-hclog"
+
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
-
-	"github.com/hashicorp/go-retryablehttp"
+	"github.com/scan-io-git/scan-io/pkg/shared/httpclient"
 )
 
-type Client struct {
-	APIClient *bitbucketv1.APIClient
+// service wraps a client to access different services.
+type service struct {
+	client *Client
 }
 
+// Client configures and manages access to the API, holding service implementations and an HTTP client.
+type Client struct {
+	HTTPClient   *httpclient.Client
+	BaseURL      string
+	Logger       hclog.Logger
+	Repositories RepositoriesService
+	Projects     ProjectsService
+	PullRequests PullRequestsService
+}
+
+// RepositoriesService defines the interface for repository-related operations.
+type RepositoriesService interface {
+	List(project string) (*[]Repository, error)
+}
+
+// ProjectsService defines the interface for project-related operations.
+type ProjectsService interface {
+	List() (*[]Project, error)
+}
+
+// PullRequestsService defines the interface for pull request-related operations.
+type PullRequestsService interface {
+	Get(project, repository string, id int) (*PullRequest, error)
+}
+
+// AuthInfo holds authentication details for Bitbucket access.
 type AuthInfo struct {
 	Username string // Username for BB access
 	Token    string // Token for basic authentication
 }
 
-// NewClient initializes a new Bitbucket v1 API client
-func NewClient(VCSURL string, auth AuthInfo, globalConfig *config.Config) (*Client, context.CancelFunc) {
-	baseURL := fmt.Sprintf("https://%s/rest", VCSURL)
-
-	cfg := setupBitbucketClientConfiguration(baseURL, &globalConfig.HttpClient)
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	cfg.AddDefaultHeader("Content-Type", "application/json")
-	cfg.AddDefaultHeader("Accept", "application/json")
-	basicAuth := bitbucketv1.BasicAuth{
-		UserName: auth.Username,
-		Password: auth.Token,
+// resolveURL constructs the full URL by checking if the path is absolute or relative.
+func (c *Client) resolveURL(path string) string {
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+		return path
 	}
-
-	ctx = context.WithValue(ctx, bitbucketv1.ContextBasicAuth, basicAuth)
-	apiClient := bitbucketv1.NewAPIClient(ctx, cfg)
-
-	return &Client{
-		APIClient: apiClient,
-	}, cancel
+	return c.BaseURL + path
 }
 
-// go-bitbucket-v1 dosen't implement retrying
-// TODO comments
-func setupBitbucketClientConfiguration(baseURL string, httpConfig *config.HttpClient) *bitbucketv1.Configuration {
-	// Create a retryable client
-	retryClient := retryablehttp.NewClient()
-	retryClient.RetryMax = config.SetThen(httpConfig.RetryCount, config.DefaultHttpConfig().RetryCount)
-	retryClient.RetryWaitMin = config.SetThen(httpConfig.RetryWaitTime, config.DefaultHttpConfig().RetryWaitTime)
-	retryClient.RetryWaitMax = config.SetThen(httpConfig.RetryMaxWaitTime, config.DefaultHttpConfig().RetryMaxWaitTime)
+// get sends a GET request using the client's base URL, path, and query parameters provided.
+func (c *Client) get(path string, queryParams map[string]string) (*resty.Response, error) {
+	fullURL := c.resolveURL(path)
+	return c.HTTPClient.RestyClient.R().
+		SetQueryParams(queryParams).
+		Get(fullURL)
+}
 
-	// Get a standard http.Client with retry logic
-	standardClient := retryClient.StandardClient()
-	standardClient.Timeout = config.SetThen(httpConfig.Timeout, config.DefaultHttpConfig().Timeout)
+// post sends a POST request using the client's base URL, path, query parameters, and body provided.
+func (c *Client) post(path string, queryParams map[string]string, body interface{}) (*resty.Response, error) {
+	fullURL := c.resolveURL(path)
+	return c.HTTPClient.RestyClient.R().
+		SetQueryParams(queryParams).
+		SetBody(body).
+		Post(fullURL)
+}
 
-	// TODO use default value form default configuration
-	var proxyFunc func(*http.Request) (*url.URL, error)
-	if httpConfig.Proxy.Host != "" && httpConfig.Proxy.Port != 0 {
-		// Proxy value is already validated. No need to handle an error
-		proxyURL, _ := url.Parse(fmt.Sprintf("%s:%v", httpConfig.Proxy.Host, httpConfig.Proxy.Port))
-		proxyFunc = http.ProxyURL(proxyURL)
+// put sends a PUT request using the client's base URL, path, query parameters, and body provided.
+func (c *Client) put(path string, queryParams map[string]string, body interface{}) (*resty.Response, error) {
+	fullURL := c.resolveURL(path)
+	return c.HTTPClient.RestyClient.R().
+		SetQueryParams(queryParams).
+		SetBody(body).
+		Put(fullURL)
+}
+
+// unmarshalResponse is a generic function to parse JSON body from response into the provided type.
+// It also checks the HTTP response code and API error messages.
+func unmarshalResponse[T any](resp *resty.Response, out *T) error {
+	if resp.StatusCode() >= 400 {
+		var errorList ErrorList
+
+		if err := json.Unmarshal(resp.Body(), &errorList); err == nil && len(errorList.Errors) > 0 {
+			return fmt.Errorf("API error(s) occurred with status code %d: %+v", resp.StatusCode(), errorList.Errors)
+		}
+		// If no detailed errors are provided or JSON unmarshalling fails, return a generic error with the status code
+		return fmt.Errorf("API request failed with status code %d and response: %s", resp.StatusCode(), resp.String())
 	}
 
-	tr := &http.Transport{
-		Proxy: proxyFunc,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: !config.GetBoolValue(
-				httpConfig.TlsClientConfig, "Verify", config.DefaultHttpConfig().TLSClientConfig.InsecureSkipVerify,
-			),
-		},
+	// No API errors, proceed to unmarshal the expected content
+	if err := json.Unmarshal(resp.Body(), out); err != nil {
+		return fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-	standardClient.Transport = tr
+	return nil
+}
 
-	// Setup configuration for go-bitbucket-v1 with the retryable http client
-	cfg := bitbucketv1.NewConfiguration(baseURL, func(cfg *bitbucketv1.Configuration) {
-		cfg.HTTPClient = standardClient
-	})
+// New initializes a new API client with configured services.
+func New(logger hclog.Logger, domain string, auth AuthInfo, globalConfig *config.Config) (*Client, error) {
+	httpClient, err := httpclient.New(logger, globalConfig)
+	if err != nil {
+		logger.Error("failed to initialize http client", "error", err)
+		return nil, err
+	}
 
-	return cfg
+	httpClient.RestyClient.
+		SetBasicAuth(auth.Username, auth.Token).
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Accept", "application/json")
+
+	client := &Client{
+		HTTPClient: httpClient,
+		BaseURL:    fmt.Sprintf("https://%s/rest/api/1.0", domain),
+		Logger:     logger,
+	}
+
+	// Initialize services
+	client.Repositories = NewRepositoriesService(client)
+	client.Projects = NewProjectsService(client)
+	client.PullRequests = NewPullRequestsService(client)
+
+	return client, nil
 }

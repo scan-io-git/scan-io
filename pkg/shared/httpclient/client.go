@@ -5,8 +5,14 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	"github.com/hashicorp/go-hclog"
+
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
+
+// Resty client structure.
+type Client struct {
+	RestyClient *resty.Client
+}
 
 // HclogAdapter adapts an hclog.Logger to be compatible with the resty log.Logger interface.
 type HclogAdapter struct {
@@ -44,7 +50,7 @@ func SetLoggerForResty(client *resty.Client, logger hclog.Logger) {
 }
 
 // InitializeRestyClient initializes and configures a resty client based on the provided configuration.
-func InitializeRestyClient(logger hclog.Logger, cfg *config.Config) (*resty.Client, error) {
+func New(logger hclog.Logger, cfg *config.Config) (*Client, error) {
 	client := resty.New()
 	if logger != nil {
 		SetLoggerForResty(client, logger)
@@ -65,7 +71,7 @@ func InitializeRestyClient(logger hclog.Logger, cfg *config.Config) (*resty.Clie
 		client.SetProxy(restyConfig.Proxy)
 	}
 
-	return client, nil
+	return &Client{client}, nil
 }
 
 // applyHttpClientConfig applies the HttpClient configuration or uses default values.
@@ -73,6 +79,7 @@ func applyHttpClientConfig(httpConfig *config.HttpClient) config.RestyHttpClient
 	defaultCfg := config.DefaultRestyConfig()
 	cfg := defaultCfg
 
+	// TODO add handling debug via the logger config
 	cfg.Debug = config.GetBoolValue(httpConfig, "Debug", defaultCfg.Debug)
 	cfg.RetryCount = config.SetThen(httpConfig.RetryCount, defaultCfg.RetryCount)
 	cfg.RetryWaitTime = config.SetThen(httpConfig.RetryWaitTime, defaultCfg.RetryWaitTime)
