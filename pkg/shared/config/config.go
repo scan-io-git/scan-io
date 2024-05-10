@@ -13,6 +13,7 @@ type Config struct {
 	BitbucketPlugin BitbucketPlugin `yaml:"bitbucket_plugin"` // Bitbucket plugin configuration settings.
 	Logger          Logger          `yaml:"logger"`           // Logger configuration settings.
 	HttpClient      HttpClient      `yaml:"http_client"`      // HTTP client configuration settings.
+	GitClient       GitClient       `yaml:"git_client"`       // Git client configuration settings.
 }
 
 // BitbucketPlugin holds configuration specific to the Bitbucket plugin.
@@ -49,6 +50,12 @@ type TlsClientConfig struct {
 type Proxy struct {
 	Host string `yaml:"host"` // Hostname or IP address of the proxy server with a scheme or without.
 	Port int    `yaml:"port"` // Port number of the proxy server.
+}
+
+type GitClient struct {
+	Depth       int   `yaml:"depth"`        // Level of depth for cloning and fetching.
+	InsecureTls *bool `yaml:"insecure_tls"` // Flag to skip SSL certificates if true.
+	// CABundle
 }
 
 // LoadConfig reads a YAML config file and decodes it into a Config struct.

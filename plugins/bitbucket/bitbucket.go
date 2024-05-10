@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"github.com/hashicorp/go-plugin"
 
 	"github.com/scan-io-git/scan-io/internal/bitbucket"
+	"github.com/scan-io-git/scan-io/internal/git"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
@@ -392,26 +394,37 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest, variables *shared.E
 }
 
 func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
-	var (
-		result shared.VCSFetchResponse
-		path   string
-	)
+	var result shared.VCSFetchResponse
+
+	// TODO check repo existence? to call (repo *Repository) RepositoryClone()
+
+	// TODO context
+	timeout := time.Duration(600 * time.Second) //g.config
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
 	variables, err := g.init("fetch", args.AuthType)
 	if err != nil {
-		g.logger.Error("An init function for a fetching function is failed", "error", err)
+		g.logger.Error("failed to initialize for fetching", "error", err)
 		return result, err
 	}
-	if args.Mode == "PRscan" {
-		path, err = g.fetchPR(&args, &variables)
+
+	switch args.Mode {
+	case "PRscan":
+		// Fetching for pull request scanning
+		path, err := g.fetchPR(&args, &variables)
 		if err != nil {
+			g.logger.Error("failed to fetch pull request", "error", err)
 			return result, err
 		}
 		result.Path = path
-	} else {
-		path, err = shared.GitClone(args, variables, g.logger)
+
+	default:
+		// Default fetching operation
+		// path, err := shared.GitClone(ctx, args, variables, g.logger)
+		path, err := git.CloneRepository(ctx, g.logger, g.globalConfig, args, variables)
 		if err != nil {
-			g.logger.Error("The fetching function is failed", "error", err)
+			g.logger.Error("failed to clone repository", "error", err)
 			return result, err
 		}
 		result.Path = path

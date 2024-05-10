@@ -55,6 +55,18 @@ func WriteJsonFile(outputFile string, logger hclog.Logger, data ...CustomData) {
 
 }
 
+// expandPath resolves paths that include a tilde (~) to the user's home directory.
+func ExpandPath(path string) (string, error) {
+	if strings.HasPrefix(path, "~/") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(homeDir, path[2:]), nil
+	}
+	return path, nil
+}
+
 func getGitAuth(args *VCSFetchRequest, variables *EvnVariables, logger hclog.Logger) (transport.AuthMethod, error) {
 	var auth transport.AuthMethod
 	var err error
