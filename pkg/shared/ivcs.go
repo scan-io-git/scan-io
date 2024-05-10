@@ -4,6 +4,7 @@ import (
 	"net/rpc"
 
 	"github.com/hashicorp/go-plugin"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
 type Args interface {
@@ -132,7 +133,7 @@ type VCSRetrivePRInformationResponse struct {
 }
 
 type VCS interface {
-	Setup(configData []byte) (bool, error)
+	Setup(configData config.Config) (bool, error)
 	Fetch(req VCSFetchRequest) (VCSFetchResponse, error)
 	ListRepos(args VCSListReposRequest) ([]RepositoryParams, error)
 	RetrivePRInformation(req VCSRetrivePRInformationRequest) (PRParams, error)
@@ -143,7 +144,7 @@ type VCS interface {
 
 type VCSRPCClient struct{ client *rpc.Client }
 
-func (g *VCSRPCClient) Setup(configData []byte) (bool, error) {
+func (g *VCSRPCClient) Setup(configData config.Config) (bool, error) {
 	var resp bool
 	err := g.client.Call("Plugin.Setup", configData, &resp)
 	if err != nil {
@@ -228,7 +229,7 @@ type VCSRPCServer struct {
 	Impl VCS
 }
 
-func (s *VCSRPCServer) Setup(configData []byte, resp *bool) error {
+func (s *VCSRPCServer) Setup(configData config.Config, resp *bool) error {
 	var err error
 	*resp, err = s.Impl.Setup(configData)
 	return err

@@ -2,7 +2,6 @@ package shared
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -74,11 +73,6 @@ func WithPlugin(cfg *config.Config, loggerName string, pluginType string, plugin
 	})
 	defer client.Kill()
 
-	cfgBytes, err := json.Marshal(cfg)
-	if err != nil {
-		log.Fatalf("Failed to serialize configuration: %v", err)
-	}
-
 	rpcClient, err := client.Client()
 	if err != nil {
 		log.Fatal(err)
@@ -100,7 +94,7 @@ func WithPlugin(cfg *config.Config, loggerName string, pluginType string, plugin
 	}
 
 	// Setup the plugin with configuration
-	if _, err := pluginInstance.Setup(cfgBytes); err != nil {
+	if _, err := pluginInstance.Setup(*cfg); err != nil {
 		logger.Error("Failed to setup plugin", "error", err)
 		return err
 	}

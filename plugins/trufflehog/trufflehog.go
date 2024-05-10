@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -79,12 +78,8 @@ func (g *ScannerTrufflehog) Scan(args shared.ScannerScanRequest) (shared.Scanner
 	return result, nil
 }
 
-func (g *ScannerTrufflehog) Setup(configData []byte) (bool, error) {
-	var cfg config.Config
-	if err := json.Unmarshal(configData, &cfg); err != nil {
-		return false, err
-	}
-	g.globalConfig = &cfg
+func (g *ScannerTrufflehog) Setup(configData config.Config) (bool, error) {
+	g.globalConfig = &configData
 	return true, nil
 }
 

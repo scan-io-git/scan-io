@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -182,12 +181,8 @@ func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse,
 	return result, nil
 }
 
-func (g *VCSGitlab) Setup(configData []byte) (bool, error) {
-	var cfg config.Config
-	if err := json.Unmarshal(configData, &cfg); err != nil {
-		return false, err
-	}
-	g.globalConfig = &cfg
+func (g *VCSGitlab) Setup(configData config.Config) (bool, error) {
+	g.globalConfig = &configData
 	return true, nil
 }
 

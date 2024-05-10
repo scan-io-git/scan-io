@@ -4,10 +4,11 @@ import (
 	"net/rpc"
 
 	"github.com/hashicorp/go-plugin"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
 type Scanner interface {
-	Setup(configData []byte) (bool, error)
+	Setup(configData config.Config) (bool, error)
 	Scan(args ScannerScanRequest) (ScannerScanResponse, error)
 }
 
@@ -32,7 +33,7 @@ type ScannerScanResponse struct {
 
 type ScannerRPCClient struct{ client *rpc.Client }
 
-func (g *ScannerRPCClient) Setup(configData []byte) (bool, error) {
+func (g *ScannerRPCClient) Setup(configData config.Config) (bool, error) {
 	var resp bool
 	err := g.client.Call("Plugin.Setup", configData, &resp)
 	if err != nil {
@@ -57,7 +58,7 @@ type ScannerRPCServer struct {
 	Impl Scanner
 }
 
-func (s *ScannerRPCServer) Setup(configData []byte, resp *bool) error {
+func (s *ScannerRPCServer) Setup(configData config.Config, resp *bool) error {
 	var err error
 	*resp, err = s.Impl.Setup(configData)
 	return err

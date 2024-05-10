@@ -1,14 +1,7 @@
 package bitbucket
 
-// Limit for Bitbucket v1 API page response
-const (
-	startElement     = "0"
-	maxLimitElements = "2000"
-	maxCommentLength = 32768
-)
-
 var (
-	changeTypes = []string{"ADD", "MODIFY"}
+	ChangeTypes = []string{"ADD", "MODIFY"}
 )
 
 // Changes represents a collection of change details within a git context.

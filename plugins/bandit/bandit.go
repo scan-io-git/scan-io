@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -65,12 +64,8 @@ func (g *ScannerBandit) Scan(args shared.ScannerScanRequest) (shared.ScannerScan
 	return result, nil
 }
 
-func (g *ScannerBandit) Setup(configData []byte) (bool, error) {
-	var cfg config.Config
-	if err := json.Unmarshal(configData, &cfg); err != nil {
-		return false, err
-	}
-	g.globalConfig = &cfg
+func (g *ScannerBandit) Setup(configData config.Config) (bool, error) {
+	g.globalConfig = &configData
 	return true, nil
 }
 

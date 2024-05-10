@@ -15,54 +15,15 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 
+	"github.com/scan-io-git/scan-io/internal/bitbucket"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
-	"github.com/scan-io-git/scan-io/pkg/shared/bitbucket"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
 type VCSBitbucket struct {
 	logger       hclog.Logger
 	globalConfig *config.Config
-}
-
-// toRepositoryParams converts a slice of internal Repository type to a slice of external RepositoryParams type.
-func toRepositoryParams(repos *[]bitbucket.Repository) []shared.RepositoryParams {
-	var repoParams []shared.RepositoryParams
-	for _, repo := range *repos {
-		httpLink, sshLink := bitbucket.ExtractCloneLinks(repo.Links.Clone)
-		repoParams = append(repoParams, shared.RepositoryParams{
-			Namespace: repo.Project.Name,
-			RepoName:  repo.Name,
-			HttpLink:  httpLink,
-			SshLink:   sshLink,
-		})
-	}
-	return repoParams
-}
-
-// convertToPRParams converts the internal PullRequest type to the external PRParams type.
-func convertToPRParams(pr *bitbucket.PullRequest) shared.PRParams {
-	return shared.PRParams{
-		Id:          pr.ID,
-		Title:       pr.Title,
-		Description: pr.Description,
-		State:       pr.State,
-		Author:      shared.User{DisplayName: pr.Author.User.DisplayName, Email: pr.Author.User.EmailAddress},
-		SelfLink:    pr.Links.Self[0].Href,
-		Source: shared.Reference{
-			ID:           pr.FromReference.ID,
-			DisplayId:    pr.FromReference.DisplayID,
-			LatestCommit: pr.FromReference.LatestCommit,
-		},
-		Destination: shared.Reference{
-			ID:           pr.ToReference.ID,
-			DisplayId:    pr.ToReference.DisplayID,
-			LatestCommit: pr.ToReference.LatestCommit,
-		},
-		CreatedDate: pr.CreatedDate,
-		UpdatedDate: pr.UpdatedDate,
-	}
 }
 
 // listRepositoriesForProject fetches repositories for a given project.
@@ -196,7 +157,7 @@ func (g *VCSBitbucket) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, err
 		return false, err
 	}
 
-	if _, err := prData.AddRole(args.Login, args.Role); err != nil {
+	if _, err := prData.AddRole(args.Role, args.Login); err != nil {
 		g.logger.Error("Failed to add role to PR", "error", err)
 		return false, err
 	}
@@ -280,10 +241,10 @@ func (g *VCSBitbucket) AddComment(args shared.VCSAddCommentToPRRequest) (bool, e
 	return true, nil
 }
 
-func (g *VCSBitbucket) fetchPRChanges(args *shared.VCSFetchRequest, variables *shared.EvnVariables) ([]*Change, error) {
+func (g *VCSBitbucket) fetchPRChanges(args *shared.VCSFetchRequest, variables *shared.EvnVariables) ([]*bitbucket.Change, error) {
 	g.logger.Info("Fetching PR changes")
 	var prData interface{}
-	changes := []*Change{}
+	changes := []*bitbucket.Change{}
 
 	client, err := utils.NewHTTPClient(false, "")
 	if err != nil {
@@ -323,7 +284,7 @@ func (g *VCSBitbucket) fetchPRChanges(args *shared.VCSFetchRequest, variables *s
 
 	g.logger.Debug("Starting extracting PR changes")
 	for {
-		changesReponse := new(Changes)
+		changesReponse := new(bitbucket.Changes)
 
 		params := url.Values{
 			"withComments": []string{"false"},
@@ -391,7 +352,7 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest, variables *shared.E
 
 	g.logger.Debug("Copy files which are changed")
 	for _, val := range changes {
-		if !shared.ContainsSubstring(val.Type, changeTypes) {
+		if !shared.ContainsSubstring(val.Type, bitbucket.ChangeTypes) {
 			g.logger.Debug("Skipping", "type", val.Type, "path", val.Path.ToString)
 			continue
 		}
@@ -459,12 +420,8 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchRespon
 	return result, nil
 }
 
-func (g *VCSBitbucket) Setup(configData []byte) (bool, error) {
-	var cfg config.Config
-	if err := json.Unmarshal(configData, &cfg); err != nil {
-		return false, err
-	}
-	g.globalConfig = &cfg
+func (g *VCSBitbucket) Setup(configData config.Config) (bool, error) {
+	g.globalConfig = &configData
 	return true, nil
 }
 

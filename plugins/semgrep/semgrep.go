@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -99,12 +98,8 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) (shared.ScannerSca
 	return result, nil
 }
 
-func (g *ScannerSemgrep) Setup(configData []byte) (bool, error) {
-	var cfg config.Config
-	if err := json.Unmarshal(configData, &cfg); err != nil {
-		return false, err
-	}
-	g.globalConfig = &cfg
+func (g *ScannerSemgrep) Setup(configData config.Config) (bool, error) {
+	g.globalConfig = &configData
 	return true, nil
 }
 

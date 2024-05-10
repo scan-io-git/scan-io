@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -126,12 +125,8 @@ func (g *ScannerCodeQL) Scan(args shared.ScannerScanRequest) (shared.ScannerScan
 	return result, nil
 }
 
-func (g *ScannerCodeQL) Setup(configData []byte) (bool, error) {
-	var cfg config.Config
-	if err := json.Unmarshal(configData, &cfg); err != nil {
-		return false, err
-	}
-	g.globalConfig = &cfg
+func (g *ScannerCodeQL) Setup(configData config.Config) (bool, error) {
+	g.globalConfig = &configData
 	return true, nil
 }
 
