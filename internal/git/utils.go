@@ -3,6 +3,7 @@ package git
 import (
 	"context"
 	"fmt"
+	"time"
 
 	gitconfig "github.com/go-git/go-git/v5/config"
 	crssh "golang.org/x/crypto/ssh"
@@ -49,7 +50,7 @@ import (
 // }
 
 // getAuth configures the appropriate Git authentication method based on the provided credentials and environment variables.
-func getAuth(args *shared.VCSFetchRequest, variables *shared.EvnVariables, logger hclog.Logger) (transport.AuthMethod, error) {
+func getAuth(args *shared.VCSFetchRequest, config *config.BitbucketPlugin, logger hclog.Logger) (transport.AuthMethod, error) {
 	var auth transport.AuthMethod
 	var err error
 
@@ -63,7 +64,7 @@ func getAuth(args *shared.VCSFetchRequest, variables *shared.EvnVariables, logge
 			return nil, err
 		}
 
-		auth, err = ssh.NewPublicKeysFromFile("git", sshKeyPath, variables.SshKeyPassword)
+		auth, err = ssh.NewPublicKeysFromFile("git", sshKeyPath, config.SSHKeyPassword)
 		if err != nil {
 			logger.Error("failed to set up SSH key authentication", "error", err.Error())
 			return nil, err
@@ -88,8 +89,8 @@ func getAuth(args *shared.VCSFetchRequest, variables *shared.EvnVariables, logge
 	case "http":
 		logger.Debug("setting up HTTP authentication")
 		auth = &http.BasicAuth{
-			Username: variables.Username,
-			Password: variables.Token,
+			Username: config.BitbucketUsername,
+			Password: config.SSHKeyPassword,
 		}
 
 	default:
@@ -102,7 +103,11 @@ func getAuth(args *shared.VCSFetchRequest, variables *shared.EvnVariables, logge
 
 // CloneRepository clones a Git repository based on the provided VCSFetchRequest and environment variables.
 // It handles authentication, checks if the repository exists, and updates it if necessary.
-func CloneRepository(ctx context.Context, logger hclog.Logger, globalConfig *config.Config, args shared.VCSFetchRequest, variables shared.EvnVariables) (string, error) {
+func CloneRepository(logger hclog.Logger, globalConfig *config.Config, args *shared.VCSFetchRequest) (string, error) {
+	timeout := time.Duration(600 * time.Second) //g.config
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
 	info, err := vcsurl.Parse(args.CloneURL)
 	if err != nil {
 		logger.Error("failed to parse VCS URL", "VCSURL", args.CloneURL, "err", err)
@@ -115,7 +120,7 @@ func CloneRepository(ctx context.Context, logger hclog.Logger, globalConfig *con
 		branch = plumbing.NewBranchReferenceName(args.Branch)
 	}
 
-	auth, err := getAuth(&args, &variables, logger)
+	auth, err := getAuth(args, &globalConfig.BitbucketPlugin, logger)
 	if err != nil {
 		logger.Error("failed to set up Git authentication", "err", err)
 		return "", err

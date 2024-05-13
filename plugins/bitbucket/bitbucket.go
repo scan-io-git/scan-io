@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -16,9 +15,10 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 
+	utils "github.com/scan-io-git/scan-io/internal/utils"
+
 	"github.com/scan-io-git/scan-io/internal/bitbucket"
 	"github.com/scan-io-git/scan-io/internal/git"
-	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
@@ -67,16 +67,14 @@ func (g *VCSBitbucket) listRepositoriesForAllProjects(client *bitbucket.Client) 
 // It distinguishes between listing repos for a specific project or all projects.
 func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) ([]shared.RepositoryParams, error) {
 	g.logger.Debug("Starting execution of an all-repositories listing function", "args", args)
-
-	variables, err := g.init("list", "")
-	if err != nil {
-		g.logger.Error("Initialization failed during the listing function", "error", err)
+	if err := g.validateList(args); err != nil {
+		g.logger.Error("validation failed for listing repositories operation", "error", err)
 		return nil, err
 	}
 
 	authInfo := bitbucket.AuthInfo{
-		Username: variables.Username,
-		Token:    variables.Token,
+		Username: g.globalConfig.BitbucketPlugin.BitbucketUsername,
+		Token:    g.globalConfig.BitbucketPlugin.BitbucketToken,
 	}
 
 	client, err := bitbucket.New(g.logger, args.VCSURL, authInfo, g.globalConfig)
@@ -107,15 +105,14 @@ func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) ([]shared.Repo
 func (g *VCSBitbucket) RetrivePRInformation(args shared.VCSRetrivePRInformationRequest) (shared.PRParams, error) {
 	g.logger.Debug("Starting retrive information about a PR", "args", args)
 
-	variables, err := g.init("list", "")
-	if err != nil {
-		g.logger.Error("An init stage of an all repositories listing function is failed", "error", err)
+	if err := g.validateRetrivePRInformation(args); err != nil {
+		g.logger.Error("validation failed for retrieving pull request information operation", "error", err)
 		return shared.PRParams{}, err
 	}
 
 	authInfo := bitbucket.AuthInfo{
-		Username: variables.Username,
-		Token:    variables.Token,
+		Username: g.globalConfig.BitbucketPlugin.BitbucketUsername,
+		Token:    g.globalConfig.BitbucketPlugin.BitbucketToken,
 	}
 	client, err := bitbucket.New(g.logger, args.VCSURL, authInfo, g.globalConfig)
 	if err != nil {
@@ -136,15 +133,14 @@ func (g *VCSBitbucket) RetrivePRInformation(args shared.VCSRetrivePRInformationR
 func (g *VCSBitbucket) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error) {
 	g.logger.Debug("Starting to add a reviewer to a PR", "args", args)
 
-	variables, err := g.init("list", "")
-	if err != nil {
-		g.logger.Error("An init stage of an all repositories listing function is failed", "error", err)
+	if err := g.validateAddRoleToPR(args); err != nil {
+		g.logger.Error("validation failed for adding a user to PR operation", "error", err)
 		return false, err
 	}
 
 	authInfo := bitbucket.AuthInfo{
-		Username: variables.Username,
-		Token:    variables.Token,
+		Username: g.globalConfig.BitbucketPlugin.BitbucketUsername,
+		Token:    g.globalConfig.BitbucketPlugin.BitbucketToken,
 	}
 
 	client, err := bitbucket.New(g.logger, args.VCSURL, authInfo, g.globalConfig)
@@ -172,15 +168,14 @@ func (g *VCSBitbucket) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, err
 func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, error) {
 	g.logger.Debug("Starting changing a status of PR", "args", args)
 
-	variables, err := g.init("list", "")
-	if err != nil {
-		g.logger.Error("Failed to initialize for changing the PR status", "error", err)
+	if err := g.validateSetStatusOfPR(args); err != nil {
+		g.logger.Error("validation failed for setting a status to PR operation", "error", err)
 		return false, err
 	}
 
 	authInfo := bitbucket.AuthInfo{
-		Username: variables.Username,
-		Token:    variables.Token,
+		Username: g.globalConfig.BitbucketPlugin.BitbucketUsername,
+		Token:    g.globalConfig.BitbucketPlugin.BitbucketToken,
 	}
 
 	client, err := bitbucket.New(g.logger, args.VCSURL, authInfo, g.globalConfig)
@@ -208,17 +203,16 @@ func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool,
 
 // AddCommentToPR handles adding a comment to a specific pull request.
 func (g *VCSBitbucket) AddComment(args shared.VCSAddCommentToPRRequest) (bool, error) {
-	g.logger.Debug("Starting to add a comment to a PR", "args", args)
+	g.logger.Debug("starting to add a comment to a PR", "args", args)
 
-	variables, err := g.init("list", "")
-	if err != nil {
-		g.logger.Error("Initialization failed for adding a comment to a PR", "error", err)
+	if err := g.validateAddComment(args); err != nil {
+		g.logger.Error("validation failed for adding a comment to PR operation", "error", err)
 		return false, err
 	}
 
 	authInfo := bitbucket.AuthInfo{
-		Username: variables.Username,
-		Token:    variables.Token,
+		Username: g.globalConfig.BitbucketPlugin.BitbucketUsername,
+		Token:    g.globalConfig.BitbucketPlugin.BitbucketToken,
 	}
 
 	client, err := bitbucket.New(g.logger, args.VCSURL, authInfo, g.globalConfig)
@@ -243,7 +237,7 @@ func (g *VCSBitbucket) AddComment(args shared.VCSAddCommentToPRRequest) (bool, e
 	return true, nil
 }
 
-func (g *VCSBitbucket) fetchPRChanges(args *shared.VCSFetchRequest, variables *shared.EvnVariables) ([]*bitbucket.Change, error) {
+func (g *VCSBitbucket) fetchPRChanges(args *shared.VCSFetchRequest) ([]*bitbucket.Change, error) {
 	g.logger.Info("Fetching PR changes")
 	var prData interface{}
 	changes := []*bitbucket.Change{}
@@ -257,7 +251,7 @@ func (g *VCSBitbucket) fetchPRChanges(args *shared.VCSFetchRequest, variables *s
 	start := "0"
 	baseUrl := fmt.Sprintf("https://%s/rest/api/1.0/projects/%s/repos/%s/pull-requests/%s", args.RepoParam.VCSURL, args.RepoParam.Namespace, args.RepoParam.RepoName, args.RepoParam.PRID)
 	urlReqDiff := fmt.Sprintf("%s/changes", baseUrl)
-	authValue := variables.Username + ":" + variables.Token
+	authValue := g.globalConfig.BitbucketPlugin.BitbucketUsername + ":" + g.globalConfig.BitbucketPlugin.BitbucketToken
 	authHeader := base64.StdEncoding.EncodeToString([]byte(authValue))
 	headers := http.Header{
 		"Content-Type":  {"application/json"},
@@ -319,25 +313,18 @@ func (g *VCSBitbucket) fetchPRChanges(args *shared.VCSFetchRequest, variables *s
 	return changes, nil
 }
 
-func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest, variables *shared.EvnVariables) (string, error) {
+func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	g.logger.Info("Handling PR changes fetching")
-
-	_, err := g.init("list", "")
-	if err != nil {
-		g.logger.Error("An init stage of retriving information about a PR is failed", "error", err)
-		return "", err
-	}
-
-	changes, err := g.fetchPRChanges(args, variables)
+	changes, err := g.fetchPRChanges(args)
 	if err != nil {
 		return "", err
 	}
 
 	g.logger.Info("Strating fetching PR code")
 	//TODO there is a strange bug when it fetchs only pr changes without all other files in case of PR fetch ???
-	_, err = shared.GitClone(*args, *variables, g.logger)
-	if err != nil && err.Error() != "already up-to-date" {
-		g.logger.Error("The fetching PR function is failed", "error", err)
+	_, err = git.CloneRepository(g.logger, g.globalConfig, args)
+	if err != nil {
+		g.logger.Error("failed to clone repository", "error", err)
 		return "", err
 	}
 
@@ -396,23 +383,16 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest, variables *shared.E
 func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
 	var result shared.VCSFetchResponse
 
-	// TODO check repo existence? to call (repo *Repository) RepositoryClone()
-
-	// TODO context
-	timeout := time.Duration(600 * time.Second) //g.config
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	variables, err := g.init("fetch", args.AuthType)
-	if err != nil {
-		g.logger.Error("failed to initialize for fetching", "error", err)
-		return result, err
+	if err := g.validateFetch(args); err != nil {
+		g.logger.Error("validation failed for fetch operation", "error", err)
+		return shared.VCSFetchResponse{}, err
 	}
 
+	// TODO check repo existence? to call (repo *Repository) RepositoryClone()
 	switch args.Mode {
 	case "PRscan":
 		// Fetching for pull request scanning
-		path, err := g.fetchPR(&args, &variables)
+		path, err := g.fetchPR(&args)
 		if err != nil {
 			g.logger.Error("failed to fetch pull request", "error", err)
 			return result, err
@@ -421,8 +401,7 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchRespon
 
 	default:
 		// Default fetching operation
-		// path, err := shared.GitClone(ctx, args, variables, g.logger)
-		path, err := git.CloneRepository(ctx, g.logger, g.globalConfig, args, variables)
+		path, err := git.CloneRepository(g.logger, g.globalConfig, &args)
 		if err != nil {
 			g.logger.Error("failed to clone repository", "error", err)
 			return result, err
@@ -435,6 +414,10 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchRespon
 
 func (g *VCSBitbucket) Setup(configData config.Config) (bool, error) {
 	g.globalConfig = &configData
+	if err := UpdateConfigFromEnv(g.globalConfig); err != nil {
+		g.logger.Error("failed to update the global config from env variables", "error", err)
+		return false, err
+	}
 	return true, nil
 }
 
