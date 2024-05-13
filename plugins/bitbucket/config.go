@@ -29,7 +29,7 @@ func (g *VCSBitbucket) validateCommonCredentials() error {
 	return nil
 }
 
-func (g *VCSBitbucket) validateBaseArgs(args shared.VCSRequestBase) error {
+func (g *VCSBitbucket) validateBaseArgs(args *shared.VCSRequestBase) error {
 	if args.VCSURL == "" {
 		return fmt.Errorf("repository URL is required")
 	}
@@ -50,7 +50,7 @@ func (g *VCSBitbucket) validateBaseArgs(args shared.VCSRequestBase) error {
 }
 
 // validateFetch checks the necessary fields in fetchArgs and returns errors if they are not adequately set.
-func (g *VCSBitbucket) validateFetch(args shared.VCSFetchRequest) error {
+func (g *VCSBitbucket) validateFetch(args *shared.VCSFetchRequest) error {
 	// Validate basic fields in fetchArgs, like non-empty repository URL
 	if args.CloneURL == "" {
 		return fmt.Errorf("repository URL is required")
@@ -83,7 +83,7 @@ func (g *VCSBitbucket) validateFetch(args shared.VCSFetchRequest) error {
 }
 
 // validateList checks the necessary fields for listing repositories and ensures they are set.
-func (g *VCSBitbucket) validateList(args shared.VCSListReposRequest) error {
+func (g *VCSBitbucket) validateList(args *shared.VCSListReposRequest) error {
 	if args.VCSURL == "" {
 		return fmt.Errorf("repository URL is required")
 	}
@@ -95,8 +95,8 @@ func (g *VCSBitbucket) validateList(args shared.VCSListReposRequest) error {
 }
 
 // validateRetrivePRInformation checks the necessary fields for listing repositories and ensures they are set.
-func (g *VCSBitbucket) validateRetrivePRInformation(args shared.VCSRetrivePRInformationRequest) error {
-	if err := g.validateBaseArgs(shared.VCSRequestBase(args.VCSRequestBase)); err != nil {
+func (g *VCSBitbucket) validateRetrivePRInformation(args *shared.VCSRetrivePRInformationRequest) error {
+	if err := g.validateBaseArgs(&args.VCSRequestBase); err != nil {
 		return err
 	}
 
@@ -107,8 +107,8 @@ func (g *VCSBitbucket) validateRetrivePRInformation(args shared.VCSRetrivePRInfo
 }
 
 // validateAddRoleToPR checks the necessary fields for listing repositories and ensures they are set.
-func (g *VCSBitbucket) validateAddRoleToPR(args shared.VCSAddRoleToPRRequest) error {
-	if err := g.validateBaseArgs(shared.VCSRequestBase(args.VCSRequestBase)); err != nil {
+func (g *VCSBitbucket) validateAddRoleToPR(args *shared.VCSAddRoleToPRRequest) error {
+	if err := g.validateBaseArgs(&args.VCSRequestBase); err != nil {
 		return err
 	}
 
@@ -126,8 +126,8 @@ func (g *VCSBitbucket) validateAddRoleToPR(args shared.VCSAddRoleToPRRequest) er
 }
 
 // validateSetStatusOfPR checks the necessary fields for listing repositories and ensures they are set.
-func (g *VCSBitbucket) validateSetStatusOfPR(args shared.VCSSetStatusOfPRRequest) error {
-	if err := g.validateBaseArgs(shared.VCSRequestBase(args.VCSRequestBase)); err != nil {
+func (g *VCSBitbucket) validateSetStatusOfPR(args *shared.VCSSetStatusOfPRRequest) error {
+	if err := g.validateBaseArgs(&args.VCSRequestBase); err != nil {
 		return err
 	}
 
@@ -145,8 +145,8 @@ func (g *VCSBitbucket) validateSetStatusOfPR(args shared.VCSSetStatusOfPRRequest
 }
 
 // validateAddComment checks the necessary fields for listing repositories and ensures they are set.
-func (g *VCSBitbucket) validateAddComment(args shared.VCSAddCommentToPRRequest) error {
-	if err := g.validateBaseArgs(shared.VCSRequestBase(args.VCSRequestBase)); err != nil {
+func (g *VCSBitbucket) validateAddComment(args *shared.VCSAddCommentToPRRequest) error {
+	if err := g.validateBaseArgs(&args.VCSRequestBase); err != nil {
 		return err
 	}
 

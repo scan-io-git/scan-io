@@ -67,7 +67,7 @@ func (g *VCSBitbucket) listRepositoriesForAllProjects(client *bitbucket.Client) 
 // It distinguishes between listing repos for a specific project or all projects.
 func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) ([]shared.RepositoryParams, error) {
 	g.logger.Debug("Starting execution of an all-repositories listing function", "args", args)
-	if err := g.validateList(args); err != nil {
+	if err := g.validateList(&args); err != nil {
 		g.logger.Error("validation failed for listing repositories operation", "error", err)
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) ([]shared.Repo
 func (g *VCSBitbucket) RetrivePRInformation(args shared.VCSRetrivePRInformationRequest) (shared.PRParams, error) {
 	g.logger.Debug("Starting retrive information about a PR", "args", args)
 
-	if err := g.validateRetrivePRInformation(args); err != nil {
+	if err := g.validateRetrivePRInformation(&args); err != nil {
 		g.logger.Error("validation failed for retrieving pull request information operation", "error", err)
 		return shared.PRParams{}, err
 	}
@@ -133,7 +133,7 @@ func (g *VCSBitbucket) RetrivePRInformation(args shared.VCSRetrivePRInformationR
 func (g *VCSBitbucket) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error) {
 	g.logger.Debug("Starting to add a reviewer to a PR", "args", args)
 
-	if err := g.validateAddRoleToPR(args); err != nil {
+	if err := g.validateAddRoleToPR(&args); err != nil {
 		g.logger.Error("validation failed for adding a user to PR operation", "error", err)
 		return false, err
 	}
@@ -168,7 +168,7 @@ func (g *VCSBitbucket) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, err
 func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, error) {
 	g.logger.Debug("Starting changing a status of PR", "args", args)
 
-	if err := g.validateSetStatusOfPR(args); err != nil {
+	if err := g.validateSetStatusOfPR(&args); err != nil {
 		g.logger.Error("validation failed for setting a status to PR operation", "error", err)
 		return false, err
 	}
@@ -205,7 +205,7 @@ func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool,
 func (g *VCSBitbucket) AddComment(args shared.VCSAddCommentToPRRequest) (bool, error) {
 	g.logger.Debug("starting to add a comment to a PR", "args", args)
 
-	if err := g.validateAddComment(args); err != nil {
+	if err := g.validateAddComment(&args); err != nil {
 		g.logger.Error("validation failed for adding a comment to PR operation", "error", err)
 		return false, err
 	}
@@ -383,7 +383,7 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
 	var result shared.VCSFetchResponse
 
-	if err := g.validateFetch(args); err != nil {
+	if err := g.validateFetch(&args); err != nil {
 		g.logger.Error("validation failed for fetch operation", "error", err)
 		return shared.VCSFetchResponse{}, err
 	}
