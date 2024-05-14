@@ -2,7 +2,10 @@ package git
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
+	"os"
 	"time"
 
 	gitconfig "github.com/go-git/go-git/v5/config"
@@ -20,122 +23,117 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
-// type VCSFetchRequest struct {
-// 	CloneURL     string
-// 	Branch       string
-// 	AuthType     string
-// 	SSHKey       string
-// 	TargetFolder string
-// 	Mode         string
-// 	RepoParam    shared.RepositoryParams
-// }
-
-// type RepositoryParams struct {
-// 	Namespace string `json:"namespace"`
-// 	RepoName  string `json:"repo_name"`
-// 	PRID      string `json:"pr_id"`
-// 	VCSURL    string `json:"vcs_url"`
-// 	HttpLink  string `json:"http_link"`
-// 	SshLink   string `json:"ssh_link"`
-// }
-
-// // CloneConfig represents the configuration needed to clone a repository.
-// type CloneConfig struct {
-//     RepositoryURL string
-//     Branch        string
-// 	AuthType string
-// 	SSHKey       string
-//     Destination   string
-// 	Mode         string
-// }
-
-// getAuth configures the appropriate Git authentication method based on the provided credentials and environment variables.
-func getAuth(args *shared.VCSFetchRequest, config *config.BitbucketPlugin, logger hclog.Logger) (transport.AuthMethod, error) {
-	var auth transport.AuthMethod
-	var err error
-
-	switch args.AuthType {
-	case "ssh-key":
-		logger.Debug("Setting up SSH key authentication")
-
-		sshKeyPath, err := shared.ExpandPath(args.SSHKey)
-		if err != nil {
-			logger.Error("failed to expand SSH key path", "path", args.SSHKey, "error", err)
-			return nil, err
-		}
-
-		auth, err = ssh.NewPublicKeysFromFile("git", sshKeyPath, config.SSHKeyPassword)
-		if err != nil {
-			logger.Error("failed to set up SSH key authentication", "error", err.Error())
-			return nil, err
-		}
-
-		auth.(*ssh.PublicKeys).HostKeyCallbackHelper = ssh.HostKeyCallbackHelper{
-			HostKeyCallback: crssh.InsecureIgnoreHostKey(), // TODO fix
-		}
-
-	case "ssh-agent":
-		logger.Debug("setting up SSH agent authentication")
-		auth, err = ssh.NewSSHAgentAuth("git")
-		if err != nil {
-			logger.Error("failed to set up SSH agent authentication", "err", err)
-			return nil, err
-		}
-
-		auth.(*ssh.PublicKeysCallback).HostKeyCallbackHelper = ssh.HostKeyCallbackHelper{
-			HostKeyCallback: crssh.InsecureIgnoreHostKey(), // TODO fix
-		}
-
-	case "http":
-		logger.Debug("setting up HTTP authentication")
-		auth = &http.BasicAuth{
-			Username: config.BitbucketUsername,
-			Password: config.SSHKeyPassword,
-		}
-
-	default:
-		err := fmt.Errorf("unknown auth type: %s", args.AuthType)
-		logger.Error("unsupported authentication type", "error", err)
-		return nil, err
-	}
-	return auth, err
+// Authenticator is an interface for different authentication methods.
+type Authenticator interface {
+	SetupAuth(args *shared.VCSFetchRequest, config *config.BitbucketPlugin, logger hclog.Logger) (transport.AuthMethod, error)
 }
 
-// CloneRepository clones a Git repository based on the provided VCSFetchRequest and environment variables.
+// SSHKeyAuthenticator provides SSH key-based authentication.
+type SSHKeyAuthenticator struct{}
+
+// SSHAgentAuthenticator provides SSH agent-based authentication.
+type SSHAgentAuthenticator struct{}
+
+// HTTPAuthenticator provides HTTP basic authentication.
+type HTTPAuthenticator struct{}
+
+// SetupAuth configures SSH key authentication.
+func (s *SSHKeyAuthenticator) SetupAuth(args *shared.VCSFetchRequest, config *config.BitbucketPlugin, logger hclog.Logger) (transport.AuthMethod, error) {
+	logger.Debug("setting up SSH key authentication")
+
+	var auth transport.AuthMethod
+	sshKeyPath, err := shared.ExpandPath(args.SSHKey)
+	if err != nil {
+		logger.Error("failed to expand SSH key path", "path", args.SSHKey, "error", err)
+		return nil, err
+	}
+
+	auth, err = ssh.NewPublicKeysFromFile("git", sshKeyPath, config.SSHKeyPassword)
+	if err != nil {
+		logger.Error("failed to set up SSH key authentication", "error", err.Error())
+		return nil, err
+	}
+
+	auth.(*ssh.PublicKeys).HostKeyCallbackHelper = ssh.HostKeyCallbackHelper{
+		HostKeyCallback: crssh.InsecureIgnoreHostKey(), // TODO: Fix this
+	}
+
+	return auth, nil
+}
+
+// SetupAuth configures SSH agent authentication
+func (s *SSHAgentAuthenticator) SetupAuth(args *shared.VCSFetchRequest, config *config.BitbucketPlugin, logger hclog.Logger) (transport.AuthMethod, error) {
+	logger.Debug("setting up SSH agent authentication")
+
+	var auth transport.AuthMethod
+	var err error
+	auth, err = ssh.NewSSHAgentAuth("git")
+	if err != nil {
+		logger.Error("failed to set up SSH agent authentication", "error", err)
+		return nil, err
+	}
+
+	auth.(*ssh.PublicKeysCallback).HostKeyCallbackHelper = ssh.HostKeyCallbackHelper{
+		HostKeyCallback: crssh.InsecureIgnoreHostKey(), // TODO: Fix this
+	}
+
+	return auth, nil
+}
+
+// SetupAuth configures HTTP basic authentication.
+func (h *HTTPAuthenticator) SetupAuth(args *shared.VCSFetchRequest, config *config.BitbucketPlugin, logger hclog.Logger) (transport.AuthMethod, error) {
+	logger.Debug("setting up HTTP authentication")
+	return &http.BasicAuth{
+		Username: config.BitbucketUsername,
+		Password: config.SSHKeyPassword,
+	}, nil
+}
+
+// getAuthenticator returns the appropriate Authenticator based on the authentication type.
+func getAuthenticator(authType string) (Authenticator, error) {
+	switch authType {
+	case "ssh-key":
+		return &SSHKeyAuthenticator{}, nil
+	case "ssh-agent":
+		return &SSHAgentAuthenticator{}, nil
+	case "http":
+		return &HTTPAuthenticator{}, nil
+	default:
+		return nil, fmt.Errorf("unknown auth type: %s", authType)
+	}
+}
+
+// CloneRepository clones a Git repository based on the provided VCSFetchRequest and globalConfig.
 // It handles authentication, checks if the repository exists, and updates it if necessary.
 func CloneRepository(logger hclog.Logger, globalConfig *config.Config, args *shared.VCSFetchRequest) (string, error) {
-	timeout := time.Duration(600 * time.Second) //g.config
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+	targetFolder := args.TargetFolder
 
 	info, err := vcsurl.Parse(args.CloneURL)
 	if err != nil {
 		logger.Error("failed to parse VCS URL", "VCSURL", args.CloneURL, "err", err)
-		return "", err
+		return "", fmt.Errorf("failed to parse VCS URL: %w", err)
 	}
 
-	// Determine the branch reference, defaulting to a branch name with an additional prefix if not fully specified
-	branch := plumbing.ReferenceName(args.Branch)
-	if !branch.IsBranch() && !branch.IsRemote() && !branch.IsTag() && !branch.IsNote() {
-		branch = plumbing.NewBranchReferenceName(args.Branch)
+	branch := determineBranch(args.Branch)
+	authenticator, err := getAuthenticator(args.AuthType)
+	if err != nil {
+		logger.Error("unsupported authentication type", "error", err)
+		return "", fmt.Errorf("unsupported authentication type: %w", err)
 	}
 
-	auth, err := getAuth(args, &globalConfig.BitbucketPlugin, logger)
+	auth, err := authenticator.SetupAuth(args, &globalConfig.BitbucketPlugin, logger)
 	if err != nil {
 		logger.Error("failed to set up Git authentication", "err", err)
-		return "", err
+		return "", fmt.Errorf("failed to set up Git authentication: %w", err)
 	}
 
-	// Prepare the logger for output from Git operations
-	output := logger.StandardWriter(&hclog.StandardLoggerOptions{
-		InferLevels: true,
-		ForceLevel:  logger.GetLevel(), // use the same level as the logger
-	})
+	output := getLoggerOutput(logger)
+	timeout := config.SetThen(globalConfig.GitClient.Timeout, time.Duration(10*time.Minute))
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
-	// Start the repository fetch operation
-	repoPath := args.TargetFolder
-	logger.Debug("starting repository fetch", "repository", info.Name, "branch", args.Branch, "targetFolder", args.TargetFolder)
-	repo, err := git.PlainCloneContext(ctx, repoPath, false, &git.CloneOptions{
+	logger.Debug("starting repository fetch", "repository", info.Name, "branch", branch, "targetFolder", targetFolder)
+	repo, err := git.PlainCloneContext(ctx, targetFolder, false, &git.CloneOptions{
 		Auth:            auth,
 		URL:             args.CloneURL,
 		ReferenceName:   branch,
@@ -145,66 +143,142 @@ func CloneRepository(logger hclog.Logger, globalConfig *config.Config, args *sha
 	})
 	if err != nil {
 		if err != git.ErrRepositoryAlreadyExists {
-			logger.Error("error occurred during clone", "error", err, "targetFolder", repoPath)
-			return "", err
+			logger.Error("error occurred during clone", "error", err, "targetFolder", targetFolder)
+			return "", fmt.Errorf("error occurred during clone: %w", err)
 		}
 
 		// Handle existing repository updates
-		logger.Info("repository already exists, updating...", "targetFolder", repoPath)
-		repo, err = git.PlainOpen(repoPath)
+		logger.Info("repository already exists, updating...", "targetFolder", targetFolder)
+		repo, err = git.PlainOpen(targetFolder)
 		if err != nil {
-			logger.Error("cannot open existing repository", "error", err, "targetFolder", repoPath)
-			return "", err
+			logger.Error("cannot open existing repository", "error", err, "targetFolder", targetFolder)
+			return "", fmt.Errorf("cannot open existing repository: %w", err)
 		}
 
-		// TODO insecuretls from config
+		repo, err = updateRepository(ctx, repo, auth, logger, globalConfig, output, targetFolder, branch)
+		if err != nil {
+			return "", err
+		}
+	}
+	if err = checkoutAndResetBranch(repo, branch, logger, targetFolder); err != nil {
+		return "", err
+	}
 
-		// Fetch all updates from the remote
-		if err = repo.FetchContext(ctx, &git.FetchOptions{
-			RemoteName:      "origin",
-			Auth:            auth,
-			Progress:        output,
-			RefSpecs:        []gitconfig.RefSpec{"+refs/*:refs/*"},
-			Depth:           config.SetThen(globalConfig.GitClient.Depth, 1),
-			InsecureSkipTLS: config.GetBoolValue(globalConfig.GitClient, "InsecureTLS", false),
-		}); err != nil && err != git.NoErrAlreadyUpToDate {
-			logger.Error("error occurred during fetch", "error", err, "targetFolder", repoPath)
+	if err == git.ErrRepositoryAlreadyExists {
+		if err = pullLatestChanges(ctx, repo, globalConfig, auth, branch, logger, output); err != nil {
 			return "", err
 		}
 	}
 
-	// Checkout and reset the branch to ensure it's up-to-date
+	logger.Info("repository operation completed successfully", "repository", info.Name, "branch", args.Branch, "targetFolder", targetFolder)
+	return targetFolder, nil
+}
+
+// determineBranch returns the appropriate branch reference.
+func determineBranch(branch string) plumbing.ReferenceName {
+	ref := plumbing.ReferenceName(branch)
+	if !ref.IsBranch() && !ref.IsRemote() && !ref.IsTag() && !ref.IsNote() {
+		return plumbing.NewBranchReferenceName(branch)
+	}
+	return ref
+}
+
+// getLoggerOutput prepares the logger output.
+func getLoggerOutput(logger hclog.Logger) io.Writer {
+	return logger.StandardWriter(&hclog.StandardLoggerOptions{
+		InferLevels: true,
+		ForceLevel:  logger.GetLevel(),
+	})
+}
+
+// updateRepository fetches updates from the remote repository and handles errors.
+func updateRepository(ctx context.Context, repo *git.Repository, auth transport.AuthMethod, logger hclog.Logger, globalConfig *config.Config, output io.Writer, targetFolder string, branch plumbing.ReferenceName) (*git.Repository, error) {
+	fetchOptions := &git.FetchOptions{
+		RemoteName:      "origin",
+		Auth:            auth,
+		Progress:        output,
+		RefSpecs:        []gitconfig.RefSpec{"+refs/*:refs/*"},
+		Depth:           config.SetThen(globalConfig.GitClient.Depth, 1),
+		InsecureSkipTLS: config.GetBoolValue(globalConfig.GitClient, "InsecureTLS", false),
+	}
+
+	if err := repo.FetchContext(ctx, fetchOptions); err != nil && err != git.NoErrAlreadyUpToDate {
+		if errors.Is(err, git.NoErrAlreadyUpToDate) {
+			logger.Info("repository already up-to-date", "targetFolder", targetFolder)
+		} else if err.Error() == "object not found" {
+			logger.Error("object not found in the repository. Cleaning up the repo ...", "targetFolder", targetFolder, "error", err)
+			// TODO: double test it
+			if err := os.RemoveAll(targetFolder); err != nil {
+				logger.Error("failed to remove repository", "error", err)
+				return nil, fmt.Errorf("failed to remove repository: %w", err)
+			}
+
+			// TODO: should we send the new repo to global context?
+			_, err := git.PlainCloneContext(ctx, targetFolder, false, &git.CloneOptions{
+				Auth:            auth,
+				URL:             fetchOptions.RemoteName,
+				ReferenceName:   branch,
+				Progress:        output,
+				Depth:           fetchOptions.Depth,
+				InsecureSkipTLS: fetchOptions.InsecureSkipTLS,
+			})
+			if err != nil {
+				logger.Error("retrying clone failed", "error", err)
+				return nil, fmt.Errorf("retrying clone failed: %w", err)
+			}
+		} else {
+			logger.Error("error occurred during fetch", "error", err, "targetFolder", targetFolder)
+			return nil, fmt.Errorf("error occurred during fetch: %w", err)
+		}
+	}
+	return repo, nil
+}
+
+// checkoutAndResetBranch checks out and resets the branch.
+func checkoutAndResetBranch(repo *git.Repository, branch plumbing.ReferenceName, logger hclog.Logger, targetFolder string) error {
 	w, err := repo.Worktree()
 	if err != nil {
-		logger.Error("error accessing worktree", "err", err, "targetFolder", args.TargetFolder)
-		return "", err
+		logger.Error("error accessing worktree", "err", err, "targetFolder", targetFolder)
+		return fmt.Errorf("error accessing worktree: %w", err)
 	}
 
-	// Switching to a local branch
-	logger.Debug("checking a branch", "repository", info.Name, "branch", args.Branch, "targetFolder", args.TargetFolder)
-	if err = w.Checkout(&git.CheckoutOptions{Branch: branch, Force: true}); err != nil {
-		logger.Error("error occurred during checkout", "error", err, "targetFolder", repoPath)
-		return "", err
+	logger.Debug("checking out branch", "branch", branch, "targetFolder", targetFolder)
+	if err := w.Checkout(&git.CheckoutOptions{
+		Branch: branch,
+		Force:  true,
+	}); err != nil {
+		logger.Error("error occurred during checkout", "error", err, "targetFolder", targetFolder)
+		return fmt.Errorf("error occurred during checkout: %w", err)
 	}
 
-	// Reset the worktree to ensure it is clean
-	logger.Debug("reseting a local repository", "repository", info.Name, "targetFolder", args.TargetFolder)
-	if err := w.Reset(&git.ResetOptions{Mode: git.HardReset}); err != nil {
-		fmt.Println("error occurred during reset", "err", err, "targetFolder", args.TargetFolder)
-		return "", err
+	logger.Debug("resetting local repository", "targetFolder", targetFolder)
+	if err := w.Reset(&git.ResetOptions{
+		Mode: git.HardReset,
+	}); err != nil {
+		logger.Error("error occurred during reset", "err", err, "targetFolder", targetFolder)
+		return fmt.Errorf("error occurred during reset: %w", err)
+	}
+	return nil
+}
+
+func pullLatestChanges(ctx context.Context, repo *git.Repository, cfg *config.Config, auth transport.AuthMethod, branch plumbing.ReferenceName, logger hclog.Logger, output io.Writer) error {
+	w, err := repo.Worktree()
+	if err != nil {
+		logger.Error("error accessing worktree", "err", err)
+		return fmt.Errorf("error accessing worktree: %w", err)
 	}
 
-	// Pull if the repository was already present
-	logger.Debug("attempting to pull the latest changes", "repository", repoPath)
-	if err == git.ErrRepositoryAlreadyExists {
-		if err = w.Pull(&git.PullOptions{Auth: auth, ReferenceName: branch, Progress: output}); err != nil {
-			if err != git.NoErrAlreadyUpToDate {
-				logger.Error("error occurred during pull", "error", err, "targetFolder", repoPath)
-				return "", err
-			}
-		}
+	logger.Debug("attempting to pull the latest changes", "branch", branch)
+	err = w.PullContext(ctx, &git.PullOptions{
+		Auth:            auth,
+		ReferenceName:   branch,
+		Progress:        output,
+		Force:           true,
+		InsecureSkipTLS: config.GetBoolValue(cfg.GitClient, "InsecureTLS", false),
+	})
+	if err != nil && err != git.NoErrAlreadyUpToDate {
+		logger.Error("error occurred during pull", "error", err)
+		return fmt.Errorf("error occurred during pull: %w", err)
 	}
-
-	logger.Info("repository operation completed successfully", "repository", info.Name, "branch", args.Branch, "targetFolder", args.TargetFolder)
-	return args.TargetFolder, nil
+	return nil
 }

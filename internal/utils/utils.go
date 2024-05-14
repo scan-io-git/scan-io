@@ -117,7 +117,6 @@ func ReadReposFile2(inputFile string) ([]shared.RepositoryParams, error) {
 }
 
 func GetDomain(repositoryURL string) (string, error) {
-
 	if strings.HasPrefix(repositoryURL, "git@") && strings.HasSuffix(repositoryURL, ".git") {
 		u := repositoryURL[4 : len(repositoryURL)-4]
 		splitter := "/"

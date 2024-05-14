@@ -15,6 +15,25 @@ func ValidateConfig(cfg *Config) error {
 	if err := HttpGlobalConfigValidation(&cfg.HttpClient); err != nil {
 		return fmt.Errorf("YAML global config validation: http_client directive is invalid. %v", err)
 	}
+	if err := GitGlobalConfigValidation(&cfg.GitClient); err != nil {
+		return fmt.Errorf("YAML global config validation: git_client directive is invalid. %v", err)
+	}
+	return nil
+}
+
+// GitGlobalConfigValidation checks if the Git configurations have valid values.
+func GitGlobalConfigValidation(gitConfig *GitClient) error {
+	if gitConfig == nil {
+		return fmt.Errorf("http configuration is nil")
+	}
+	duration := gitConfig.Timeout
+
+	if err := validateDuration(duration); err != nil {
+		return fmt.Errorf("%s: %w", "Timeout", err)
+	}
+	if duration > 1*time.Hour {
+		return fmt.Errorf("%s: duration is too long - %v", "Timeout", duration)
+	}
 	return nil
 }
 

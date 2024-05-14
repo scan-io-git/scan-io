@@ -1,21 +1,13 @@
 package main
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
-	"time"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-
-	utils "github.com/scan-io-git/scan-io/internal/utils"
 
 	"github.com/scan-io-git/scan-io/internal/bitbucket"
 	"github.com/scan-io-git/scan-io/internal/git"
@@ -79,7 +71,7 @@ func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) ([]shared.Repo
 
 	client, err := bitbucket.New(g.logger, args.VCSURL, authInfo, g.globalConfig)
 	if err != nil {
-		g.logger.Error("initialization bitbucket client failed", "error", err)
+		g.logger.Error("initialization Bitbucket client failed", "error", err)
 		return nil, err
 	}
 
@@ -116,7 +108,7 @@ func (g *VCSBitbucket) RetrivePRInformation(args shared.VCSRetrivePRInformationR
 	}
 	client, err := bitbucket.New(g.logger, args.VCSURL, authInfo, g.globalConfig)
 	if err != nil {
-		g.logger.Error("initialization bitbucket client failed", "error", err)
+		g.logger.Error("initialization Bitbucket client failed", "error", err)
 		return shared.PRParams{}, err
 	}
 
@@ -145,7 +137,7 @@ func (g *VCSBitbucket) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, err
 
 	client, err := bitbucket.New(g.logger, args.VCSURL, authInfo, g.globalConfig)
 	if err != nil {
-		g.logger.Error("initialization bitbucket client failed", "error", err)
+		g.logger.Error("initialization Bitbucket client failed", "error", err)
 		return false, err
 	}
 
@@ -180,7 +172,7 @@ func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool,
 
 	client, err := bitbucket.New(g.logger, args.VCSURL, authInfo, g.globalConfig)
 	if err != nil {
-		g.logger.Error("initialization bitbucket client failed", "error", err)
+		g.logger.Error("initialization Bitbucket client failed", "error", err)
 		return false, err
 	}
 
@@ -217,7 +209,7 @@ func (g *VCSBitbucket) AddComment(args shared.VCSAddCommentToPRRequest) (bool, e
 
 	client, err := bitbucket.New(g.logger, args.VCSURL, authInfo, g.globalConfig)
 	if err != nil {
-		g.logger.Error("initialization bitbucket client failed", "error", err)
+		g.logger.Error("initialization Bitbucket client failed", "error", err)
 		return false, err
 	}
 
@@ -237,147 +229,67 @@ func (g *VCSBitbucket) AddComment(args shared.VCSAddCommentToPRRequest) (bool, e
 	return true, nil
 }
 
-func (g *VCSBitbucket) fetchPRChanges(args *shared.VCSFetchRequest) ([]*bitbucket.Change, error) {
-	g.logger.Info("Fetching PR changes")
-	var prData interface{}
-	changes := []*bitbucket.Change{}
-
-	client, err := utils.NewHTTPClient(false, "")
-	if err != nil {
-		g.logger.Error("Creating HTTP client finished unsuccessfuly", "error", err)
-		return nil, err
-	}
-
-	start := "0"
-	baseUrl := fmt.Sprintf("https://%s/rest/api/1.0/projects/%s/repos/%s/pull-requests/%s", args.RepoParam.VCSURL, args.RepoParam.Namespace, args.RepoParam.RepoName, args.RepoParam.PRID)
-	urlReqDiff := fmt.Sprintf("%s/changes", baseUrl)
-	authValue := g.globalConfig.BitbucketPlugin.BitbucketUsername + ":" + g.globalConfig.BitbucketPlugin.BitbucketToken
-	authHeader := base64.StdEncoding.EncodeToString([]byte(authValue))
-	headers := http.Header{
-		"Content-Type":  {"application/json"},
-		"Authorization": {"Basic " + authHeader},
-	}
-	response, responseBody, err := client.DoRequest("GET", baseUrl, headers, nil)
-	if err != nil {
-		g.logger.Error("A PR changes function is failed by doing a request", "error", err)
-		return nil, err
-	}
-
-	if response.StatusCode >= http.StatusBadRequest {
-		g.logger.Error("HTTP request failed with status", "code", response.StatusCode, "error", err)
-		return nil, fmt.Errorf("Response body %v", string(responseBody))
-	}
-
-	if err = json.Unmarshal(responseBody, &prData); err != nil {
-		g.logger.Error("A PR changes function is failed by parsing json", "error", err)
-		return nil, err
-	}
-
-	pr := prData.(map[string]interface{})
-	fromRef, _ := pr["fromRef"].(map[string]interface{})
-	branch, _ := fromRef["id"].(string)
-	args.Branch = branch
-
-	g.logger.Debug("Starting extracting PR changes")
-	for {
-		changesReponse := new(bitbucket.Changes)
-
-		params := url.Values{
-			"withComments": []string{"false"},
-			"start":        []string{start},
-			"limit":        []string{"100"},
-		}
-		fullURL := fmt.Sprintf("%s?%s", urlReqDiff, params.Encode())
-		response, responseBody, err := client.DoRequest("GET", fullURL, headers, nil)
-		if err != nil {
-			g.logger.Error("A PR changes function is failed by doing a request", "error", err)
-			return nil, err
-		}
-
-		if response.StatusCode >= http.StatusBadRequest {
-			g.logger.Error("HTTP request failed with status", "code", response.StatusCode, "responseBody", responseBody)
-			return nil, fmt.Errorf("Response body %v", string(responseBody))
-		}
-		if err = json.Unmarshal(responseBody, &changesReponse); err != nil {
-			g.logger.Error("A PR changes function is failed by parsing json", "error", err)
-			return nil, err
-		}
-
-		changes = append(changes, changesReponse.Values...)
-		if changesReponse.IsLastPage || changesReponse.NextPageStart == nil {
-			break
-		}
-		start = strconv.Itoa(*changesReponse.NextPageStart)
-	}
-
-	return changes, nil
-}
-
 func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
-	g.logger.Info("Handling PR changes fetching")
-	changes, err := g.fetchPRChanges(args)
+	g.logger.Info("handling PR changes fetching")
+
+	authInfo := bitbucket.AuthInfo{
+		Username: g.globalConfig.BitbucketPlugin.BitbucketUsername,
+		Token:    g.globalConfig.BitbucketPlugin.BitbucketToken,
+	}
+	client, err := bitbucket.New(g.logger, args.RepoParam.VCSURL, authInfo, g.globalConfig)
 	if err != nil {
+		g.logger.Error("initialization Bitbucket client failed", "error", err)
 		return "", err
 	}
 
-	g.logger.Info("Strating fetching PR code")
-	//TODO there is a strange bug when it fetchs only pr changes without all other files in case of PR fetch ???
+	// TODO change the RepoParam structure to int
+	prId, _ := strconv.Atoi(args.RepoParam.PRID)
+	prData, err := client.PullRequests.Get(args.RepoParam.Namespace, args.RepoParam.RepoName, prId)
+	if err != nil {
+		g.logger.Error("failed to retrieve information about the PR", "PRID", prId, "error", err)
+		return "", err
+	}
+
+	changes, err := prData.GetChanges()
+	if err != nil {
+		g.logger.Error("failed to PR changes", "PRID", prId, "error", err)
+		return "", err
+	}
+
+	g.logger.Debug("strating to fetch PR code")
+	// Setting a branch from PR data for fetching
+	args.Branch = prData.FromReference.DisplayID
+
+	// TODO Fix a strange bug when it fetches only pr changes without all other files in case of PR fetch
 	_, err = git.CloneRepository(g.logger, g.globalConfig, args)
 	if err != nil {
 		g.logger.Error("failed to clone repository", "error", err)
 		return "", err
 	}
 
-	// Create a folder for scanning changed files from the PR
-	// TODO move to core
-	rawStartTime := time.Now().UTC()
-	startTime := rawStartTime.Format(time.RFC3339)
-	targetPRFolder := filepath.Join(shared.GetScanioHome(), "tmp", strings.ToLower(args.RepoParam.VCSURL), strings.ToLower(args.RepoParam.Namespace),
-		strings.ToLower(args.RepoParam.RepoName), "scanio-pr-tmp", args.RepoParam.PRID, startTime)
-	if err := os.MkdirAll(targetPRFolder, os.ModePerm); err != nil {
-		g.logger.Error("Creating a folde for PR function is failed", "error", err)
-		return "", err
-	}
+	baseDestPath := shared.GetPRTempPath(g.logger, args.RepoParam.VCSURL, (args.RepoParam.Namespace), args.RepoParam.RepoName, prId)
 
-	g.logger.Debug("Copy files which are changed")
-	for _, val := range changes {
+	g.logger.Debug("copying files that have changed")
+	for _, val := range *changes {
 		if !shared.ContainsSubstring(val.Type, bitbucket.ChangeTypes) {
 			g.logger.Debug("Skipping", "type", val.Type, "path", val.Path.ToString)
 			continue
 		}
 
 		srcPath := filepath.Join(args.TargetFolder, val.Path.ToString)
-		destPath := filepath.Join(targetPRFolder, val.Path.ToString)
+		destPath := filepath.Join(baseDestPath, val.Path.ToString)
 		err := shared.Copy(srcPath, destPath)
 		if err != nil {
-			g.logger.Error("Error copying file", "error", err)
+			g.logger.Error("error copying file", "error", err)
 		}
 	}
 
-	g.logger.Debug("Copy usefull files which are started with dot")
-	files, err := os.ReadDir(args.TargetFolder)
-	if err != nil {
+	if err := shared.CopyDotFiles(args.TargetFolder, baseDestPath, g.logger); err != nil {
 		return "", err
 	}
 
-	for _, file := range files {
-		if file.IsDir() && file.Name()[0] == '.' {
-			sourceFolder := filepath.Join(args.TargetFolder, file.Name())
-			targetFolderNext := filepath.Join(targetPRFolder, file.Name())
-			if err := shared.Copy(sourceFolder, targetFolderNext); err != nil {
-				fmt.Printf("Error copying directory: %v\n", err)
-			}
-		} else if file.Name()[0] == '.' {
-			sourceFolder := filepath.Join(args.TargetFolder, file.Name())
-			err := shared.Copy(sourceFolder, targetPRFolder)
-			if err != nil {
-				fmt.Printf("Error copying file: %v\n", err)
-			}
-		}
-	}
-
-	g.logger.Info("Files for PR scan are copied", "folder", targetPRFolder)
-	return targetPRFolder, nil
+	g.logger.Info("files for PR scan are copied", "folder", baseDestPath)
+	return baseDestPath, nil
 }
 
 func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
@@ -388,13 +300,12 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchRespon
 		return shared.VCSFetchResponse{}, err
 	}
 
-	// TODO check repo existence? to call (repo *Repository) RepositoryClone()
 	switch args.Mode {
 	case "PRscan":
 		// Fetching for pull request scanning
 		path, err := g.fetchPR(&args)
 		if err != nil {
-			g.logger.Error("failed to fetch pull request", "error", err)
+			g.logger.Error("failed to fetch pull request")
 			return result, err
 		}
 		result.Path = path

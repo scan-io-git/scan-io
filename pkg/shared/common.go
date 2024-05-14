@@ -7,7 +7,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
@@ -122,7 +125,7 @@ func ForEveryStringWithBoundedGoroutines(limit int, values []interface{}, f func
 	wg.Wait()
 }
 
-func GetProjectsHome(logger hclog.Logger) string {
+func getProjectsHome(logger hclog.Logger) string {
 	projectsFolder := filepath.Join(GetScanioHome(), "/projects")
 	if _, err := os.Stat(projectsFolder); os.IsNotExist(err) {
 		logger.Info("projectsFolder does not exists. Creating...", "projectsFolder", projectsFolder)
@@ -145,5 +148,25 @@ func GetResultsHome(logger hclog.Logger) string {
 }
 
 func GetRepoPath(logger hclog.Logger, VCSURL, repoWithNamespace string) string {
-	return filepath.Join(GetProjectsHome(logger), VCSURL, repoWithNamespace)
+	return filepath.Join(getProjectsHome(logger), VCSURL, repoWithNamespace)
+}
+
+func GetPRTempPath(logger hclog.Logger, VCSURL, Namespace, RepoName string, PRId int) string {
+	rawStartTime := time.Now().UTC()
+	startTime := rawStartTime.Format(time.RFC3339)
+	PRTempFolder := filepath.Join(getTemp(logger), strings.ToLower(VCSURL), strings.ToLower(Namespace),
+		strings.ToLower(RepoName), "scanio-pr-tmp", strconv.Itoa(PRId), startTime)
+	return PRTempFolder
+}
+
+func getTemp(logger hclog.Logger) string {
+	tmpFolder := filepath.Join(GetScanioHome(), "/tmp")
+	if _, err := os.Stat(tmpFolder); os.IsNotExist(err) {
+		logger.Info("temp folder does not exists. Creating...", "tmpFolder", tmpFolder)
+		if err := os.MkdirAll(tmpFolder, os.ModePerm); err != nil {
+			logger.Error("creating a TMP folder failed", "error", err)
+			panic(err)
+		}
+	}
+	return tmpFolder
 }

@@ -53,8 +53,9 @@ type Proxy struct {
 }
 
 type GitClient struct {
-	Depth       int   `yaml:"depth"`        // Level of depth for cloning and fetching.
-	InsecureTls *bool `yaml:"insecure_tls"` // Flag to skip SSL certificates if true.
+	Depth       int           `yaml:"depth"`        // Level of depth for cloning and fetching. No core-level validation needed.
+	InsecureTls *bool         `yaml:"insecure_tls"` // Flag to skip SSL certificates if true. No core-level validation needed.
+	Timeout     time.Duration `yaml:"timeout"`      // The maximum duration for the Git request before timing it out. Validated by config.GitGlobalConfigValidation.
 	// CABundle
 }
 

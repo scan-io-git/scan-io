@@ -348,6 +348,35 @@ func IsCI() bool {
 	return false
 }
 
+// copyDotFiles copies files and directories starting with a dot from src to dst
+func CopyDotFiles(src, dst string, logger hclog.Logger) error {
+	logger.Debug("copying useful files starting with dot")
+	files, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		if file.Name()[0] == '.' {
+			srcPath := filepath.Join(src, file.Name())
+			dstPath := filepath.Join(dst, file.Name())
+
+			if file.IsDir() {
+				if err := Copy(srcPath, dstPath); err != nil {
+					logger.Error("error copying directory", "path", srcPath, "error", err)
+					return err
+				}
+			} else {
+				if err := Copy(srcPath, dst); err != nil {
+					logger.Error("error copying file", "path", srcPath, "error", err)
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func Copy(srcPath, destPath string) error {
 	srcInfo, err := os.Lstat(srcPath)
 	if err != nil {

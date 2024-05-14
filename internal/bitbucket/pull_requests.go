@@ -3,6 +3,7 @@ package bitbucket
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 )
 
 // pullRequestsService implements the PullRequestsService interface.
@@ -15,6 +16,44 @@ func NewPullRequestsService(client *Client) PullRequestsService {
 	return &pullRequestsService{
 		service: &service{client},
 	}
+}
+
+// AddComment adds a comment to a specific pull request.
+func (pr *PullRequest) GetChanges() (*[]Change, error) {
+	pr.client.Logger.Debug("getting changes for a pull request", "project", pr.ToReference.Repository.Project.Key, "repository", pr.ToReference.Repository.Slug, "id", pr.ID)
+	var result []Change
+	start := 0
+	limit := 2000
+	path := pr.Links.Self[0].Href + "/changes" // works even without rest/api/1.0/ prefix
+
+	for {
+		pr.client.Logger.Debug("getting changes of the pull request", "start", start, "limit", limit)
+		query := map[string]string{
+			"start":        strconv.Itoa(start),
+			"limit":        strconv.Itoa(limit),
+			"withComments": "false",
+		}
+
+		response, err := pr.client.get(path, query)
+		if err != nil {
+			return nil, fmt.Errorf("error getting changes: %v", err)
+		}
+
+		var resp ChangesResponse[Change]
+		if err := unmarshalResponse(response, &resp); err != nil {
+			return nil, err
+		}
+
+		result = append(result, resp.Values...)
+		if resp.IsLastPage {
+			pr.client.Logger.Debug("last page of changes reached", "totalFetched", len(result))
+			break
+		}
+
+		start = resp.NextPageStart
+	}
+
+	return &result, nil
 }
 
 // AddComment adds a comment to a specific pull request.

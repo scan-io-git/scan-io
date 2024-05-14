@@ -4,52 +4,6 @@ var (
 	ChangeTypes = []string{"ADD", "MODIFY"}
 )
 
-// Changes represents a collection of change details within a git context.
-type Changes struct {
-	FromHash      string             `json:"fromHash"`
-	ToHash        string             `json:"toHash"`
-	Properties    *ChangesProperties `json:"properties"`
-	Values        []*Change          `json:"values"`
-	Size          int                `json:"size"`
-	IsLastPage    bool               `json:"isLastPage"`
-	Start         int                `json:"start"`
-	Limit         int                `json:"limit"`
-	NextPageStart *int               `json:"nextPageStart"`
-}
-
-// Change details a single file change within a repository, providing metadata about the modification.
-type Change struct {
-	ContentID        string                   `json:"contentId"`
-	FromContentID    string                   `json:"fromContentId"`
-	Path             *File                    `json:"path"`
-	Executable       bool                     `json:"executable"`
-	Type             string                   `json:"type"`
-	NodeType         string                   `json:"nodeType"`
-	PercentUnchanged int                      `json:"percentUnchanged"`
-	Properties       *ChangesPropertiesValues `json:"properties"`
-}
-
-// ChangesProperties defines properties associated with a set of changes, typically related to the scope.
-type ChangesProperties struct {
-	ChangeScope string `json:"changeScope"`
-}
-
-// ChangesPropertiesValues holds detailed values for properties associated with a single change.
-type ChangesPropertiesValues struct {
-	ChangeScope string `json:"changeScope"`
-}
-
-// File represents a file within a repository showing its structure and metadata.
-type File struct {
-	Components []string `json:"components"`
-	Parent     string   `json:"parent"`
-	Name       string   `json:"name"`
-	Extension  string   `json:"extension"`
-	ToString   string   `json:"toString"`
-}
-
-// --------------------------------------------------
-
 // Response wraps API responses that include pagination details.
 type Response[T any] struct {
 	NextPageStart int  `json:"nextPageStart"`
@@ -74,19 +28,19 @@ type Error struct {
 
 // Repository represents a repository in Bitbucket, including its project container and metadata.
 type Repository struct {
-	Slug          string   `json:"slug,omitempty"`
-	ID            int      `json:"id,omitempty"`
-	Name          string   `json:"name,omitempty"`
+	Slug          string   `json:"slug"`
+	ID            int      `json:"id"`
+	Name          string   `json:"name"`
 	Description   string   `json:"description"`
-	HierarchyID   string   `json:"hierarchyId,omitempty"`
-	ScmID         string   `json:"scmId,omitempty"`
-	State         string   `json:"state,omitempty"`
-	StatusMessage string   `json:"statusMessage,omitempty"`
+	HierarchyID   string   `json:"hierarchyId"`
+	ScmID         string   `json:"scmId"`
+	State         string   `json:"state"`
+	StatusMessage string   `json:"statusMessage"`
 	Forkable      bool     `json:"forkable,omitempty"`
 	Project       *Project `json:"project,omitempty"`
-	Public        bool     `json:"public,omitempty"`
+	Public        bool     `json:"public"`
 	Archived      bool     `json:"archived,omitempty"`
-	Links         Links    `json:"links,omitempty"`
+	Links         Links    `json:"links"`
 }
 
 // Project represents a project within Bitbucket, providing a container for repositories.
@@ -95,7 +49,7 @@ type Project struct {
 	ID          int    `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	Public      bool   `json:"public"`
+	Public      bool   `json:"public,omitempty"`
 	Type        string `json:"type"`
 	Links       Links  `json:"links"`
 }
@@ -125,13 +79,13 @@ type PullRequest struct {
 	Title         string     `json:"title"`
 	Description   string     `json:"description"`
 	State         string     `json:"state"`
-	Open          bool       `json:"open"`
-	Closed        bool       `json:"closed"`
+	Open          bool       `json:"open,omitempty"`
+	Closed        bool       `json:"closed,omitempty"`
 	CreatedDate   int64      `json:"createdDate"`
 	UpdatedDate   int64      `json:"updatedDate"`
 	FromReference Reference  `json:"fromRef"`
 	ToReference   Reference  `json:"toRef"`
-	Locked        bool       `json:"locked"`
+	Locked        bool       `json:"locked,omitempty"`
 	Author        *UserData  `json:"author,omitempty"`
 	Reviewers     []UserData `json:"reviewers"`
 	Participants  []UserData `json:"participants,omitempty"`
@@ -176,4 +130,44 @@ type User struct {
 type MergeResult struct {
 	Outcome string `json:"outcome"`
 	Current bool   `json:"current"`
+}
+
+// Changes represents a collection of change details within a git context.
+type ChangesResponse[T any] struct {
+	Response[T]
+	FromHash   string             `json:"fromHash"`
+	ToHash     string             `json:"toHash"`
+	Properties *ChangesProperties `json:"properties"`
+}
+
+// Change details a single file change within a repository, providing metadata about the modification.
+type Change struct {
+	ContentID        string                   `json:"contentId"`
+	FromContentID    string                   `json:"fromContentId"`
+	Path             *File                    `json:"path,omitempty"`
+	Executable       bool                     `json:"executable,omitempty"`
+	Type             string                   `json:"type"`
+	NodeType         string                   `json:"nodeType"`
+	PercentUnchanged int                      `json:"percentUnchanged,omitempty"`
+	Links            Links                    `json:"links,omitempty"`
+	Properties       *ChangesPropertiesValues `json:"properties"`
+}
+
+// ChangesProperties defines properties associated with a set of changes, typically related to the scope.
+type ChangesProperties struct {
+	ChangeScope string `json:"changeScope"`
+}
+
+// ChangesPropertiesValues holds detailed values for properties associated with a single change.
+type ChangesPropertiesValues struct {
+	ChangeScope string `json:"changeScope"`
+}
+
+// File represents a file within a repository showing its structure and metadata.
+type File struct {
+	Components []string `json:"components"`
+	Parent     string   `json:"parent"`
+	Name       string   `json:"name"`
+	Extension  string   `json:"extension"`
+	ToString   string   `json:"toString"`
 }
