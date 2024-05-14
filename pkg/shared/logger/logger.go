@@ -45,9 +45,8 @@ func getLogLevel(levelStr string) hclog.Level {
 	case "ERROR":
 		return hclog.Error
 	default:
-		// TODO get rid of or change. It breaks plugins due to sending the message as an RPC message
-		// hclog.New(&hclog.LoggerOptions{Level: hclog.Warn, DisableTime: true, Output: os.Stdout}).
-		// 	Warn("Unrecognized log level, defaulting to INFO", "providedLevel", levelStr)
+		hclog.New(&hclog.LoggerOptions{Level: hclog.Warn, DisableTime: true, Output: os.Stdout}).
+			Warn("Unrecognized log level, defaulting to INFO", "providedLevel", levelStr)
 		return hclog.Info
 	}
 }

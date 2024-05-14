@@ -437,5 +437,6 @@ func main() {
 		Plugins: map[string]plugin.Plugin{
 			shared.PluginTypeVCS: &shared.VCSPlugin{Impl: VCS},
 		},
+		Logger: logger,
 	})
 }
