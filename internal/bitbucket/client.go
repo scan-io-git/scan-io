@@ -44,7 +44,7 @@ type PullRequestsService interface {
 
 // AuthInfo holds authentication details for Bitbucket access.
 type AuthInfo struct {
-	Username string // Username for BB access
+	Username string // Username for Bitbucket access
 	Token    string // Token for basic authentication
 }
 
@@ -56,10 +56,17 @@ func (c *Client) resolveURL(path string) string {
 	return c.BaseURL + path
 }
 
+// requestBuilder returns a common request builder with the necessary headers and authentication.
+func (c *Client) headersBuilder() *resty.Request {
+	return c.HTTPClient.RestyClient.R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Accept", "application/json")
+}
+
 // get sends a GET request using the client's base URL, path, and query parameters provided.
 func (c *Client) get(path string, queryParams map[string]string) (*resty.Response, error) {
 	fullURL := c.resolveURL(path)
-	return c.HTTPClient.RestyClient.R().
+	return c.headersBuilder().
 		SetQueryParams(queryParams).
 		Get(fullURL)
 }
@@ -67,7 +74,7 @@ func (c *Client) get(path string, queryParams map[string]string) (*resty.Respons
 // post sends a POST request using the client's base URL, path, query parameters, and body provided.
 func (c *Client) post(path string, queryParams map[string]string, body interface{}) (*resty.Response, error) {
 	fullURL := c.resolveURL(path)
-	return c.HTTPClient.RestyClient.R().
+	return c.headersBuilder().
 		SetQueryParams(queryParams).
 		SetBody(body).
 		Post(fullURL)
@@ -76,7 +83,7 @@ func (c *Client) post(path string, queryParams map[string]string, body interface
 // put sends a PUT request using the client's base URL, path, query parameters, and body provided.
 func (c *Client) put(path string, queryParams map[string]string, body interface{}) (*resty.Response, error) {
 	fullURL := c.resolveURL(path)
-	return c.HTTPClient.RestyClient.R().
+	return c.headersBuilder().
 		SetQueryParams(queryParams).
 		SetBody(body).
 		Put(fullURL)
@@ -91,11 +98,9 @@ func unmarshalResponse[T any](resp *resty.Response, out *T) error {
 		if err := json.Unmarshal(resp.Body(), &errorList); err == nil && len(errorList.Errors) > 0 {
 			return fmt.Errorf("API error(s) occurred with status code %d: %+v", resp.StatusCode(), errorList.Errors)
 		}
-		// If no detailed errors are provided or JSON unmarshalling fails, return a generic error with the status code
 		return fmt.Errorf("API request failed with status code %d and response: %s", resp.StatusCode(), resp.String())
 	}
 
-	// No API errors, proceed to unmarshal the expected content
 	if err := json.Unmarshal(resp.Body(), out); err != nil {
 		return fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -106,14 +111,12 @@ func unmarshalResponse[T any](resp *resty.Response, out *T) error {
 func New(logger hclog.Logger, domain string, auth AuthInfo, globalConfig *config.Config) (*Client, error) {
 	httpClient, err := httpclient.New(logger, globalConfig)
 	if err != nil {
-		logger.Error("failed to initialize http client", "error", err)
+		logger.Error("failed to initialize HTTP client", "error", err)
 		return nil, err
 	}
 
 	httpClient.RestyClient.
-		SetBasicAuth(auth.Username, auth.Token).
-		SetHeader("Content-Type", "application/json").
-		SetHeader("Accept", "application/json")
+		SetBasicAuth(auth.Username, auth.Token)
 
 	client := &Client{
 		HTTPClient: httpClient,
@@ -121,10 +124,9 @@ func New(logger hclog.Logger, domain string, auth AuthInfo, globalConfig *config
 		Logger:     logger,
 	}
 
-	// Initialize services
-	client.Repositories = NewRepositoriesService(client)
-	client.Projects = NewProjectsService(client)
-	client.PullRequests = NewPullRequestsService(client)
+	client.Repositories = NewRepositoriesService(client, 0)
+	client.Projects = NewProjectsService(client, 0)
+	client.PullRequests = NewPullRequestsService(client, 0)
 
 	return client, nil
 }

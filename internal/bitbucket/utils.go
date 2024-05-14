@@ -1,14 +1,14 @@
 package bitbucket
 
-// extractCloneLinks parses the clone links from the repository information to find HTTP and SSH URLs.
-func ExtractCloneLinks(clones []CloneLink) (string, string) {
-	var httpLink, sshLink string
+// ExtractCloneLinks parses the clone links from the repository information and returns the HTTP and SSH URLs.
+func ExtractCloneLinks(clones []CloneLink) (httpLink, sshLink string) {
 	for _, clone := range clones {
-		if clone.Name == "http" {
+		switch clone.Name {
+		case "http":
 			httpLink = clone.Href
-		} else if clone.Name == "ssh" {
+		case "ssh":
 			sshLink = clone.Href
 		}
 	}
-	return httpLink, sshLink
+	return
 }

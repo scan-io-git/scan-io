@@ -1,6 +1,8 @@
 package bitbucket
 
 var (
+	// ChangeTypes defines the possible types of changes in a pull request.
+	// TODO: move to global config
 	ChangeTypes = []string{"ADD", "MODIFY"}
 )
 
