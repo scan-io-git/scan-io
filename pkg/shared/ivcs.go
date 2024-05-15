@@ -74,7 +74,7 @@ type VCSRequestBase struct {
 	PullRequestId int
 }
 
-type VCSRetrivePRInformationRequest struct {
+type VCSRetrievePRInformationRequest struct {
 	VCSRequestBase
 }
 
@@ -128,7 +128,7 @@ type VCSListReposResponse struct {
 	Repositories []RepositoryParams
 }
 
-type VCSRetrivePRInformationResponse struct {
+type VCSRetrievePRInformationResponse struct {
 	PR PRParams
 }
 
@@ -136,10 +136,10 @@ type VCS interface {
 	Setup(configData config.Config) (bool, error)
 	Fetch(req VCSFetchRequest) (VCSFetchResponse, error)
 	ListRepos(args VCSListReposRequest) ([]RepositoryParams, error)
-	RetrivePRInformation(req VCSRetrivePRInformationRequest) (PRParams, error)
-	AddRoleToPR(req VCSAddRoleToPRRequest) (bool, error) // TODO change return to bool
+	RetrievePRInformation(req VCSRetrievePRInformationRequest) (PRParams, error)
+	AddRoleToPR(req VCSAddRoleToPRRequest) (bool, error)
 	SetStatusOfPR(req VCSSetStatusOfPRRequest) (bool, error)
-	AddComment(req VCSAddCommentToPRRequest) (bool, error)
+	AddCommentToPR(req VCSAddCommentToPRRequest) (bool, error)
 }
 
 type VCSRPCClient struct{ client *rpc.Client }
@@ -177,10 +177,10 @@ func (g *VCSRPCClient) Fetch(req VCSFetchRequest) (VCSFetchResponse, error) {
 	return resp, nil
 }
 
-func (g *VCSRPCClient) RetrivePRInformation(req VCSRetrivePRInformationRequest) (PRParams, error) {
-	var resp VCSRetrivePRInformationResponse
+func (g *VCSRPCClient) RetrievePRInformation(req VCSRetrievePRInformationRequest) (PRParams, error) {
+	var resp VCSRetrievePRInformationResponse
 
-	err := g.client.Call("Plugin.RetrivePRInformation", req, &resp)
+	err := g.client.Call("Plugin.RetrievePRInformation", req, &resp)
 
 	if err != nil {
 		return resp.PR, err
@@ -190,7 +190,7 @@ func (g *VCSRPCClient) RetrivePRInformation(req VCSRetrivePRInformationRequest) 
 }
 
 func (g *VCSRPCClient) AddRoleToPR(req VCSAddRoleToPRRequest) (bool, error) {
-	var resp VCSRetrivePRInformationResponse
+	var resp VCSRetrievePRInformationResponse
 
 	err := g.client.Call("Plugin.AddRoleToPR", req, &resp)
 
@@ -202,7 +202,7 @@ func (g *VCSRPCClient) AddRoleToPR(req VCSAddRoleToPRRequest) (bool, error) {
 }
 
 func (g *VCSRPCClient) SetStatusOfPR(req VCSSetStatusOfPRRequest) (bool, error) {
-	var resp VCSRetrivePRInformationResponse
+	var resp VCSRetrievePRInformationResponse
 
 	err := g.client.Call("Plugin.SetStatusOfPR", req, &resp)
 
@@ -213,10 +213,10 @@ func (g *VCSRPCClient) SetStatusOfPR(req VCSSetStatusOfPRRequest) (bool, error) 
 	return true, nil
 }
 
-func (g *VCSRPCClient) AddComment(req VCSAddCommentToPRRequest) (bool, error) {
-	var resp VCSRetrivePRInformationResponse
+func (g *VCSRPCClient) AddCommentToPR(req VCSAddCommentToPRRequest) (bool, error) {
+	var resp VCSRetrievePRInformationResponse
 
-	err := g.client.Call("Plugin.AddComment", req, &resp)
+	err := g.client.Call("Plugin.AddCommentToPR", req, &resp)
 
 	if err != nil {
 		return false, err
@@ -247,13 +247,13 @@ func (s *VCSRPCServer) ListRepos(args VCSListReposRequest, resp *VCSListReposRes
 	return err
 }
 
-func (s *VCSRPCServer) RetrivePRInformation(args VCSRetrivePRInformationRequest, resp *VCSRetrivePRInformationResponse) error {
-	pr, err := s.Impl.RetrivePRInformation(args)
+func (s *VCSRPCServer) RetrievePRInformation(args VCSRetrievePRInformationRequest, resp *VCSRetrievePRInformationResponse) error {
+	pr, err := s.Impl.RetrievePRInformation(args)
 	resp.PR = pr
 	return err
 }
 
-func (s *VCSRPCServer) AddRoleToPR(args VCSAddRoleToPRRequest, resp *VCSRetrivePRInformationResponse) error {
+func (s *VCSRPCServer) AddRoleToPR(args VCSAddRoleToPRRequest, resp *VCSRetrievePRInformationResponse) error {
 	_, err := s.Impl.AddRoleToPR(args)
 	if err != nil {
 		return err
@@ -261,7 +261,7 @@ func (s *VCSRPCServer) AddRoleToPR(args VCSAddRoleToPRRequest, resp *VCSRetriveP
 	return err
 }
 
-func (s *VCSRPCServer) SetStatusOfPR(args VCSSetStatusOfPRRequest, resp *VCSRetrivePRInformationResponse) error {
+func (s *VCSRPCServer) SetStatusOfPR(args VCSSetStatusOfPRRequest, resp *VCSRetrievePRInformationResponse) error {
 	a, err := s.Impl.SetStatusOfPR(args)
 	if a == false {
 
@@ -269,8 +269,8 @@ func (s *VCSRPCServer) SetStatusOfPR(args VCSSetStatusOfPRRequest, resp *VCSRetr
 	return err
 }
 
-func (s *VCSRPCServer) AddComment(args VCSAddCommentToPRRequest, resp *VCSRetrivePRInformationResponse) error {
-	a, err := s.Impl.AddComment(args)
+func (s *VCSRPCServer) AddCommentToPR(args VCSAddCommentToPRRequest, resp *VCSRetrievePRInformationResponse) error {
+	a, err := s.Impl.AddCommentToPR(args)
 	if a == false {
 
 	}

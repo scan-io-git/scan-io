@@ -138,7 +138,7 @@ func (g *VCSGitlab) ListRepos(args shared.VCSListReposRequest) ([]shared.Reposit
 	return reposParams, nil
 }
 
-func (g *VCSGitlab) RetrivePRInformation(args shared.VCSRetrivePRInformationRequest) (shared.PRParams, error) {
+func (g *VCSGitlab) RetrievePRInformation(args shared.VCSRetrievePRInformationRequest) (shared.PRParams, error) {
 	var result shared.PRParams
 	err := fmt.Errorf("The function is not implemented got Gitlab.")
 
@@ -157,7 +157,7 @@ func (g *VCSGitlab) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, er
 	return false, err
 }
 
-func (g *VCSGitlab) AddComment(args shared.VCSAddCommentToPRRequest) (bool, error) {
+func (g *VCSGitlab) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (bool, error) {
 	err := fmt.Errorf("The function is not implemented got Github.")
 
 	return false, err

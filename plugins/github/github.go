@@ -43,7 +43,7 @@ func (g *VCSGithub) ListRepos(args shared.VCSListReposRequest) ([]shared.Reposit
 	return reposParams, nil
 }
 
-func (g *VCSGithub) RetrivePRInformation(args shared.VCSRetrivePRInformationRequest) (shared.PRParams, error) {
+func (g *VCSGithub) RetrievePRInformation(args shared.VCSRetrievePRInformationRequest) (shared.PRParams, error) {
 	var result shared.PRParams
 	err := fmt.Errorf("The function is not implemented got Github.")
 
@@ -62,7 +62,7 @@ func (g *VCSGithub) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, er
 	return false, err
 }
 
-func (g *VCSGithub) AddComment(args shared.VCSAddCommentToPRRequest) (bool, error) {
+func (g *VCSGithub) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (bool, error) {
 	err := fmt.Errorf("The function is not implemented got Github.")
 
 	return false, err

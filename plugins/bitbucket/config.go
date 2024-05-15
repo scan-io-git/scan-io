@@ -95,7 +95,7 @@ func (g *VCSBitbucket) validateList(args *shared.VCSListReposRequest) error {
 }
 
 // validateRetrivePRInformation checks the necessary fields for listing repositories and ensures they are set.
-func (g *VCSBitbucket) validateRetrivePRInformation(args *shared.VCSRetrivePRInformationRequest) error {
+func (g *VCSBitbucket) validateRetrievePRInformation(args *shared.VCSRetrievePRInformationRequest) error {
 	if err := g.validateBaseArgs(&args.VCSRequestBase); err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func (g *VCSBitbucket) validateSetStatusOfPR(args *shared.VCSSetStatusOfPRReques
 }
 
 // validateAddComment checks the necessary fields for listing repositories and ensures they are set.
-func (g *VCSBitbucket) validateAddComment(args *shared.VCSAddCommentToPRRequest) error {
+func (g *VCSBitbucket) validateAddCommentToPR(args *shared.VCSAddCommentToPRRequest) error {
 	if err := g.validateBaseArgs(&args.VCSRequestBase); err != nil {
 		return err
 	}

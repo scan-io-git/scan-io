@@ -15,9 +15,22 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
+// VCSBitbucket is a struct that implements VCS operations for Bitbucket.
 type VCSBitbucket struct {
 	logger       hclog.Logger
 	globalConfig *config.Config
+}
+
+// NewVCSBitbucket creates a new instance of VCSBitbucket.
+func NewVCSBitbucket(logger hclog.Logger) *VCSBitbucket {
+	return &VCSBitbucket{
+		logger: logger,
+	}
+}
+
+// SetGlobalConfig sets the global configuration for the VCSBitbucket instance.
+func (g *VCSBitbucket) SetGlobalConfig(globalConfig *config.Config) {
+	g.globalConfig = globalConfig
 }
 
 // listRepositoriesForProject fetches repositories for a given project.
@@ -30,7 +43,7 @@ func (g *VCSBitbucket) listRepositoriesForProject(client *bitbucket.Client, proj
 	return toRepositoryParams(repositories), nil
 }
 
-// listReposForAllProjects fetches repositories for all projects.
+// listRepositoriesForAllProjects fetches repositories for all projects.
 func (g *VCSBitbucket) listRepositoriesForAllProjects(client *bitbucket.Client) ([]shared.RepositoryParams, error) {
 	// Fetch all projects from the Bitbucket API
 	projects, err := client.Projects.List()
@@ -75,29 +88,17 @@ func (g *VCSBitbucket) ListRepos(args shared.VCSListReposRequest) ([]shared.Repo
 		return nil, err
 	}
 
-	var result []shared.RepositoryParams
 	if len(args.Namespace) > 0 {
-		result, err = g.listRepositoriesForProject(client, args.Namespace)
-		if err != nil {
-			g.logger.Error("The particular repository function is failed", "error", err)
-			return nil, err
-		}
-		return result, nil
-	} else {
-		result, err = g.listRepositoriesForAllProjects(client)
-		if err != nil {
-			g.logger.Error("The particular repository function is failed", "error", err)
-			return nil, err
-		}
-		return result, nil
+		return g.listRepositoriesForProject(client, args.Namespace)
 	}
+	return g.listRepositoriesForAllProjects(client)
 }
 
-// RetrivePRInformation handles retriving PR information based on the provided VCSRetrivePRInformationRequest.
-func (g *VCSBitbucket) RetrivePRInformation(args shared.VCSRetrivePRInformationRequest) (shared.PRParams, error) {
+// RetrievePRInformation handles retrieving PR information based on the provided VCSRetrievePRInformationRequest.
+func (g *VCSBitbucket) RetrievePRInformation(args shared.VCSRetrievePRInformationRequest) (shared.PRParams, error) {
 	g.logger.Debug("Starting retrive information about a PR", "args", args)
 
-	if err := g.validateRetrivePRInformation(&args); err != nil {
+	if err := g.validateRetrievePRInformation(&args); err != nil {
 		g.logger.Error("validation failed for retrieving pull request information operation", "error", err)
 		return shared.PRParams{}, err
 	}
@@ -194,10 +195,10 @@ func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool,
 }
 
 // AddCommentToPR handles adding a comment to a specific pull request.
-func (g *VCSBitbucket) AddComment(args shared.VCSAddCommentToPRRequest) (bool, error) {
+func (g *VCSBitbucket) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (bool, error) {
 	g.logger.Debug("starting to add a comment to a PR", "args", args)
 
-	if err := g.validateAddComment(&args); err != nil {
+	if err := g.validateAddCommentToPR(&args); err != nil {
 		g.logger.Error("validation failed for adding a comment to PR operation", "error", err)
 		return false, err
 	}
@@ -215,17 +216,17 @@ func (g *VCSBitbucket) AddComment(args shared.VCSAddCommentToPRRequest) (bool, e
 
 	prData, err := client.PullRequests.Get(args.Namespace, args.Repository, args.PullRequestId)
 	if err != nil {
-		g.logger.Error("Failed to retrieve information about the PR", "PRID", args.PullRequestId, "error", err)
+		g.logger.Error("failed to retrieve information about the PR", "PRID", args.PullRequestId, "error", err)
 		return false, err
 	}
-	g.logger.Info("Commenting on a particular PR", "PR URL", fmt.Sprintf("%v/%v/%v/%v", args.VCSURL, args.Namespace, args.Repository, args.PullRequestId))
+	g.logger.Info("commenting on a particular PR", "PR URL", fmt.Sprintf("%v/%v/%v/%v", args.VCSURL, args.Namespace, args.Repository, args.PullRequestId))
 
 	if _, err := prData.AddComment(args.Comment); err != nil {
-		g.logger.Error("Failed to add comment to PR", "error", err)
+		g.logger.Error("failed to add comment to PR", "error", err)
 		return false, err
 	}
 
-	g.logger.Info("Comment successfully added")
+	g.logger.Info("successfully added a comment to PR", "PR", args.PullRequestId)
 	return true, nil
 }
 
@@ -324,7 +325,7 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchRespon
 }
 
 func (g *VCSBitbucket) Setup(configData config.Config) (bool, error) {
-	g.globalConfig = &configData
+	g.SetGlobalConfig(&configData)
 	if err := UpdateConfigFromEnv(g.globalConfig); err != nil {
 		g.logger.Error("failed to update the global config from env variables", "error", err)
 		return false, err
@@ -339,14 +340,12 @@ func main() {
 		JSONFormat: true,
 	})
 
-	VCS := &VCSBitbucket{
-		logger: logger,
-	}
+	bitbucketInstance := NewVCSBitbucket(logger)
 
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: shared.HandshakeConfig,
 		Plugins: map[string]plugin.Plugin{
-			shared.PluginTypeVCS: &shared.VCSPlugin{Impl: VCS},
+			shared.PluginTypeVCS: &shared.VCSPlugin{Impl: bitbucketInstance},
 		},
 		Logger: logger,
 	})
