@@ -17,6 +17,10 @@
       position: relative;
     }
 
+    .main-body-summary {
+      margin-bottom: 32px;
+    }
+
     .issue-card {
       left: 0;
       /* position: absolute; */
@@ -25,7 +29,41 @@
       padding-left: 10px;
       padding-right: 10px;
       border-radius: 0 0.25rem 0.25rem 0;
-      border: 2px solid #767676;
+      border: 2px solid;
+      margin-bottom: 32px;
+    }
+
+    .severity-error {
+      border-color: #ba432b;
+    }
+
+    .severity-warning {
+      border-color: #b06d07;
+    }
+
+    .severity-note, .severity-none {
+      border-color: #7c7c85;
+    }
+
+    .severity-icon {
+      width: 32px; /* Width of the SVG image */
+      height: 32px; /* Height of the SVG image */
+      display: inline-block;
+    }
+
+    .severity-icon-error {
+      /* svg source https://uxwing.com/alphabet-h-icon/ */
+      background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjIuODggMTIyLjg4Ij48cGF0aCBkPSJNMTcuODkgMGg4OC45YzguODUgMCAxNi4xIDcuMjQgMTYuMSAxNi4xdjkwLjY4YzAgOC44NS03LjI0IDE2LjEtMTYuMSAxNi4xSDE2LjFjLTguODUgMC0xNi4xLTcuMjQtMTYuMS0xNi4xdi04OC45QzAgOC4wNSA4LjA1IDAgMTcuODkgMHptMTQuNDkgMzEuMDZoMTguNzV2MjEuMjJoMjAuNTRWMzEuMDZIOTAuNXY2MC43Nkg3MS42N1Y2Ny4yMUg1MS4xM3YyNC42MUgzMi4zOFYzMS4wNnoiIGZpbGw9IiNiYTQzMmIiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIi8+PC9zdmc+');
+    }
+
+    .severity-icon-warning {
+      /* svg source https://uxwing.com/alphabet-m-icon/ */
+      background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjIuODggMTIyLjg4Ij48cGF0aCBkPSJNMTcuODkgMGg4OC45YzguODUgMCAxNi4xIDcuMjQgMTYuMSAxNi4xdjkwLjY4YzAgOC44NS03LjI0IDE2LjEtMTYuMSAxNi4xSDE2LjFjLTguODUgMC0xNi4xLTcuMjQtMTYuMS0xNi4xdi04OC45QzAgOC4wNSA4LjA1IDAgMTcuODkgMHptOS4zOSAzMS4wNmgyNC43N2w5LjQzIDM2Ljk3IDkuNDYtMzYuOTdIOTUuNnY2MC43Nkg4MC4yNFY0NS41TDY4LjM4IDkxLjgySDU0LjQ3TDQyLjY0IDQ1LjV2NDYuMzJIMjcuMjhWMzEuMDZ6IiBmaWxsPSIjYjA2ZDA3IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvc3ZnPg==');
+    }
+
+    .severity-icon-note, .severity-icon-none {
+      /* svg source https://uxwing.com/alphabet-l-icon/ */
+      background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjIuODggMTIyLjg4Ij48cGF0aCBkPSJNMTcuODkgMGg4OC45YzguODUgMCAxNi4xIDcuMjQgMTYuMSAxNi4xdjkwLjY4YzAgOC44NS03LjI0IDE2LjEtMTYuMSAxNi4xSDE2LjFjLTguODUgMC0xNi4xLTcuMjQtMTYuMS0xNi4xdi04OC45QzAgOC4wNSA4LjA1IDAgMTcuODkgMHptMTkuNDkgMzEuMDZoMTguNzV2NDUuODJIODUuNXYxNC45NEgzNy4zOFYzMS4wNnoiIGZpbGw9IiM3YzdjODUiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIi8+PC9zdmc+');
     }
   </style>
 
@@ -43,8 +81,9 @@
 
       <div class="issue-cards">
         {{range .Results}}
-        <div class="issue-card">
+        <div class="issue-card severity-{{.Level}}">
           <div class="issue-card-header">
+            <div class="severity-icon severity-icon-{{.Level}}"></div>
             <h2 class="issue-card-title">{{.RuleID}}</h2>
           </div>
           <div class="issue-card-body">
