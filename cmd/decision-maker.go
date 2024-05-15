@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/scan-io-git/scan-io/internal/logger"
 	"github.com/scan-io-git/scan-io/pkg/shared"
-	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 	"github.com/scan-io-git/scan-io/plugins/semgrep/pkg/shared"
 	"github.com/scan-io-git/scan-io/plugins/trufflehog3/pkg/shared"
 	"github.com/spf13/cobra"

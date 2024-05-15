@@ -6,10 +6,10 @@ package cmd
 import (
 	"os"
 
-	"github.com/scan-io-git/scan-io/internal/dojo"
-	"github.com/scan-io-git/scan-io/pkg/shared/logger"
-
 	"github.com/spf13/cobra"
+
+	"github.com/scan-io-git/scan-io/internal/dojo"
+	"github.com/scan-io-git/scan-io/internal/logger"
 )
 
 var DOJO_TOKEN = os.Getenv("SCANIO_DEFECTDOJO_TOKEN")

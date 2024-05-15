@@ -7,8 +7,9 @@ import (
 	"github.com/hashicorp/go-hclog"
 
 	utils "github.com/scan-io-git/scan-io/internal/utils"
+
+	"github.com/scan-io-git/scan-io/internal/config"
 	"github.com/scan-io-git/scan-io/pkg/shared"
-	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
 type Fetcher struct {

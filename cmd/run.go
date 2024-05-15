@@ -36,8 +36,8 @@ import (
 
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	// ivcs "github.com/scan-io-git/scan-io/internal/vcs"
+	"github.com/scan-io-git/scan-io/internal/logger"
 	"github.com/scan-io-git/scan-io/pkg/shared"
-	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 // const IMAGE = "356918957485.dkr.ecr.eu-west-2.amazonaws.com/i-am-first"

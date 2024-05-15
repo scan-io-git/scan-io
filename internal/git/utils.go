@@ -19,11 +19,11 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/hashicorp/go-hclog"
 
+	"github.com/scan-io-git/scan-io/internal/config"
 	"github.com/scan-io-git/scan-io/pkg/shared"
-	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
-// Authenticator is an interface for different authentication methods.
+// Authenticator defines an interface for different authentication methods.
 type Authenticator interface {
 	SetupAuth(args *shared.VCSFetchRequest, config *config.BitbucketPlugin, logger hclog.Logger) (transport.AuthMethod, error)
 }
@@ -61,7 +61,7 @@ func (s *SSHKeyAuthenticator) SetupAuth(args *shared.VCSFetchRequest, config *co
 	return auth, nil
 }
 
-// SetupAuth configures SSH agent authentication
+// SetupAuth configures SSH agent authentication.
 func (s *SSHAgentAuthenticator) SetupAuth(args *shared.VCSFetchRequest, config *config.BitbucketPlugin, logger hclog.Logger) (transport.AuthMethod, error) {
 	logger.Debug("setting up SSH agent authentication")
 
@@ -84,7 +84,7 @@ func (s *SSHAgentAuthenticator) SetupAuth(args *shared.VCSFetchRequest, config *
 func (h *HTTPAuthenticator) SetupAuth(args *shared.VCSFetchRequest, config *config.BitbucketPlugin, logger hclog.Logger) (transport.AuthMethod, error) {
 	logger.Debug("setting up HTTP authentication")
 	return &http.BasicAuth{
-		Username: config.BitbucketUsername,
+		Username: config.Username,
 		Password: config.SSHKeyPassword,
 	}, nil
 }
@@ -104,13 +104,12 @@ func getAuthenticator(authType string) (Authenticator, error) {
 }
 
 // CloneRepository clones a Git repository based on the provided VCSFetchRequest and globalConfig.
-// It handles authentication, checks if the repository exists, and updates it if necessary.
 func CloneRepository(logger hclog.Logger, globalConfig *config.Config, args *shared.VCSFetchRequest) (string, error) {
 	targetFolder := args.TargetFolder
 
 	info, err := vcsurl.Parse(args.CloneURL)
 	if err != nil {
-		logger.Error("failed to parse VCS URL", "VCSURL", args.CloneURL, "err", err)
+		logger.Error("failed to parse VCS URL", "VCSURL", args.CloneURL, "error", err)
 		return "", fmt.Errorf("failed to parse VCS URL: %w", err)
 	}
 
@@ -123,7 +122,7 @@ func CloneRepository(logger hclog.Logger, globalConfig *config.Config, args *sha
 
 	auth, err := authenticator.SetupAuth(args, &globalConfig.BitbucketPlugin, logger)
 	if err != nil {
-		logger.Error("failed to set up Git authentication", "err", err)
+		logger.Error("failed to set up Git authentication", "error", err)
 		return "", fmt.Errorf("failed to set up Git authentication: %w", err)
 	}
 
@@ -165,7 +164,7 @@ func CloneRepository(logger hclog.Logger, globalConfig *config.Config, args *sha
 	}
 
 	if err == git.ErrRepositoryAlreadyExists {
-		if err = pullLatestChanges(ctx, repo, globalConfig, auth, branch, logger, output); err != nil {
+		if err := pullLatestChanges(ctx, repo, globalConfig, auth, branch, logger, output); err != nil {
 			return "", err
 		}
 	}
@@ -238,7 +237,7 @@ func updateRepository(ctx context.Context, repo *git.Repository, auth transport.
 func checkoutAndResetBranch(repo *git.Repository, branch plumbing.ReferenceName, logger hclog.Logger, targetFolder string) error {
 	w, err := repo.Worktree()
 	if err != nil {
-		logger.Error("error accessing worktree", "err", err, "targetFolder", targetFolder)
+		logger.Error("error accessing worktree", "error", err, "targetFolder", targetFolder)
 		return fmt.Errorf("error accessing worktree: %w", err)
 	}
 
@@ -255,7 +254,7 @@ func checkoutAndResetBranch(repo *git.Repository, branch plumbing.ReferenceName,
 	if err := w.Reset(&git.ResetOptions{
 		Mode: git.HardReset,
 	}); err != nil {
-		logger.Error("error occurred during reset", "err", err, "targetFolder", targetFolder)
+		logger.Error("error occurred during reset", "error", err, "targetFolder", targetFolder)
 		return fmt.Errorf("error occurred during reset: %w", err)
 	}
 	return nil
@@ -264,7 +263,7 @@ func checkoutAndResetBranch(repo *git.Repository, branch plumbing.ReferenceName,
 func pullLatestChanges(ctx context.Context, repo *git.Repository, cfg *config.Config, auth transport.AuthMethod, branch plumbing.ReferenceName, logger hclog.Logger, output io.Writer) error {
 	w, err := repo.Worktree()
 	if err != nil {
-		logger.Error("error accessing worktree", "err", err)
+		logger.Error("error accessing worktree", "error", err)
 		return fmt.Errorf("error accessing worktree: %w", err)
 	}
 

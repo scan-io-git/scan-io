@@ -9,9 +9,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/internal/fetcher"
+	"github.com/scan-io-git/scan-io/internal/logger"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
-	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 type RunOptionsFetch struct {

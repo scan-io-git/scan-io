@@ -15,8 +15,8 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 
-	"github.com/scan-io-git/scan-io/pkg/shared/config"
-	"github.com/scan-io-git/scan-io/pkg/shared/logger"
+	"github.com/scan-io-git/scan-io/internal/config"
+	"github.com/scan-io-git/scan-io/internal/logger"
 )
 
 const (

@@ -10,9 +10,9 @@ import (
 	"github.com/hashicorp/go-plugin"
 
 	"github.com/scan-io-git/scan-io/internal/bitbucket"
+	"github.com/scan-io-git/scan-io/internal/config"
 	"github.com/scan-io-git/scan-io/internal/git"
 	"github.com/scan-io-git/scan-io/pkg/shared"
-	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
 // VCSBitbucket implements VCS operations for Bitbucket.
@@ -36,8 +36,8 @@ func (g *VCSBitbucket) setGlobalConfig(globalConfig *config.Config) {
 // initializeBitbucketClient creates and initializes a new Bitbucket client.
 func (g *VCSBitbucket) initializeBitbucketClient(vcsURL string) (*bitbucket.Client, error) {
 	authInfo := bitbucket.AuthInfo{
-		Username: g.globalConfig.BitbucketPlugin.BitbucketUsername,
-		Token:    g.globalConfig.BitbucketPlugin.BitbucketToken,
+		Username: g.globalConfig.BitbucketPlugin.Username,
+		Token:    g.globalConfig.BitbucketPlugin.Token,
 	}
 	client, err := bitbucket.New(g.logger, vcsURL, authInfo, g.globalConfig)
 	if err != nil {
@@ -86,7 +86,7 @@ func (g *VCSBitbucket) listRepositoriesForAllProjects(client *bitbucket.Client) 
 }
 
 // ListRepos handles listing repositories based on the provided VCSListReposRequest.
-func (g *VCSBitbucket) ListRepositories(args shared.VCSListReposRequest) ([]shared.RepositoryParams, error) {
+func (g *VCSBitbucket) ListRepositories(args shared.VCSListRepositoriesRequest) ([]shared.RepositoryParams, error) {
 	g.logger.Debug("starting execution of list repositories function", "args", args)
 	if err := g.validateList(&args); err != nil {
 		g.logger.Error("validation failed for listing repositories operation", "error", err)

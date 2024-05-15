@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/scan-io-git/scan-io/pkg/shared/config"
-	"github.com/scan-io-git/scan-io/pkg/shared/logger"
+	"github.com/scan-io-git/scan-io/internal/config"
+	"github.com/scan-io-git/scan-io/internal/logger"
 )
 
 var TestAppConfig *config.Config

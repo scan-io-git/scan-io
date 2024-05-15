@@ -134,7 +134,7 @@ type MergeResult struct {
 	Current bool   `json:"current"`
 }
 
-// Changes represents a collection of change details within a git context.
+// ChangesResponse represents a collection of change details within a git context.
 type ChangesResponse[T any] struct {
 	Response[T]
 	FromHash   string             `json:"fromHash"`

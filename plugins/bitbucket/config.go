@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/scan-io-git/scan-io/internal/config"
 	"github.com/scan-io-git/scan-io/pkg/shared"
-	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
 // UpdateConfigFromEnv sets configuration values from environment variables, if they are set.
 func UpdateConfigFromEnv(cfg *config.Config) error {
 	envVars := map[string]*string{
-		"SCANIO_BITBUCKET_USERNAME":         &cfg.BitbucketPlugin.BitbucketUsername,
-		"SCANIO_BITBUCKET_TOKEN":            &cfg.BitbucketPlugin.BitbucketToken,
+		"SCANIO_BITBUCKET_USERNAME":         &cfg.BitbucketPlugin.Username,
+		"SCANIO_BITBUCKET_TOKEN":            &cfg.BitbucketPlugin.Token,
 		"SCANIO_BITBUCKET_SSH_KEY_PASSWORD": &cfg.BitbucketPlugin.SSHKeyPassword,
 	}
 
@@ -26,7 +26,7 @@ func UpdateConfigFromEnv(cfg *config.Config) error {
 
 // validateCommonCredentials checks for the presence of common credentials.
 func (g *VCSBitbucket) validateCommonCredentials() error {
-	if len(g.globalConfig.BitbucketPlugin.BitbucketUsername) == 0 || len(g.globalConfig.BitbucketPlugin.BitbucketToken) == 0 {
+	if len(g.globalConfig.BitbucketPlugin.Username) == 0 || len(g.globalConfig.BitbucketPlugin.Token) == 0 {
 		return fmt.Errorf("both Bitbucket username and token are required")
 	}
 	return nil

@@ -2,8 +2,8 @@
 
 ## Bitbucket plugin config
 bitbucket_plugin:
-  bitbucket_username: "" # Default: none. Can be overridden with environment variable SCANIO_BITBUCKET_USERNAME.
-  bitbucket_token: "" # Default: none. Can be overridden with environment variable SCANIO_BITBUCKET_TOKEN.
+  username: "" # Default: none. Can be overridden with environment variable SCANIO_BITBUCKET_USERNAME.
+  token: "" # Default: none. Can be overridden with environment variable SCANIO_BITBUCKET_TOKEN.
   ssh_key_password: "" # Default: none. Can be overridden with environment variable SCANIO_BITBUCKET_SSH_KEY_PASSWORD.
 
 ## Logger config
