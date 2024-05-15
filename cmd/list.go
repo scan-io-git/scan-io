@@ -40,7 +40,7 @@ func do() {
 
 	shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, allArgumentsList.VCSPlugName, func(raw interface{}) error {
 		vcsName := raw.(shared.VCS)
-		args := shared.VCSListReposRequest{
+		args := shared.VCSListRepositoriesRequest{
 			VCSURL:    allArgumentsList.VCSURL,
 			Namespace: allArgumentsList.Namespace,
 			// Repository: allArgumentsList.Repository,
@@ -50,7 +50,7 @@ func do() {
 			logger.Warn("Listing a particular repository is not supported. The namespace will be listed instead", "namespace", args.Namespace)
 		}
 
-		projects, err := vcsName.ListRepos(args)
+		projects, err := vcsName.ListRepositories(args)
 
 		if err != nil {
 			resultVCS = shared.GenericResult{Args: args, Result: projects, Status: "FAILED", Message: err.Error()}

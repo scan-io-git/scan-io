@@ -78,7 +78,7 @@ List of actions for github:
 			}
 			switch allArgumentsIntegrationVCS.Action {
 			case "checkPR":
-				arguments = shared.VCSRetrivePRInformationRequest{
+				arguments = shared.VCSRetrievePRInformationRequest{
 					VCSRequestBase: shared.VCSRequestBase{
 						VCSURL:        allArgumentsIntegrationVCS.VCSURL,
 						Action:        allArgumentsIntegrationVCS.Action,
@@ -213,11 +213,11 @@ func validateCommonArguments() error {
 func performAction(action string, vcsName shared.VCS, args Arguments) (interface{}, error) {
 	switch action {
 	case "checkPR":
-		checkPRArgs, ok := args.(shared.VCSRetrivePRInformationRequest)
+		checkPRArgs, ok := args.(shared.VCSRetrievePRInformationRequest)
 		if !ok {
 			return nil, fmt.Errorf("Invalid argument type for action 'checkPR'")
 		}
-		return vcsName.RetrivePRInformation(checkPRArgs)
+		return vcsName.RetrievePRInformation(checkPRArgs)
 	case "addRoleToPR":
 		addReviewArgs, ok := args.(shared.VCSAddRoleToPRRequest)
 		if !ok {
@@ -235,7 +235,7 @@ func performAction(action string, vcsName shared.VCS, args Arguments) (interface
 		if !ok {
 			return nil, fmt.Errorf("Invalid argument type for action 'addComment'")
 		}
-		return vcsName.AddComment(addComment)
+		return vcsName.AddCommentToPR(addComment)
 	default:
 		return nil, fmt.Errorf("Unsupported action: %s", action)
 	}

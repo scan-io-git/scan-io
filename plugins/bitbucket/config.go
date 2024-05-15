@@ -10,18 +10,21 @@ import (
 
 // UpdateConfigFromEnv sets configuration values from environment variables, if they are set.
 func UpdateConfigFromEnv(cfg *config.Config) error {
-	if username := os.Getenv("SCANIO_BITBUCKET_USERNAME"); username != "" {
-		cfg.BitbucketPlugin.BitbucketUsername = username
+	envVars := map[string]*string{
+		"SCANIO_BITBUCKET_USERNAME":         &cfg.BitbucketPlugin.BitbucketUsername,
+		"SCANIO_BITBUCKET_TOKEN":            &cfg.BitbucketPlugin.BitbucketToken,
+		"SCANIO_BITBUCKET_SSH_KEY_PASSWORD": &cfg.BitbucketPlugin.SSHKeyPassword,
 	}
-	if token := os.Getenv("SCANIO_BITBUCKET_TOKEN"); token != "" {
-		cfg.BitbucketPlugin.BitbucketToken = token
-	}
-	if sshKeyPass := os.Getenv("SCANIO_BITBUCKET_SSH_KEY_PASSWORD"); sshKeyPass != "" {
-		cfg.BitbucketPlugin.SSHKeyPassword = sshKeyPass
+
+	for env, val := range envVars {
+		if v := os.Getenv(env); v != "" {
+			*val = v
+		}
 	}
 	return nil
 }
 
+// validateCommonCredentials checks for the presence of common credentials.
 func (g *VCSBitbucket) validateCommonCredentials() error {
 	if len(g.globalConfig.BitbucketPlugin.BitbucketUsername) == 0 || len(g.globalConfig.BitbucketPlugin.BitbucketToken) == 0 {
 		return fmt.Errorf("both Bitbucket username and token are required")
@@ -29,49 +32,43 @@ func (g *VCSBitbucket) validateCommonCredentials() error {
 	return nil
 }
 
+// validateBaseArgs checks the common fields in VCSRequestBase and returns errors if they are not set.
 func (g *VCSBitbucket) validateBaseArgs(args *shared.VCSRequestBase) error {
-	if args.VCSURL == "" {
-		return fmt.Errorf("repository URL is required")
+	requiredFields := map[string]string{
+		"repository URL": args.VCSURL,
+		"namespace":      args.Namespace,
+		"repository":     args.Repository,
+		// "Action": args.Action,
+		// "PullRequestId": args.PullRequestId, // TODO: Change the struct for using a pointer
 	}
-	if args.Namespace == "" {
-		return fmt.Errorf("namespace name is required")
+
+	for field, value := range requiredFields {
+		if value == "" {
+			return fmt.Errorf("%s is required", field)
+		}
 	}
-	if args.Repository == "" {
-		return fmt.Errorf("repository is required")
-	}
-	// if args.Action == "" {
-	// 	return fmt.Errorf("action is required")
-	// }
-	// TODO change to nil and the struct for using a pointer
-	// if args.PullRequestId == 0 {
-	// 	return fmt.Errorf("pull request ID is required")
-	// }
 	return nil
 }
 
-// validateFetch checks the necessary fields in fetchArgs and returns errors if they are not adequately set.
+// validateFetch checks the necessary fields in VCSFetchRequest and returns errors if they are not set.
 func (g *VCSBitbucket) validateFetch(args *shared.VCSFetchRequest) error {
-	// Validate basic fields in fetchArgs, like non-empty repository URL
-	if args.CloneURL == "" {
-		return fmt.Errorf("repository URL is required")
+	requiredFields := map[string]string{
+		"repository URL":      args.CloneURL,
+		"authentication type": args.AuthType,
+		"target folder":       args.TargetFolder,
+		"mode":                args.Mode,
+		// "RepoParam": args.RepoParam, // TODO: Add params validation
 	}
-	if args.AuthType == "" {
-		return fmt.Errorf("authentication type is required")
+
+	for field, value := range requiredFields {
+		if value == "" {
+			return fmt.Errorf("%s is required", field)
+		}
 	}
-	if args.TargetFolder == "" {
-		return fmt.Errorf("target folder is required")
-	}
-	if args.Mode == "" {
-		return fmt.Errorf("mode is required")
-	}
-	// TODO param validation
-	// if fetchArgs.RepoParam = nil  {
-	// 	return fmt.Errorf("repository URL is required")
-	// }
 
 	switch args.AuthType {
 	case "ssh-key":
-		if len(g.globalConfig.BitbucketPlugin.SSHKeyPassword) == 0 {
+		if g.globalConfig.BitbucketPlugin.SSHKeyPassword == "" {
 			return fmt.Errorf("SSH key password is required for SSH-key authentication")
 		}
 	case "http":
@@ -82,80 +79,69 @@ func (g *VCSBitbucket) validateFetch(args *shared.VCSFetchRequest) error {
 	return nil
 }
 
-// validateList checks the necessary fields for listing repositories and ensures they are set.
-func (g *VCSBitbucket) validateList(args *shared.VCSListReposRequest) error {
+// validateList checks the necessary fields in VCSListReposRequest and returns errors if they are not set.
+func (g *VCSBitbucket) validateList(args *shared.VCSListRepositoriesRequest) error {
 	if args.VCSURL == "" {
 		return fmt.Errorf("repository URL is required")
 	}
-
-	if err := g.validateCommonCredentials(); err != nil {
-		return err
-	}
-	return nil
+	return g.validateCommonCredentials()
 }
 
-// validateRetrivePRInformation checks the necessary fields for listing repositories and ensures they are set.
+// validateRetrievePRInformation checks the necessary fields in VCSRetrievePRInformationRequest and returns errors if they are not set.
 func (g *VCSBitbucket) validateRetrievePRInformation(args *shared.VCSRetrievePRInformationRequest) error {
 	if err := g.validateBaseArgs(&args.VCSRequestBase); err != nil {
 		return err
 	}
-
-	if err := g.validateCommonCredentials(); err != nil {
-		return err
-	}
-	return nil
+	return g.validateCommonCredentials()
 }
 
-// validateAddRoleToPR checks the necessary fields for listing repositories and ensures they are set.
+// validateAddRoleToPR checks the necessary fields in VCSAddRoleToPRRequest and returns errors if they are not set.
 func (g *VCSBitbucket) validateAddRoleToPR(args *shared.VCSAddRoleToPRRequest) error {
 	if err := g.validateBaseArgs(&args.VCSRequestBase); err != nil {
 		return err
 	}
 
-	if args.Login == "" {
-		return fmt.Errorf("login is required")
-	}
-	if args.Role == "" {
-		return fmt.Errorf("role is required")
+	requiredFields := map[string]string{
+		"login": args.Login,
+		"role":  args.Role,
 	}
 
-	if err := g.validateCommonCredentials(); err != nil {
-		return err
+	for field, value := range requiredFields {
+		if value == "" {
+			return fmt.Errorf("%s is required", field)
+		}
 	}
-	return nil
+	return g.validateCommonCredentials()
 }
 
-// validateSetStatusOfPR checks the necessary fields for listing repositories and ensures they are set.
+// validateSetStatusOfPR checks the necessary fields in VCSSetStatusOfPRRequest and returns errors if they are not set.
 func (g *VCSBitbucket) validateSetStatusOfPR(args *shared.VCSSetStatusOfPRRequest) error {
 	if err := g.validateBaseArgs(&args.VCSRequestBase); err != nil {
 		return err
 	}
 
-	if args.Login == "" {
-		return fmt.Errorf("login is required")
-	}
-	if args.Status == "" {
-		return fmt.Errorf("status is required")
+	requiredFields := map[string]string{
+		"login":  args.Login,
+		"status": args.Status,
 	}
 
-	if err := g.validateCommonCredentials(); err != nil {
-		return err
+	for field, value := range requiredFields {
+		if value == "" {
+			return fmt.Errorf("%s is required", field)
+		}
 	}
-	return nil
+
+	return g.validateCommonCredentials()
 }
 
-// validateAddComment checks the necessary fields for listing repositories and ensures they are set.
+// validateAddCommentToPR checks the necessary fields in VCSAddCommentToPRRequest and returns errors if they are not set.
 func (g *VCSBitbucket) validateAddCommentToPR(args *shared.VCSAddCommentToPRRequest) error {
 	if err := g.validateBaseArgs(&args.VCSRequestBase); err != nil {
 		return err
 	}
 
 	if args.Comment == "" {
-		return fmt.Errorf("comme is required")
+		return fmt.Errorf("comment is required")
 	}
-
-	if err := g.validateCommonCredentials(); err != nil {
-		return err
-	}
-	return nil
+	return g.validateCommonCredentials()
 }

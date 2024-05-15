@@ -20,15 +20,20 @@ func toRepositoryParams(repos *[]bitbucket.Repository) []shared.RepositoryParams
 	return repoParams
 }
 
-// convertToPRParams converts the internal PullRequest type to the external PRParams type.
 func convertToPRParams(pr *bitbucket.PullRequest) shared.PRParams {
+	var selfLink string
+	if len(pr.Links.Self) > 0 {
+		selfLink = pr.Links.Self[0].Href
+	} else {
+		selfLink = "no-link-available"
+	}
 	return shared.PRParams{
 		Id:          pr.ID,
 		Title:       pr.Title,
 		Description: pr.Description,
 		State:       pr.State,
 		Author:      shared.User{DisplayName: pr.Author.User.DisplayName, Email: pr.Author.User.EmailAddress},
-		SelfLink:    pr.Links.Self[0].Href,
+		SelfLink:    selfLink,
 		Source: shared.Reference{
 			ID:           pr.FromReference.ID,
 			DisplayId:    pr.FromReference.DisplayID,

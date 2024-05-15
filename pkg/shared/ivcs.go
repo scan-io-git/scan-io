@@ -49,7 +49,7 @@ type Reference struct {
 	LatestCommit string
 }
 
-type VCSListReposRequest struct {
+type VCSListRepositoriesRequest struct {
 	Namespace  string
 	VCSURL     string
 	Repository string
@@ -99,10 +99,10 @@ type Result interface {
 }
 
 type ListFuncResult struct {
-	Args    VCSListReposRequest `json:"args"`
-	Result  []RepositoryParams  `json:"result"`
-	Status  string              `json:"status"`
-	Message string              `json:"message"`
+	Args    VCSListRepositoriesRequest `json:"args"`
+	Result  []RepositoryParams         `json:"result"`
+	Status  string                     `json:"status"`
+	Message string                     `json:"message"`
 }
 
 type GenericLaunchesResult struct {
@@ -124,7 +124,7 @@ type VCSFetchResponse struct {
 	Path string
 }
 
-type VCSListReposResponse struct {
+type VCSListRepositoriesResponse struct {
 	Repositories []RepositoryParams
 }
 
@@ -135,7 +135,7 @@ type VCSRetrievePRInformationResponse struct {
 type VCS interface {
 	Setup(configData config.Config) (bool, error)
 	Fetch(req VCSFetchRequest) (VCSFetchResponse, error)
-	ListRepos(args VCSListReposRequest) ([]RepositoryParams, error)
+	ListRepositories(args VCSListRepositoriesRequest) ([]RepositoryParams, error)
 	RetrievePRInformation(req VCSRetrievePRInformationRequest) (PRParams, error)
 	AddRoleToPR(req VCSAddRoleToPRRequest) (bool, error)
 	SetStatusOfPR(req VCSSetStatusOfPRRequest) (bool, error)
@@ -153,10 +153,10 @@ func (g *VCSRPCClient) Setup(configData config.Config) (bool, error) {
 	return resp, nil
 }
 
-func (g *VCSRPCClient) ListRepos(req VCSListReposRequest) ([]RepositoryParams, error) {
-	var resp VCSListReposResponse
+func (g *VCSRPCClient) ListRepositories(req VCSListRepositoriesRequest) ([]RepositoryParams, error) {
+	var resp VCSListRepositoriesResponse
 
-	err := g.client.Call("Plugin.ListRepos", req, &resp)
+	err := g.client.Call("Plugin.ListRepositories", req, &resp)
 
 	if err != nil {
 		return resp.Repositories, err
@@ -241,8 +241,8 @@ func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) error
 	return err
 }
 
-func (s *VCSRPCServer) ListRepos(args VCSListReposRequest, resp *VCSListReposResponse) error {
-	projects, err := s.Impl.ListRepos(args)
+func (s *VCSRPCServer) ListRepositories(args VCSListRepositoriesRequest, resp *VCSListRepositoriesResponse) error {
+	projects, err := s.Impl.ListRepositories(args)
 	resp.Repositories = projects
 	return err
 }
