@@ -3,6 +3,7 @@ package files
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -126,4 +127,29 @@ func CreateFolderIfNotExists(folder string) error {
 		return fmt.Errorf("unable to check folder %s: %w", folder, err)
 	}
 	return nil
+}
+
+// FindByExtAndRemove walks through the directory tree rooted at root and removes files with specified extensions.
+func FindByExtAndRemove(root string, exts []string) {
+	filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return fmt.Errorf("failed to access %s: %w", path, err)
+		}
+		ext := filepath.Ext(d.Name())
+		match := false
+		for _, rmExt := range exts {
+			if fmt.Sprintf(".%s", rmExt) == ext {
+				match = true
+				break
+			}
+		}
+		if !match {
+			return nil
+		}
+		err = os.Remove(path)
+		if err != nil {
+			return fmt.Errorf("failed to remove file %s: %w", path, err)
+		}
+		return nil
+	})
 }

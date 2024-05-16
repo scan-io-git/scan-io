@@ -1,6 +1,3 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -38,6 +35,7 @@ import (
 	// ivcs "github.com/scan-io-git/scan-io/internal/vcs"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
@@ -99,7 +97,7 @@ func fetch(repo string) {
 			logger.Debug("Fetch error", "err", err)
 		} else {
 			logger.Debug("Removing files with some extentions", "extentions", o.RmExts)
-			utils.FindByExtAndRemove(targetFolder, o.RmExts)
+			files.FindByExtAndRemove(targetFolder, o.RmExts)
 		}
 		return nil
 	})

@@ -9,6 +9,7 @@ import (
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/files"
 )
 
 type Fetcher struct {
@@ -85,7 +86,7 @@ func (f Fetcher) fetchRepo(cfg *config.Config, fetchArgs shared.VCSFetchRequest)
 			return err
 		}
 
-		utils.FindByExtAndRemove(fetchArgs.TargetFolder, f.rmExts)
+		files.FindByExtAndRemove(fetchArgs.TargetFolder, f.rmExts)
 		return nil
 	})
 

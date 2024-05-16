@@ -5,15 +5,17 @@ import (
 	"os"
 	"strings"
 
+	"github.com/xanzy/go-gitlab"
 	// "github.com/google/go-github/v47/github"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
+
+	"github.com/scan-io-git/scan-io/internal/git"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
-	"github.com/xanzy/go-gitlab"
 )
 
-// Here is a real implementation of VCS
+// VCSGitlab implements VCS operations for Gitlab.
 type VCSGitlab struct {
 	logger       hclog.Logger
 	globalConfig *config.Config
@@ -166,15 +168,9 @@ func (g *VCSGitlab) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (bool, 
 func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
 	var result shared.VCSFetchResponse
 
-	//variables, err := g.init("fetch")
-	variables := shared.EvnVariables{}
-	// if err != nil {
-	// 	g.logger.Error("Fetching is failed", "error", err)
-	// 	return err
-	// }
-
-	path, err := shared.GitClone(args, variables, g.logger)
+	path, err := git.CloneRepository(g.logger, g.globalConfig, &args)
 	if err != nil {
+		g.logger.Error("failed to clone repository", "error", err)
 		return result, err
 	}
 	result.Path = path
