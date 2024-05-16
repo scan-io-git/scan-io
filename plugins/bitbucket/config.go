@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/scan-io-git/scan-io/internal/config"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
 // UpdateConfigFromEnv sets configuration values from environment variables, if they are set.

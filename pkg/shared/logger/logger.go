@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/scan-io-git/scan-io/internal/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
 // NewLogger creates a new hclog.Logger instance based on the YAML configuration and the provided name.

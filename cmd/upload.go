@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/internal/dojo"
-	"github.com/scan-io-git/scan-io/internal/logger"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 var DOJO_TOKEN = os.Getenv("SCANIO_DEFECTDOJO_TOKEN")

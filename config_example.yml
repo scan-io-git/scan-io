@@ -1,31 +1,39 @@
 # Scanio config
 
+## Common Scanio config
+scanio:
+  home_folder: ""        # The home directory for Scanio. Default: ~/.scanio/. Can be overridden with the environment variable SCANIO_HOME.
+  plugins_folder: ""     # The directory where Scanio plugins are stored. Default: <home_folder>/plugins. Can be overridden with the environment variable SCANIO_PLUGINS_FOLDER.
+  projects_folder: ""    # The directory where Scanio project files are stored. Default: <home_folder>/projects. Can be overridden with the environment variable SCANIO_PROJECTS_FOLDER.
+  results_folder: ""     # The directory where Scanio results are stored. Default: <home_folder>/results. Can be overridden with the environment variable SCANIO_RESULTS_FOLDER.
+  temp_folder: ""        # The directory for temporary files used by Scanio. Default: <home_folder>/tmp. Can be overridden with the environment variable SCANIO_TEMP_FOLDER.
+
 ## Bitbucket plugin config
 bitbucket_plugin:
-  username: "" # Default: none. Can be overridden with environment variable SCANIO_BITBUCKET_USERNAME.
-  token: "" # Default: none. Can be overridden with environment variable SCANIO_BITBUCKET_TOKEN.
-  ssh_key_password: "" # Default: none. Can be overridden with environment variable SCANIO_BITBUCKET_SSH_KEY_PASSWORD.
+  username: ""           # Bitbucket username for authentication. Default: none. Can be overridden with the environment variable SCANIO_BITBUCKET_USERNAME.
+  token: ""              # Bitbucket access token for authentication. Default: none. Can be overridden with the environment variable SCANIO_BITBUCKET_TOKEN.
+  ssh_key_password: ""   # Password for the SSH key used in Bitbucket operations. Default: none. Can be overridden with the environment variable SCANIO_BITBUCKET_SSH_KEY_PASSWORD.
 
 ## Logger config
 logger:
-  level: info # Logging level. Default: info. Can be overridden with SCANIO_LOG_LEVEL.
-  disable_time: true # Whether to disable time in logs. Default: true.
-  json_format: false # Whether to format logs in JSON. Default: false.
-  include_location: false # Whether to include file and line number in logs. Default: false.
+  level: info               # Logging level. Default: info. Can be overridden with SCANIO_LOG_LEVEL.
+  disable_time: true        # Whether to disable time in logs. Default: true.
+  json_format: false        # Whether to format logs in JSON. Default: false.
+  include_location: false   # Whether to include file and line number in logs. Default: false.
 
 ## HttpClient config
 http_client:
-  retry_count: 5 # Number of retries for HTTP requests. Default: 5.
-  retry_wait_time: "1s" # Time to wait before retrying an HTTP request. Default: 1s.
-  retry_max_wait_time: "2s" # Maximum time to wait before retrying an HTTP request. Default: 5s.
-  timeout: "10s" # Time before an HTTP request times out. Default: 30s.
+  retry_count: 5              # Number of retries for HTTP requests. Default: 5.
+  retry_wait_time: "1s"       # Time to wait before retrying an HTTP request. Default: 1s.
+  retry_max_wait_time: "2s"   # Maximum time to wait before retrying an HTTP request. Default: 5s.
+  timeout: "10s"              # Time before an HTTP request times out. Default: 30s.
   tls_client_config:
-    verify: true # Whether to verify TLS certificates. Default: true.
+    verify: true              # Whether to verify TLS certificates. Default: true.
   proxy:
-    host: "127.0.0.1" # Proxy server address. Default: none. Can include scheme; defaults to http:// if unspecified.
-    port: 8080 # Proxy server port. Default: none.
+    host: "127.0.0.1"   # Proxy server address. Default: none. Can include scheme; defaults to http:// if unspecified.
+    port: 8080          # Proxy server port. Default: none.
 
 ## GitClient config
 git_client:
-  depth: 1 # Default: 1. Full clone is 0 (usefull if you need to search secrets in git history). 
-  insecure_tls: false  # Turning off verification of TLS certificates. Default: false. 
+  depth: 1              # Default: 1. Full clone is 0 (usefull if you need to search secrets in git history). 
+  insecure_tls: false   # Turning off verification of TLS certificates. Default: false. 

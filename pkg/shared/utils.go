@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
+
 	"log"
 	"net/url"
 	"os"
@@ -13,8 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
-
-	"github.com/hashicorp/go-hclog"
 
 	crssh "golang.org/x/crypto/ssh"
 
@@ -25,6 +23,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
+	"github.com/hashicorp/go-hclog"
 )
 
 type CustomData interface{}
@@ -346,115 +345,6 @@ func IsCI() bool {
 	}
 
 	return false
-}
-
-// copyDotFiles copies files and directories starting with a dot from src to dst
-func CopyDotFiles(src, dst string, logger hclog.Logger) error {
-	logger.Debug("copying useful files starting with dot")
-	files, err := os.ReadDir(src)
-	if err != nil {
-		return err
-	}
-
-	for _, file := range files {
-		if file.Name()[0] == '.' {
-			srcPath := filepath.Join(src, file.Name())
-			dstPath := filepath.Join(dst, file.Name())
-
-			if file.IsDir() {
-				if err := Copy(srcPath, dstPath); err != nil {
-					logger.Error("error copying directory", "path", srcPath, "error", err)
-					return err
-				}
-			} else {
-				if err := Copy(srcPath, dst); err != nil {
-					logger.Error("error copying file", "path", srcPath, "error", err)
-					return err
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func Copy(srcPath, destPath string) error {
-	srcInfo, err := os.Lstat(srcPath)
-	if err != nil {
-		return err
-	}
-
-	// Check if the source is a directory
-	if srcInfo.IsDir() {
-		return CopyDir(srcPath, destPath)
-	}
-
-	// Check if the source is a symlink
-	if srcInfo.Mode()&os.ModeSymlink != 0 {
-		return CopySymLink(srcPath, destPath)
-	}
-
-	// Assume the source is a regular file if not a directory or symlink
-	return CopyFile(srcPath, destPath)
-}
-
-func CopyFile(srcFile, destFile string) error {
-	destDir := filepath.Dir(destFile)
-	if err := CreateIfNotExists(destDir, os.ModePerm); err != nil {
-		return err
-	}
-
-	in, err := os.Open(srcFile)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
-	out, err := os.Create(destFile)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, in)
-	return err
-}
-
-func CopyDir(srcDir, destDir string) error {
-	entries, err := os.ReadDir(srcDir)
-	if err != nil {
-		return err
-	}
-
-	if err := CreateIfNotExists(destDir, os.ModePerm); err != nil {
-		return err
-	}
-
-	for _, entry := range entries {
-		srcPath := filepath.Join(srcDir, entry.Name())
-		destPath := filepath.Join(destDir, entry.Name())
-
-		if err := Copy(srcPath, destPath); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func CopySymLink(srcLink, destLink string) error {
-	linkTarget, err := os.Readlink(srcLink)
-	if err != nil {
-		return err
-	}
-
-	return os.Symlink(linkTarget, destLink)
-}
-
-func CreateIfNotExists(path string, perm os.FileMode) error {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return os.MkdirAll(path, perm)
-	}
-	return nil
 }
 
 func ContainsSubstring(target string, substrings []string) bool {

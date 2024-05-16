@@ -36,8 +36,9 @@ import (
 
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	// ivcs "github.com/scan-io-git/scan-io/internal/vcs"
-	"github.com/scan-io-git/scan-io/internal/logger"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 // const IMAGE = "356918957485.dkr.ecr.eu-west-2.amazonaws.com/i-am-first"
@@ -72,18 +73,18 @@ func getS3Path(repo string) string {
 }
 
 func getResultsFolder(logger hclog.Logger, repo string) string {
-	return filepath.Join(shared.GetResultsHome(logger), getRepoID(repo))
+	return filepath.Join(config.GetScanioResultsHome(AppConfig), getRepoID(repo))
 }
 
 func getResultsPath(logger hclog.Logger, repo string) string {
-	return filepath.Join(shared.GetResultsHome(logger), getS3Path(repo))
+	return filepath.Join(config.GetScanioResultsHome(AppConfig), getS3Path(repo))
 }
 
 func fetch(repo string) {
 	logger := logger.NewLogger(AppConfig, "core-run")
 	logger.Info("Fetching starting", "VCSURL", o.VCSURL, "repo", repo)
 
-	targetFolder := shared.GetRepoPath(logger, o.VCSURL, repo)
+	targetFolder := config.GetRepositoryPath(AppConfig, o.VCSURL, repo)
 
 	shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, o.VCSPlugin, func(raw interface{}) error {
 
@@ -110,7 +111,7 @@ func scan(repo string) {
 	logger := logger.NewLogger(AppConfig, "core-run")
 	logger.Info("Scan starting", "scanner", o.ScannerPlugin, "VCSURL", o.VCSURL, "repo", repo)
 
-	repoPath := shared.GetRepoPath(logger, o.VCSURL, repo)
+	repoPath := config.GetRepositoryPath(AppConfig, o.VCSURL, repo)
 
 	err := os.MkdirAll(getResultsFolder(logger, repo), 0666)
 	if err != nil {

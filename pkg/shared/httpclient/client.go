@@ -6,7 +6,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/hashicorp/go-hclog"
 
-	"github.com/scan-io-git/scan-io/internal/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
 // Client represents a Resty a wrapper for the Resty client.

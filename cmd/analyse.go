@@ -10,9 +10,10 @@ import (
 
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 
-	"github.com/scan-io-git/scan-io/internal/logger"
 	"github.com/scan-io-git/scan-io/internal/scanner"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 type RunOptionsAnalyse struct {
@@ -109,7 +110,7 @@ List of plugins:
 
 		s := scanner.New(allArgumentsAnalyse.ScannerPluginName, allArgumentsAnalyse.Threads, allArgumentsAnalyse.Config, allArgumentsAnalyse.ReportFormat, allArgumentsAnalyse.AdditionalArgs, logger)
 
-		analyseArgs, err := s.PrepScanArgs(reposInf, path, allArgumentsAnalyse.OutputPrefix)
+		analyseArgs, err := s.PrepScanArgs(AppConfig, reposInf, path, allArgumentsAnalyse.OutputPrefix)
 		if err != nil {
 			return err
 		}
@@ -128,7 +129,7 @@ List of plugins:
 		shared.ResultBufferMutex.Unlock()
 		outputBuffer.Write(resultJSON)
 
-		shared.WriteJsonFile(fmt.Sprintf("%v/ANALYSE.scanio-result", shared.GetScanioHome()), logger, resultAnalyse)
+		shared.WriteJsonFile(fmt.Sprintf("%v/ANALYSE.scanio-result", config.GetScanioHome(AppConfig)), logger, resultAnalyse)
 		return nil
 	},
 }

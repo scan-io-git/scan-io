@@ -2,14 +2,13 @@ package fetcher
 
 import (
 	"path/filepath"
-	"strings"
 
 	"github.com/hashicorp/go-hclog"
 
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 
-	"github.com/scan-io-git/scan-io/internal/config"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
 type Fetcher struct {
@@ -34,7 +33,7 @@ func New(authType string, sshKey string, jobs int, branch string, vcsPluginName 
 	}
 }
 
-func (f Fetcher) PrepFetchArgs(logger hclog.Logger, repos []shared.RepositoryParams) ([]shared.VCSFetchRequest, error) {
+func (f Fetcher) PrepFetchArgs(cfg *config.Config, logger hclog.Logger, repos []shared.RepositoryParams) ([]shared.VCSFetchRequest, error) {
 	var (
 		fetchArgs []shared.VCSFetchRequest
 	)
@@ -56,7 +55,7 @@ func (f Fetcher) PrepFetchArgs(logger hclog.Logger, repos []shared.RepositoryPar
 		if repo.PRID != "" {
 			mode = "PRscan"
 		}
-		targetFolder := shared.GetRepoPath(logger, strings.ToLower(domain), filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
+		targetFolder := config.GetRepositoryPath(cfg, domain, filepath.Join(repo.Namespace, repo.RepoName))
 
 		fetchArgs = append(fetchArgs, shared.VCSFetchRequest{
 			CloneURL:     cloneURL,

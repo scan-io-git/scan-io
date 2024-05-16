@@ -15,10 +15,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/scan-io-git/scan-io/internal/fetcher"
-	"github.com/scan-io-git/scan-io/internal/logger"
 	"github.com/scan-io-git/scan-io/internal/scanner"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 type Run2Options struct {
@@ -46,7 +46,7 @@ func run2analyzeRepos(repos []shared.RepositoryParams) error {
 	logger := logger.NewLogger(AppConfig, "core-run2-scanner")
 	s := scanner.New(allRun2Options.ScannerPluginName, allRun2Options.Jobs, allRun2Options.Config, allRun2Options.ReportFormat, allRun2Options.AdditionalArgs, logger)
 
-	scanArgs, err := s.PrepScanArgs(repos, "", "")
+	scanArgs, err := s.PrepScanArgs(AppConfig, repos, "", "")
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func run2fetchRepos(repos []shared.RepositoryParams) error {
 	logger := logger.NewLogger(AppConfig, "core-run2-fetcher")
 	f := fetcher.New(allRun2Options.AuthType, allRun2Options.SSHKey, allRun2Options.Jobs, allRun2Options.Branch, allRun2Options.VCSPlugName, strings.Split(allRun2Options.RmExts, ","), logger)
 
-	fetchArgs, err := f.PrepFetchArgs(logger, repos)
+	fetchArgs, err := f.PrepFetchArgs(AppConfig, logger, repos)
 	if err != nil {
 		return err
 	}

@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/scan-io-git/scan-io/internal/logger"
+	"github.com/spf13/cobra"
+
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	cfg "github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 	"github.com/scan-io-git/scan-io/plugins/semgrep/pkg/shared"
 	"github.com/scan-io-git/scan-io/plugins/trufflehog3/pkg/shared"
-	"github.com/spf13/cobra"
 )
 
 type DecisionMakerOptions struct {
@@ -338,7 +340,7 @@ func predefinedPRHandler(logger hclog.Logger, config *AppDecConfig) error {
 	vcsUrl := repoParamAsserted["vcs_url"].(string)
 	namespace := repoParamAsserted["namespace"].(string)
 	repoName := repoParamAsserted["repo_name"].(string)
-	resultsFolderPath := filepath.Join(shared.GetResultsHome(logger), strings.ToLower(vcsUrl), filepath.Join(strings.ToLower(namespace), strings.ToLower(repoName)))
+	resultsFolderPath := filepath.Join(cfg.GetScanioResultsHome(AppConfig), strings.ToLower(vcsUrl), filepath.Join(strings.ToLower(namespace), strings.ToLower(repoName)))
 
 	// scan code: scanio analyse --scanner semgrep --format sarif /[scanio]/test
 	scanningResultSemgrep, err := execScanner("semgrep", "text", config.SemgrepRulesPath, resultsFolderPath, scaningFolder, []string{})

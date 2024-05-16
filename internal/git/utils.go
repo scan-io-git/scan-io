@@ -19,8 +19,8 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/hashicorp/go-hclog"
 
-	"github.com/scan-io-git/scan-io/internal/config"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
 // Authenticator defines an interface for different authentication methods.

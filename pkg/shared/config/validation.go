@@ -3,8 +3,12 @@ package config
 import (
 	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/scan-io-git/scan-io/pkg/shared/files"
 )
 
 // ValidateConfig checks if the global configurations have valid values.
@@ -12,11 +16,37 @@ func ValidateConfig(cfg *Config) error {
 	if cfg == nil {
 		return fmt.Errorf("YAML global config: configuration object is nil")
 	}
+	if err := ValidateScanioConfig(cfg); err != nil {
+		return fmt.Errorf("YAML global config: scanio directive is invalid: %w", err)
+	}
 	if err := ValidateHTTPConfig(&cfg.HTTPClient); err != nil {
 		return fmt.Errorf("YAML global config: http_client directive is invalid: %w", err)
 	}
 	if err := ValidateGitConfig(&cfg.GitClient); err != nil {
 		return fmt.Errorf("YAML global config: git_client directive is invalid: %w", err)
+	}
+	return nil
+}
+
+// ValidateScanioConfig checks if the Scanio configurations have valid values.
+func ValidateScanioConfig(cfg *Config) error {
+	if cfg == nil {
+		return fmt.Errorf("scanio configuration is nil")
+	}
+	if err := updateHome(cfg); err != nil {
+		return fmt.Errorf("failed to update home folder: %w", err)
+	}
+	if err := updateFolder(&cfg.Scanio.PluginsFolder, "SCANIO_PLUGINS_FOLDER", "plugins", cfg); err != nil {
+		return fmt.Errorf("failed to update plugins folder: %w", err)
+	}
+	if err := updateFolder(&cfg.Scanio.ProjectsFolder, "SCANIO_PROJECTS_FOLDER", "projects", cfg); err != nil {
+		return fmt.Errorf("failed to update projects folder: %w", err)
+	}
+	if err := updateFolder(&cfg.Scanio.ResultsFolder, "SCANIO_RESULTS_FOLDER", "results", cfg); err != nil {
+		return fmt.Errorf("failed to update results folder: %w", err)
+	}
+	if err := updateFolder(&cfg.Scanio.TempFolder, "SCANIO_TEMP_FOLDER", "tmp", cfg); err != nil {
+		return fmt.Errorf("failed to update temp folder: %w", err)
 	}
 	return nil
 }
@@ -118,6 +148,38 @@ func validateHost(host *string) error {
 func validatePort(port int) error {
 	if port < 1 || port > 65535 {
 		return fmt.Errorf("port must be between 1 and 65535, got %d", port)
+	}
+	return nil
+}
+
+// updateHome updates the HomeFolder in the Scanio config from environment variables or sets a default value.
+func updateHome(cfg *Config) error {
+	if scanioHomeFolder := os.Getenv("SCANIO_HOME"); scanioHomeFolder != "" {
+		cfg.Scanio.HomeFolder = scanioHomeFolder
+	} else if cfg.Scanio.HomeFolder == "" {
+		homeFolder, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("unable to get user home folder: %w", err)
+		}
+		cfg.Scanio.HomeFolder = filepath.Join(homeFolder, ".scanio")
+	}
+
+	if err := files.CreateFolderIfNotExists(cfg.Scanio.HomeFolder); err != nil {
+		return fmt.Errorf("failed to create home folder '%s': %w", cfg.Scanio.HomeFolder, err)
+	}
+	return nil
+}
+
+// updateFolder updates a folder path in the Scanio configuration.
+func updateFolder(folder *string, envVar, defaultSubFolder string, cfg *Config) error {
+	if envVarValue := os.Getenv(envVar); envVarValue != "" {
+		*folder = envVarValue
+	} else if *folder == "" {
+		*folder = filepath.Join(GetScanioHome(cfg), defaultSubFolder)
+	}
+
+	if err := files.CreateFolderIfNotExists(*folder); err != nil {
+		return fmt.Errorf("failed to create folder '%s': %w", *folder, err)
 	}
 	return nil
 }

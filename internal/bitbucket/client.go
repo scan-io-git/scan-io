@@ -8,8 +8,8 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/hashicorp/go-hclog"
 
-	"github.com/scan-io-git/scan-io/internal/config"
-	"github.com/scan-io-git/scan-io/internal/httpclient"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/httpclient"
 )
 
 // service wraps a client to access different services.

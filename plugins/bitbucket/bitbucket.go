@@ -10,9 +10,10 @@ import (
 	"github.com/hashicorp/go-plugin"
 
 	"github.com/scan-io-git/scan-io/internal/bitbucket"
-	"github.com/scan-io-git/scan-io/internal/config"
 	"github.com/scan-io-git/scan-io/internal/git"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/files"
 )
 
 // VCSBitbucket implements VCS operations for Bitbucket.
@@ -250,7 +251,7 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		return "", err
 	}
 
-	baseDestPath := shared.GetPRTempPath(g.logger, args.RepoParam.VCSURL, (args.RepoParam.Namespace), args.RepoParam.RepoName, prID)
+	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.VCSURL, (args.RepoParam.Namespace), args.RepoParam.RepoName, prID)
 
 	g.logger.Debug("copying files that have changed")
 	for _, val := range *changes {
@@ -261,12 +262,12 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 
 		srcPath := filepath.Join(args.TargetFolder, val.Path.ToString)
 		destPath := filepath.Join(baseDestPath, val.Path.ToString)
-		if err := shared.Copy(srcPath, destPath); err != nil {
+		if err := files.Copy(srcPath, destPath); err != nil {
 			g.logger.Error("error copying file", "error", err)
 		}
 	}
 
-	if err := shared.CopyDotFiles(args.TargetFolder, baseDestPath, g.logger); err != nil {
+	if err := files.CopyDotFiles(args.TargetFolder, baseDestPath, g.logger); err != nil {
 		return "", err
 	}
 

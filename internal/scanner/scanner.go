@@ -10,8 +10,8 @@ import (
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/scan-io-git/scan-io/internal/config"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
 type Scanner struct {
@@ -34,7 +34,7 @@ func New(scannerPluginName string, jobs int, config string, reportFormat string,
 	}
 }
 
-func (s Scanner) PrepScanArgs(repos []shared.RepositoryParams, path, outputPrefix string) ([]shared.ScannerScanRequest, error) {
+func (s Scanner) PrepScanArgs(cfg *config.Config, repos []shared.RepositoryParams, path, outputPrefix string) ([]shared.ScannerScanRequest, error) {
 	var (
 		scanArgs     []shared.ScannerScanRequest
 		targetFolder string
@@ -77,13 +77,13 @@ func (s Scanner) PrepScanArgs(repos []shared.RepositoryParams, path, outputPrefi
 				}
 			}
 
-			resultsFolderPath := filepath.Join(shared.GetResultsHome(s.logger), strings.ToLower(domain), filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
+			resultsFolderPath := filepath.Join(config.GetScanioResultsHome(cfg), strings.ToLower(domain), filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
 			// ensure that folder for results exists, some scanners don't create it themselves and just exit with an error
 			if err := os.MkdirAll(resultsFolderPath, os.ModePerm); err != nil {
 				return nil, err
 			}
 
-			targetFolder = shared.GetRepoPath(s.logger, strings.ToLower(domain), filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
+			targetFolder = config.GetRepositoryPath(cfg, domain, filepath.Join(repo.Namespace, repo.RepoName))
 			resultsPath = filepath.Join(resultsFolderPath, fmt.Sprintf("%s-%s.%s", s.scannerPluginName, startTime, reportExt))
 
 			scanArgs = append(scanArgs, shared.ScannerScanRequest{
