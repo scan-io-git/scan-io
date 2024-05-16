@@ -19,7 +19,7 @@ type Config struct {
 
 // Scanio holds configuration specific to the Scanio application.
 type Scanio struct {
-	Mode           string `yaml:"mode"`
+	Mode           string `yaml:"mode"`            // Scanio mode cofiguration.
 	HomeFolder     string `yaml:"home_folder"`     // The home directory for Scanio.
 	PluginsFolder  string `yaml:"plugins_folder"`  // The directory where Scanio plugins are stored.
 	ProjectsFolder string `yaml:"projects_folder"` // The directory where Scanio project files are stored.

@@ -2,7 +2,7 @@
 
 ## Common Scanio config
 scanio:
-  mode: "user"                # Default: user. Can be overridden with the environment variable SCANIO_MODE or CI.
+  mode: "user"                # Scanio mode cofiguration. Default: user. Can be overridden with the environment variable SCANIO_MODE or CI.
   home_folder: "~/.scanio/"   # The home directory for Scanio. Default: ~/.scanio/. Can be overridden with the environment variable SCANIO_HOME.
   plugins_folder: ""          # The directory where Scanio plugins are stored. Default: <home_folder>/plugins. Can be overridden with the environment variable SCANIO_PLUGINS_FOLDER.
   projects_folder: ""         # The directory where Scanio project files are stored. Default: <home_folder>/projects. Can be overridden with the environment variable SCANIO_PROJECTS_FOLDER.
