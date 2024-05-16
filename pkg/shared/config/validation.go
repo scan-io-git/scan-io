@@ -48,6 +48,8 @@ func ValidateScanioConfig(cfg *Config) error {
 	if err := updateFolder(&cfg.Scanio.TempFolder, "SCANIO_TEMP_FOLDER", "tmp", cfg); err != nil {
 		return fmt.Errorf("failed to update temp folder: %w", err)
 	}
+	updateMode(cfg)
+
 	return nil
 }
 
@@ -182,4 +184,19 @@ func updateFolder(folder *string, envVar, defaultSubFolder string, cfg *Config) 
 		return fmt.Errorf("failed to create folder '%s': %w", *folder, err)
 	}
 	return nil
+}
+
+// updateMode updates the Mode field in the Scanio configuration based on environment variables.
+func updateMode(cfg *Config) {
+	if os.Getenv("SCANIO_MODE") == "CI" || os.Getenv("CI") == "true" {
+		cfg.Scanio.Mode = "CI"
+		return
+	}
+
+	if envVarValue := os.Getenv("SCANIO_MODE"); envVarValue != "" {
+		cfg.Scanio.Mode = envVarValue
+		return
+	}
+
+	cfg.Scanio.Mode = "user"
 }

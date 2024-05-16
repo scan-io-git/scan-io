@@ -2,11 +2,12 @@
 
 ## Common Scanio config
 scanio:
-  home_folder: ""        # The home directory for Scanio. Default: ~/.scanio/. Can be overridden with the environment variable SCANIO_HOME.
-  plugins_folder: ""     # The directory where Scanio plugins are stored. Default: <home_folder>/plugins. Can be overridden with the environment variable SCANIO_PLUGINS_FOLDER.
-  projects_folder: ""    # The directory where Scanio project files are stored. Default: <home_folder>/projects. Can be overridden with the environment variable SCANIO_PROJECTS_FOLDER.
-  results_folder: ""     # The directory where Scanio results are stored. Default: <home_folder>/results. Can be overridden with the environment variable SCANIO_RESULTS_FOLDER.
-  temp_folder: ""        # The directory for temporary files used by Scanio. Default: <home_folder>/tmp. Can be overridden with the environment variable SCANIO_TEMP_FOLDER.
+  mode: "user"                # Default: user. Can be overridden with the environment variable SCANIO_MODE or CI.
+  home_folder: "~/.scanio/"   # The home directory for Scanio. Default: ~/.scanio/. Can be overridden with the environment variable SCANIO_HOME.
+  plugins_folder: ""          # The directory where Scanio plugins are stored. Default: <home_folder>/plugins. Can be overridden with the environment variable SCANIO_PLUGINS_FOLDER.
+  projects_folder: ""         # The directory where Scanio project files are stored. Default: <home_folder>/projects. Can be overridden with the environment variable SCANIO_PROJECTS_FOLDER.
+  results_folder: ""          # The directory where Scanio results are stored. Default: <home_folder>/results. Can be overridden with the environment variable SCANIO_RESULTS_FOLDER.
+  temp_folder: ""             # The directory for temporary files used by Scanio. Default: <home_folder>/tmp. Can be overridden with the environment variable SCANIO_TEMP_FOLDER.
 
 ## Bitbucket plugin config
 bitbucket_plugin:
@@ -25,7 +26,7 @@ logger:
 http_client:
   retry_count: 5              # Number of retries for HTTP requests. Default: 5.
   retry_wait_time: "1s"       # Time to wait before retrying an HTTP request. Default: 1s.
-  retry_max_wait_time: "2s"   # Maximum time to wait before retrying an HTTP request. Default: 5s.
+  retry_max_wait_time: "5s"   # Maximum time to wait before retrying an HTTP request. Default: 5s.
   timeout: "10s"              # Time before an HTTP request times out. Default: 30s.
   tls_client_config:
     verify: true              # Whether to verify TLS certificates. Default: true.

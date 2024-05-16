@@ -19,11 +19,13 @@ type Config struct {
 
 // Scanio holds configuration specific to the Scanio application.
 type Scanio struct {
+	Mode           string `yaml:"mode"`
 	HomeFolder     string `yaml:"home_folder"`     // The home directory for Scanio.
 	PluginsFolder  string `yaml:"plugins_folder"`  // The directory where Scanio plugins are stored.
 	ProjectsFolder string `yaml:"projects_folder"` // The directory where Scanio project files are stored.
 	ResultsFolder  string `yaml:"results_folder"`  // The directory where Scanio results are stored.
 	TempFolder     string `yaml:"temp_folder"`     // The directory for temporary files used by Scanio.
+
 }
 
 // BitbucketPlugin holds configuration specific to the Bitbucket plugin.

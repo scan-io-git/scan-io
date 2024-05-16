@@ -70,7 +70,7 @@ func LoadConfig() (*AppDecConfig, error) {
 		TruffleHog3RulesPath: os.Getenv("SCANIO_TRUFFLEHOG3_RULES"),
 	}
 
-	if shared.IsCI() {
+	if cfg.IsCI(AppConfig) {
 		config.ExecutionEnv = os.Getenv("SCANIO_CI")
 
 		switch config.ExecutionEnv {

@@ -85,3 +85,13 @@ func GetPRTempPath(cfg *Config, VCSURL, Namespace, RepoName string, PRId int) st
 	return filepath.Join(GetScanioTempHome(cfg), strings.ToLower(VCSURL), strings.ToLower(Namespace),
 		strings.ToLower(RepoName), "scanio-pr-tmp", strconv.Itoa(PRId), startTime)
 }
+
+// GetScanioMode returns the Scanio mode from the configuration.
+func GetScanioMode(cfg *Config) string {
+	return cfg.Scanio.Mode
+}
+
+// IsCI returns true if the Scanio mode is set to "CI", indicating a continuous integration environment.
+func IsCI(cfg *Config) bool {
+	return GetScanioMode(cfg) == "CI"
+}

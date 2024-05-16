@@ -176,18 +176,6 @@ func ExtractRepositoryInfoFromURL(Url string, VCSPlugName string) (string, strin
 	return "", "", "", "", "", "", fmt.Errorf("invalid URL: %s", Url)
 }
 
-func IsCI() bool {
-	if os.Getenv("CI") == "true" {
-		return true
-	}
-
-	if os.Getenv("SCANIO_MODE") == "CI" {
-		return true
-	}
-
-	return false
-}
-
 func ContainsSubstring(target string, substrings []string) bool {
 	for _, substring := range substrings {
 		if strings.Contains(target, substring) {

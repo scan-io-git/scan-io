@@ -21,9 +21,8 @@ type ScannerSemgrep struct {
 
 const SEMGREP_RULES_FOLDER = "/scanio-rules/semgrep"
 
-func getDefaultConfig() string {
-
-	if shared.IsCI() {
+func (g *ScannerSemgrep) getDefaultConfig() string {
+	if config.IsCI(g.globalConfig) {
 		if _, err := os.Stat(SEMGREP_RULES_FOLDER); !os.IsNotExist(err) {
 			return SEMGREP_RULES_FOLDER
 		}
@@ -58,7 +57,7 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) (shared.ScannerSca
 	// use "p/deafult" by default to not send metrics
 	configPath := args.ConfigPath
 	if args.ConfigPath == "" {
-		configPath = getDefaultConfig()
+		configPath = g.getDefaultConfig()
 	}
 
 	// auto config requires sendings metrics
