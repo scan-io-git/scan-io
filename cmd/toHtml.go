@@ -21,6 +21,19 @@ type ToHTMLOptions struct {
 
 var allToHTMLOptions ToHTMLOptions
 
+func enrichResultsProperties(sarifReport *sarif.Report) {
+	rulesMap := map[string]*sarif.ReportingDescriptor{}
+	for _, rule := range sarifReport.Runs[0].Tool.Driver.Rules {
+		rulesMap[rule.ID] = rule
+	}
+
+	for _, result := range sarifReport.Runs[0].Results {
+		if rule, ok := rulesMap[*result.RuleID]; ok {
+			result.Properties["Title"] = rule.ShortDescription.Text
+		}
+	}
+}
+
 // toHtmlCmd represents the toHtml command
 var toHtmlCmd = &cobra.Command{
 	Use:   "to-html",
@@ -37,6 +50,8 @@ var toHtmlCmd = &cobra.Command{
 		var sarifReport sarif.Report
 		byteValue, _ := io.ReadAll(jsonFile)
 		json.Unmarshal([]byte(byteValue), &sarifReport)
+
+		enrichResultsProperties(&sarifReport)
 
 		tmpl, err := template.ParseFiles(filepath.Join(allToHTMLOptions.TempatesPath, "report.html"))
 		if err != nil {

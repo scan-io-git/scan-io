@@ -8,12 +8,18 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>{{ .Title }}</title>
   <base target="_blank">
+
   <!-- inline css goes here -->
   <style type="text/css">
+
+    body {
+      font-family: system-ui, Helvetica, sans-serif;
+    }
+
     .main-body {
       margin: 0 auto;
-      padding: 20px;
-      max-width: 1200px;
+      padding: 16px;
+      max-width: 1024px;
       position: relative;
     }
 
@@ -21,14 +27,22 @@
       margin-bottom: 32px;
     }
 
+    .issue-card-header {
+      display: flex;
+      margin-bottom: 16px;
+    }
+
+    .issue-card-title {
+      font-size: 24px;
+      margin: 0px;
+    }
+
     .issue-card {
       left: 0;
       /* position: absolute; */
       top: 10px;
-      padding-top: 20px;
-      padding-left: 10px;
-      padding-right: 10px;
-      border-radius: 0 0.25rem 0.25rem 0;
+      padding: 16px 8px;
+      border-radius: 8px 8px 0px 0px;
       border: 2px solid;
       margin-bottom: 32px;
     }
@@ -49,6 +63,7 @@
       width: 32px; /* Width of the SVG image */
       height: 32px; /* Height of the SVG image */
       display: inline-block;
+      margin-right: 8px;
     }
 
     .severity-icon-error {
@@ -65,6 +80,13 @@
       /* svg source https://uxwing.com/alphabet-l-icon/ */
       background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjIuODggMTIyLjg4Ij48cGF0aCBkPSJNMTcuODkgMGg4OC45YzguODUgMCAxNi4xIDcuMjQgMTYuMSAxNi4xdjkwLjY4YzAgOC44NS03LjI0IDE2LjEtMTYuMSAxNi4xSDE2LjFjLTguODUgMC0xNi4xLTcuMjQtMTYuMS0xNi4xdi04OC45QzAgOC4wNSA4LjA1IDAgMTcuODkgMHptMTkuNDkgMzEuMDZoMTguNzV2NDUuODJIODUuNXYxNC45NEgzNy4zOFYzMS4wNnoiIGZpbGw9IiM3YzdjODUiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIi8+PC9zdmc+');
     }
+
+    .issue-card-body-metadata {
+      padding: 8px 8px;
+      border: 2px solid #d3d3d9;
+      border-radius: 2px;
+    }
+
   </style>
 
 </head>
@@ -84,10 +106,15 @@
         <div class="issue-card severity-{{.Level}}">
           <div class="issue-card-header">
             <div class="severity-icon severity-icon-{{.Level}}"></div>
-            <h2 class="issue-card-title">{{.RuleID}}</h2>
+            <h2 class="issue-card-title">{{index .Properties "Title"}}</h2>
           </div>
           <div class="issue-card-body">
-            Location: {{with $location := index .Locations 0}}{{$location.PhysicalLocation.ArtifactLocation.URI}} (line : {{$location.PhysicalLocation.Region.StartLine}}){{end}}<br><br>
+            <div class="issue-card-body-metadata severity-{{.Level}}">
+              <p>{{.Message.Text}}</p>
+              <p>Location: <strong>{{with $location := index .Locations 0}}{{$location.PhysicalLocation.ArtifactLocation.URI}} (line : {{$location.PhysicalLocation.Region.StartLine}}){{end}}</strong></p>
+            </div>
+            <div class="issue-card-body-dataflows">
+            </div>
           </div>
         </div>
         {{end}}
