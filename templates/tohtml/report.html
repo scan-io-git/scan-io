@@ -89,6 +89,7 @@
       border: 2px solid #d3d3d9;
       border-radius: 2px;
       margin-bottom: 8px;
+      overflow: auto;
     }
 
     .issue-card__body__dataflows__filename {
@@ -150,6 +151,12 @@
       display: block;
     }
 
+    .dataflow-code-highlighted {
+      /* background-color: #f0f0f0; */
+      border-radius:4px;
+      background-color: rgba(0,0,0,.1);
+    }
+
   </style>
 
 </head>
@@ -208,9 +215,19 @@
                       {{ $prevUri = $curUri }}
 
                       {{/* process the actual dataflow element */}}
+                      <!-- {{ printf "%#v" .Location.PhysicalLocation.ArtifactLocation.Properties }} -->
+                      {{ $code := index .Location.PhysicalLocation.ArtifactLocation.Properties "Code" }}
                       <div class="issue-card__body__dataflows__codeline">
                         <span class="issue-card__body__dataflows__codeline__linecol">{{ .Location.PhysicalLocation.Region.StartLine }}:{{.Location.PhysicalLocation.Region.StartColumn}}</span>
-                        <div class="issue-card__body__dataflows__codeline__linecol__code">{{ index .Location.PhysicalLocation.ArtifactLocation.Properties "Code" }}</div>
+                        <div class="issue-card__body__dataflows__codeline__linecol__code">
+                          {{if eq (index .Location.PhysicalLocation.Region.Properties "StartLine") (index .Location.PhysicalLocation.Region.Properties "EndLine")}}
+                            {{- slice $code 0 (index .Location.PhysicalLocation.Region.Properties "StartColumn") -}}
+                            <span class="dataflow-code-highlighted">{{- slice $code (index .Location.PhysicalLocation.Region.Properties "StartColumn") (index .Location.PhysicalLocation.Region.Properties "EndColumn") -}}</span>
+                            {{- slice $code (index .Location.PhysicalLocation.Region.Properties "EndColumn") -}}
+                          {{else}}
+                            {{- $code -}}
+                          {{end}}
+                        </div>
                       </div>
                       {{end}}
                     </div>

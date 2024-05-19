@@ -68,6 +68,36 @@ func readLineFromFile(loc *sarif.PhysicalLocation) (string, error) {
 	return "", fmt.Errorf("line %d not found in file", *loc.Region.StartLine)
 }
 
+// function reads a file from physical location from startline to endline
+func readLinesFromFile(loc *sarif.PhysicalLocation) ([]string, error) {
+	// Construct the file path
+	filePath := filepath.Join(allToHTMLOptions.SourceFolder, *loc.ArtifactLocation.URI)
+
+	// Open the file
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	// Read the file line by line
+	scanner := bufio.NewScanner(file)
+	currentLine := 0
+	var lines []string
+	for scanner.Scan() {
+		currentLine++
+		if currentLine >= *loc.Region.StartLine && currentLine <= *loc.Region.EndLine {
+			lines = append(lines, scanner.Text())
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading file: %w", err)
+	}
+
+	return lines, nil
+}
+
 // function to enrich location properties with code and URI
 func enrichResultsLocationProperty(location *sarif.Location) error {
 	artifactLocation := location.PhysicalLocation.ArtifactLocation
@@ -80,7 +110,36 @@ func enrichResultsLocationProperty(location *sarif.Location) error {
 	if err != nil {
 		return err
 	}
+	// print amount of spaces bnefore code
+	// spacePrefixLength := len(codeLine) - len(strings.TrimLeft(codeLine, " "))
+	// artifactLocation.Properties["Code"] = strings.TrimLeft(codeLine, " ")
 	artifactLocation.Properties["Code"] = codeLine
+	spacePrefixLength := 0
+
+	if location.PhysicalLocation.Region.Properties == nil {
+		location.PhysicalLocation.Region.Properties = make(map[string]interface{})
+	}
+	if location.PhysicalLocation.Region.StartColumn != nil {
+		location.PhysicalLocation.Region.Properties["StartColumn"] = *location.PhysicalLocation.Region.StartColumn - spacePrefixLength - 1
+	} else {
+		location.PhysicalLocation.Region.Properties["StartColumn"] = 0
+	}
+	if location.PhysicalLocation.Region.EndColumn != nil {
+		location.PhysicalLocation.Region.Properties["EndColumn"] = *location.PhysicalLocation.Region.EndColumn - spacePrefixLength - 1
+	} else {
+		location.PhysicalLocation.Region.Properties["EndColumn"] = 0
+	}
+	if location.PhysicalLocation.Region.StartLine != nil {
+		location.PhysicalLocation.Region.Properties["StartLine"] = *location.PhysicalLocation.Region.StartLine - spacePrefixLength
+	} else {
+		location.PhysicalLocation.Region.Properties["StartLine"] = 0
+	}
+	if location.PhysicalLocation.Region.EndLine != nil {
+		location.PhysicalLocation.Region.Properties["EndLine"] = *location.PhysicalLocation.Region.EndLine
+	} else {
+		location.PhysicalLocation.Region.Properties["EndLine"] = location.PhysicalLocation.Region.Properties["StartLine"]
+	}
+
 	return nil
 }
 
