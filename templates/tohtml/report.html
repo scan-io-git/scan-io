@@ -114,6 +114,10 @@
       overflow: auto;
     }
 
+    .issue-card__body__metadata__location {
+      font-size: 12px;
+    }
+
   </style>
 
 </head>
@@ -139,29 +143,29 @@
           <div class="issue-card__body">
             <div class="issue-card__body__metadata severity--{{$level}}">
               <p>{{.Message.Text}}</p>
-              <p>Location: <strong>{{with $location := index .Locations 0}}{{$location.PhysicalLocation.ArtifactLocation.URI}} (line : {{$location.PhysicalLocation.Region.StartLine}}){{end}}</strong></p>
+              <div class="issue-card__body__metadata__location">Location: <strong>{{with $location := index .Locations 0}}{{$location.PhysicalLocation.ArtifactLocation.URI}} (line : {{$location.PhysicalLocation.Region.StartLine}}){{end}}</strong></div>
             </div>
             <div class="issue-card__body__dataflows">
+              <div>DataFlows:</div>
               {{if gt (len .CodeFlows) 0}}
-                <div>DataFlows:</div>
-              {{end}}
-              {{range .CodeFlows}}
-                {{range .ThreadFlows}}
-                  {{ $prevUri := "" }}
-                  {{range .Locations}}
-                  
-                  {{/* figure out whether we should add a filename block here */}}
-                  {{ $curUri := index .Location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
-                  {{ if ne $curUri $prevUri }}
-                  <div class="issue-card__body__dataflows__filename">{{$curUri}}</div>
-                  {{end}}
-                  {{ $prevUri = $curUri }}
+                {{range .CodeFlows}}
+                  {{range .ThreadFlows}}
+                    {{ $prevUri := "" }}
+                    {{range .Locations}}
+                    
+                    {{/* figure out whether we should add a filename block here */}}
+                    {{ $curUri := index .Location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
+                    {{ if ne $curUri $prevUri }}
+                    <div class="issue-card__body__dataflows__filename">{{$curUri}}</div>
+                    {{end}}
+                    {{ $prevUri = $curUri }}
 
-                  {{/* process the actual dataflow element */}}
-                  <div class="issue-card__body__dataflows__codeline">
-                    <span class="issue-card__body__dataflows__codeline__linecol">{{ .Location.PhysicalLocation.Region.StartLine }}:{{.Location.PhysicalLocation.Region.StartColumn}}</span>
-                    <div class="issue-card__body__dataflows__codeline__linecol__code">{{ index .Location.PhysicalLocation.ArtifactLocation.Properties "Code" }}</div>
-                  </div>
+                    {{/* process the actual dataflow element */}}
+                    <div class="issue-card__body__dataflows__codeline">
+                      <span class="issue-card__body__dataflows__codeline__linecol">{{ .Location.PhysicalLocation.Region.StartLine }}:{{.Location.PhysicalLocation.Region.StartColumn}}</span>
+                      <div class="issue-card__body__dataflows__codeline__linecol__code">{{ index .Location.PhysicalLocation.ArtifactLocation.Properties "Code" }}</div>
+                    </div>
+                    {{end}}
                   {{end}}
                 {{end}}
               {{end}}

@@ -68,24 +68,49 @@ func readLineFromFile(loc *sarif.PhysicalLocation) (string, error) {
 	return "", fmt.Errorf("line %d not found in file", *loc.Region.StartLine)
 }
 
+// function to enrich location properties with code and URI
+func enrichResultsLocationProperty(location *sarif.Location) error {
+	artifactLocation := location.PhysicalLocation.ArtifactLocation
+	if artifactLocation.Properties == nil {
+		artifactLocation.Properties = make(map[string]interface{})
+	}
+	artifactLocation.Properties["URI"] = *artifactLocation.URI
+
+	codeLine, err := readLineFromFile(location.PhysicalLocation)
+	if err != nil {
+		return err
+	}
+	artifactLocation.Properties["Code"] = codeLine
+	return nil
+}
+
 func enrichResultsCodeFlowProperty(sarifReport *sarif.Report) {
+	// init logger
 	logger := shared.NewLogger("core")
+
 	for _, result := range sarifReport.Runs[0].Results {
+
+		if len(result.CodeFlows) == 0 && len(result.Locations) > 0 {
+			//add new code flow
+			codeFlow := sarif.NewCodeFlow()
+			for _, location := range result.Locations {
+				threadFlow := sarif.NewThreadFlow()
+				threadFlow.Locations = append(threadFlow.Locations, &sarif.ThreadFlowLocation{
+					Location: location,
+				})
+				codeFlow.ThreadFlows = append(codeFlow.ThreadFlows, threadFlow)
+			}
+			result.CodeFlows = append(result.CodeFlows, codeFlow)
+		}
+
 		for _, codeflow := range result.CodeFlows {
 			for _, threadflow := range codeflow.ThreadFlows {
 				for _, location := range threadflow.Locations {
-					artifactLocation := location.Location.PhysicalLocation.ArtifactLocation
-					if artifactLocation.Properties == nil {
-						artifactLocation.Properties = make(map[string]interface{})
-					}
-					artifactLocation.Properties["URI"] = *artifactLocation.URI
-
-					codeLine, err := readLineFromFile(location.Location.PhysicalLocation)
+					err := enrichResultsLocationProperty(location.Location)
 					if err != nil {
 						logger.Warn("can't read source file", "err", err)
 						continue
 					}
-					artifactLocation.Properties["Code"] = codeLine
 				}
 			}
 		}
