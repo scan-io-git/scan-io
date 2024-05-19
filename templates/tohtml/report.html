@@ -69,16 +69,19 @@
     .severity-icon--error {
       /* svg source https://uxwing.com/alphabet-h-icon/ */
       background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjIuODggMTIyLjg4Ij48cGF0aCBkPSJNMTcuODkgMGg4OC45YzguODUgMCAxNi4xIDcuMjQgMTYuMSAxNi4xdjkwLjY4YzAgOC44NS03LjI0IDE2LjEtMTYuMSAxNi4xSDE2LjFjLTguODUgMC0xNi4xLTcuMjQtMTYuMS0xNi4xdi04OC45QzAgOC4wNSA4LjA1IDAgMTcuODkgMHptMTQuNDkgMzEuMDZoMTguNzV2MjEuMjJoMjAuNTRWMzEuMDZIOTAuNXY2MC43Nkg3MS42N1Y2Ny4yMUg1MS4xM3YyNC42MUgzMi4zOFYzMS4wNnoiIGZpbGw9IiNiYTQzMmIiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIi8+PC9zdmc+');
+      background-repeat: no-repeat;
     }
 
     .severity-icon--warning {
       /* svg source https://uxwing.com/alphabet-m-icon/ */
       background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjIuODggMTIyLjg4Ij48cGF0aCBkPSJNMTcuODkgMGg4OC45YzguODUgMCAxNi4xIDcuMjQgMTYuMSAxNi4xdjkwLjY4YzAgOC44NS03LjI0IDE2LjEtMTYuMSAxNi4xSDE2LjFjLTguODUgMC0xNi4xLTcuMjQtMTYuMS0xNi4xdi04OC45QzAgOC4wNSA4LjA1IDAgMTcuODkgMHptOS4zOSAzMS4wNmgyNC43N2w5LjQzIDM2Ljk3IDkuNDYtMzYuOTdIOTUuNnY2MC43Nkg4MC4yNFY0NS41TDY4LjM4IDkxLjgySDU0LjQ3TDQyLjY0IDQ1LjV2NDYuMzJIMjcuMjhWMzEuMDZ6IiBmaWxsPSIjYjA2ZDA3IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvc3ZnPg==');
+      background-repeat: no-repeat;
     }
 
     .severity-icon--note, .severity-icon--none {
       /* svg source https://uxwing.com/alphabet-l-icon/ */
       background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjIuODggMTIyLjg4Ij48cGF0aCBkPSJNMTcuODkgMGg4OC45YzguODUgMCAxNi4xIDcuMjQgMTYuMSAxNi4xdjkwLjY4YzAgOC44NS03LjI0IDE2LjEtMTYuMSAxNi4xSDE2LjFjLTguODUgMC0xNi4xLTcuMjQtMTYuMS0xNi4xdi04OC45QzAgOC4wNSA4LjA1IDAgMTcuODkgMHptMTkuNDkgMzEuMDZoMTguNzV2NDUuODJIODUuNXYxNC45NEgzNy4zOFYzMS4wNnoiIGZpbGw9IiM3YzdjODUiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIi8+PC9zdmc+');
+      background-repeat: no-repeat;
     }
 
     .issue-card__body__metadata {
@@ -101,10 +104,14 @@
       display: flex;
     }
 
-    .issue-card__body__dataflows__codeline_linecol {
+    .issue-card__body__dataflows__codeline__linecol {
       width: 64px;
       text-align: right;
       margin-right: 16px;
+    }
+
+    .issue-card__body__dataflows__codeline__linecol__code {
+      overflow: auto;
     }
 
   </style>
@@ -123,13 +130,14 @@
 
       <div class="issue-cards">
         {{range .Results}}
-        <div class="issue-card severity--{{.Level}}">
+        {{ $level := index .Properties "Level"}}
+        <div class="issue-card severity--{{$level}}">
           <div class="issue-card___header">
-            <div class="severity-icon severity-icon--{{.Level}}"></div>
+            <div class="severity-icon severity-icon--{{$level}}"></div>
             <h2 class="issue-card__title">{{index .Properties "Title"}}</h2>
           </div>
           <div class="issue-card__body">
-            <div class="issue-card__body__metadata severity--{{.Level}}">
+            <div class="issue-card__body__metadata severity--{{$level}}">
               <p>{{.Message.Text}}</p>
               <p>Location: <strong>{{with $location := index .Locations 0}}{{$location.PhysicalLocation.ArtifactLocation.URI}} (line : {{$location.PhysicalLocation.Region.StartLine}}){{end}}</strong></p>
             </div>
@@ -151,8 +159,8 @@
 
                   {{/* process the actual dataflow element */}}
                   <div class="issue-card__body__dataflows__codeline">
-                    <span class="issue-card__body__dataflows__codeline_linecol">{{ .Location.PhysicalLocation.Region.StartLine }}:{{.Location.PhysicalLocation.Region.StartColumn}}</span>
-                    {{ index .Location.PhysicalLocation.ArtifactLocation.Properties "Code" }}
+                    <span class="issue-card__body__dataflows__codeline__linecol">{{ .Location.PhysicalLocation.Region.StartLine }}:{{.Location.PhysicalLocation.Region.StartColumn}}</span>
+                    <div class="issue-card__body__dataflows__codeline__linecol__code">{{ index .Location.PhysicalLocation.ArtifactLocation.Properties "Code" }}</div>
                   </div>
                   {{end}}
                 {{end}}

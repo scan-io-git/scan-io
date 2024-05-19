@@ -32,6 +32,9 @@ func enrichResultsTitleProperty(sarifReport *sarif.Report) {
 
 	for _, result := range sarifReport.Runs[0].Results {
 		if rule, ok := rulesMap[*result.RuleID]; ok {
+			if result.Properties == nil {
+				result.Properties = make(map[string]interface{})
+			}
 			result.Properties["Title"] = rule.ShortDescription.Text
 		}
 	}
@@ -71,17 +74,46 @@ func enrichResultsCodeFlowProperty(sarifReport *sarif.Report) {
 		for _, codeflow := range result.CodeFlows {
 			for _, threadflow := range codeflow.ThreadFlows {
 				for _, location := range threadflow.Locations {
-					if location.Location.PhysicalLocation.ArtifactLocation.Properties == nil {
-						location.Location.PhysicalLocation.ArtifactLocation.Properties = make(map[string]interface{})
+					artifactLocation := location.Location.PhysicalLocation.ArtifactLocation
+					if artifactLocation.Properties == nil {
+						artifactLocation.Properties = make(map[string]interface{})
 					}
-					location.Location.PhysicalLocation.ArtifactLocation.Properties["URI"] = *location.Location.PhysicalLocation.ArtifactLocation.URI
+					artifactLocation.Properties["URI"] = *artifactLocation.URI
 
 					codeLine, err := readLineFromFile(location.Location.PhysicalLocation)
 					if err != nil {
 						logger.Warn("can't read source file", "err", err)
-					} else {
-						location.Location.PhysicalLocation.ArtifactLocation.Properties["Code"] = codeLine
+						continue
 					}
+					artifactLocation.Properties["Code"] = codeLine
+				}
+			}
+		}
+	}
+}
+
+// function to enrich results properties with level taken from corersponding rules propertiues "problem.severity" field
+func enrichResultsLevelProperty(sarifReport *sarif.Report) {
+	rulesMap := map[string]*sarif.ReportingDescriptor{}
+	for _, rule := range sarifReport.Runs[0].Tool.Driver.Rules {
+		rulesMap[rule.ID] = rule
+	}
+
+	for _, result := range sarifReport.Runs[0].Results {
+		if rule, ok := rulesMap[*result.RuleID]; ok {
+			if result.Properties["Level"] == nil {
+				if result.Level != nil {
+					// used by snyk
+					result.Properties["Level"] = *result.Level
+				} else if rule.Properties["problem.severity"] != nil {
+					// used by codeql
+					result.Properties["Level"] = rule.Properties["problem.severity"]
+				} else if rule.DefaultConfiguration != nil {
+					// used by all tools?
+					result.Properties["Level"] = rule.DefaultConfiguration.Level
+				} else {
+					// just a fallback, should never happen
+					result.Properties["Level"] = "unknown"
 				}
 			}
 		}
@@ -91,6 +123,7 @@ func enrichResultsCodeFlowProperty(sarifReport *sarif.Report) {
 func enrichResultsProperties(sarifReport *sarif.Report) {
 	enrichResultsTitleProperty(sarifReport)
 	enrichResultsCodeFlowProperty(sarifReport)
+	enrichResultsLevelProperty(sarifReport)
 }
 
 // toHtmlCmd represents the toHtml command
