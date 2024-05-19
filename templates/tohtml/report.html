@@ -118,6 +118,38 @@
       font-size: 12px;
     }
 
+    .issue-card__body__dataflow-id {
+      display: inline-block;
+      width: 16px; /* Adjust as needed */
+      height: 16px; /* Make sure width and height are equal */
+      border: 2px solid #d3d3d9; /* Adjust border thickness and color as needed */
+      border-radius: 50%; /* This makes the border round */
+      text-align: center; /* Centers the text horizontally */
+      line-height: 16px; /* Adjust this to be equal to the height to center the text vertically */
+      font-size: 12px; /* Adjust text size as needed */
+    }
+
+    .card__body__dataflows__header {
+      margin-bottom: 8px;
+    }
+
+    .action-field {
+      cursor: pointer;
+    }
+
+    .selected-dataflow-id {
+      background-color:#732da1;
+      color: #ffffff;
+    }
+
+    .issue-card__body__dataflow {
+      display: none;
+    }
+
+    .issue-card__body__dataflow.selected-dataflow {
+      display: block;
+    }
+
   </style>
 
 </head>
@@ -146,26 +178,43 @@
               <div class="issue-card__body__metadata__location">Location: <strong>{{with $location := index .Locations 0}}{{$location.PhysicalLocation.ArtifactLocation.URI}} (line : {{$location.PhysicalLocation.Region.StartLine}}){{end}}</strong></div>
             </div>
             <div class="issue-card__body__dataflows">
-              <div>DataFlows:</div>
-              {{if gt (len .CodeFlows) 0}}
+              <header class="card__body__dataflows__header">
+                DataFlows:
+                {{$totalDataFlows := 0}}
                 {{range .CodeFlows}}
                   {{range .ThreadFlows}}
-                    {{ $prevUri := "" }}
-                    {{range .Locations}}
-                    
-                    {{/* figure out whether we should add a filename block here */}}
-                    {{ $curUri := index .Location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
-                    {{ if ne $curUri $prevUri }}
-                    <div class="issue-card__body__dataflows__filename">{{$curUri}}</div>
-                    {{end}}
-                    {{ $prevUri = $curUri }}
+                    {{ $totalDataFlows = add $totalDataFlows 1 }}
+                  {{end}}
+                {{end}}
+                {{ if gt $totalDataFlows 1 }}
+                  {{ range $index, $dataFlowCounter := generateSequence $totalDataFlows }}
+                    <span class="issue-card__body__dataflow-id issue-card__body__dataflow-id--{{$dataFlowCounter}} action-field {{if eq $dataFlowCounter 1}}{{print "selected-dataflow-id"}}{{end}}" onclick="updateSelectedDataflow(event,{{$dataFlowCounter}})">{{$dataFlowCounter}}</span>
+                  {{end}}
+                {{end}}
+              </header>
+              {{if gt (len .CodeFlows) 0}}
+                {{ $dataFlowCounter := 1 }}
+                {{range .CodeFlows}}
+                  {{range .ThreadFlows}}
+                    <div class="issue-card__body__dataflow issue-card__body__dataflow--{{$dataFlowCounter}} {{if eq $dataFlowCounter 1}}{{print "selected-dataflow"}}{{end}}">
+                      {{ $prevUri := "" }}
+                      {{range .Locations}}
 
-                    {{/* process the actual dataflow element */}}
-                    <div class="issue-card__body__dataflows__codeline">
-                      <span class="issue-card__body__dataflows__codeline__linecol">{{ .Location.PhysicalLocation.Region.StartLine }}:{{.Location.PhysicalLocation.Region.StartColumn}}</span>
-                      <div class="issue-card__body__dataflows__codeline__linecol__code">{{ index .Location.PhysicalLocation.ArtifactLocation.Properties "Code" }}</div>
+                      {{/* figure out whether we should add a filename block here */}}
+                      {{ $curUri := index .Location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
+                      {{ if ne $curUri $prevUri }}
+                      <div class="issue-card__body__dataflows__filename">{{$curUri}}</div>
+                      {{end}}
+                      {{ $prevUri = $curUri }}
+
+                      {{/* process the actual dataflow element */}}
+                      <div class="issue-card__body__dataflows__codeline">
+                        <span class="issue-card__body__dataflows__codeline__linecol">{{ .Location.PhysicalLocation.Region.StartLine }}:{{.Location.PhysicalLocation.Region.StartColumn}}</span>
+                        <div class="issue-card__body__dataflows__codeline__linecol__code">{{ index .Location.PhysicalLocation.ArtifactLocation.Properties "Code" }}</div>
+                      </div>
+                      {{end}}
                     </div>
-                    {{end}}
+                    {{ $dataFlowCounter = add $dataFlowCounter 1 }}
                   {{end}}
                 {{end}}
               {{end}}
@@ -178,4 +227,29 @@
     </div>
     {{end}}
   </div>
+
+  <script>
+    var s = null;
+
+    function updateSelectedDataflow(event, dataflowId) {
+      console.log(event);
+      s = event;
+      const selectedElement = event.target.closest('header').querySelector('.selected-dataflow-id');
+      if (selectedElement) {
+        selectedElement.classList.remove('selected-dataflow-id');
+      }
+      event.target.classList.add('selected-dataflow-id');
+
+      // find closest div with class 'issue-card__body__dataflows'
+      const dataflowContainer = event.target.closest('.issue-card__body__dataflows');
+      const currentDataflowElement = dataflowContainer.querySelector('.selected-dataflow')
+      if (currentDataflowElement) {
+        currentDataflowElement.classList.remove('selected-dataflow');
+      }
+      const selectedDataflowElement = dataflowContainer.querySelector('.issue-card__body__dataflow--' + dataflowId);
+      if (selectedDataflowElement) {
+        selectedDataflowElement.classList.add('selected-dataflow');
+      }
+    }
+  </script>
 </body>

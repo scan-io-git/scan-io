@@ -151,6 +151,19 @@ func enrichResultsProperties(sarifReport *sarif.Report) {
 	enrichResultsLevelProperty(sarifReport)
 }
 
+func add(a, b int) int {
+	return a + b
+}
+
+// generateSequence generates a slice of integers from 1 to n.
+func generateSequence(n int) []int {
+	var sequence []int
+	for i := 1; i <= n; i++ {
+		sequence = append(sequence, i)
+	}
+	return sequence
+}
+
 // toHtmlCmd represents the toHtml command
 var toHtmlCmd = &cobra.Command{
 	Use:   "to-html",
@@ -170,7 +183,7 @@ var toHtmlCmd = &cobra.Command{
 
 		enrichResultsProperties(&sarifReport)
 
-		tmpl, err := template.ParseFiles(filepath.Join(allToHTMLOptions.TempatesPath, "report.html"))
+		tmpl, err := template.New("report.html").Funcs(template.FuncMap{"add": add, "generateSequence": generateSequence}).ParseFiles(filepath.Join(allToHTMLOptions.TempatesPath, "report.html"))
 		if err != nil {
 			return err
 		}
