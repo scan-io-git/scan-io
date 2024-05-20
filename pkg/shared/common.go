@@ -36,7 +36,7 @@ var PluginMap = map[string]plugin.Plugin{
 func WithPlugin(cfg *config.Config, loggerName string, pluginType string, pluginName string, f func(interface{}) error) error {
 	logger := logger.NewLogger(cfg, loggerName)
 
-	pluginPath := filepath.Join(config.GetScanioPluginsHome(cfg), pluginName)
+	pluginPath := filepath.Join(config.GetScanioPluginsHome(cfg), pluginName, pluginName)
 	client := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig: HandshakeConfig,
 		Plugins:         PluginMap,
@@ -58,17 +58,33 @@ func WithPlugin(cfg *config.Config, loggerName string, pluginType string, plugin
 		return err
 	}
 
-	pluginInstance, ok := raw.(VCS)
-	if !ok {
-		err := fmt.Errorf("plugin does not implement VCS interface")
-		logger.Error(err.Error())
-		return err
+	// TODO: use universal approach
+	var setupErr error
+	switch pluginType {
+	case "vcs":
+		pluginInstance, ok := raw.(VCS)
+		if !ok {
+			err := fmt.Errorf("plugin does not implement VCS interface")
+			logger.Error(err.Error())
+			return err
+		}
+		_, setupErr = pluginInstance.Setup(*cfg)
+	case "scanner":
+		pluginInstance, ok := raw.(Scanner)
+		if !ok {
+			err := fmt.Errorf("plugin does not implement Scanner interface")
+			logger.Error(err.Error())
+			return err
+		}
+		_, setupErr = pluginInstance.Setup(*cfg)
+
+	default:
+		return fmt.Errorf("unsupported plugin type: %s", pluginType)
 	}
 
-	// Setup the plugin with configuration
-	if _, err := pluginInstance.Setup(*cfg); err != nil {
-		logger.Error("Failed to setup plugin", "error", err)
-		return err
+	if setupErr != nil {
+		logger.Error("Failed to setup plugin", "error", setupErr)
+		return setupErr
 	}
 
 	err = f(raw)
