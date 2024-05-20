@@ -6,7 +6,7 @@
   <meta http-equiv="Content-Language" content="en-us">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>{{ .Title }}</title>
+  <title>{{ .Metadata.Title }}</title>
   <base target="_blank">
 
   <!-- inline css goes here -->
@@ -14,6 +14,10 @@
 
     body {
       font-family: system-ui, Helvetica, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
     }
 
     .main-body {
@@ -152,9 +156,28 @@
     }
 
     .dataflow-code-highlighted {
-      /* background-color: #f0f0f0; */
       border-radius:4px;
       background-color: rgba(0,0,0,.1);
+    }
+
+    .header-container {
+      background-color: #732da1;
+      color: #fff
+    }
+
+    .header-container__metadata {
+      float: right;
+      text-align: left;
+      font-size: 12px;
+      margin-right: 16px;
+    }
+
+    .header-container__metadata p {
+      margin: 8px;
+    }
+
+    .header-container__metadata p a {
+      color: #fff;
     }
 
   </style>
@@ -163,6 +186,18 @@
 
 <body>
   <!-- header goes here -->
+  <header class="header-container">
+    <div class="header-container__metadata">
+      <p><b>Time:</b> {{ .Metadata.Time | formatDateTime }} (UTC)</p>
+      <p><b>Tool:</b> {{ .Metadata.ToolMetadata.Name }} {{if .Metadata.ToolMetadata.Version}}{{ .Metadata.ToolMetadata.Version }}{{end}}</p>
+      {{if .Metadata.SourceFolder}}<p><b>Source:</b> {{ .Metadata.SourceFolder }}</p>{{end}}
+      {{if .Metadata.RepositoryMetadata.RepositoryFullName}}<p><b>Repository:</b> <a href="{{ .Metadata.RepositoryMetadata.RepositoryFullName }}">{{ .Metadata.RepositoryMetadata.RepositoryFullName }}</a></p>{{end}}
+      {{if .Metadata.RepositoryMetadata.BranchName}}<p><b>Branch:</b> {{ .Metadata.RepositoryMetadata.BranchName }} </p>{{end}}
+      {{if .Metadata.RepositoryMetadata.CommitHash}}<p><b>Commit:</b> {{ .Metadata.RepositoryMetadata.CommitHash }} </p>{{end}}
+      {{if .Metadata.RepositoryMetadata.Subfolder}}<p><b>Subfolder:</b> {{ .Metadata.RepositoryMetadata.Subfolder }} </p>{{end}}
+    </div> 
+  </header>
+
   <div class="main-container">
     {{range .Report.Runs}}
     <div class="main-body">

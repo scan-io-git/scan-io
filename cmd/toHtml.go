@@ -8,7 +8,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
+	"github.com/go-git/go-git/v5"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
@@ -41,6 +44,11 @@ func enrichResultsTitleProperty(sarifReport *sarif.Report) {
 }
 
 func readLineFromFile(loc *sarif.PhysicalLocation) (string, error) {
+	//return error if allToHTMLOptions.SourceFolder is not specified
+	if allToHTMLOptions.SourceFolder == "" {
+		return "", fmt.Errorf("source folder is not set")
+	}
+
 	// Construct the file path
 	filePath := filepath.Join(allToHTMLOptions.SourceFolder, *loc.ArtifactLocation.URI)
 
@@ -68,36 +76,6 @@ func readLineFromFile(loc *sarif.PhysicalLocation) (string, error) {
 	return "", fmt.Errorf("line %d not found in file", *loc.Region.StartLine)
 }
 
-// function reads a file from physical location from startline to endline
-func readLinesFromFile(loc *sarif.PhysicalLocation) ([]string, error) {
-	// Construct the file path
-	filePath := filepath.Join(allToHTMLOptions.SourceFolder, *loc.ArtifactLocation.URI)
-
-	// Open the file
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open file: %w", err)
-	}
-	defer file.Close()
-
-	// Read the file line by line
-	scanner := bufio.NewScanner(file)
-	currentLine := 0
-	var lines []string
-	for scanner.Scan() {
-		currentLine++
-		if currentLine >= *loc.Region.StartLine && currentLine <= *loc.Region.EndLine {
-			lines = append(lines, scanner.Text())
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading file: %w", err)
-	}
-
-	return lines, nil
-}
-
 // function to enrich location properties with code and URI
 func enrichResultsLocationProperty(location *sarif.Location) error {
 	artifactLocation := location.PhysicalLocation.ArtifactLocation
@@ -105,6 +83,11 @@ func enrichResultsLocationProperty(location *sarif.Location) error {
 		artifactLocation.Properties = make(map[string]interface{})
 	}
 	artifactLocation.Properties["URI"] = *artifactLocation.URI
+
+	// return if allToHTMLOptions.SourceFolder is not specified
+	if allToHTMLOptions.SourceFolder == "" {
+		return fmt.Errorf("source folder is not set")
+	}
 
 	codeLine, err := readLineFromFile(location.PhysicalLocation)
 	if err != nil {
@@ -167,7 +150,7 @@ func enrichResultsCodeFlowProperty(sarifReport *sarif.Report) {
 				for _, location := range threadflow.Locations {
 					err := enrichResultsLocationProperty(location.Location)
 					if err != nil {
-						logger.Warn("can't read source file", "err", err)
+						logger.Debug("can't read source file", "err", err)
 						continue
 					}
 				}
@@ -223,36 +206,191 @@ func generateSequence(n int) []int {
 	return sequence
 }
 
+// reads a sarif report from Input file
+func readSarifReport() (*sarif.Report, error) {
+	jsonFile, err := os.Open(allToHTMLOptions.Input)
+	if err != nil {
+		return nil, err
+	}
+	defer jsonFile.Close()
+
+	var sarifReport sarif.Report
+	byteValue, _ := io.ReadAll(jsonFile)
+	json.Unmarshal([]byte(byteValue), &sarifReport)
+
+	return &sarifReport, nil
+}
+
+// function that finds a path to git repository from the source folder
+func findGitRepositoryPath(sourceFolder string) (string, error) {
+	if sourceFolder == "" {
+		return "", fmt.Errorf("source folder is not set")
+	}
+
+	// check if source folder is a subfolder of a git repository
+	for {
+		_, err := git.PlainOpen(sourceFolder)
+		if err == nil {
+			return sourceFolder, nil
+		}
+
+		// move up one level
+		sourceFolder = filepath.Dir(sourceFolder)
+
+		// check if reached the root folder
+		if sourceFolder == filepath.Dir(sourceFolder) {
+			break
+		}
+	}
+
+	return "", fmt.Errorf("source folder is not a git repository")
+}
+
+// struct with repository metadata
+type RepositoryMetadata struct {
+	BranchName         *string
+	CommitHash         *string
+	RepositoryFullName *string
+	Subfolder          string
+	RepoRootFolder     string
+}
+
+type ToolMetadata struct {
+	Name    string
+	Version *string
+}
+
+type ReportMetadata struct {
+	RepositoryMetadata
+	ToolMetadata
+	Title        string
+	Time         time.Time
+	SourceFolder string
+}
+
+// function to collect metadata about the repository
+func collectRepositoryMetadata() (*RepositoryMetadata, error) {
+	defaultRepositoryMetadata := &RepositoryMetadata{
+		RepoRootFolder: allToHTMLOptions.SourceFolder,
+		Subfolder:      "",
+	}
+
+	if allToHTMLOptions.SourceFolder == "" {
+		return defaultRepositoryMetadata, fmt.Errorf("source folder is not set")
+	}
+
+	repoRootFolder, err := findGitRepositoryPath(allToHTMLOptions.SourceFolder)
+	if err != nil {
+		return defaultRepositoryMetadata, err
+	}
+
+	repo, err := git.PlainOpen(repoRootFolder)
+	if err != nil {
+		return defaultRepositoryMetadata, fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	head, err := repo.Head()
+	if err != nil {
+		return defaultRepositoryMetadata, fmt.Errorf("failed to get HEAD: %w", err)
+	}
+	branchName := head.Name().Short()
+	commitHash := head.Hash().String()
+
+	remote, err := repo.Remote("origin")
+	if err != nil {
+		return defaultRepositoryMetadata, fmt.Errorf("failed to get remote: %w", err)
+	}
+
+	repositoryFullName := strings.TrimSuffix(remote.Config().URLs[0], ".git")
+
+	return &RepositoryMetadata{
+		BranchName:         &branchName,
+		CommitHash:         &commitHash,
+		RepositoryFullName: &repositoryFullName,
+		Subfolder:          strings.TrimPrefix(allToHTMLOptions.SourceFolder, repoRootFolder),
+		RepoRootFolder:     repoRootFolder,
+	}, nil
+}
+
+func ordinalDate(day int) string {
+	suffix := "th"
+	switch day {
+	case 1, 21, 31:
+		suffix = "st"
+	case 2, 22:
+		suffix = "nd"
+	case 3, 23:
+		suffix = "rd"
+	}
+	return fmt.Sprintf("%d%s", day, suffix)
+}
+
+// formatDateTime formats a time.Time object into the specified string format.
+func formatDateTime(t time.Time) string {
+	day := ordinalDate(t.Day())
+	return fmt.Sprintf("%s %s %d %d:%02d:%02d %s", day, t.Month(), t.Year(), t.Hour()%12, t.Minute(), t.Second(), t.Format("pm"))
+}
+
+// extract Tool name an version from sarifreport
+func extractToolNameAndVersion(sarifReport *sarif.Report) (*ToolMetadata, error) {
+	toolName := sarifReport.Runs[0].Tool.Driver.Name
+	toolVersion := sarifReport.Runs[0].Tool.Driver.SemanticVersion
+	return &ToolMetadata{
+		Name:    toolName,
+		Version: toolVersion,
+	}, nil
+}
+
 // toHtmlCmd represents the toHtml command
 var toHtmlCmd = &cobra.Command{
 	Use:   "to-html",
 	Short: "Generate HTML formatted report",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("toHtml called")
+		logger := shared.NewLogger("core")
+		logger.Info("toHtml called")
 
-		jsonFile, err := os.Open(allToHTMLOptions.Input)
+		sarifReport, err := readSarifReport()
 		if err != nil {
 			return err
 		}
-		defer jsonFile.Close()
 
-		var sarifReport sarif.Report
-		byteValue, _ := io.ReadAll(jsonFile)
-		json.Unmarshal([]byte(byteValue), &sarifReport)
+		enrichResultsProperties(sarifReport)
 
-		enrichResultsProperties(&sarifReport)
+		repositoryMetadata, err := collectRepositoryMetadata()
+		if err != nil {
+			logger.Debug("can't collect repository metadata", "err", err)
+		}
 
-		tmpl, err := template.New("report.html").Funcs(template.FuncMap{"add": add, "generateSequence": generateSequence}).ParseFiles(filepath.Join(allToHTMLOptions.TempatesPath, "report.html"))
+		ToolMetadata, err := extractToolNameAndVersion(sarifReport)
+		if err != nil {
+			return err
+		}
+
+		metadata := &ReportMetadata{
+			RepositoryMetadata: *repositoryMetadata,
+			ToolMetadata:       *ToolMetadata,
+			Title:              allToHTMLOptions.Title,
+			Time:               time.Now().UTC(),
+			SourceFolder:       allToHTMLOptions.SourceFolder,
+		}
+
+		tmpl, err := template.New("report.html").
+			Funcs(template.FuncMap{
+				"add":              add,
+				"generateSequence": generateSequence,
+				"formatDateTime":   formatDateTime,
+			}).
+			ParseFiles(filepath.Join(allToHTMLOptions.TempatesPath, "report.html"))
 		if err != nil {
 			return err
 		}
 
 		data := struct {
-			Title  string
-			Report sarif.Report
+			Metadata *ReportMetadata
+			Report   *sarif.Report
 		}{
-			Title:  allToHTMLOptions.Title,
-			Report: sarifReport,
+			Metadata: metadata,
+			Report:   sarifReport,
 		}
 
 		file, err := os.Create(allToHTMLOptions.OutputFile)
