@@ -173,3 +173,18 @@ type File struct {
 	Extension  string   `json:"extension"`
 	ToString   string   `json:"toString"`
 }
+
+// Attachments represents an attachment with associated links.
+type Attachments struct {
+	ID    int    `json:"id"`
+	URL   string `json:"url"`
+	Links struct {
+		Self       SelfLink   `json:"self,omitempty"`
+		Attachment Attachment `json:"attachment,omitempty"`
+	} `json:"links"`
+}
+
+// Attachment represents a link to an attachment.
+type Attachment struct {
+	Href string `json:"href,omitempty"`
+}
