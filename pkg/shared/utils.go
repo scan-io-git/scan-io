@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -43,18 +42,6 @@ func WriteJsonFile(outputFile string, logger hclog.Logger, data ...CustomData) {
 	datawriter.Write(resultJson)
 	logger.Info("Results saved to file", "path", outputFile)
 
-}
-
-// expandPath resolves paths that include a tilde (~) to the user's home directory.
-func ExpandPath(path string) (string, error) {
-	if strings.HasPrefix(path, "~/") {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
-		}
-		return filepath.Join(homeDir, path[2:]), nil
-	}
-	return path, nil
 }
 
 func ExtractRepositoryInfoFromURL(Url string, VCSPlugName string) (string, string, string, string, string, string, error) {

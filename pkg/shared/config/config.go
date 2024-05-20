@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v2"
+
+	"github.com/scan-io-git/scan-io/pkg/shared/files"
 )
 
 // Config holds configuration settings parsed from a YAML config file.
@@ -73,38 +75,61 @@ type GitClient struct {
 }
 
 // LoadConfig reads a YAML config file and decodes it into a Config struct.
+// If configPath is empty, it searches for a config file in default paths.
 func LoadConfig(configPath string) (*Config, error) {
-	if err := validateConfigPath(configPath); err != nil {
-		return nil, err
+	config := &Config{}
+
+	if configPath != "" {
+		if err := config.loadConfig(configPath); err != nil {
+			return config, err
+		}
+	} else {
+		if err := config.searchDefaultConfig(); err != nil {
+			return config, err
+		}
+	}
+	return config, nil
+}
+
+// searchDefaultConfig searches for a config file in default paths.
+func (c *Config) searchDefaultConfig() error {
+	defaultPaths := []string{
+		"config.yml",           // Development default path
+		"~/.scanio/config.yml", // Local install default path
+		"/scanio/config.yml",   // Docker default path
 	}
 
-	file, err := os.Open(configPath)
+	var lastErr error
+	for _, path := range defaultPaths {
+		if err := c.loadConfig(path); err == nil {
+			return nil
+		} else {
+			lastErr = fmt.Errorf("failed to load config from path '%s': %w", path, err)
+		}
+	}
+	return fmt.Errorf("no valid config file found in default paths: %w", lastErr)
+}
+
+// loadConfig reads and parses the YAML config file at the given path.
+func (c *Config) loadConfig(path string) error {
+	expandedPath, err := files.ExpandPath(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+		return fmt.Errorf("failed to expand path '%s': %w", path, err)
+	}
+
+	if err := files.ValidatePath(expandedPath); err != nil {
+		return fmt.Errorf("failed to validate path '%s': %w", expandedPath, err)
+	}
+
+	file, err := os.Open(expandedPath)
+	if err != nil {
+		return fmt.Errorf("failed to read config file '%s': %w", expandedPath, err)
 	}
 	defer file.Close()
 
-	var appConfig *Config
 	decoder := yaml.NewDecoder(file)
-	if err = decoder.Decode(&appConfig); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
-	}
-
-	return appConfig, nil
-}
-
-// validateConfigPath checks if the given path is a valid file path for reading the configuration.
-func validateConfigPath(path string) error {
-	info, err := os.Stat(path)
-	if err != nil {
-		return fmt.Errorf("config path stat error: %w", err)
-	}
-	if info.IsDir() {
-		return fmt.Errorf("config path '%s' is a directory, not a file", path)
-	}
-
-	if info.Mode()&os.ModeType != 0 {
-		return fmt.Errorf("config path '%s' is not a regular file", path)
+	if err = decoder.Decode(&c); err != nil {
+		return fmt.Errorf("failed to unmarshal config '%s': %w", expandedPath, err)
 	}
 	return nil
 }

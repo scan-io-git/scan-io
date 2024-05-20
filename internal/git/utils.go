@@ -21,6 +21,7 @@ import (
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/files"
 )
 
 // Authenticator defines an interface for different authentication methods.
@@ -42,7 +43,7 @@ func (s *SSHKeyAuthenticator) SetupAuth(args *shared.VCSFetchRequest, config *co
 	logger.Debug("setting up SSH key authentication")
 
 	var auth transport.AuthMethod
-	sshKeyPath, err := shared.ExpandPath(args.SSHKey)
+	sshKeyPath, err := files.ExpandPath(args.SSHKey)
 	if err != nil {
 		logger.Error("failed to expand SSH key path", "path", args.SSHKey, "error", err)
 		return nil, err
