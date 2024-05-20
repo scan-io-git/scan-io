@@ -1,10 +1,8 @@
-# To decrease the size of the image you could choose only mandatory plugins and scanners for your processes.
-# For example, Semgrep is a really huge 3rd party dependency ~400MB. 
-# Here we are building a main binary file and plugins from Golang code
+# Optimize the image size by including only essential plugins and scanners specific to your processes.
+# Note: Semgrep is a large third-party dependency, approximately 400MB in size.
 
-# The docker file supports multi-arch building but be careful trufflehog and helm have binaries for linux/arm64 and linux/amd64 only. Check versions of 3rd party before building!
-# Semgrep still doesn't support ARM - https://github.com/returntocorp/semgrep/issues/2252! 
-
+# The Dockerfile facilitates multi-architecture builds. However, be cautious as trufflehog and helm currently only support linux/arm64 and linux/amd64 architectures. Always verify the compatibility of third-party versions before building.
+# Important: As of now, Semgrep does not support ARM architectures - see https://github.com/returntocorp/semgrep/issues/2252 for details!
 
 # Stage 1: Build Scanio core and plugins
 FROM golang:1.19.8-alpine3.17 AS build-scanio
@@ -24,15 +22,11 @@ ARG TARGETARCH
 
 # Install make and other build dependencies
 RUN apk update && apk add --no-cache make
+#     apk upgrade
 
 # Build the core and plugins using the Makefile
 RUN echo "Building binaries and plugins for $TARGETOS/$TARGETARCH"
 RUN make build CORE_BINARY=/usr/bin/scanio PLUGINS_DIR=/usr/bin/plugins
-
-# RUN apk update &&\
-#     apk upgrade
-
-# RUN apk add --no-cache 
 
 # Stage 2: Prepare the runtime environment
 FROM python:3.11-alpine3.17
