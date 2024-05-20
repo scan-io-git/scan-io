@@ -219,6 +219,7 @@
                       {{ $code := index .Location.PhysicalLocation.ArtifactLocation.Properties "Code" }}
                       <div class="issue-card__body__dataflows__codeline">
                         <span class="issue-card__body__dataflows__codeline__linecol">{{ .Location.PhysicalLocation.Region.StartLine }}:{{.Location.PhysicalLocation.Region.StartColumn}}</span>
+                        {{if $code}}
                         <div class="issue-card__body__dataflows__codeline__linecol__code">
                           {{if eq (index .Location.PhysicalLocation.Region.Properties "StartLine") (index .Location.PhysicalLocation.Region.Properties "EndLine")}}
                             {{- slice $code 0 (index .Location.PhysicalLocation.Region.Properties "StartColumn") -}}
@@ -228,6 +229,7 @@
                             {{- $code -}}
                           {{end}}
                         </div>
+                        {{end}}
                       </div>
                       {{end}}
                     </div>
