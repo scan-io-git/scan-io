@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/scan-io-git/scan-io/cmd/version"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
@@ -26,6 +27,7 @@ var (
 func init() {
 	cobra.OnInitialize(initConfig)
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is .config.yml)")
+	rootCmd.AddCommand(version.NewVersionCmd())
 }
 
 func Execute() {
@@ -51,4 +53,6 @@ func initConfig() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+
+	version.Init(AppConfig)
 }
