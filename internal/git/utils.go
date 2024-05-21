@@ -21,6 +21,7 @@ import (
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/files"
 )
 
 // Authenticator defines an interface for different authentication methods.
@@ -42,7 +43,7 @@ func (s *SSHKeyAuthenticator) SetupAuth(args *shared.VCSFetchRequest, config *co
 	logger.Debug("setting up SSH key authentication")
 
 	var auth transport.AuthMethod
-	sshKeyPath, err := shared.ExpandPath(args.SSHKey)
+	sshKeyPath, err := files.ExpandPath(args.SSHKey)
 	if err != nil {
 		logger.Error("failed to expand SSH key path", "path", args.SSHKey, "error", err)
 		return nil, err
@@ -104,7 +105,7 @@ func getAuthenticator(authType string) (Authenticator, error) {
 }
 
 // CloneRepository clones a Git repository based on the provided VCSFetchRequest and globalConfig.
-func CloneRepository(logger hclog.Logger, globalConfig *config.Config, args *shared.VCSFetchRequest) (string, error) {
+func CloneRepository(logger hclog.Logger, globalConfig *config.Config, args *shared.VCSFetchRequest, defaultBranch string) (string, error) {
 	targetFolder := args.TargetFolder
 
 	info, err := vcsurl.Parse(args.CloneURL)
@@ -113,7 +114,7 @@ func CloneRepository(logger hclog.Logger, globalConfig *config.Config, args *sha
 		return "", fmt.Errorf("failed to parse VCS URL: %w", err)
 	}
 
-	branch := determineBranch(args.Branch)
+	branch := determineBranch(args.Branch, defaultBranch)
 	authenticator, err := getAuthenticator(args.AuthType)
 	if err != nil {
 		logger.Error("unsupported authentication type", "error", err)
@@ -146,7 +147,6 @@ func CloneRepository(logger hclog.Logger, globalConfig *config.Config, args *sha
 			return "", fmt.Errorf("error occurred during clone: %w", err)
 		}
 
-		// Handle existing repository updates
 		logger.Info("repository already exists, updating...", "targetFolder", targetFolder)
 		repo, err = git.PlainOpen(targetFolder)
 		if err != nil {
@@ -169,12 +169,15 @@ func CloneRepository(logger hclog.Logger, globalConfig *config.Config, args *sha
 		}
 	}
 
-	logger.Info("repository operation completed successfully", "repository", info.Name, "branch", args.Branch, "targetFolder", targetFolder)
+	logger.Info("repository operation completed successfully", "repository", info.Name, "branch", branch, "targetFolder", targetFolder)
 	return targetFolder, nil
 }
 
 // determineBranch returns the appropriate branch reference.
-func determineBranch(branch string) plumbing.ReferenceName {
+func determineBranch(branch, defaultBranch string) plumbing.ReferenceName {
+	if branch == "" {
+		branch = defaultBranch
+	}
 	ref := plumbing.ReferenceName(branch)
 	if !ref.IsBranch() && !ref.IsRemote() && !ref.IsTag() && !ref.IsNote() {
 		return plumbing.NewBranchReferenceName(branch)
@@ -201,11 +204,11 @@ func updateRepository(ctx context.Context, repo *git.Repository, auth transport.
 		InsecureSkipTLS: config.GetBoolValue(globalConfig.GitClient, "InsecureTLS", false),
 	}
 
-	if err := repo.FetchContext(ctx, fetchOptions); err != nil && err != git.NoErrAlreadyUpToDate {
+	if err := repo.FetchContext(ctx, fetchOptions); err != nil {
 		if errors.Is(err, git.NoErrAlreadyUpToDate) {
 			logger.Info("repository already up-to-date", "targetFolder", targetFolder)
-		} else if err.Error() == "object not found" {
-			logger.Error("object not found in the repository. Cleaning up the repo ...", "targetFolder", targetFolder, "error", err)
+		} else if err.Error() == "object not found" || err.Error() == "reference not found" {
+			logger.Error("object/reference not found in the repository. Cleaning up the repo ...", "targetFolder", targetFolder, "error", err)
 			// TODO: double test it
 			if err := os.RemoveAll(targetFolder); err != nil {
 				logger.Error("failed to remove repository", "error", err)

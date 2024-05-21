@@ -40,17 +40,15 @@ func Execute() {
 
 func initConfig() {
 	var err error
-
-	if cfgFile == "" {
-		cfgFile = "config.yml"
-	}
 	AppConfig, err = config.LoadConfig(cfgFile)
 	if err != nil {
-		fmt.Printf("initializing config file function is crashed - %v \n", err)
-		os.Exit(1)
+		// TODO: Use a global logger
+		fmt.Printf("Failed to load config file: %v\n", err)
+		fmt.Println("Using default empty configuration")
 	}
+
 	if err := config.ValidateConfig(AppConfig); err != nil {
-		fmt.Println(err)
+		fmt.Printf("Error validating config: %v\n", err)
 		os.Exit(1)
 	}
 

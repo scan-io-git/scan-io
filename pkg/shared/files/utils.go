@@ -6,9 +6,38 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/go-hclog"
 )
+
+// expandPath resolves paths that include a tilde (~) to the user's home directory.
+func ExpandPath(path string) (string, error) {
+	if strings.HasPrefix(path, "~/") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(homeDir, path[2:]), nil
+	}
+	return path, nil
+}
+
+// ValidateConfigPath checks if the given path is a valid file path for reading.
+func ValidatePath(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("path stat error: %w", err)
+	}
+	if info.IsDir() {
+		return fmt.Errorf("path '%s' is a directory, not a file", path)
+	}
+
+	if info.Mode()&os.ModeType != 0 {
+		return fmt.Errorf("path '%s' is not a regular file", path)
+	}
+	return nil
+}
 
 // CopyDotFiles copies files and directories starting with a dot from src to dst.
 func CopyDotFiles(src, dst string, logger hclog.Logger) error {

@@ -14,6 +14,8 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
+
+	utils "github.com/scan-io-git/scan-io/internal/utils"
 )
 
 // TODO: Wrap it in a custom error handler to add to the stack trace.
@@ -229,7 +231,12 @@ func (g *VCSBitbucket) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (boo
 func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	g.logger.Info("handling PR changes fetching")
 
-	client, err := g.initializeBitbucketClient(args.CloneURL)
+	domain, err := utils.GetDomain(args.CloneURL)
+	if err != nil {
+		return "", err
+	}
+
+	client, err := g.initializeBitbucketClient(domain)
 	if err != nil {
 		return "", err
 	}
@@ -252,7 +259,7 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	args.Branch = prData.FromReference.DisplayID
 
 	// TODO: Fix a strange bug when it fetches only pr changes without all other files in case of PR fetch
-	_, err = git.CloneRepository(g.logger, g.globalConfig, args)
+	_, err = git.CloneRepository(g.logger, g.globalConfig, args, "master")
 	if err != nil {
 		g.logger.Error("failed to clone repository", "error", err)
 		return "", err
@@ -301,7 +308,7 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchRespon
 		result.Path = path
 
 	default:
-		path, err := git.CloneRepository(g.logger, g.globalConfig, &args)
+		path, err := git.CloneRepository(g.logger, g.globalConfig, &args, "master")
 		if err != nil {
 			g.logger.Error("failed to clone repository", "error", err)
 			return result, err

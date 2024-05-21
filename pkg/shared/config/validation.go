@@ -166,7 +166,13 @@ func updateHome(cfg *Config) error {
 		cfg.Scanio.HomeFolder = filepath.Join(homeFolder, ".scanio")
 	}
 
-	if err := files.CreateFolderIfNotExists(cfg.Scanio.HomeFolder); err != nil {
+	expandedHomePath, err := files.ExpandPath(cfg.Scanio.HomeFolder)
+	if err != nil {
+		return fmt.Errorf("failed to expand new home path '%s': %w", cfg.Scanio.HomeFolder, err)
+	}
+	cfg.Scanio.HomeFolder = expandedHomePath
+
+	if err := files.CreateFolderIfNotExists(expandedHomePath); err != nil {
 		return fmt.Errorf("failed to create home folder '%s': %w", cfg.Scanio.HomeFolder, err)
 	}
 	return nil
@@ -180,8 +186,14 @@ func updateFolder(folder *string, envVar, defaultSubFolder string, cfg *Config) 
 		*folder = filepath.Join(GetScanioHome(cfg), defaultSubFolder)
 	}
 
-	if err := files.CreateFolderIfNotExists(*folder); err != nil {
-		return fmt.Errorf("failed to create folder '%s': %w", *folder, err)
+	expandedHomePath, err := files.ExpandPath(*folder)
+	if err != nil {
+		return fmt.Errorf("failed to expand new home path '%s': %w", *folder, err)
+	}
+	*folder = expandedHomePath
+
+	if err := files.CreateFolderIfNotExists(expandedHomePath); err != nil {
+		return fmt.Errorf("failed to create folder '%s': %w", expandedHomePath, err)
 	}
 	return nil
 }

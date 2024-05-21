@@ -175,7 +175,7 @@ func (g *VCSGitlab) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (bool, 
 func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
 	var result shared.VCSFetchResponse
 
-	path, err := git.CloneRepository(g.logger, g.globalConfig, &args)
+	path, err := git.CloneRepository(g.logger, g.globalConfig, &args, "main")
 	if err != nil {
 		g.logger.Error("failed to clone repository", "error", err)
 		return result, err
