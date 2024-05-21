@@ -250,16 +250,19 @@
                       {{ $prevUri = $curUri }}
 
                       {{/* process the actual dataflow element */}}
-                      <!-- {{ printf "%#v" .Location.PhysicalLocation.ArtifactLocation.Properties }} -->
                       {{ $code := index .Location.PhysicalLocation.ArtifactLocation.Properties "Code" }}
+                      {{ $startLine := index .Location.PhysicalLocation.Region.Properties "StartLine" }}
+                      {{ $endLine := index .Location.PhysicalLocation.Region.Properties "EndLine" }}
+                      {{ $startColumn := index .Location.PhysicalLocation.Region.Properties "StartColumn" }}
+                      {{ $endColumn := index .Location.PhysicalLocation.Region.Properties "EndColumn" }}
                       <div class="issue-card__body__dataflows__codeline">
-                        <span class="issue-card__body__dataflows__codeline__linecol">{{ .Location.PhysicalLocation.Region.StartLine }}:{{.Location.PhysicalLocation.Region.StartColumn}}</span>
+                        <span class="issue-card__body__dataflows__codeline__linecol">{{$startLine}}:{{$startColumn}}</span>
                         {{if $code}}
                         <div class="issue-card__body__dataflows__codeline__linecol__code">
-                          {{if eq (index .Location.PhysicalLocation.Region.Properties "StartLine") (index .Location.PhysicalLocation.Region.Properties "EndLine")}}
-                            {{- slice $code 0 (index .Location.PhysicalLocation.Region.Properties "StartColumn") -}}
-                            <span class="dataflow-code-highlighted">{{- slice $code (index .Location.PhysicalLocation.Region.Properties "StartColumn") (index .Location.PhysicalLocation.Region.Properties "EndColumn") -}}</span>
-                            {{- slice $code (index .Location.PhysicalLocation.Region.Properties "EndColumn") -}}
+                          {{if eq $startLine $endLine}}
+                            {{- slice $code 0 $startColumn -}}
+                            <span class="dataflow-code-highlighted">{{- slice $code $startColumn $endColumn -}}</span>
+                            {{- slice $code $endColumn -}}
                           {{else}}
                             {{- $code -}}
                           {{end}}
