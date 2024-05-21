@@ -37,7 +37,8 @@ func Execute() {
 }
 
 func initConfig() {
-	AppConfig, err := config.LoadConfig(cfgFile)
+	var err error
+	AppConfig, err = config.LoadConfig(cfgFile)
 	if err != nil {
 		// TODO: Use a global logger
 		fmt.Printf("Failed to load config file: %v\n", err)
@@ -48,4 +49,5 @@ func initConfig() {
 		fmt.Printf("Error validating config: %v\n", err)
 		os.Exit(1)
 	}
+	fmt.Print()
 }

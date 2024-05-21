@@ -83,7 +83,7 @@ func WithPlugin(cfg *config.Config, loggerName string, pluginType string, plugin
 	}
 
 	if setupErr != nil {
-		logger.Error("Failed to setup plugin", "error", setupErr)
+		logger.Error("failed to setup plugin", "error", setupErr)
 		return setupErr
 	}
 
