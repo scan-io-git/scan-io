@@ -173,7 +173,7 @@
     }
 
     .header-container__metadata p {
-      margin: 8px;
+      margin: 1px;
     }
 
     .header-container__metadata p a {
@@ -192,8 +192,8 @@
       <p><b>Tool:</b> {{ .Metadata.ToolMetadata.Name }} {{if .Metadata.ToolMetadata.Version}}{{ .Metadata.ToolMetadata.Version }}{{end}}</p>
       {{if .Metadata.SourceFolder}}<p><b>Source:</b> {{ .Metadata.SourceFolder }}</p>{{end}}
       {{if .Metadata.RepositoryMetadata.RepositoryFullName}}<p><b>Repository:</b> <a href="{{ .Metadata.RepositoryMetadata.RepositoryFullName }}">{{ .Metadata.RepositoryMetadata.RepositoryFullName }}</a></p>{{end}}
-      {{if .Metadata.RepositoryMetadata.BranchName}}<p><b>Branch:</b> {{ .Metadata.RepositoryMetadata.BranchName }} </p>{{end}}
-      {{if .Metadata.RepositoryMetadata.CommitHash}}<p><b>Commit:</b> {{ .Metadata.RepositoryMetadata.CommitHash }} </p>{{end}}
+      {{if .Metadata.RepositoryMetadata.BranchName}}<p><b>Branch:</b> {{if .Metadata.RepositoryMetadata.RepositoryFullName}}<a href="{{- .Metadata.RepositoryMetadata.RepositoryFullName -}}/tree/{{- .Metadata.RepositoryMetadata.BranchName -}}">{{ .Metadata.RepositoryMetadata.BranchName }}</a>{{else}}{{ .Metadata.RepositoryMetadata.BranchName }}{{end}} </p>{{end}}
+      {{if .Metadata.RepositoryMetadata.CommitHash}}<p><b>Commit:</b> {{if .Metadata.RepositoryMetadata.RepositoryFullName}}<a href="{{- .Metadata.RepositoryMetadata.RepositoryFullName -}}/tree/{{- .Metadata.RepositoryMetadata.CommitHash -}}">{{ .Metadata.RepositoryMetadata.CommitHash }}</a>{{else}}{{ .Metadata.RepositoryMetadata.CommitHash }}{{end}} </p>{{end}}
       {{if .Metadata.RepositoryMetadata.Subfolder}}<p><b>Subfolder:</b> {{ .Metadata.RepositoryMetadata.Subfolder }} </p>{{end}}
     </div> 
   </header>

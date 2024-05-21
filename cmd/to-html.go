@@ -347,7 +347,7 @@ var toHtmlCmd = &cobra.Command{
 	Short: "Generate HTML formatted report",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logger := shared.NewLogger("core")
-		logger.Info("toHtml called")
+		logger.Info("to-html called")
 
 		sarifReport, err := readSarifReport()
 		if err != nil {
