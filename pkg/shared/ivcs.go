@@ -92,7 +92,8 @@ type VCSSetStatusOfPRRequest struct {
 
 type VCSAddCommentToPRRequest struct {
 	VCSRequestBase
-	Comment string
+	Comment   string
+	FilePaths []string
 }
 
 type Result interface {

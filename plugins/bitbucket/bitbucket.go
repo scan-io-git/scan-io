@@ -209,7 +209,7 @@ func (g *VCSBitbucket) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (boo
 	}
 	g.logger.Info("commenting on a particular PR", "PR URL", fmt.Sprintf("%v/%v/%v/%v", args.VCSURL, args.Namespace, args.Repository, args.PullRequestId))
 
-	if _, err := prData.AddComment(args.Comment); err != nil {
+	if _, err := prData.AddComment(args.Comment, args.FilePaths); err != nil {
 		g.logger.Error("failed to add comment to PR", "error", err)
 		return false, err
 	}

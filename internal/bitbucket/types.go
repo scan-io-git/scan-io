@@ -59,18 +59,13 @@ type Project struct {
 // Links stores URLs for accessing related resources.
 type Links struct {
 	Clone []CloneLink `json:"clone,omitempty"`
-	Self  []SelfLink  `json:"self,omitempty"`
+	Self  []Link      `json:"self,omitempty"`
 }
 
 // CloneLink represents a link to clone the repository.
 type CloneLink struct {
 	Href string `json:"href"`
 	Name string `json:"name"`
-}
-
-// SelfLink represents a direct link to the resource itself.
-type SelfLink struct {
-	Href string `json:"href"`
 }
 
 // PullRequest defines the basic structure of a pull request within Bitbucket.
@@ -174,17 +169,22 @@ type File struct {
 	ToString   string   `json:"toString"`
 }
 
+// AttachmentRoot represents the root structure of the attachment's JSON response.
+type AttachmentRoot struct {
+	Attachments []Attachment `json:"attachments"`
+}
+
 // Attachments represents an attachment with associated links.
-type Attachments struct {
+type Attachment struct {
 	ID    int    `json:"id"`
 	URL   string `json:"url"`
 	Links struct {
-		Self       SelfLink   `json:"self,omitempty"`
-		Attachment Attachment `json:"attachment,omitempty"`
+		Self       Link `json:"self,omitempty"`
+		Attachment Link `json:"attachment,omitempty"`
 	} `json:"links"`
 }
 
-// Attachment represents a link to an attachment.
-type Attachment struct {
+// Link represents a direct link to the resource itself.
+type Link struct {
 	Href string `json:"href,omitempty"`
 }

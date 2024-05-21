@@ -24,6 +24,7 @@ type RunOptionsIntegrationVCS struct {
 	Role          string
 	Status        string
 	Comment       string
+	Files         []string
 }
 
 type Arguments interface{}
@@ -136,7 +137,8 @@ List of actions for github:
 						Repository:    allArgumentsIntegrationVCS.Repository,
 						PullRequestId: allArgumentsIntegrationVCS.PullRequestId,
 					},
-					Comment: allArgumentsIntegrationVCS.Comment,
+					Comment:   allArgumentsIntegrationVCS.Comment,
+					FilePaths: allArgumentsIntegrationVCS.Files,
 				}
 			default:
 				return fmt.Errorf("The action is not implemented %v", allArgumentsIntegrationVCS.Action)
@@ -153,13 +155,12 @@ List of actions for github:
 					resultIntegrationVCS = shared.GenericResult{Args: arguments, Result: result, Status: "FAILED", Message: err.Error()}
 					logger.Error("A function of VCS integrations is failed", "action", allArgumentsIntegrationVCS.Action)
 					logger.Error("Error", "message", resultIntegrationVCS.Message)
-				} else {
-					resultIntegrationVCS = shared.GenericResult{Args: arguments, Result: result, Status: "OK", Message: ""}
-					logger.Info("A function of VCS integrations finished with", "status", resultIntegrationVCS.Status, "action", allArgumentsIntegrationVCS.Action)
+					return err
 				}
+				resultIntegrationVCS = shared.GenericResult{Args: arguments, Result: result, Status: "OK", Message: ""}
+				logger.Info("A function of VCS integrations is successfully", "status", resultIntegrationVCS.Status, "action", allArgumentsIntegrationVCS.Action)
 
 				return nil
-
 			})
 
 			resultsIntegrationVCS.Launches = append(resultsIntegrationVCS.Launches, resultIntegrationVCS)
@@ -246,13 +247,14 @@ func init() {
 	rootCmd.AddCommand(integrationVcsCmd)
 
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.VCSPlugName, "vcs", "", "the plugin name of the VCS used. Eg. bitbucket, gitlab, github, etc.")
-	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.VCSURL, "vcs-url", "", "URL to a root of the VCS API. Eg. github.com.")
-	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Action, "action", "", "the action to execute.")
-	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Namespace, "namespace", "", "the name of a specific namespace. Namespace for Gitlab is an organization, for Bitbucket_v1 is a project.")
-	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Repository, "repository", "", "the name of a specific repository.")
-	integrationVcsCmd.Flags().IntVar(&allArgumentsIntegrationVCS.PullRequestId, "pull-request-id", 0, "the id of specific PR form the repository.")
-	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Login, "login", "", "login for integrations. For example, add reviewer with this login to PR.")
-	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Role, "role", "", "role for integrations. For example, add a person with specific role to PR.")
-	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Status, "status", "", "status for integrations. For example, set a status of PR.")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.VCSURL, "vcs-url", "", "URL to a root of the VCS API. Eg. github.co.")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Action, "action", "", "the action to execute")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Namespace, "namespace", "", "the name of a specific namespace. Namespace for Gitlab is an organization, for Bitbucket_v1 is a project")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Repository, "repository", "", "the name of a specific repository")
+	integrationVcsCmd.Flags().IntVar(&allArgumentsIntegrationVCS.PullRequestId, "pull-request-id", 0, "the id of specific PR form the repository")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Login, "login", "", "login for integrations. For example, add reviewer with this login to PR")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Role, "role", "", "role for integrations. For example, add a person with specific role to PR")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Status, "status", "", "status for integrations. For example, set a status of PR")
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Comment, "comment", "", "comment for integrations. The text will be used like a comment to PR")
+	integrationVcsCmd.Flags().StringSliceVar(&allArgumentsIntegrationVCS.Files, "files", nil, "list of paths to file. The filese will be uploaded and attached to the comment") // New flag for file paths
 }
