@@ -180,9 +180,17 @@
       color: #fff;
     }
 
+    .issue-card__body__metadata__location a, .issue-card__body__dataflows__codeline__linecol a {
+      color: #000;
+    }
+
   </style>
 
 </head>
+
+{{ $repo := .Metadata.RepositoryMetadata.RepositoryFullName }}
+{{ $branch := .Metadata.RepositoryMetadata.BranchName }}
+{{ $commit := .Metadata.RepositoryMetadata.CommitHash }}
 
 <body>
   <!-- header goes here -->
@@ -191,9 +199,9 @@
       <p><b>Time:</b> {{ .Metadata.Time | formatDateTime }} (UTC)</p>
       <p><b>Tool:</b> {{ .Metadata.ToolMetadata.Name }} {{if .Metadata.ToolMetadata.Version}}{{ .Metadata.ToolMetadata.Version }}{{end}}</p>
       {{if .Metadata.SourceFolder}}<p><b>Source:</b> {{ .Metadata.SourceFolder }}</p>{{end}}
-      {{if .Metadata.RepositoryMetadata.RepositoryFullName}}<p><b>Repository:</b> <a href="{{ .Metadata.RepositoryMetadata.RepositoryFullName }}">{{ .Metadata.RepositoryMetadata.RepositoryFullName }}</a></p>{{end}}
-      {{if .Metadata.RepositoryMetadata.BranchName}}<p><b>Branch:</b> {{if .Metadata.RepositoryMetadata.RepositoryFullName}}<a href="{{- .Metadata.RepositoryMetadata.RepositoryFullName -}}/tree/{{- .Metadata.RepositoryMetadata.BranchName -}}">{{ .Metadata.RepositoryMetadata.BranchName }}</a>{{else}}{{ .Metadata.RepositoryMetadata.BranchName }}{{end}} </p>{{end}}
-      {{if .Metadata.RepositoryMetadata.CommitHash}}<p><b>Commit:</b> {{if .Metadata.RepositoryMetadata.RepositoryFullName}}<a href="{{- .Metadata.RepositoryMetadata.RepositoryFullName -}}/tree/{{- .Metadata.RepositoryMetadata.CommitHash -}}">{{ .Metadata.RepositoryMetadata.CommitHash }}</a>{{else}}{{ .Metadata.RepositoryMetadata.CommitHash }}{{end}} </p>{{end}}
+      {{if $repo}}<p><b>Repository:</b> <a href="{{ $repo }}">{{ $repo }}</a></p>{{end}}
+      {{if $branch}}<p><b>Branch:</b> {{if $repo}}<a href="{{- $repo -}}/tree/{{- $branch -}}">{{ $branch }}</a>{{else}}{{ $branch }}{{end}} </p>{{end}}
+      {{if $commit}}<p><b>Commit:</b> {{if $repo}}<a href="{{- $repo -}}/tree/{{- $commit -}}">{{ $commit }}</a>{{else}}{{ $commit }}{{end}} </p>{{end}}
       {{if .Metadata.RepositoryMetadata.Subfolder}}<p><b>Subfolder:</b> {{ .Metadata.RepositoryMetadata.Subfolder }} </p>{{end}}
     </div> 
   </header>
@@ -217,7 +225,9 @@
           <div class="issue-card__body">
             <div class="issue-card__body__metadata severity--{{$level}}">
               <p>{{.Message.Text}}</p>
-              <div class="issue-card__body__metadata__location">Location: <strong>{{with $location := index .Locations 0}}{{$location.PhysicalLocation.ArtifactLocation.URI}} (line : {{$location.PhysicalLocation.Region.StartLine}}){{end}}</strong></div>
+              {{ $location := index .Locations 0}}
+              {{ $locationString := index .Locations 0}}
+              <div class="issue-card__body__metadata__location">Location: <strong>{{if (and $repo $commit)}}<a href="{{- $repo -}}/blob/{{- $commit -}}/{{- $location.PhysicalLocation.ArtifactLocation.URI -}}#L{{- $location.PhysicalLocation.Region.StartLine -}}">{{$location.PhysicalLocation.ArtifactLocation.URI}} (line : {{$location.PhysicalLocation.Region.StartLine}})</a> {{else}} {{$location.PhysicalLocation.ArtifactLocation.URI}} (line : {{$location.PhysicalLocation.Region.StartLine}}){{end}}</strong></div>
             </div>
             <div class="issue-card__body__dataflows">
               <header class="card__body__dataflows__header">
@@ -258,7 +268,13 @@
                         {{/* */}}
 
                         <div class="issue-card__body__dataflows__codeline">
-                          <span class="issue-card__body__dataflows__codeline__linecol">{{$startLine}}:{{$startColumn}}</span>
+
+                          {{if (and $repo $commit)}}
+                            <span class="issue-card__body__dataflows__codeline__linecol"><a href="{{- $repo -}}/blob/{{- $commit -}}/{{- $curUri -}}#L{{- $startLine -}}">{{$startLine}}:{{$startColumn}}</a></span>
+                          {{else}}
+                            <span class="issue-card__body__dataflows__codeline__linecol">{{$startLine}}:{{$startColumn}}</span>
+                          {{end}}
+
                           {{if $code}}
                           <div class="issue-card__body__dataflows__codeline__linecol__code">
                             {{/* highlight code if it's a oneline */}}

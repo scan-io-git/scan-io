@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"bufio"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -85,36 +87,21 @@ func enrichResultsLocationProperty(location *sarif.Location) error {
 	}
 	artifactLocation.Properties["URI"] = *artifactLocation.URI
 
-	// return if allToHTMLOptions.SourceFolder is not specified
-	if allToHTMLOptions.SourceFolder == "" {
-		return fmt.Errorf("source folder is not set")
-	}
-
-	codeLine, err := readLineFromFile(location.PhysicalLocation)
-	if err != nil {
-		return err
-	}
-	// print amount of spaces bnefore code
-	// spacePrefixLength := len(codeLine) - len(strings.TrimLeft(codeLine, " "))
-	// artifactLocation.Properties["Code"] = strings.TrimLeft(codeLine, " ")
-	artifactLocation.Properties["Code"] = codeLine
-	spacePrefixLength := 0
-
 	if location.PhysicalLocation.Region.Properties == nil {
 		location.PhysicalLocation.Region.Properties = make(map[string]interface{})
 	}
 	if location.PhysicalLocation.Region.StartColumn != nil {
-		location.PhysicalLocation.Region.Properties["StartColumn"] = *location.PhysicalLocation.Region.StartColumn - spacePrefixLength - 1
+		location.PhysicalLocation.Region.Properties["StartColumn"] = *location.PhysicalLocation.Region.StartColumn - 1
 	} else {
 		location.PhysicalLocation.Region.Properties["StartColumn"] = 0
 	}
 	if location.PhysicalLocation.Region.EndColumn != nil {
-		location.PhysicalLocation.Region.Properties["EndColumn"] = *location.PhysicalLocation.Region.EndColumn - spacePrefixLength - 1
+		location.PhysicalLocation.Region.Properties["EndColumn"] = *location.PhysicalLocation.Region.EndColumn - 1
 	} else {
 		location.PhysicalLocation.Region.Properties["EndColumn"] = 0
 	}
 	if location.PhysicalLocation.Region.StartLine != nil {
-		location.PhysicalLocation.Region.Properties["StartLine"] = *location.PhysicalLocation.Region.StartLine - spacePrefixLength
+		location.PhysicalLocation.Region.Properties["StartLine"] = *location.PhysicalLocation.Region.StartLine
 	} else {
 		location.PhysicalLocation.Region.Properties["StartLine"] = 0
 	}
@@ -123,6 +110,19 @@ func enrichResultsLocationProperty(location *sarif.Location) error {
 	} else {
 		location.PhysicalLocation.Region.Properties["EndLine"] = location.PhysicalLocation.Region.Properties["StartLine"]
 	}
+
+	// return if allToHTMLOptions.SourceFolder is not specified
+	if allToHTMLOptions.SourceFolder == "" {
+		return fmt.Errorf("source folder is not set")
+	}
+	codeLine, err := readLineFromFile(location.PhysicalLocation)
+	if err != nil {
+		return err
+	}
+	// print amount of spaces bnefore code
+	// spacePrefixLength := len(codeLine) - len(strings.TrimLeft(codeLine, " "))
+	// artifactLocation.Properties["Code"] = strings.TrimLeft(codeLine, " ")
+	artifactLocation.Properties["Code"] = codeLine
 
 	return nil
 }
@@ -355,10 +355,31 @@ func sortResultsByLevel(results []*sarif.Result) {
 	}
 
 	// sort results by level
-	// order: error, warning, note, none
+	// order: error, warning, note, none, unknown
 	sort.Slice(results, func(i, j int) bool {
 		return levelOrder[results[i].Properties["Level"].(string)] < levelOrder[results[j].Properties["Level"].(string)]
 	})
+}
+
+func calculateMD5Hash(text string) string {
+	hash := md5.New()
+	io.WriteString(hash, text)
+	return hex.EncodeToString(hash.Sum(nil))
+}
+
+// function that calculates a fingerprint for threadflow
+func calculateThreadFlowFingerprint(threadFlow *sarif.ThreadFlow) string {
+	var fingerprint string
+	for _, location := range threadFlow.Locations {
+		fingerprint += fmt.Sprintf("|%s:%d:%d:%d:%d;",
+			location.Location.PhysicalLocation.ArtifactLocation.Properties["URI"].(string),
+			location.Location.PhysicalLocation.Region.Properties["StartLine"].(int),
+			location.Location.PhysicalLocation.Region.Properties["StartColumn"].(int),
+			location.Location.PhysicalLocation.Region.Properties["EndLine"].(int),
+			location.Location.PhysicalLocation.Region.Properties["EndColumn"].(int),
+		)
+	}
+	return calculateMD5Hash(fingerprint)
 }
 
 // toHtmlCmd represents the toHtml command
@@ -394,7 +415,9 @@ var toHtmlCmd = &cobra.Command{
 			SourceFolder:       allToHTMLOptions.SourceFolder,
 		}
 
-		sortResultsByLevel(sarifReport.Runs[0].Results)
+		for _, run := range sarifReport.Runs {
+			sortResultsByLevel(run.Results)
+		}
 
 		tmpl, err := template.New("report.html").
 			Funcs(template.FuncMap{
