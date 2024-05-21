@@ -14,6 +14,13 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
+// TODO: Wrap it in a custom error handler to add to the stack trace.
+var (
+	Version       = "unknown"
+	GolangVersion = "unknown"
+	BuildTime     = "unknown"
+)
+
 type ScannerTrufflehog struct {
 	logger       hclog.Logger
 	globalConfig *config.Config

@@ -33,6 +33,12 @@ var PluginMap = map[string]plugin.Plugin{
 	PluginTypeScanner: &ScannerPlugin{},
 }
 
+type Versions struct {
+	Version       string `json:"version"`
+	GolangVersion string `json:"golang_version"`
+	BuildTime     string `json:"build_time"`
+}
+
 func WithPlugin(cfg *config.Config, loggerName string, pluginType string, pluginName string, f func(interface{}) error) error {
 	logger := logger.NewLogger(cfg, loggerName)
 
@@ -83,7 +89,7 @@ func WithPlugin(cfg *config.Config, loggerName string, pluginType string, plugin
 	}
 
 	if setupErr != nil {
-		logger.Error("Failed to setup plugin", "error", setupErr)
+		logger.Error("failed to setup plugin", "error", setupErr)
 		return setupErr
 	}
 

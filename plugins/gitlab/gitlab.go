@@ -15,6 +15,13 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
+// TODO: Wrap it in a custom error handler to add to the stack trace.
+var (
+	Version       = "unknown"
+	GolangVersion = "unknown"
+	BuildTime     = "unknown"
+)
+
 // VCSGitlab implements VCS operations for Gitlab.
 type VCSGitlab struct {
 	logger       hclog.Logger
@@ -168,7 +175,7 @@ func (g *VCSGitlab) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (bool, 
 func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
 	var result shared.VCSFetchResponse
 
-	path, err := git.CloneRepository(g.logger, g.globalConfig, &args)
+	path, err := git.CloneRepository(g.logger, g.globalConfig, &args, "main")
 	if err != nil {
 		g.logger.Error("failed to clone repository", "error", err)
 		return result, err
