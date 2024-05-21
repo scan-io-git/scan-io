@@ -242,33 +242,38 @@
                       {{ $prevUri := "" }}
                       {{range .Locations}}
 
-                      {{/* figure out whether we should add a filename block here */}}
-                      {{ $curUri := index .Location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
-                      {{ if ne $curUri $prevUri }}
-                      <div class="issue-card__body__dataflows__filename">{{$curUri}}</div>
-                      {{end}}
-                      {{ $prevUri = $curUri }}
+                        {{/* figure out whether we should add a filename block here */}}
+                        {{ $curUri := index .Location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
+                        {{ if ne $curUri $prevUri }}
+                        <div class="issue-card__body__dataflows__filename">{{$curUri}}</div>
+                        {{end}}
+                        {{ $prevUri = $curUri }}
 
-                      {{/* process the actual dataflow element */}}
-                      {{ $code := index .Location.PhysicalLocation.ArtifactLocation.Properties "Code" }}
-                      {{ $startLine := index .Location.PhysicalLocation.Region.Properties "StartLine" }}
-                      {{ $endLine := index .Location.PhysicalLocation.Region.Properties "EndLine" }}
-                      {{ $startColumn := index .Location.PhysicalLocation.Region.Properties "StartColumn" }}
-                      {{ $endColumn := index .Location.PhysicalLocation.Region.Properties "EndColumn" }}
-                      <div class="issue-card__body__dataflows__codeline">
-                        <span class="issue-card__body__dataflows__codeline__linecol">{{$startLine}}:{{$startColumn}}</span>
-                        {{if $code}}
-                        <div class="issue-card__body__dataflows__codeline__linecol__code">
-                          {{if eq $startLine $endLine}}
-                            {{- slice $code 0 $startColumn -}}
-                            <span class="dataflow-code-highlighted">{{- slice $code $startColumn $endColumn -}}</span>
-                            {{- slice $code $endColumn -}}
-                          {{else}}
-                            {{- $code -}}
+                        {{/* process the actual dataflow element */}}
+                        {{ $code := index .Location.PhysicalLocation.ArtifactLocation.Properties "Code" }}
+                        {{ $startLine := index .Location.PhysicalLocation.Region.Properties "StartLine" }}
+                        {{ $endLine := index .Location.PhysicalLocation.Region.Properties "EndLine" }}
+                        {{ $startColumn := index .Location.PhysicalLocation.Region.Properties "StartColumn" }}
+                        {{ $endColumn := index .Location.PhysicalLocation.Region.Properties "EndColumn" }}
+                        {{/* */}}
+
+                        <div class="issue-card__body__dataflows__codeline">
+                          <span class="issue-card__body__dataflows__codeline__linecol">{{$startLine}}:{{$startColumn}}</span>
+                          {{if $code}}
+                          <div class="issue-card__body__dataflows__codeline__linecol__code">
+                            {{/* highlight code if it's a oneline */}}
+                            {{if eq $startLine $endLine}}
+                              {{- slice $code 0 $startColumn -}}
+                              <span class="dataflow-code-highlighted">{{- slice $code $startColumn $endColumn -}}</span>
+                              {{- slice $code $endColumn -}}
+                            {{else}}
+                              {{- $code -}}
+                            {{end}}
+                            {{/* */}}
+                          </div>
                           {{end}}
                         </div>
-                        {{end}}
-                      </div>
+
                       {{end}}
                     </div>
                     {{ $dataFlowCounter = add $dataFlowCounter 1 }}

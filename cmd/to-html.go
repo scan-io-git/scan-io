@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -341,6 +342,25 @@ func extractToolNameAndVersion(sarifReport *sarif.Report) (*ToolMetadata, error)
 	}, nil
 }
 
+// sort results by level
+func sortResultsByLevel(results []*sarif.Result) {
+	// sort results by level
+	// order: error, warning, note, none
+	levelOrder := map[string]int{
+		"error":   0,
+		"warning": 1,
+		"note":    2,
+		"none":    3,
+		"unknown": 4,
+	}
+
+	// sort results by level
+	// order: error, warning, note, none
+	sort.Slice(results, func(i, j int) bool {
+		return levelOrder[results[i].Properties["Level"].(string)] < levelOrder[results[j].Properties["Level"].(string)]
+	})
+}
+
 // toHtmlCmd represents the toHtml command
 var toHtmlCmd = &cobra.Command{
 	Use:   "to-html",
@@ -373,6 +393,8 @@ var toHtmlCmd = &cobra.Command{
 			Time:               time.Now().UTC(),
 			SourceFolder:       allToHTMLOptions.SourceFolder,
 		}
+
+		sortResultsByLevel(sarifReport.Runs[0].Results)
 
 		tmpl, err := template.New("report.html").
 			Funcs(template.FuncMap{
