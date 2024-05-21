@@ -91,8 +91,11 @@ func (c *Client) put(path string, queryParams map[string]string, body interface{
 
 // upload sends a multipart form-data request using the client's base URL, path, query parameters, and file provided.
 func (c *Client) upload(path string, queryParams map[string]string, filePath, fileName string) (*resty.Response, error) {
+	if fileName == "" {
+		fileName = "files"
+	}
 	fullURL := c.resolveURL(path)
-	return c.headersBuilder().
+	return c.HTTPClient.RestyClient.R().
 		SetQueryParams(queryParams).
 		SetFile(fileName, filePath).
 		Post(fullURL)

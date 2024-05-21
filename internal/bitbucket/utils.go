@@ -28,11 +28,11 @@ func trimPRLink(inputURL string) (string, error) {
 	}
 
 	segments := strings.Split(parsedURL.Path, "/")
-	if len(segments) < 6 {
+	if len(segments) < 5 {
 		return "", fmt.Errorf("URL path does not have enough segments to trim")
 	}
 
-	basePath := path.Join(segments[:6]...)
+	basePath := path.Join(segments[:5]...)
 	parsedURL.Path = basePath
 
 	return parsedURL.String(), nil

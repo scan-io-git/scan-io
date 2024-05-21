@@ -176,7 +176,7 @@ type AttachmentRoot struct {
 
 // Attachments represents an attachment with associated links.
 type Attachment struct {
-	ID    int    `json:"id"`
+	ID    string `json:"id"`
 	URL   string `json:"url"`
 	Links struct {
 		Self       Link `json:"self,omitempty"`

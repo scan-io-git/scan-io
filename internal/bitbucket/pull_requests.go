@@ -74,15 +74,13 @@ func (pr *PullRequest) AddComment(commentText string, paths []string) (*PullRequ
 		for _, filePath := range paths {
 			attachment, filename, err := pr.AttachFileToRepository(filePath)
 			if err != nil {
-				pr.client.Logger.Error("failed to attach file to the repository, continuing...",
+				pr.client.Logger.Error("failed to attach file to the repository",
 					"file-path", filePath,
 					"repository", pr.FromReference.DisplayID,
 					"error", err,
 				)
-
-				continue
+				return nil, fmt.Errorf("failed to attach file to the repository: %w", err)
 			}
-
 			attachmentLink := fmt.Sprintf("[%s](%s)", filename, attachment.Links.Attachment.Href)
 			attachmentsText.WriteString("\n" + attachmentLink)
 		}
@@ -131,7 +129,7 @@ func (pr *PullRequest) AttachFileToRepository(path string) (*Attachment, string,
 		"file", path,
 		"destination", uploadPath,
 	)
-	response, err := pr.client.upload(uploadPath, nil, path, fileName)
+	response, err := pr.client.upload(uploadPath, nil, path, "")
 	if err != nil {
 		return nil, "", fmt.Errorf("error uploading file %s: %w", path, err)
 	}
