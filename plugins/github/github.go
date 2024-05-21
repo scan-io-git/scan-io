@@ -15,6 +15,13 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
+// TODO: Wrap it in a custom error handler to add to the stack trace.
+var (
+	Version       = "unknown"
+	GolangVersion = "unknown"
+	BuildTime     = "unknown"
+)
+
 // VCSGitlab implements VCS operations for Gitlab.
 type VCSGithub struct {
 	logger       hclog.Logger

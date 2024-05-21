@@ -18,6 +18,13 @@ import (
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 )
 
+// TODO: Wrap it in a custom error handler to add to the stack trace.
+var (
+	Version       = "unknown"
+	GolangVersion = "unknown"
+	BuildTime     = "unknown"
+)
+
 // VCSBitbucket implements VCS operations for Bitbucket.
 type VCSBitbucket struct {
 	logger       hclog.Logger
