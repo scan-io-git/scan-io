@@ -3,8 +3,10 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
+
+	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 type RunOptionsList struct {
@@ -34,11 +36,11 @@ var (
 )
 
 func do() {
-	logger := shared.NewLogger("core")
+	logger := logger.NewLogger(AppConfig, "core-list")
 
-	shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsList.VCSPlugName, func(raw interface{}) error {
+	shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, allArgumentsList.VCSPlugName, func(raw interface{}) error {
 		vcsName := raw.(shared.VCS)
-		args := shared.VCSListReposRequest{
+		args := shared.VCSListRepositoriesRequest{
 			VCSURL:    allArgumentsList.VCSURL,
 			Namespace: allArgumentsList.Namespace,
 			// Repository: allArgumentsList.Repository,
@@ -48,7 +50,7 @@ func do() {
 			logger.Warn("Listing a particular repository is not supported. The namespace will be listed instead", "namespace", args.Namespace)
 		}
 
-		projects, err := vcsName.ListRepos(args)
+		projects, err := vcsName.ListRepositories(args)
 
 		if err != nil {
 			resultVCS = shared.GenericResult{Args: args, Result: projects, Status: "FAILED", Message: err.Error()}

@@ -2,12 +2,14 @@ package fetcher
 
 import (
 	"path/filepath"
-	"strings"
 
 	"github.com/hashicorp/go-hclog"
 
 	utils "github.com/scan-io-git/scan-io/internal/utils"
+
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/files"
 )
 
 type Fetcher struct {
@@ -32,7 +34,7 @@ func New(authType string, sshKey string, jobs int, branch string, vcsPluginName 
 	}
 }
 
-func (f Fetcher) PrepFetchArgs(repos []shared.RepositoryParams) ([]shared.VCSFetchRequest, error) {
+func (f Fetcher) PrepFetchArgs(cfg *config.Config, logger hclog.Logger, repos []shared.RepositoryParams) ([]shared.VCSFetchRequest, error) {
 	var (
 		fetchArgs []shared.VCSFetchRequest
 	)
@@ -54,7 +56,7 @@ func (f Fetcher) PrepFetchArgs(repos []shared.RepositoryParams) ([]shared.VCSFet
 		if repo.PRID != "" {
 			mode = "PRscan"
 		}
-		targetFolder := shared.GetRepoPath(strings.ToLower(domain), filepath.Join(strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName)))
+		targetFolder := config.GetRepositoryPath(cfg, domain, filepath.Join(repo.Namespace, repo.RepoName))
 
 		fetchArgs = append(fetchArgs, shared.VCSFetchRequest{
 			CloneURL:     cloneURL,
@@ -70,13 +72,13 @@ func (f Fetcher) PrepFetchArgs(repos []shared.RepositoryParams) ([]shared.VCSFet
 	return fetchArgs, nil
 }
 
-func (f Fetcher) fetchRepo(fetchArgs shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
+func (f Fetcher) fetchRepo(cfg *config.Config, fetchArgs shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
 	var (
 		result shared.VCSFetchResponse
 		err    error
 	)
 
-	err = shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, f.vcsPluginName, func(raw interface{}) error {
+	err = shared.WithPlugin(cfg, "plugin-vcs", shared.PluginTypeVCS, f.vcsPluginName, func(raw interface{}) error {
 		vcsName := raw.(shared.VCS)
 		result, err = vcsName.Fetch(fetchArgs)
 		if err != nil {
@@ -84,14 +86,14 @@ func (f Fetcher) fetchRepo(fetchArgs shared.VCSFetchRequest) (shared.VCSFetchRes
 			return err
 		}
 
-		utils.FindByExtAndRemove(fetchArgs.TargetFolder, f.rmExts)
+		files.FindByExtAndRemove(fetchArgs.TargetFolder, f.rmExts)
 		return nil
 	})
 
 	return result, err
 }
 
-func (f Fetcher) FetchRepos(fetchArgs []shared.VCSFetchRequest) shared.GenericLaunchesResult {
+func (f Fetcher) FetchRepos(cfg *config.Config, fetchArgs []shared.VCSFetchRequest) shared.GenericLaunchesResult {
 	f.logger.Info("Fetching starting", "total", len(fetchArgs), "goroutines", f.jobs)
 
 	var results shared.GenericLaunchesResult
@@ -106,7 +108,7 @@ func (f Fetcher) FetchRepos(fetchArgs []shared.VCSFetchRequest) shared.GenericLa
 		fetchArgs := value.(shared.VCSFetchRequest)
 		f.logger.Info("Goroutine started", "#", i+1, "args", fetchArgs)
 
-		result, err := f.fetchRepo(fetchArgs)
+		result, err := f.fetchRepo(cfg, fetchArgs)
 		if err != nil {
 			message = err.Error()
 		}

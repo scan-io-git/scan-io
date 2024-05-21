@@ -11,12 +11,14 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/scan-io-git/scan-io/internal/fetcher"
 	"github.com/scan-io-git/scan-io/internal/scanner"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
-	"github.com/spf13/cobra"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 type Run2Options struct {
@@ -41,30 +43,30 @@ var allRun2Options Run2Options
 
 func run2analyzeRepos(repos []shared.RepositoryParams) error {
 
-	logger := shared.NewLogger("core-run2-scanner")
+	logger := logger.NewLogger(AppConfig, "core-run2-scanner")
 	s := scanner.New(allRun2Options.ScannerPluginName, allRun2Options.Jobs, allRun2Options.Config, allRun2Options.ReportFormat, allRun2Options.AdditionalArgs, logger)
 
-	scanArgs, err := s.PrepScanArgs(repos, "", "")
+	scanArgs, err := s.PrepScanArgs(AppConfig, repos, "", "")
 	if err != nil {
 		return err
 	}
 
-	_ = s.ScanRepos(scanArgs)
+	_ = s.ScanRepos(AppConfig, scanArgs)
 
 	return nil
 }
 
 func run2fetchRepos(repos []shared.RepositoryParams) error {
 
-	logger := shared.NewLogger("core-run2-fetcher")
+	logger := logger.NewLogger(AppConfig, "core-run2-fetcher")
 	f := fetcher.New(allRun2Options.AuthType, allRun2Options.SSHKey, allRun2Options.Jobs, allRun2Options.Branch, allRun2Options.VCSPlugName, strings.Split(allRun2Options.RmExts, ","), logger)
 
-	fetchArgs, err := f.PrepFetchArgs(repos)
+	fetchArgs, err := f.PrepFetchArgs(AppConfig, logger, repos)
 	if err != nil {
 		return err
 	}
 
-	_ = f.FetchRepos(fetchArgs)
+	_ = f.FetchRepos(AppConfig, fetchArgs)
 
 	return nil
 }
@@ -125,7 +127,7 @@ func run2Locally(repos []shared.RepositoryParams) error {
 }
 
 func run2WithHelm(repos []shared.RepositoryParams) error {
-	logger := shared.NewLogger("core-run2")
+	logger := logger.NewLogger(AppConfig, "core-run2")
 
 	values := make([]interface{}, len(repos))
 	for i := range repos {

@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/scan-io-git/scan-io/pkg/shared"
-	"github.com/spf13/cobra"
 	"strings"
+
+	"github.com/spf13/cobra"
+
+	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 type RunOptionsIntegrationVCS struct {
@@ -75,7 +79,7 @@ List of actions for github:
 			}
 			switch allArgumentsIntegrationVCS.Action {
 			case "checkPR":
-				arguments = shared.VCSRetrivePRInformationRequest{
+				arguments = shared.VCSRetrievePRInformationRequest{
 					VCSRequestBase: shared.VCSRequestBase{
 						VCSURL:        allArgumentsIntegrationVCS.VCSURL,
 						Action:        allArgumentsIntegrationVCS.Action,
@@ -139,9 +143,9 @@ List of actions for github:
 
 			}
 
-			logger := shared.NewLogger("core-integration-vcs")
+			logger := logger.NewLogger(AppConfig, "core-integration-vcs")
 
-			shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsIntegrationVCS.VCSPlugName, func(raw interface{}) error {
+			shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, allArgumentsIntegrationVCS.VCSPlugName, func(raw interface{}) error {
 				vcsName := raw.(shared.VCS)
 				result, err := performAction(allArgumentsIntegrationVCS.Action, vcsName, arguments)
 
@@ -173,7 +177,7 @@ List of actions for github:
 			outputBuffer.Write(resultJSON)
 
 			logger.Debug("Integration result", "result", resultsIntegrationVCS)
-			shared.WriteJsonFile(fmt.Sprintf("%v/VCS-INTEGRATION-%v.scanio-result", shared.GetScanioHome(), strings.ToUpper(allArgumentsIntegrationVCS.Action)), logger, resultsIntegrationVCS)
+			shared.WriteJsonFile(fmt.Sprintf("%v/VCS-INTEGRATION-%v.scanio-result", config.GetScanioHome(AppConfig), strings.ToUpper(allArgumentsIntegrationVCS.Action)), logger, resultsIntegrationVCS)
 
 			return nil
 		}
@@ -210,11 +214,11 @@ func validateCommonArguments() error {
 func performAction(action string, vcsName shared.VCS, args Arguments) (interface{}, error) {
 	switch action {
 	case "checkPR":
-		checkPRArgs, ok := args.(shared.VCSRetrivePRInformationRequest)
+		checkPRArgs, ok := args.(shared.VCSRetrievePRInformationRequest)
 		if !ok {
 			return nil, fmt.Errorf("Invalid argument type for action 'checkPR'")
 		}
-		return vcsName.RetrivePRInformation(checkPRArgs)
+		return vcsName.RetrievePRInformation(checkPRArgs)
 	case "addRoleToPR":
 		addReviewArgs, ok := args.(shared.VCSAddRoleToPRRequest)
 		if !ok {
@@ -232,7 +236,7 @@ func performAction(action string, vcsName shared.VCS, args Arguments) (interface
 		if !ok {
 			return nil, fmt.Errorf("Invalid argument type for action 'addComment'")
 		}
-		return vcsName.AddComment(addComment)
+		return vcsName.AddCommentToPR(addComment)
 	default:
 		return nil, fmt.Errorf("Unsupported action: %s", action)
 	}

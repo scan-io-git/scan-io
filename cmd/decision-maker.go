@@ -9,10 +9,13 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/spf13/cobra"
+
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	cfg "github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 	"github.com/scan-io-git/scan-io/plugins/semgrep/pkg/shared"
 	"github.com/scan-io-git/scan-io/plugins/trufflehog3/pkg/shared"
-	"github.com/spf13/cobra"
 )
 
 type DecisionMakerOptions struct {
@@ -25,7 +28,7 @@ type DecisionMakerOptions struct {
 	Login         string
 }
 
-type AppConfig struct {
+type AppDecConfig struct {
 	TemplatePath         string
 	SemgrepRulesPath     string
 	TruffleHog3RulesPath string
@@ -60,14 +63,14 @@ func ReadResultBuffer() []byte {
 	return shared.ResultBuffer.Bytes()
 }
 
-func LoadConfig() (*AppConfig, error) {
-	config := &AppConfig{
+func LoadConfig() (*AppDecConfig, error) {
+	config := &AppDecConfig{
 		TemplatePath:         os.Getenv("SCANIO_TEMPLATE_PATH"),
 		SemgrepRulesPath:     os.Getenv("SCANIO_SEMGREP_RULES"),
 		TruffleHog3RulesPath: os.Getenv("SCANIO_TRUFFLEHOG3_RULES"),
 	}
 
-	if shared.IsCI() {
+	if cfg.IsCI(AppConfig) {
 		config.ExecutionEnv = os.Getenv("SCANIO_CI")
 
 		switch config.ExecutionEnv {
@@ -244,7 +247,7 @@ func execScanner(scannerName, format, rulesPathSemgrep, resultsFolderPath, scani
 	return result, nil
 }
 
-func predefinedPRHandler(logger hclog.Logger, config *AppConfig) error {
+func predefinedPRHandler(logger hclog.Logger, config *AppDecConfig) error {
 	//Ad-hoc predefined scenario for MVP
 	//Base command: scanio decision-maker --scenario scanPR --vcs bitbucket --vcs-url git.com --namespace TEST --repository test --pull-request-id ID
 
@@ -337,7 +340,7 @@ func predefinedPRHandler(logger hclog.Logger, config *AppConfig) error {
 	vcsUrl := repoParamAsserted["vcs_url"].(string)
 	namespace := repoParamAsserted["namespace"].(string)
 	repoName := repoParamAsserted["repo_name"].(string)
-	resultsFolderPath := filepath.Join(shared.GetResultsHome(), strings.ToLower(vcsUrl), filepath.Join(strings.ToLower(namespace), strings.ToLower(repoName)))
+	resultsFolderPath := filepath.Join(cfg.GetScanioResultsHome(AppConfig), strings.ToLower(vcsUrl), filepath.Join(strings.ToLower(namespace), strings.ToLower(repoName)))
 
 	// scan code: scanio analyse --scanner semgrep --format sarif /[scanio]/test
 	scanningResultSemgrep, err := execScanner("semgrep", "text", config.SemgrepRulesPath, resultsFolderPath, scaningFolder, []string{})
@@ -483,7 +486,7 @@ var handlerCmd = &cobra.Command{
 	Short:                 "[EXPERIMENTAL] For the specific ad-hoc scenario, not for production",
 	Long:                  `[EXPERIMENTAL] For the specific ad-hoc scenario, not for production`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		logger := shared.NewLogger("core-decision-maker")
+		logger := logger.NewLogger(AppConfig, "core-decision-maker")
 
 		checkArgs := func() error {
 			if len(allDecisionMakerOptions.Scenario) == 0 {

@@ -9,11 +9,21 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
+
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
+)
+
+// TODO: Wrap it in a custom error handler to add to the stack trace.
+var (
+	Version       = "unknown"
+	GolangVersion = "unknown"
+	BuildTime     = "unknown"
 )
 
 type ScannerCodeQL struct {
-	logger hclog.Logger
+	logger       hclog.Logger
+	globalConfig *config.Config
 }
 
 var (
@@ -120,6 +130,11 @@ func (g *ScannerCodeQL) Scan(args shared.ScannerScanRequest) (shared.ScannerScan
 	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
 	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath)
 	return result, nil
+}
+
+func (g *ScannerCodeQL) Setup(configData config.Config) (bool, error) {
+	g.globalConfig = &configData
+	return true, nil
 }
 
 func main() {

@@ -6,10 +6,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/scan-io-git/scan-io/internal/scanner"
-	utils "github.com/scan-io-git/scan-io/internal/utils"
-	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
+
+	utils "github.com/scan-io-git/scan-io/internal/utils"
+
+	"github.com/scan-io-git/scan-io/internal/scanner"
+	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 type RunOptionsAnalyse struct {
@@ -61,6 +65,7 @@ List of plugins:
 			outputBuffer bytes.Buffer // Decision maker MVP needs
 		)
 
+		logger := logger.NewLogger(AppConfig, "core-analyze")
 		argsLenAtDash := cmd.ArgsLenAtDash()
 		checkArgs := func() error {
 			if len(allArgumentsAnalyse.ScannerPluginName) == 0 {
@@ -103,15 +108,14 @@ List of plugins:
 			return err
 		}
 
-		logger := shared.NewLogger("core-analyze-scanner")
 		s := scanner.New(allArgumentsAnalyse.ScannerPluginName, allArgumentsAnalyse.Threads, allArgumentsAnalyse.Config, allArgumentsAnalyse.ReportFormat, allArgumentsAnalyse.AdditionalArgs, logger)
 
-		analyseArgs, err := s.PrepScanArgs(reposInf, path, allArgumentsAnalyse.OutputPrefix)
+		analyseArgs, err := s.PrepScanArgs(AppConfig, reposInf, path, allArgumentsAnalyse.OutputPrefix)
 		if err != nil {
 			return err
 		}
 
-		resultAnalyse = s.ScanRepos(analyseArgs)
+		resultAnalyse = s.ScanRepos(AppConfig, analyseArgs)
 		resultJSON, err := json.Marshal(resultAnalyse)
 		outputBuffer.Write(resultJSON)
 		if err != nil {
@@ -125,7 +129,7 @@ List of plugins:
 		shared.ResultBufferMutex.Unlock()
 		outputBuffer.Write(resultJSON)
 
-		shared.WriteJsonFile(fmt.Sprintf("%v/ANALYSE.scanio-result", shared.GetScanioHome()), logger, resultAnalyse)
+		shared.WriteJsonFile(fmt.Sprintf("%v/ANALYSE.scanio-result", config.GetScanioHome(AppConfig)), logger, resultAnalyse)
 		return nil
 	},
 }

@@ -11,6 +11,8 @@ import (
 	"github.com/scan-io-git/scan-io/internal/fetcher"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 type RunOptionsFetch struct {
@@ -129,15 +131,15 @@ List of plugins:
 			return err
 		}
 
-		logger := shared.NewLogger("core-fetcher")
+		logger := logger.NewLogger(AppConfig, "core-fetcher")
 		fetcher := fetcher.New(allArgumentsFetch.AuthType, allArgumentsFetch.SSHKey, allArgumentsFetch.Threads, allArgumentsFetch.Branch, allArgumentsFetch.VCSPlugName, strings.Split(allArgumentsFetch.RmExts, ","), logger)
 
-		fetchArgs, err := fetcher.PrepFetchArgs(reposParams)
+		fetchArgs, err := fetcher.PrepFetchArgs(AppConfig, logger, reposParams)
 		if err != nil {
 			return err
 		}
 
-		resultFetch = fetcher.FetchRepos(fetchArgs)
+		resultFetch = fetcher.FetchRepos(AppConfig, fetchArgs)
 		resultJSON, err := json.Marshal(resultFetch)
 		outputBuffer.Write(resultJSON)
 		if err != nil {
@@ -153,7 +155,7 @@ List of plugins:
 
 		logger.Debug("Integration result", "result", resultFetch)
 
-		shared.WriteJsonFile(fmt.Sprintf("%v/FETCH.scanio-result", shared.GetScanioHome()), logger, resultFetch)
+		shared.WriteJsonFile(fmt.Sprintf("%v/FETCH.scanio-result", config.GetScanioHome(AppConfig)), logger, resultFetch)
 		return nil
 	},
 }

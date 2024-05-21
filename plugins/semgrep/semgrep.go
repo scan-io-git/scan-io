@@ -9,18 +9,27 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
+
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
+)
+
+// TODO: Wrap it in a custom error handler to add to the stack trace.
+var (
+	Version       = "unknown"
+	GolangVersion = "unknown"
+	BuildTime     = "unknown"
 )
 
 type ScannerSemgrep struct {
-	logger hclog.Logger
+	logger       hclog.Logger
+	globalConfig *config.Config
 }
 
 const SEMGREP_RULES_FOLDER = "/scanio-rules/semgrep"
 
-func getDefaultConfig() string {
-
-	if shared.IsCI() {
+func (g *ScannerSemgrep) getDefaultConfig() string {
+	if config.IsCI(g.globalConfig) {
 		if _, err := os.Stat(SEMGREP_RULES_FOLDER); !os.IsNotExist(err) {
 			return SEMGREP_RULES_FOLDER
 		}
@@ -55,7 +64,7 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) (shared.ScannerSca
 	// use "p/deafult" by default to not send metrics
 	configPath := args.ConfigPath
 	if args.ConfigPath == "" {
-		configPath = getDefaultConfig()
+		configPath = g.getDefaultConfig()
 	}
 
 	// auto config requires sendings metrics
@@ -93,6 +102,11 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) (shared.ScannerSca
 	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
 	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
 	return result, nil
+}
+
+func (g *ScannerSemgrep) Setup(configData config.Config) (bool, error) {
+	g.globalConfig = &configData
+	return true, nil
 }
 
 func main() {

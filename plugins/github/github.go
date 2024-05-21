@@ -10,14 +10,25 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 
+	"github.com/scan-io-git/scan-io/internal/git"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
+// TODO: Wrap it in a custom error handler to add to the stack trace.
+var (
+	Version       = "unknown"
+	GolangVersion = "unknown"
+	BuildTime     = "unknown"
+)
+
+// VCSGitlab implements VCS operations for Gitlab.
 type VCSGithub struct {
-	logger hclog.Logger
+	logger       hclog.Logger
+	globalConfig *config.Config
 }
 
-func (g *VCSGithub) ListRepos(args shared.VCSListReposRequest) ([]shared.RepositoryParams, error) {
+func (g *VCSGithub) ListRepositories(args shared.VCSListRepositoriesRequest) ([]shared.RepositoryParams, error) {
 	g.logger.Debug("Starting an all-repositories listing function", "args", args)
 	client := github.NewClient(nil)
 	opt := &github.RepositoryListByOrgOptions{Type: "public"}
@@ -41,17 +52,17 @@ func (g *VCSGithub) ListRepos(args shared.VCSListReposRequest) ([]shared.Reposit
 	return reposParams, nil
 }
 
-func (g *VCSGithub) RetrivePRInformation(args shared.VCSRetrivePRInformationRequest) (shared.PRParams, error) {
+func (g *VCSGithub) RetrievePRInformation(args shared.VCSRetrievePRInformationRequest) (shared.PRParams, error) {
 	var result shared.PRParams
 	err := fmt.Errorf("The function is not implemented got Github.")
 
 	return result, err
 }
 
-func (g *VCSGithub) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (interface{}, error) {
+func (g *VCSGithub) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error) {
 	err := fmt.Errorf("The function is not implemented got Github.")
 
-	return nil, err
+	return false, err
 }
 
 func (g *VCSGithub) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, error) {
@@ -60,7 +71,7 @@ func (g *VCSGithub) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, er
 	return false, err
 }
 
-func (g *VCSGithub) AddComment(args shared.VCSAddCommentToPRRequest) (bool, error) {
+func (g *VCSGithub) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (bool, error) {
 	err := fmt.Errorf("The function is not implemented got Github.")
 
 	return false, err
@@ -69,21 +80,19 @@ func (g *VCSGithub) AddComment(args shared.VCSAddCommentToPRRequest) (bool, erro
 func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
 	var result shared.VCSFetchResponse
 
-	//variables, err := g.init("fetch")
-	variables := shared.EvnVariables{}
-	// if err != nil {
-	// 	g.logger.Error("Fetching is failed", "error", err)
-	// 	return err
-	// }
-
-	path, err := shared.GitClone(args, variables, g.logger)
+	path, err := git.CloneRepository(g.logger, g.globalConfig, &args, "main")
 	if err != nil {
-		g.logger.Error("A fetching function is failed", "error", err)
+		g.logger.Error("failed to clone repository", "error", err)
 		return result, err
 	}
 	result.Path = path
 
 	return result, nil
+}
+
+func (g *VCSGithub) Setup(configData config.Config) (bool, error) {
+	g.globalConfig = &configData
+	return true, nil
 }
 
 func main() {
