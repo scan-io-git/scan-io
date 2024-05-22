@@ -41,7 +41,12 @@ func enrichResultsTitleProperty(sarifReport *sarif.Report) {
 			if result.Properties == nil {
 				result.Properties = make(map[string]interface{})
 			}
-			result.Properties["Title"] = rule.ShortDescription.Text
+			if rule.ShortDescription != nil {
+				result.Properties["Title"] = rule.ShortDescription.Text
+			}
+			if rule.FullDescription != nil {
+				result.Properties["Description"] = rule.FullDescription.Text
+			}
 		}
 	}
 }
