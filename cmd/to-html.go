@@ -382,6 +382,36 @@ func calculateThreadFlowFingerprint(threadFlow *sarif.ThreadFlow) string {
 	return calculateMD5Hash(fingerprint)
 }
 
+// remove codeflow duplicates
+// each codeflow may have multiple threatflows. These threatflows may be equal for different codeflows.
+// This function removes duplicates from codeflows
+// if the codeflow is empty, it is removed
+func removeDataflowDuplicates(results []*sarif.Result) {
+	for _, result := range results {
+		uniqueThreadFlowsFingerprints := map[string]bool{}
+		for _, codeFlow := range result.CodeFlows {
+			uniqueThreadFlows := []*sarif.ThreadFlow{}
+			for _, threadFlow := range codeFlow.ThreadFlows {
+				fingerprint := calculateThreadFlowFingerprint(threadFlow)
+				if _, ok := uniqueThreadFlowsFingerprints[fingerprint]; !ok {
+					uniqueThreadFlowsFingerprints[fingerprint] = true
+					uniqueThreadFlows = append(uniqueThreadFlows, threadFlow)
+				}
+			}
+			codeFlow.ThreadFlows = uniqueThreadFlows
+		}
+
+		// remove empty codeflows
+		nonEmptyCodeFlows := []*sarif.CodeFlow{}
+		for _, codeFlow := range result.CodeFlows {
+			if len(codeFlow.ThreadFlows) > 0 {
+				nonEmptyCodeFlows = append(nonEmptyCodeFlows, codeFlow)
+			}
+		}
+		result.CodeFlows = nonEmptyCodeFlows
+	}
+}
+
 // toHtmlCmd represents the toHtml command
 var toHtmlCmd = &cobra.Command{
 	Use:   "to-html",
@@ -417,6 +447,7 @@ var toHtmlCmd = &cobra.Command{
 
 		for _, run := range sarifReport.Runs {
 			sortResultsByLevel(run.Results)
+			removeDataflowDuplicates(run.Results)
 		}
 
 		tmpl, err := template.New("report.html").
