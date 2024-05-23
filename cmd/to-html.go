@@ -272,6 +272,7 @@ type ReportMetadata struct {
 	Title        string
 	Time         time.Time
 	SourceFolder string
+	SeverityInfo map[string]int
 }
 
 // function to collect metadata about the repository
@@ -417,6 +418,34 @@ func removeDataflowDuplicates(results []*sarif.Result) {
 	}
 }
 
+// function that collects information about amount of low, mediumn and high severity issues
+// returns a map with this information, and a total amount of issues
+func collectSeverityInfo(sarifReport *sarif.Report) map[string]int {
+	severityInfo := map[string]int{
+		"low":    0,
+		"medium": 0,
+		"high":   0,
+		"total":  0,
+	}
+
+	for _, run := range sarifReport.Runs {
+		for _, result := range run.Results {
+			severity := result.Properties["Level"].(string)
+			switch severity {
+			case "error":
+				severityInfo["high"]++
+			case "warning":
+				severityInfo["medium"]++
+			default:
+				severityInfo["low"]++
+			}
+			severityInfo["total"]++
+		}
+	}
+
+	return severityInfo
+}
+
 // toHtmlCmd represents the toHtml command
 var toHtmlCmd = &cobra.Command{
 	Use:   "to-html",
@@ -442,12 +471,15 @@ var toHtmlCmd = &cobra.Command{
 			return err
 		}
 
+		severityInfo := collectSeverityInfo(sarifReport)
+
 		metadata := &ReportMetadata{
 			RepositoryMetadata: *repositoryMetadata,
 			ToolMetadata:       *ToolMetadata,
 			Title:              allToHTMLOptions.Title,
 			Time:               time.Now().UTC(),
 			SourceFolder:       allToHTMLOptions.SourceFolder,
+			SeverityInfo:       severityInfo,
 		}
 
 		for _, run := range sarifReport.Runs {

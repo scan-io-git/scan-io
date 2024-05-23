@@ -18,6 +18,7 @@
       padding: 0;
       display: flex;
       flex-direction: column;
+      background-color: #F5F5F5;
     }
 
     .main-body {
@@ -27,9 +28,9 @@
       position: relative;
     }
 
-    .main-body-summary {
+    /* .main-body-summary {
       margin-bottom: 32px;
-    }
+    } */
 
     .issue-card___header {
       display: flex;
@@ -49,6 +50,7 @@
       border-radius: 8px 8px 0px 0px;
       border: 2px solid;
       margin-bottom: 32px;
+      background-color: #F3F3F3;
     }
 
     .severity--error {
@@ -68,6 +70,13 @@
       height: 32px; /* Height of the SVG image */
       display: inline-block;
       margin-right: 8px;
+    }
+
+    .severity-icon--small {
+      width: 24px; /* Width of the SVG image */
+      height: 24px; /* Height of the SVG image */
+      display: inline-block;
+      margin-right: 6px;
     }
 
     .severity-icon--error {
@@ -143,7 +152,7 @@
     }
 
     .selected-dataflow-id {
-      background-color:#732da1;
+      background-color:#6c249c;
       color: #ffffff;
     }
 
@@ -161,16 +170,17 @@
     }
 
     .header-container {
-      background-color: #732da1;
-      color: #fff;
+      background-color: #6c249c;
+      color: #eee;
+      padding: 8px;
     }
 
     .header-container__metadata {
       float: right;
       text-align: left;
       font-size: 12px;
-      margin-right: 16px;
-      margin-left: auto;
+      /* margin-right: 16px; */
+      /* margin-left: auto; */
     }
 
     .header-container__metadata p {
@@ -178,7 +188,7 @@
     }
 
     .header-container__metadata p a {
-      color: #fff;
+      color: #eee;
     }
 
     .issue-card__body__metadata__location a, .issue-card__body__dataflows__codeline__linecol a {
@@ -188,13 +198,24 @@
     .header-container__logo {
       width: 64px;
       height: 64px;
-      margin: 16px;
+      /* margin: 0 16px; */
     }
 
     .header-container-centering {
       display: flex;
       max-width: 1024px;
       margin: 0 auto;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-container__issues-breakdown {
+      /* margin: auto; */
+      font-size: 16px;
+    }
+
+    .header-container__issues-breakdown__table__entry {
+      display: flex;
     }
 
   </style>
@@ -219,6 +240,25 @@
         </a>
       </div>
 
+      <div class="header-container__issues-breakdown">
+        <div class="header-container__issues-breakdown__total">There are {{index .Metadata.SeverityInfo "total"}} issues</div>
+        <div class="header-container__issues-breakdown__table">
+          <div class="header-container__issues-breakdown__table__entry">
+            <div class="severity-icon--small severity-icon--error"></div>
+            <div>{{index .Metadata.SeverityInfo "high"}} high</div>
+          </div>
+          <div class="header-container__issues-breakdown__table__entry">
+            <div class="severity-icon--small severity-icon--warning"></div>
+            <div>{{index .Metadata.SeverityInfo "medium"}} medium</div>
+          </div>
+          <div class="header-container__issues-breakdown__table__entry">
+            <div class="severity-icon--small severity-icon--note"></div>
+            <div>{{index .Metadata.SeverityInfo "low"}} low</div>
+          </div>
+        </div>
+      </div>
+
+
       <div class="header-container__metadata">
         <p><b>Time:</b> {{ .Metadata.Time | formatDateTime }} (UTC)</p>
         <p><b>Tool:</b> {{ .Metadata.ToolMetadata.Name }} {{if .Metadata.ToolMetadata.Version}}{{ .Metadata.ToolMetadata.Version }}{{end}}</p>
@@ -235,9 +275,8 @@
     {{range .Report.Runs}}
     <div class="main-body">
 
-      <div class="main-body-summary">
-        There are {{len .Results}} issues.
-      </div>
+      <!-- <div class="main-body-summary">
+      </div> -->
 
       <div class="issue-cards">
         {{range .Results}}
