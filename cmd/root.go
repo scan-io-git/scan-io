@@ -53,4 +53,5 @@ func initConfig() {
 	}
 
 	version.Init(AppConfig)
+
 }

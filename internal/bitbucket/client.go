@@ -89,6 +89,18 @@ func (c *Client) put(path string, queryParams map[string]string, body interface{
 		Put(fullURL)
 }
 
+// upload sends a multipart form-data request using the client's base URL, path, query parameters, and file provided.
+func (c *Client) upload(path string, queryParams map[string]string, filePath, fileName string) (*resty.Response, error) {
+	if fileName == "" {
+		fileName = "files"
+	}
+	fullURL := c.resolveURL(path)
+	return c.HTTPClient.RestyClient.R().
+		SetQueryParams(queryParams).
+		SetFile(fileName, filePath).
+		Post(fullURL)
+}
+
 // unmarshalResponse is a generic function to parse JSON body from response into the provided type.
 // It also checks the HTTP response code and API error messages.
 func unmarshalResponse[T any](resp *resty.Response, out *T) error {

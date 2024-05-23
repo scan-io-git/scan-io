@@ -39,6 +39,14 @@ func ValidatePath(path string) error {
 	return nil
 }
 
+// GetValidatedFileName validates the given file path and returns the file name.
+func GetValidatedFileName(path string) (string, error) {
+	if err := ValidatePath(path); err != nil {
+		return "", err
+	}
+	return filepath.Base(path), nil
+}
+
 // CopyDotFiles copies files and directories starting with a dot from src to dst.
 func CopyDotFiles(src, dst string, logger hclog.Logger) error {
 	logger.Debug("copying files starting with a dot", "source", src, "destination", dst)

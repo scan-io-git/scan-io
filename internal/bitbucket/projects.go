@@ -30,7 +30,10 @@ func (ps *projectsService) List() (*[]Project, error) {
 	ps.client.Logger.Debug("fetching list of projects")
 
 	for {
-		ps.client.Logger.Debug("fetching page of projects", "start", start, "limit", ps.limit)
+		ps.client.Logger.Debug("fetching page of projects",
+			"start", start,
+			"limit", ps.limit,
+		)
 		query := map[string]string{
 			"start": strconv.Itoa(start),
 			"limit": strconv.Itoa(ps.limit),
@@ -55,6 +58,8 @@ func (ps *projectsService) List() (*[]Project, error) {
 		start = resp.NextPageStart
 	}
 
-	ps.client.Logger.Debug("successfully fetched all projects", "totalProjects", len(result))
+	ps.client.Logger.Debug("successfully fetched all projects",
+		"totalProjects", len(result),
+	)
 	return &result, nil
 }
