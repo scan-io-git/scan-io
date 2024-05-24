@@ -28,7 +28,7 @@ build-cli: check-go-dependency ## Build Scanio core
 
 # Build plugins
 .PHONY: build-plugins
-build-plugins: check-go-dependency clean-plugins prepare-plugins  
+build-plugins: check-go-dependency clean-plugins prepare-plugins ## Build Scanio plugins
 	@echo "Building Scanio plugis..."
 	@for dir in plugins/*/ ; do \
 	    plugin_name=$$(basename $$dir); \
