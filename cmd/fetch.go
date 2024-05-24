@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -55,8 +54,6 @@ List of plugins:
   - github`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Decision maker MVP needs
-		var outputBuffer bytes.Buffer
 		reposParams := []shared.RepositoryParams{}
 
 		checkArgs := func() error {
@@ -140,18 +137,11 @@ List of plugins:
 		}
 
 		resultFetch = fetcher.FetchRepos(AppConfig, fetchArgs)
-		resultJSON, err := json.Marshal(resultFetch)
-		outputBuffer.Write(resultJSON)
+		_, err = json.Marshal(resultFetch)
 		if err != nil {
 			logger.Error("Error", "message", err)
 			return err
 		}
-
-		// Decision maker MVP needs
-		shared.ResultBufferMutex.Lock()
-		shared.ResultBuffer = outputBuffer
-		shared.ResultBufferMutex.Unlock()
-		outputBuffer.Write(resultJSON)
 
 		logger.Debug("Integration result", "result", resultFetch)
 

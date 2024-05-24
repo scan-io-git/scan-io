@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -60,9 +59,8 @@ List of plugins:
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			reposInf     []shared.RepositoryParams
-			path         string
-			outputBuffer bytes.Buffer // Decision maker MVP needs
+			reposInf []shared.RepositoryParams
+			path     string
 		)
 
 		logger := logger.NewLogger(AppConfig, "core-analyze")
@@ -116,18 +114,11 @@ List of plugins:
 		}
 
 		resultAnalyse = s.ScanRepos(AppConfig, analyseArgs)
-		resultJSON, err := json.Marshal(resultAnalyse)
-		outputBuffer.Write(resultJSON)
+		_, err = json.Marshal(resultAnalyse)
 		if err != nil {
 			logger.Error("Error", "message", err)
 			return err
 		}
-
-		// Decision maker MVP needs
-		shared.ResultBufferMutex.Lock()
-		shared.ResultBuffer = outputBuffer
-		shared.ResultBufferMutex.Unlock()
-		outputBuffer.Write(resultJSON)
 
 		shared.WriteJsonFile(fmt.Sprintf("%v/ANALYSE.scanio-result", config.GetScanioHome(AppConfig)), logger, resultAnalyse)
 		return nil

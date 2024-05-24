@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -69,7 +68,6 @@ List of actions for github:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
 			arguments             Arguments
-			outputBuffer          bytes.Buffer // Decision maker MVP needs
 			resultIntegrationVCS  shared.GenericResult
 			resultsIntegrationVCS shared.GenericLaunchesResult
 		)
@@ -164,18 +162,11 @@ List of actions for github:
 			})
 
 			resultsIntegrationVCS.Launches = append(resultsIntegrationVCS.Launches, resultIntegrationVCS)
-			resultJSON, err := json.Marshal(resultsIntegrationVCS)
-			outputBuffer.Write(resultJSON)
+			_, err := json.Marshal(resultsIntegrationVCS)
 			if err != nil {
 				logger.Error("Error", "message", err)
 				return err
 			}
-
-			// Decision maker MVP needs
-			shared.ResultBufferMutex.Lock()
-			shared.ResultBuffer = outputBuffer
-			shared.ResultBufferMutex.Unlock()
-			outputBuffer.Write(resultJSON)
 
 			logger.Debug("Integration result", "result", resultsIntegrationVCS)
 			shared.WriteJsonFile(fmt.Sprintf("%v/VCS-INTEGRATION-%v.scanio-result", config.GetScanioHome(AppConfig), strings.ToUpper(allArgumentsIntegrationVCS.Action)), logger, resultsIntegrationVCS)

@@ -1,7 +1,6 @@
 package shared
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"os/exec"
@@ -18,9 +17,6 @@ const (
 	PluginTypeVCS     string = "vcs"
 	PluginTypeScanner string = "scanner"
 )
-
-var ResultBuffer bytes.Buffer
-var ResultBufferMutex sync.Mutex
 
 var HandshakeConfig = plugin.HandshakeConfig{
 	ProtocolVersion:  1,
@@ -64,7 +60,7 @@ func WithPlugin(cfg *config.Config, loggerName string, pluginType string, plugin
 		return err
 	}
 
-	// TODO: use universal approach
+	// TODO: Use universal approach
 	var setupErr error
 	switch pluginType {
 	case "vcs":
