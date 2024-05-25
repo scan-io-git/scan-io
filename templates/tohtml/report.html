@@ -258,7 +258,6 @@
         </div>
       </div>
 
-
       <div class="header-container__metadata">
         <p><b>Time:</b> {{ .Metadata.Time | formatDateTime }} (UTC)</p>
         <p><b>Tool:</b> {{ .Metadata.ToolMetadata.Name }} {{if .Metadata.ToolMetadata.Version}}{{ .Metadata.ToolMetadata.Version }}{{end}}</p>
@@ -288,7 +287,7 @@
           </div>
           <div class="issue-card__body">
             <div class="issue-card__body__metadata severity--{{$level}}">
-              <p>{{if (index .Properties "Description")}}{{index .Properties "Description"}}{{else}}{{.Message.Text}}{{end}}</p>
+              <p>{{index .Properties "Description"}}</p>
               {{ $location := index .Locations 0}}
               {{ $locationString := index .Locations 0}}
               <div class="issue-card__body__metadata__location">Location: <strong>{{if (and $repo $commit)}}<a href="{{- $repo -}}/blob/{{- $commit -}}/{{- $location.PhysicalLocation.ArtifactLocation.URI -}}#L{{- $location.PhysicalLocation.Region.StartLine -}}">{{$location.PhysicalLocation.ArtifactLocation.URI}} (line : {{$location.PhysicalLocation.Region.StartLine}})</a> {{else}} {{$location.PhysicalLocation.ArtifactLocation.URI}} (line : {{$location.PhysicalLocation.Region.StartLine}}){{end}}</strong></div>

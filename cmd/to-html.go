@@ -44,8 +44,10 @@ func enrichResultsTitleProperty(sarifReport *sarif.Report) {
 			if rule.ShortDescription != nil {
 				result.Properties["Title"] = rule.ShortDescription.Text
 			}
-			if rule.FullDescription != nil {
-				result.Properties["Description"] = rule.FullDescription.Text
+			if rule.FullDescription != nil && rule.FullDescription.Text != nil {
+				result.Properties["Description"] = *rule.FullDescription.Text
+			} else if result.Message.Text != nil {
+				result.Properties["Description"] = *result.Message.Text
 			}
 		}
 	}
