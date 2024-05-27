@@ -97,14 +97,11 @@ RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/s
     rm -rf get_helm.sh
 
 # Set environment variables // move to config file
-ENV SCANIO_HOME=/data
-ENV SCANIO_PLUGINS_FOLDER=/scanio-plugins
 ENV JOB_HELM_CHART_PATH=/scanio-helm/scanio-job
 
 # Create necessary directories
 RUN mkdir -p /scanio
 RUN mkdir -p /data
-RUN mkdir -p /scanio/scanio-plugins
 
 # Copy built binaries and other necessary files from the build stage
 COPY --from=build-scanio /usr/bin/scanio /bin/scanio
