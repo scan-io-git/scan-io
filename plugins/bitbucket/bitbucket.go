@@ -265,7 +265,7 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		return "", err
 	}
 
-	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.VCSURL, (args.RepoParam.Namespace), args.RepoParam.RepoName, prID)
+	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.VCSURL, args.RepoParam.Namespace, args.RepoParam.RepoName, prID)
 
 	g.logger.Debug("copying files that have changed")
 	for _, val := range *changes {

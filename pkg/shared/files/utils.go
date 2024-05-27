@@ -66,7 +66,7 @@ func CopyDotFiles(src, dst string, logger hclog.Logger) error {
 					return err
 				}
 			} else {
-				if err := Copy(srcPath, dst); err != nil {
+				if err := Copy(srcPath, dstPath); err != nil {
 					logger.Error("error copying file", "path", srcPath, "error", err)
 					return err
 				}
