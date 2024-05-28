@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 )
 
-// expandPath resolves paths that include a tilde (~) to the user's home directory.
+// ExpandPath resolves paths that include a tilde (~) to the user's home directory.
 func ExpandPath(path string) (string, error) {
 	if strings.HasPrefix(path, "~/") {
 		homeDir, err := os.UserHomeDir()
@@ -23,7 +23,7 @@ func ExpandPath(path string) (string, error) {
 	return path, nil
 }
 
-// ValidateConfigPath checks if the given path is a valid file path for reading.
+// ValidatePath checks if the given path is a valid file path for reading.
 func ValidatePath(path string) error {
 	info, err := os.Stat(path)
 	if err != nil {

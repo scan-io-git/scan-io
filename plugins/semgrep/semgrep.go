@@ -41,7 +41,7 @@ func (g *ScannerSemgrep) getDefaultConfig() string {
 
 func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
 	var result shared.ScannerScanResponse
-	g.logger.Info("Scan is starting", "project", args.RepoPath)
+	g.logger.Info("Scan is starting", "project", args.TargetPath)
 	g.logger.Debug("Debug info", "args", args)
 
 	var commandArgs []string
@@ -77,7 +77,7 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) (shared.ScannerSca
 	commandArgs = append(commandArgs, "--output", args.ResultsPath)
 
 	// repo path
-	commandArgs = append(commandArgs, args.RepoPath)
+	commandArgs = append(commandArgs, args.TargetPath)
 
 	// prep cmd
 	cmd = exec.Command("semgrep", commandArgs...)
@@ -98,9 +98,9 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) (shared.ScannerSca
 	}
 
 	result.ResultsPath = args.ResultsPath
-	g.logger.Info("Scan finished for", "project", args.RepoPath)
+	g.logger.Info("Scan finished for", "project", args.TargetPath)
 	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
-	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
+	g.logger.Debug("Debug info", "project", args.TargetPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
 	return result, nil
 }
 

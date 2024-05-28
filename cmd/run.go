@@ -119,7 +119,7 @@ func scan(repo string) {
 
 	shared.WithPlugin(AppConfig, "plugin-scanner", shared.PluginTypeScanner, o.ScannerPlugin, func(raw interface{}) error {
 		raw.(shared.Scanner).Scan(shared.ScannerScanRequest{
-			RepoPath:    repoPath,
+			TargetPath:  repoPath,
 			ResultsPath: getResultsPath(logger, repo),
 		})
 		return nil

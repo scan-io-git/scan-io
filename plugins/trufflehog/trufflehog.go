@@ -34,7 +34,7 @@ func (g *ScannerTrufflehog) Scan(args shared.ScannerScanRequest) (shared.Scanner
 		result      shared.ScannerScanResponse
 	)
 
-	g.logger.Info("Scan is starting", "project", args.RepoPath)
+	g.logger.Info("Scan is starting", "project", args.TargetPath)
 	g.logger.Debug("Debug info", "args", args)
 
 	// Add additional arguments
@@ -53,7 +53,7 @@ func (g *ScannerTrufflehog) Scan(args shared.ScannerScanRequest) (shared.Scanner
 		g.logger.Warn("Trufflehog supports only a json non default format. Will be used default format instead of your reportFormat", "reportFormat", args.ReportFormat)
 	}
 
-	commandArgs = append(commandArgs, "--no-verification", "filesystem", args.RepoPath)
+	commandArgs = append(commandArgs, "--no-verification", "filesystem", args.TargetPath)
 	cmd = exec.Command("trufflehog", commandArgs...)
 	g.logger.Debug("Debug info", "cmd", cmd.Args)
 
@@ -79,10 +79,10 @@ func (g *ScannerTrufflehog) Scan(args shared.ScannerScanRequest) (shared.Scanner
 		return result, err
 	}
 
-	result.ResultsPath = args.RepoPath
-	g.logger.Info("Scan finished for", "project", args.RepoPath)
+	result.ResultsPath = args.TargetPath
+	g.logger.Info("Scan finished for", "project", args.TargetPath)
 	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
-	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
+	g.logger.Debug("Debug info", "project", args.TargetPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
 	return result, nil
 }
 

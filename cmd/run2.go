@@ -44,9 +44,9 @@ var allRun2Options Run2Options
 func run2analyzeRepos(repos []shared.RepositoryParams) error {
 
 	logger := logger.NewLogger(AppConfig, "core-run2-scanner")
-	s := scanner.New(allRun2Options.ScannerPluginName, allRun2Options.Jobs, allRun2Options.Config, allRun2Options.ReportFormat, allRun2Options.AdditionalArgs, logger)
+	s := scanner.New(allRun2Options.ScannerPluginName, allRun2Options.Config, allRun2Options.ReportFormat, allRun2Options.AdditionalArgs, allRun2Options.Jobs, logger)
 
-	scanArgs, err := s.PrepScanArgs(AppConfig, repos, "", "")
+	scanArgs, err := s.PrepareScanArgs(AppConfig, repos, "", "")
 	if err != nil {
 		return err
 	}

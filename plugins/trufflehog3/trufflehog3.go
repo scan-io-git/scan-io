@@ -34,7 +34,7 @@ func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) (shared.Scanne
 		result      shared.ScannerScanResponse
 	)
 
-	g.logger.Info("Scan is starting", "project", args.RepoPath)
+	g.logger.Info("Scan is starting", "project", args.TargetPath)
 	g.logger.Debug("Debug info", "args", args)
 
 	// Add additional arguments
@@ -54,7 +54,7 @@ func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) (shared.Scanne
 	}
 
 	// Here we added -z flag because Trufflehog3 sends a not correct exit code even when it finished without errors
-	commandArgs = append(commandArgs, "-z", "--output", args.ResultsPath, args.RepoPath)
+	commandArgs = append(commandArgs, "-z", "--output", args.ResultsPath, args.TargetPath)
 
 	cmd = exec.Command("trufflehog3", commandArgs...)
 	g.logger.Debug("Debug info", "cmd", cmd.Args)
@@ -74,9 +74,9 @@ func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) (shared.Scanne
 	}
 
 	result.ResultsPath = args.ResultsPath
-	g.logger.Info("Scan finished for", "project", args.RepoPath)
+	g.logger.Info("Scan finished for", "project", args.TargetPath)
 	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
-	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
+	g.logger.Debug("Debug info", "project", args.TargetPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
 	return result, nil
 }
 

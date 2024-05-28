@@ -21,7 +21,7 @@ type RunOptionsAnalyse struct {
 	ReportFormat      string
 	Config            string
 	AdditionalArgs    []string
-	OutputPrefix      string
+	OutputPath        string
 	Threads           int
 }
 
@@ -59,8 +59,8 @@ List of plugins:
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			reposInf []shared.RepositoryParams
-			path     string
+			reposInf   []shared.RepositoryParams
+			targetPath string
 		)
 
 		logger := logger.NewLogger(AppConfig, "core-analyze")
@@ -74,17 +74,17 @@ List of plugins:
 				allArgumentsAnalyse.AdditionalArgs = args[argsLenAtDash:]
 			}
 			if ((len(args) == 0) || (len(args) > 0 && argsLenAtDash == 0)) && len(allArgumentsAnalyse.InputFile) == 0 {
-				return fmt.Errorf(("An 'input-file' flag or a path must be specified!"))
+				return fmt.Errorf(("An 'input-file' flag or a target path must be specified!"))
 			}
 
 			if len(args) > 0 && (argsLenAtDash == -1 || argsLenAtDash == 1) {
 				if len(allArgumentsAnalyse.InputFile) != 0 {
-					return fmt.Errorf(("You can't use an 'input-file' flag and a path at the same time!"))
+					return fmt.Errorf(("You can't use an 'input-file' flag and a target path at the same time!"))
 				}
 
-				path = args[0]
-				if _, err := os.Stat(path); os.IsNotExist(err) {
-					return fmt.Errorf("The path does not exists: %v", path)
+				targetPath = args[0]
+				if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+					return fmt.Errorf("The target target path does not exists: %v", targetPath)
 				}
 
 			} else {
@@ -106,9 +106,9 @@ List of plugins:
 			return err
 		}
 
-		s := scanner.New(allArgumentsAnalyse.ScannerPluginName, allArgumentsAnalyse.Threads, allArgumentsAnalyse.Config, allArgumentsAnalyse.ReportFormat, allArgumentsAnalyse.AdditionalArgs, logger)
+		s := scanner.New(allArgumentsAnalyse.ScannerPluginName, allArgumentsAnalyse.Config, allArgumentsAnalyse.ReportFormat, allArgumentsAnalyse.AdditionalArgs, allArgumentsAnalyse.Threads, logger)
 
-		analyseArgs, err := s.PrepScanArgs(AppConfig, reposInf, path, allArgumentsAnalyse.OutputPrefix)
+		analyseArgs, err := s.PrepareScanArgs(AppConfig, reposInf, targetPath, allArgumentsAnalyse.OutputPath)
 		if err != nil {
 			return err
 		}
@@ -120,6 +120,7 @@ List of plugins:
 			return err
 		}
 
+		// TODO: Implement common handler for logs
 		shared.WriteJsonFile(fmt.Sprintf("%v/ANALYSE.scanio-result", config.GetScanioHome(AppConfig)), logger, resultAnalyse)
 		return nil
 	},
@@ -132,6 +133,6 @@ func init() {
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.InputFile, "input-file", "i", "", "a file in Scanio format with a list of repositories to analyse. The list command could prepare this file.")
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.Config, "config", "c", "", "a path or type of config for a scanner. The value depends on a particular scanner's used formats.")
 	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.ReportFormat, "format", "f", "", "a format for a report with results.") //doesn't have default for "Uses ASCII output if no format specified"
-	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.OutputPrefix, "output", "o", "", "a path for scanner's output. The path will be used like a prefix for a scanner's report.")
+	analyseCmd.Flags().StringVarP(&allArgumentsAnalyse.OutputPath, "output", "o", "", "Path to the output file or directory for the scanner's results")
 	analyseCmd.Flags().IntVarP(&allArgumentsAnalyse.Threads, "threads", "j", 1, "number of concurrent goroutines.")
 }
