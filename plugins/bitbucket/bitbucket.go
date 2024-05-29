@@ -187,13 +187,13 @@ func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool,
 	}
 	g.logger.Info("changing status of a particular PR", "PR", fmt.Sprintf("%v/%v/%v/%v", args.VCSURL, args.Namespace, args.Repository, args.PullRequestId))
 
-	user, err := prData.SetStatus(args.Status, args.Login)
+	_, err = prData.SetStatus(args.Status, args.Login)
 	if err != nil {
 		g.logger.Error("failed to set the status of the PR", "error", err)
 		return false, err
 	}
 
-	g.logger.Info("PR successfully moved to status", "status", args.Status, "PR_id", args.PullRequestId, "last_commit", user.Author.LastReviewedCommit)
+	g.logger.Info("PR successfully moved to status", "status", args.Status, "PR_id", args.PullRequestId, "last_commit", prData.Author.LastReviewedCommit)
 	return true, nil
 }
 
