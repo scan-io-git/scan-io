@@ -2,7 +2,6 @@ package shared
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -11,22 +10,11 @@ import (
 	"os"
 	"path"
 	"strings"
-	"text/template"
 
 	"github.com/hashicorp/go-hclog"
 )
 
 type CustomData interface{}
-
-type ScanReportData struct {
-	ScanStarted  bool
-	ScanPassed   bool
-	ScanFailed   bool
-	ScanCrashed  bool
-	ScanDetails  interface{}
-	ScanResults  interface{}
-	ErrorDetails interface{}
-}
 
 func WriteJsonFile(outputFile string, logger hclog.Logger, data ...CustomData) {
 	file, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
@@ -170,32 +158,4 @@ func ContainsSubstring(target string, substrings []string) bool {
 		}
 	}
 	return false
-}
-
-func loadTemplateFromFile(filename string) (*template.Template, error) {
-	templateData, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	tpl, err := template.New("comment").Parse(string(templateData))
-	if err != nil {
-		return nil, err
-	}
-	return tpl, nil
-}
-
-func CommentBuilder(data interface{}, path string) (string, error) {
-
-	template, err := loadTemplateFromFile(path)
-	if err != nil {
-		return "", err
-	}
-
-	var result bytes.Buffer
-	if err := template.Execute(&result, data); err != nil {
-		return "", err
-	}
-
-	return result.String(), nil
 }
