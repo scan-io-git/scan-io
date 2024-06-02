@@ -31,14 +31,14 @@ type VCSBitbucket struct {
 	globalConfig *config.Config
 }
 
-// NewVCSBitbucket creates a new instance of VCSBitbucket.
+// newVCSBitbucket creates a new instance of VCSBitbucket.
 func newVCSBitbucket(logger hclog.Logger) *VCSBitbucket {
 	return &VCSBitbucket{
 		logger: logger,
 	}
 }
 
-// SetGlobalConfig sets the global configuration for the VCSBitbucket instance.
+// setGlobalConfig sets the global configuration for the VCSBitbucket instance.
 func (g *VCSBitbucket) setGlobalConfig(globalConfig *config.Config) {
 	g.globalConfig = globalConfig
 }

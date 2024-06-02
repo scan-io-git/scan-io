@@ -14,6 +14,7 @@ import (
 type Config struct {
 	Scanio          Scanio          `yaml:"scanio"`           // Scanio configuration settings.
 	BitbucketPlugin BitbucketPlugin `yaml:"bitbucket_plugin"` // Bitbucket plugin configuration settings.
+	GithubPlugin    GithubPlugin    `yaml:"github_plugin"`    // Github plugin configuration settings.
 	Logger          Logger          `yaml:"logger"`           // Logger configuration settings.
 	HTTPClient      HTTPClient      `yaml:"http_client"`      // HTTP client configuration settings.
 	GitClient       GitClient       `yaml:"git_client"`       // Git client configuration settings.
@@ -34,6 +35,13 @@ type Scanio struct {
 type BitbucketPlugin struct {
 	Username       string `yaml:"username"`         // Username for Bitbucket integrations.
 	Token          string `yaml:"token"`            // Access token for Bitbucket.
+	SSHKeyPassword string `yaml:"ssh_key_password"` // Password for the SSH key used in fetching operations.
+}
+
+// GithubPlugin holds configuration specific to the Github plugin.
+type GithubPlugin struct {
+	Username       string `yaml:"username"`         // Username for Github integrations.
+	Token          string `yaml:"token"`            // Access token for Github.
 	SSHKeyPassword string `yaml:"ssh_key_password"` // Password for the SSH key used in fetching operations.
 }
 

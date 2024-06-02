@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/scan-io-git/scan-io/internal/git"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 )
 
 // TODO: Wrap it in a custom error handler to add to the stack trace.
@@ -26,6 +26,18 @@ var (
 type VCSGithub struct {
 	logger       hclog.Logger
 	globalConfig *config.Config
+}
+
+// newVCSGithub creates a new instance of VCSGithub.
+func newVCSGithub(logger hclog.Logger) *VCSGithub {
+	return &VCSGithub{
+		logger: logger,
+	}
+}
+
+// setGlobalConfig sets the global configuration for the VCSGithub instance.
+func (g *VCSGithub) setGlobalConfig(globalConfig *config.Config) {
+	g.globalConfig = globalConfig
 }
 
 func (g *VCSGithub) ListRepositories(args shared.VCSListRepositoriesRequest) ([]shared.RepositoryParams, error) {
@@ -53,28 +65,19 @@ func (g *VCSGithub) ListRepositories(args shared.VCSListRepositoriesRequest) ([]
 }
 
 func (g *VCSGithub) RetrievePRInformation(args shared.VCSRetrievePRInformationRequest) (shared.PRParams, error) {
-	var result shared.PRParams
-	err := fmt.Errorf("The function is not implemented got Github.")
-
-	return result, err
+	return shared.PRParams{}, errors.NewNotImplementedError("RetrievePRInformation", "GitHub plugin")
 }
 
 func (g *VCSGithub) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error) {
-	err := fmt.Errorf("The function is not implemented got Github.")
-
-	return false, err
+	return false, errors.NewNotImplementedError("AddRoleToPR", "GitHub plugin")
 }
 
 func (g *VCSGithub) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, error) {
-	err := fmt.Errorf("The function is not implemented got Github.")
-
-	return false, err
+	return false, errors.NewNotImplementedError("SetStatusOfPR", "GitHub plugin")
 }
 
 func (g *VCSGithub) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (bool, error) {
-	err := fmt.Errorf("The function is not implemented got Github.")
-
-	return false, err
+	return false, errors.NewNotImplementedError("AddCommentToPR", "GitHub plugin")
 }
 
 func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
@@ -90,8 +93,13 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse,
 	return result, nil
 }
 
+// Setup initializes the global configuration for the VCSGithub instance.
 func (g *VCSGithub) Setup(configData config.Config) (bool, error) {
-	g.globalConfig = &configData
+	g.setGlobalConfig(&configData)
+	if err := UpdateConfigFromEnv(g.globalConfig); err != nil {
+		g.logger.Error("failed to update the global config from env variables", "error", err)
+		return false, err
+	}
 	return true, nil
 }
 
@@ -102,16 +110,13 @@ func main() {
 		JSONFormat: true,
 	})
 
-	VCS := &VCSGithub{
-		logger: logger,
-	}
-
-	var pluginMap = map[string]plugin.Plugin{
-		shared.PluginTypeVCS: &shared.VCSPlugin{Impl: VCS},
-	}
+	githubInstance := newVCSGithub(logger)
 
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: shared.HandshakeConfig,
-		Plugins:         pluginMap,
+		Plugins: map[string]plugin.Plugin{
+			shared.PluginTypeVCS: &shared.VCSPlugin{Impl: githubInstance},
+		},
+		Logger: logger,
 	})
 }
