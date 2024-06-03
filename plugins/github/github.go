@@ -80,15 +80,40 @@ func (g *VCSGithub) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (bool, 
 	return false, errors.NewNotImplementedError("AddCommentToPR", "GitHub plugin")
 }
 
+// Fetch retrieves code based on the provided VCSFetchRequest.
 func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
 	var result shared.VCSFetchResponse
 
-	path, err := git.CloneRepository(g.logger, g.globalConfig, &args, "main")
-	if err != nil {
-		g.logger.Error("failed to clone repository", "error", err)
-		return result, err
+	if err := g.validateFetch(&args); err != nil {
+		g.logger.Error("validation failed for fetch operation", "error", err)
+		return shared.VCSFetchResponse{}, err
 	}
-	result.Path = path
+
+	switch args.Mode {
+	case "PRscan":
+		return shared.VCSFetchResponse{}, errors.NewNotImplementedError("PRscan", "GitHub plugin")
+
+	default:
+		pluginConfigMap, err := shared.StructToMap(g.globalConfig.BitbucketPlugin)
+		if err != nil {
+			g.logger.Error("error converting struct to map", "error", err)
+			return result, err
+		}
+
+		clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, &args)
+		if err != nil {
+			g.logger.Error("failed to initialize Git client", "error", err)
+			return result, err
+		}
+
+		path, err := clientGit.CloneRepository(&args, "main")
+		if err != nil {
+			g.logger.Error("failed to clone repository", "error", err)
+			return result, err
+		}
+
+		result.Path = path
+	}
 
 	return result, nil
 }

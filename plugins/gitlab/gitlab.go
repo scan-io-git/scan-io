@@ -190,11 +190,24 @@ func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse,
 		return shared.VCSFetchResponse{}, errors.NewNotImplementedError("PRscan", "Gitlab plugin")
 
 	default:
-		path, err := git.CloneRepository(g.logger, g.globalConfig, &args, "master")
+		pluginConfigMap, err := shared.StructToMap(g.globalConfig.BitbucketPlugin)
+		if err != nil {
+			g.logger.Error("error converting struct to map", "error", err)
+			return result, err
+		}
+
+		clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, &args)
+		if err != nil {
+			g.logger.Error("failed to initialize Git client", "error", err)
+			return result, err
+		}
+
+		path, err := clientGit.CloneRepository(&args, "main")
 		if err != nil {
 			g.logger.Error("failed to clone repository", "error", err)
 			return result, err
 		}
+
 		result.Path = path
 	}
 

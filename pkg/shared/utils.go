@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"log"
 	"net/url"
@@ -158,4 +159,24 @@ func ContainsSubstring(target string, substrings []string) bool {
 		}
 	}
 	return false
+}
+
+// StructToMap converts a struct to a map[string]string using reflection.
+func StructToMap(data interface{}) (map[string]string, error) {
+	val := reflect.ValueOf(data)
+	if val.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("expected a struct but got %s", val.Kind())
+	}
+
+	result := make(map[string]string)
+	typ := val.Type()
+
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Field(i)
+		fieldName := typ.Field(i).Name
+		fieldValue := fmt.Sprintf("%v", field.Interface())
+		result[fieldName] = fieldValue
+	}
+
+	return result, nil
 }

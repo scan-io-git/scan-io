@@ -258,8 +258,20 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	g.logger.Debug("starting to fetch PR code")
 	args.Branch = prData.FromReference.DisplayID
 
+	pluginConfigMap, err := shared.StructToMap(g.globalConfig.BitbucketPlugin)
+	if err != nil {
+		g.logger.Error("error converting struct to map", "error", err)
+		return "", err
+	}
+
+	clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, args)
+	if err != nil {
+		g.logger.Error("failed to initialize Git client", "error", err)
+		return "", err
+	}
+
 	// TODO: Fix a strange bug when it fetches only pr changes without all other files in case of PR fetch
-	_, err = git.CloneRepository(g.logger, g.globalConfig, args, "master")
+	_, err = clientGit.CloneRepository(args, "main")
 	if err != nil {
 		g.logger.Error("failed to clone repository", "error", err)
 		return "", err
@@ -308,11 +320,24 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchRespon
 		result.Path = path
 
 	default:
-		path, err := git.CloneRepository(g.logger, g.globalConfig, &args, "master")
+		pluginConfigMap, err := shared.StructToMap(g.globalConfig.BitbucketPlugin)
+		if err != nil {
+			g.logger.Error("error converting struct to map", "error", err)
+			return result, err
+		}
+
+		clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, &args)
+		if err != nil {
+			g.logger.Error("failed to initialize Git client", "error", err)
+			return result, err
+		}
+
+		path, err := clientGit.CloneRepository(&args, "main")
 		if err != nil {
 			g.logger.Error("failed to clone repository", "error", err)
 			return result, err
 		}
+
 		result.Path = path
 	}
 
