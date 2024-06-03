@@ -13,6 +13,7 @@ import (
 	"github.com/scan-io-git/scan-io/internal/git"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 )
 
 // TODO: Wrap it in a custom error handler to add to the stack trace.
@@ -26,6 +27,18 @@ var (
 type VCSGitlab struct {
 	logger       hclog.Logger
 	globalConfig *config.Config
+}
+
+// newVCSGitlab creates a new instance of VCSGitlab.
+func newVCSGitlab(logger hclog.Logger) *VCSGitlab {
+	return &VCSGitlab{
+		logger: logger,
+	}
+}
+
+// setGlobalConfig sets the global configuration for the VCSGitlab instance.
+func (g *VCSGitlab) setGlobalConfig(globalConfig *config.Config) {
+	g.globalConfig = globalConfig
 }
 
 func getGitlabClient(vcsBaseURL string) (*gitlab.Client, error) {
@@ -148,44 +161,53 @@ func (g *VCSGitlab) ListRepositories(args shared.VCSListRepositoriesRequest) ([]
 }
 
 func (g *VCSGitlab) RetrievePRInformation(args shared.VCSRetrievePRInformationRequest) (shared.PRParams, error) {
-	var result shared.PRParams
-	err := fmt.Errorf("The function is not implemented got Gitlab.")
-
-	return result, err
+	return shared.PRParams{}, errors.NewNotImplementedError("RetrievePRInformation", "Gitlab plugin")
 }
 
 func (g *VCSGitlab) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error) {
-	err := fmt.Errorf("The function is not implemented got Github.")
-
-	return false, err
+	return false, errors.NewNotImplementedError("AddRoleToPR", "Gitlab plugin")
 }
 
 func (g *VCSGitlab) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, error) {
-	err := fmt.Errorf("The function is not implemented got Github.")
-
-	return false, err
+	return false, errors.NewNotImplementedError("SetStatusOfPR", "Gitlab plugin")
 }
 
 func (g *VCSGitlab) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (bool, error) {
-	err := fmt.Errorf("The function is not implemented got Github.")
-
-	return false, err
+	return false, errors.NewNotImplementedError("AddCommentToPR", "Gitlab plugin")
 }
 
+// Fetch retrieves code based on the provided VCSFetchRequest.
 func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
 	var result shared.VCSFetchResponse
 
-	path, err := git.CloneRepository(g.logger, g.globalConfig, &args, "main")
-	if err != nil {
-		g.logger.Error("failed to clone repository", "error", err)
-		return result, err
+	if err := g.validateFetch(&args); err != nil {
+		g.logger.Error("validation failed for fetch operation", "error", err)
+		return shared.VCSFetchResponse{}, err
 	}
-	result.Path = path
+
+	switch args.Mode {
+	case "PRscan":
+		return shared.VCSFetchResponse{}, errors.NewNotImplementedError("PRscan", "Gitlab plugin")
+
+	default:
+		path, err := git.CloneRepository(g.logger, g.globalConfig, &args, "master")
+		if err != nil {
+			g.logger.Error("failed to clone repository", "error", err)
+			return result, err
+		}
+		result.Path = path
+	}
+
 	return result, nil
 }
 
+// Setup initializes the global configuration for the VCSGitlab instance.
 func (g *VCSGitlab) Setup(configData config.Config) (bool, error) {
-	g.globalConfig = &configData
+	g.setGlobalConfig(&configData)
+	if err := UpdateConfigFromEnv(g.globalConfig); err != nil {
+		g.logger.Error("failed to update the global config from env variables", "error", err)
+		return false, err
+	}
 	return true, nil
 }
 
@@ -196,18 +218,13 @@ func main() {
 		JSONFormat: true,
 	})
 
-	VCS := &VCSGitlab{
-		logger: logger,
-	}
-	// pluginMap is the map of plugins we can dispense.
-	var pluginMap = map[string]plugin.Plugin{
-		shared.PluginTypeVCS: &shared.VCSPlugin{Impl: VCS},
-	}
-
-	// logger.Debug("message from plugin", "foo", "bar")
+	gitlabInstance := newVCSGitlab(logger)
 
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: shared.HandshakeConfig,
-		Plugins:         pluginMap,
+		Plugins: map[string]plugin.Plugin{
+			shared.PluginTypeVCS: &shared.VCSPlugin{Impl: gitlabInstance},
+		},
+		Logger: logger,
 	})
 }

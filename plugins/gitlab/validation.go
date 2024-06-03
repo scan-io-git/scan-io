@@ -7,15 +7,15 @@ import (
 )
 
 // validateCommonCredentials checks for the presence of common credentials.
-func (g *VCSGithub) validateCommonCredentials() error {
-	if len(g.globalConfig.GithubPlugin.Username) == 0 || len(g.globalConfig.GithubPlugin.Token) == 0 {
-		return fmt.Errorf("both Github username and token are required")
+func (g *VCSGitlab) validateCommonCredentials() error {
+	if len(g.globalConfig.GitlabPlugin.Username) == 0 || len(g.globalConfig.GitlabPlugin.Token) == 0 {
+		return fmt.Errorf("both Gitlab username and token are required")
 	}
 	return nil
 }
 
 // validateBaseArgs checks the common fields in VCSRequestBase and returns errors if they are not set.
-func (g *VCSGithub) validateBaseArgs(args *shared.VCSRequestBase) error {
+func (g *VCSGitlab) validateBaseArgs(args *shared.VCSRequestBase) error {
 	requiredFields := map[string]string{
 		"repository URL": args.VCSURL,
 		"namespace":      args.Namespace,
@@ -33,7 +33,7 @@ func (g *VCSGithub) validateBaseArgs(args *shared.VCSRequestBase) error {
 }
 
 // validateFetch checks the necessary fields in VCSFetchRequest and returns errors if they are not set.
-func (g *VCSGithub) validateFetch(args *shared.VCSFetchRequest) error {
+func (g *VCSGitlab) validateFetch(args *shared.VCSFetchRequest) error {
 	requiredFields := map[string]string{
 		"repository URL":      args.CloneURL,
 		"authentication type": args.AuthType,
@@ -50,7 +50,7 @@ func (g *VCSGithub) validateFetch(args *shared.VCSFetchRequest) error {
 
 	switch args.AuthType {
 	case "ssh-key":
-		if g.globalConfig.GithubPlugin.SSHKeyPassword == "" {
+		if g.globalConfig.GitlabPlugin.SSHKeyPassword == "" {
 			return fmt.Errorf("SSH key password is required for SSH-key authentication")
 		}
 	case "http":
@@ -62,7 +62,7 @@ func (g *VCSGithub) validateFetch(args *shared.VCSFetchRequest) error {
 }
 
 // validateList checks the necessary fields in VCSListReposRequest and returns errors if they are not set.
-func (g *VCSGithub) validateList(args *shared.VCSListRepositoriesRequest) error {
+func (g *VCSGitlab) validateList(args *shared.VCSListRepositoriesRequest) error {
 	if args.VCSURL == "" {
 		return fmt.Errorf("repository URL is required")
 	}
@@ -70,7 +70,7 @@ func (g *VCSGithub) validateList(args *shared.VCSListRepositoriesRequest) error 
 }
 
 // validateRetrievePRInformation checks the necessary fields in VCSRetrievePRInformationRequest and returns errors if they are not set.
-func (g *VCSGithub) validateRetrievePRInformation(args *shared.VCSRetrievePRInformationRequest) error {
+func (g *VCSGitlab) validateRetrievePRInformation(args *shared.VCSRetrievePRInformationRequest) error {
 	if err := g.validateBaseArgs(&args.VCSRequestBase); err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func (g *VCSGithub) validateRetrievePRInformation(args *shared.VCSRetrievePRInfo
 }
 
 // validateAddRoleToPR checks the necessary fields in VCSAddRoleToPRRequest and returns errors if they are not set.
-func (g *VCSGithub) validateAddRoleToPR(args *shared.VCSAddRoleToPRRequest) error {
+func (g *VCSGitlab) validateAddRoleToPR(args *shared.VCSAddRoleToPRRequest) error {
 	if err := g.validateBaseArgs(&args.VCSRequestBase); err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (g *VCSGithub) validateAddRoleToPR(args *shared.VCSAddRoleToPRRequest) erro
 }
 
 // validateSetStatusOfPR checks the necessary fields in VCSSetStatusOfPRRequest and returns errors if they are not set.
-func (g *VCSGithub) validateSetStatusOfPR(args *shared.VCSSetStatusOfPRRequest) error {
+func (g *VCSGitlab) validateSetStatusOfPR(args *shared.VCSSetStatusOfPRRequest) error {
 	if err := g.validateBaseArgs(&args.VCSRequestBase); err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func (g *VCSGithub) validateSetStatusOfPR(args *shared.VCSSetStatusOfPRRequest) 
 }
 
 // validateAddCommentToPR checks the necessary fields in VCSAddCommentToPRRequest and returns errors if they are not set.
-func (g *VCSGithub) validateAddCommentToPR(args *shared.VCSAddCommentToPRRequest) error {
+func (g *VCSGitlab) validateAddCommentToPR(args *shared.VCSAddCommentToPRRequest) error {
 	if err := g.validateBaseArgs(&args.VCSRequestBase); err != nil {
 		return err
 	}
