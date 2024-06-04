@@ -86,6 +86,10 @@ func (g VCSGitlab) getGitlabGroups(gitlabClient *gitlab.Client, searchNamespace 
 
 func (g *VCSGitlab) ListRepositories(args shared.VCSListRepositoriesRequest) ([]shared.RepositoryParams, error) {
 	g.logger.Debug("Starting an all-repositories listing function", "args", args)
+	if err := g.validateList(&args); err != nil {
+		g.logger.Error("validation failed for listing repositories operation", "error", err)
+		return nil, err
+	}
 
 	gitlabClient, err := getGitlabClient(args.VCSURL)
 	if err != nil {
@@ -161,18 +165,34 @@ func (g *VCSGitlab) ListRepositories(args shared.VCSListRepositoriesRequest) ([]
 }
 
 func (g *VCSGitlab) RetrievePRInformation(args shared.VCSRetrievePRInformationRequest) (shared.PRParams, error) {
+	// if err := g.validateRetrievePRInformation(&args); err != nil {
+	// 	g.logger.Error("validation failed for retrieving pull request information operation", "error", err)
+	// 	return nil, err
+	// }
 	return shared.PRParams{}, errors.NewNotImplementedError("RetrievePRInformation", "Gitlab plugin")
 }
 
 func (g *VCSGitlab) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error) {
+	// if err := g.validateAddRoleToPR(&args); err != nil {
+	// 	g.logger.Error("validation failed for adding a user to PR operation", "error", err)
+	// 	return nil, err
+	// }
 	return false, errors.NewNotImplementedError("AddRoleToPR", "Gitlab plugin")
 }
 
 func (g *VCSGitlab) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, error) {
+	// if err := g.validateSetStatusOfPR(&args); err != nil {
+	// 	g.logger.Error("validation failed for setting a status to PR operation", "error", err)
+	// 	return nil, err
+	// }
 	return false, errors.NewNotImplementedError("SetStatusOfPR", "Gitlab plugin")
 }
 
 func (g *VCSGitlab) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (bool, error) {
+	// if err := g.validateAddCommentToPR(&args); err != nil {
+	// 	g.logger.Error("validation failed for adding a comment to PR operation", "error", err)
+	// 	return nil, err
+	// }
 	return false, errors.NewNotImplementedError("AddCommentToPR", "Gitlab plugin")
 }
 

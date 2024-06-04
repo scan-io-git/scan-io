@@ -42,6 +42,12 @@ func (g *VCSGithub) setGlobalConfig(globalConfig *config.Config) {
 
 func (g *VCSGithub) ListRepositories(args shared.VCSListRepositoriesRequest) ([]shared.RepositoryParams, error) {
 	g.logger.Debug("Starting an all-repositories listing function", "args", args)
+
+	if err := g.validateList(&args); err != nil {
+		g.logger.Error("validation failed for listing repositories operation", "error", err)
+		return nil, err
+	}
+
 	client := github.NewClient(nil)
 	opt := &github.RepositoryListByOrgOptions{Type: "public"}
 	repos, _, err := client.Repositories.ListByOrg(context.Background(), args.Namespace, opt)
@@ -65,18 +71,34 @@ func (g *VCSGithub) ListRepositories(args shared.VCSListRepositoriesRequest) ([]
 }
 
 func (g *VCSGithub) RetrievePRInformation(args shared.VCSRetrievePRInformationRequest) (shared.PRParams, error) {
+	// if err := g.validateRetrievePRInformation(&args); err != nil {
+	// 	g.logger.Error("validation failed for retrieving pull request information operation", "error", err)
+	// 	return nil, err
+	// }
 	return shared.PRParams{}, errors.NewNotImplementedError("RetrievePRInformation", "GitHub plugin")
 }
 
 func (g *VCSGithub) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error) {
+	// if err := g.validateAddRoleToPR(&args); err != nil {
+	// 	g.logger.Error("validation failed for adding a user to PR operation", "error", err)
+	// 	return nil, err
+	// }
 	return false, errors.NewNotImplementedError("AddRoleToPR", "GitHub plugin")
 }
 
 func (g *VCSGithub) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, error) {
+	// if err := g.validateSetStatusOfPR(&args); err != nil {
+	// 	g.logger.Error("validation failed for setting a status to PR operation", "error", err)
+	// 	return nil, err
+	// }
 	return false, errors.NewNotImplementedError("SetStatusOfPR", "GitHub plugin")
 }
 
 func (g *VCSGithub) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (bool, error) {
+	// if err := g.validateAddCommentToPR(&args); err != nil {
+	// 	g.logger.Error("validation failed for adding a comment to PR operation", "error", err)
+	// 	return nil, err
+	// }
 	return false, errors.NewNotImplementedError("AddCommentToPR", "GitHub plugin")
 }
 
