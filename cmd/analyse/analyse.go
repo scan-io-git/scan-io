@@ -25,26 +25,26 @@ var (
 	AppConfig           *config.Config
 	analyseOptions      RunOptionsAnalyse
 	analyseResult       shared.GenericLaunchesResult
-	exampleAnalyseUsage = `    # Running semgrep scanner with an input file
-    scanio analyse --scanner semgrep --input-file /path/to/list_output.file
+	exampleAnalyseUsage = `  # Running semgrep scanner with an input file
+  scanio analyse --scanner semgrep --input-file /path/to/list_output.file
 	
-    # Running semgrep scanner on a specific path
-    scanio analyse --scanner semgrep /path/to/my_project
+  # Running semgrep scanner on a specific path
+  scanio analyse --scanner semgrep /path/to/my_project
 	
-    # Running semgrep scanner on a specific path with a specified report format
-    scanio analyse --scanner semgrep --format sarif /path/to/my_project
+  # Running semgrep scanner on a specific path with a specified report format
+  scanio analyse --scanner semgrep --format sarif /path/to/my_project
 	
-    # Running semgrep scanner with a configuration file and an input file
-    scanio analyse --scanner semgrep --config /path/to/scanner-config --input-file /path/to/list_output.file
+  # Running semgrep scanner with a configuration file and an input file
+  scanio analyse --scanner semgrep --config /path/to/scanner-config --input-file /path/to/list_output.file
 	
-    # Running semgrep scanner with additional arguments
-    scanio analyse --scanner semgrep --input-file /path/to/list_output.file --format sarif -- --verbose --severity INFO
+  # Running semgrep scanner with additional arguments
+  scanio analyse --scanner semgrep --input-file /path/to/list_output.file --format sarif -- --verbose --severity INFO
 
-    # Running semgrep scanner with an input file and specifying the output directory
-    scanio analyse --scanner semgrep --input-file /path/to/list_output.file --output /path/to/scanner_results
+  # Running semgrep scanner with an input file and specifying the output directory
+  scanio analyse --scanner semgrep --input-file /path/to/list_output.file --output /path/to/scanner_results
 
-    # Running semgrep scanner on a specific path and specifying the output file
-    scanio analyse --scanner semgrep /path/to/my_project --format json --output /path/to/scanner_results/result.json`
+  # Running semgrep scanner on a specific path and specifying the output file
+  scanio analyse --scanner semgrep /path/to/my_project --format json --output /path/to/scanner_results/result.json`
 )
 
 // AnalyseCmd represents the analyse command.
@@ -54,13 +54,13 @@ var AnalyseCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Example:               exampleAnalyseUsage,
 	Short:                 "Provides a top-level interface with orchestration for running a specified scanner",
-	Long: `Provides a top-level interface with orchestration for running a specified scanner
+	Long: `Provides a top-level interface with orchestration for running a specified scanner.
 
 List of plugins:
-- semgrep
-- bandit
-- trufflehog
-- trufflehog3`,
+  semgrep
+  bandit
+  trufflehog
+  trufflehog3`,
 
 	RunE: runAnalyseCommand,
 }
@@ -72,11 +72,14 @@ func Init(cfg *config.Config) {
 
 // runAnalyseCommand executes the analyse command.
 func runAnalyseCommand(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return cmd.Help()
+	}
+
 	logger := logger.NewLogger(AppConfig, "core-analyze")
 	argsLenAtDash := cmd.ArgsLenAtDash()
 
 	if err := validateAnalyseArgs(&analyseOptions, args, argsLenAtDash); err != nil {
-		logger.Error("validation failed", "error", err)
 		return err
 	}
 
@@ -114,10 +117,11 @@ func runAnalyseCommand(cmd *cobra.Command, args []string) error {
 
 // Initialize flags for the analyse command.
 func init() {
-	AnalyseCmd.Flags().StringVarP(&analyseOptions.Scanner, "scanner", "s", "", "Name of the scanner plugin to use (e.g., semgrep, bandit).")
-	AnalyseCmd.Flags().StringVarP(&analyseOptions.InputFile, "input-file", "i", "", "Path to a file in Scanio format containing a list of repositories to analyse. Use the list command to prepare this file.")
 	AnalyseCmd.Flags().StringVarP(&analyseOptions.ScannerConfig, "config", "c", "", "Path or type of configuration for the scanner. The format depends on the specific scanner being used.")
 	AnalyseCmd.Flags().StringVarP(&analyseOptions.ReportFormat, "format", "f", "", "Format for the report with results.")
+	AnalyseCmd.Flags().BoolP("help", "h", false, "Show help for the analyse command.")
+	AnalyseCmd.Flags().StringVarP(&analyseOptions.InputFile, "input-file", "i", "", "Path to a file in Scanio format containing a list of repositories to analyse. Use the list command to prepare this file.")
 	AnalyseCmd.Flags().StringVarP(&analyseOptions.OutputPath, "output", "o", "", "Path to the output file or directory where the scanner's results will be saved.")
+	AnalyseCmd.Flags().StringVarP(&analyseOptions.Scanner, "scanner", "s", "", "Name of the scanner plugin to use (e.g., semgrep, bandit).")
 	AnalyseCmd.Flags().IntVarP(&analyseOptions.Threads, "threads", "j", 1, "Number of concurrent threads to use.")
 }
