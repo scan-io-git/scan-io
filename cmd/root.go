@@ -11,6 +11,7 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
+// Global variables for configuration and the command.
 var (
 	AppConfig *config.Config
 	cfgFile   string
@@ -19,19 +20,11 @@ var (
 		SilenceUsage:          true,
 		DisableFlagsInUseLine: true,
 		Short:                 "Comprehensive tool orchestration for security checks",
-		Long: `Scanio is an orchestrator that consolidates various security scanning capabilities, including static application security testing (SAST), secret detection, dependency analysis, etc.
+		Long: `Scanio is an orchestrator that consolidates various security scanning capabilities, including static code analysis, secret detection, dependency analysis, etc.
 
   Learn more at: https://github.com/scan-io-git/scan-io`,
 	}
 )
-
-func init() {
-	cobra.OnInitialize(initConfig)
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is .config.yml)")
-	rootCmd.Flags().BoolP("help", "h", false, "Show help for Scanio.")
-	rootCmd.AddCommand(analyse.AnalyseCmd)
-	rootCmd.AddCommand(version.NewVersionCmd())
-}
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 func Execute() {
@@ -41,7 +34,7 @@ func Execute() {
 	}
 }
 
-// initConfig reads in config file and ENV variables if set and initialize commands with the loaded config.
+// initConfig reads the configuration file and initializes the commands with the loaded configuration.
 func initConfig() {
 	var err error
 	AppConfig, err = config.LoadConfig(cfgFile)
@@ -58,4 +51,13 @@ func initConfig() {
 
 	analyse.Init(AppConfig)
 	version.Init(AppConfig)
+}
+
+func init() {
+	cobra.OnInitialize(initConfig)
+
+	rootCmd.Flags().BoolP("help", "h", false, "Show help for Scanio.")
+	rootCmd.AddCommand(analyse.AnalyseCmd)
+	rootCmd.AddCommand(version.NewVersionCmd())
+	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is .config.yml)")
 }
