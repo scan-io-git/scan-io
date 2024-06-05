@@ -1,37 +1,18 @@
 package shared
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
-	"reflect"
-
-	"log"
 	"net/url"
-	"os"
 	"path"
+	"reflect"
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
+
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/files"
 )
-
-type CustomData interface{}
-
-func WriteJsonFile(outputFile string, logger hclog.Logger, data ...CustomData) {
-	file, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		log.Fatalf("failed creating file: %s", err)
-	}
-	defer file.Close()
-
-	datawriter := bufio.NewWriter(file)
-	defer datawriter.Flush()
-
-	resultJson, _ := json.MarshalIndent(data[0], "", "    ")
-	datawriter.Write(resultJson)
-	logger.Info("Results saved to file", "path", outputFile)
-
-}
 
 func ExtractRepositoryInfoFromURL(Url string, VCSPlugName string) (string, string, string, string, string, string, error) {
 	var (
@@ -179,4 +160,21 @@ func StructToMap(data interface{}) (map[string]string, error) {
 	}
 
 	return result, nil
+}
+
+// WriteGenericResult writes the provided result to a JSON file in the Scanio home directory.
+func WriteGenericResult(cfg *config.Config, logger hclog.Logger, result GenericLaunchesResult, commandName string) error {
+	outputFilePath := fmt.Sprintf("%v/%s.scanio-result", config.GetScanioHome(cfg), commandName)
+
+	resultData, err := json.Marshal(result)
+	if err != nil {
+		return fmt.Errorf("error marshaling the result data: %w", err)
+	}
+
+	if err := files.WriteJsonFile(outputFilePath, logger, resultData); err != nil {
+		return fmt.Errorf("error writing result to log file: %w", err)
+	}
+	logger.Info("results saved to file", "path", outputFilePath)
+
+	return nil
 }

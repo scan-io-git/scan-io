@@ -1,6 +1,8 @@
 package files
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -189,4 +191,20 @@ func FindByExtAndRemove(root string, exts []string) {
 		}
 		return nil
 	})
+}
+
+func WriteJsonFile(outputFile string, data ...interface{}) error {
+	file, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("failed creating file: %w", err)
+	}
+	defer file.Close()
+
+	datawriter := bufio.NewWriter(file)
+	defer datawriter.Flush()
+
+	resultJson, _ := json.MarshalIndent(data[0], "", "    ")
+	datawriter.Write(resultJson)
+
+	return nil
 }

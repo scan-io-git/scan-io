@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/scan-io-git/scan-io/cmd/analyse"
 	"github.com/scan-io-git/scan-io/cmd/version"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
@@ -27,13 +28,13 @@ var (
 func init() {
 	cobra.OnInitialize(initConfig)
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is .config.yml)")
+	rootCmd.AddCommand(analyse.AnalyseCmd)
 	rootCmd.AddCommand(version.NewVersionCmd())
 }
 
 func Execute() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error executing command: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -53,5 +54,5 @@ func initConfig() {
 	}
 
 	version.Init(AppConfig)
-
+	analyse.Init(AppConfig)
 }

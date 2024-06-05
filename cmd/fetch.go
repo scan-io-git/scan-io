@@ -8,10 +8,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/internal/fetcher"
-	utils "github.com/scan-io-git/scan-io/internal/utils"
 	"github.com/scan-io-git/scan-io/pkg/shared"
-	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
+
+	utils "github.com/scan-io-git/scan-io/internal/utils"
 )
 
 type RunOptionsFetch struct {
@@ -144,9 +144,7 @@ List of plugins:
 		}
 
 		logger.Debug("Integration result", "result", resultFetch)
-
-		shared.WriteJsonFile(fmt.Sprintf("%v/FETCH.scanio-result", config.GetScanioHome(AppConfig)), logger, resultFetch)
-		return nil
+		return shared.WriteGenericResult(AppConfig, logger, resultFetch, "FETCH")
 	},
 }
 

@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
-	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
@@ -196,9 +195,7 @@ List of actions for github:
 			}
 
 			logger.Debug("Integration result", "result", resultsIntegrationVCS)
-			shared.WriteJsonFile(fmt.Sprintf("%v/VCS-INTEGRATION-%v.scanio-result", config.GetScanioHome(AppConfig), strings.ToUpper(allArgumentsIntegrationVCS.Action)), logger, resultsIntegrationVCS)
-
-			return nil
+			return shared.WriteGenericResult(AppConfig, logger, resultFetch, fmt.Sprintf("VCS-INTEGRATION-%v", strings.ToUpper(allArgumentsIntegrationVCS.Action)))
 		}
 
 		if err := checkArgs(); err != nil {
