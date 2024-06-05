@@ -1,6 +1,7 @@
 package version
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -21,8 +22,14 @@ var (
 
 // Versions struct holds version information for the core application and plugins.
 type CoreVersions struct {
-	Versions       shared.Versions   `json:"versions"`
-	PluginVersions map[string]string `json:"plugin_versions"`
+	Versions    shared.Versions       `json:"versions"`
+	PluginsMeta map[string]PluginMeta `json:"plugins_meta"`
+}
+
+// PluginVersion holds version information for a plugin.
+type PluginMeta struct {
+	Version    string `json:"version"`
+	PluginType string `json:"plugin_type"`
 }
 
 // Init initializes the global configuration variable.
@@ -44,8 +51,8 @@ func NewVersionCmd() *cobra.Command {
 				BuildTime:     BuildTime,
 			}
 			version := CoreVersions{
-				Versions:       versionInfo,
-				PluginVersions: getPluginVersions(config.GetScanioPluginsHome(AppConfig)),
+				Versions:    versionInfo,
+				PluginsMeta: getPluginVersions(config.GetScanioPluginsHome(AppConfig)),
 			}
 
 			printVersionInfo(&version)
@@ -53,41 +60,45 @@ func NewVersionCmd() *cobra.Command {
 	}
 }
 
-// getVersion reads the version from the given version file.
-func readVersionFile(versionFilePath string) string {
+// readVersionFile reads and parses the version file as JSON.
+func readVersionFile(versionFilePath string) PluginMeta {
+	var pm PluginMeta
 	data, err := os.ReadFile(versionFilePath)
 	if err != nil {
-		return "unknown"
+		return PluginMeta{Version: "unknown", PluginType: "unknown"}
 	}
-	return string(data)
+	if err := json.Unmarshal(data, &pm); err != nil {
+		return PluginMeta{Version: "unknown", PluginType: "unknown"}
+	}
+	return pm
 }
 
 // getPluginVersions iterates through the plugin directories and reads their version files.
-func getPluginVersions(pluginsDir string) map[string]string {
-	pluginVersions := make(map[string]string)
+func getPluginVersions(pluginsDir string) map[string]PluginMeta {
+	pluginsMeta := make(map[string]PluginMeta)
 	entries, err := os.ReadDir(pluginsDir)
 	if err != nil {
 		log.Printf("Failed to read plugins directory: %v", err)
-		pluginVersions["unknown"] = "unknown"
-		return pluginVersions
+		pluginsMeta["unknown"] = PluginMeta{Version: "unknown", PluginType: "unknown"}
+		return pluginsMeta
 	}
 	for _, entry := range entries {
 		if entry.IsDir() {
 			pluginName := entry.Name()
 			versionFilePath := filepath.Join(pluginsDir, pluginName, "VERSION")
 			version := readVersionFile(versionFilePath)
-			pluginVersions[pluginName] = version
+			pluginsMeta[pluginName] = version
 		}
 	}
-	return pluginVersions
+	return pluginsMeta
 }
 
 // printVersionInfo prints the version information for the core application and plugins.
 func printVersionInfo(versions *CoreVersions) {
 	fmt.Printf("Core Version: v%s\n", versions.Versions.Version)
 	fmt.Println("Plugin Versions:")
-	for plugin, version := range versions.PluginVersions {
-		fmt.Printf("  %s: v%s\n", plugin, version)
+	for plugin, version := range versions.PluginsMeta {
+		fmt.Printf("  %s: v%s (Type: %s)\n", plugin, version.Version, version.PluginType)
 	}
 	fmt.Printf("Go Version: %s\n", versions.Versions.GolangVersion)
 	fmt.Printf("Build Time: %s\n", versions.Versions.BuildTime)

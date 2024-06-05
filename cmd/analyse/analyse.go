@@ -1,6 +1,9 @@
 package analyse
 
 import (
+	// "fmt"
+	// "strings"
+
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/internal/scanner"
@@ -54,13 +57,7 @@ var AnalyseCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Example:               exampleAnalyseUsage,
 	Short:                 "Provides a top-level interface with orchestration for running a specified scanner",
-	Long: `Provides a top-level interface with orchestration for running a specified scanner.
-
-List of plugins:
-  semgrep
-  bandit
-  trufflehog
-  trufflehog3`,
+	// Long:                  generateLongDescription(),
 
 	RunE: runAnalyseCommand,
 }
@@ -114,6 +111,15 @@ func runAnalyseCommand(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
+
+// // generateLongDescription generates the long description dynamically with the list of available plugins.
+// func generateLongDescription() string {
+// 	// plugins := getAvailablePlugins(config.GetScanioPluginsHome(AppConfig))
+// 	return fmt.Sprintf(`The main function is to present a top-level interface for a specified scanner
+
+// List of plugins:
+// %s`, strings.Join(plugins, "\n"))
+// }
 
 // Initialize flags for the analyse command.
 func init() {
