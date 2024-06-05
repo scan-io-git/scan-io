@@ -18,8 +18,8 @@ var (
 
 // Versions struct holds version information for the core application and plugins.
 type CoreVersions struct {
-	Versions    shared.Versions              `json:"versions"`
-	PluginsMeta map[string]shared.PluginMeta `json:"plugins_meta"`
+	Versions      shared.Versions              `json:"versions"`
+	PluginDetails map[string]shared.PluginMeta `json:"plugin_details"`
 }
 
 // Init initializes the global configuration variable.
@@ -41,8 +41,8 @@ func NewVersionCmd() *cobra.Command {
 				BuildTime:     BuildTime,
 			}
 			version := CoreVersions{
-				Versions:    versionInfo,
-				PluginsMeta: shared.GetPluginVersions(config.GetScanioPluginsHome(AppConfig), ""),
+				Versions:      versionInfo,
+				PluginDetails: shared.GetPluginVersions(config.GetScanioPluginsHome(AppConfig), ""),
 			}
 
 			printVersionInfo(&version)
@@ -54,7 +54,7 @@ func NewVersionCmd() *cobra.Command {
 func printVersionInfo(versions *CoreVersions) {
 	fmt.Printf("Core Version: v%s\n", versions.Versions.Version)
 	fmt.Println("Plugin Versions:")
-	for plugin, version := range versions.PluginsMeta {
+	for plugin, version := range versions.PluginDetails {
 		fmt.Printf("  %s: v%s (Type: %s)\n", plugin, version.Version, version.PluginType)
 	}
 	fmt.Printf("Go Version: %s\n", versions.Versions.GolangVersion)

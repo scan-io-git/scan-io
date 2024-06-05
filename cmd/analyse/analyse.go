@@ -119,9 +119,9 @@ func generateLongDescription(AppConfig *config.Config) string {
 	for plugin := range pluginsMeta {
 		plugins = append(plugins, plugin)
 	}
-	return fmt.Sprintf(`The main function is to present a top-level interface for a specified scanner
+	return fmt.Sprintf(`Provides a top-level interface with orchestration for running a specified scanner.
 
-List of plugins:
+List of avaliable scanner plugins:
   %s`, strings.Join(plugins, "\n  "))
 }
 

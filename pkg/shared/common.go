@@ -38,7 +38,7 @@ type Versions struct {
 	BuildTime     string `json:"build_time"`
 }
 
-// PluginVersion holds version information for a plugin.
+// PluginMeta holds version information for a plugin.
 type PluginMeta struct {
 	Version    string `json:"version"`
 	PluginType string `json:"plugin_type"`

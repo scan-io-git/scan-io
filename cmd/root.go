@@ -28,6 +28,7 @@ var (
 func init() {
 	cobra.OnInitialize(initConfig)
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is .config.yml)")
+	rootCmd.Flags().BoolP("help", "h", false, "Show help for Scanio.")
 	rootCmd.AddCommand(analyse.AnalyseCmd)
 	rootCmd.AddCommand(version.NewVersionCmd())
 }
