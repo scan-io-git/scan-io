@@ -1,8 +1,10 @@
 package shared
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
@@ -29,10 +31,52 @@ var PluginMap = map[string]plugin.Plugin{
 	PluginTypeScanner: &ScannerPlugin{},
 }
 
+// Versions holds meta information for binaries.
 type Versions struct {
 	Version       string `json:"version"`
 	GolangVersion string `json:"golang_version"`
 	BuildTime     string `json:"build_time"`
+}
+
+// PluginVersion holds version information for a plugin.
+type PluginMeta struct {
+	Version    string `json:"version"`
+	PluginType string `json:"plugin_type"`
+}
+
+// GetPluginVersions iterates through the plugin directories and reads their version files.
+func GetPluginVersions(pluginsDir, pluginType string) map[string]PluginMeta {
+	pluginsMeta := make(map[string]PluginMeta)
+	entries, err := os.ReadDir(pluginsDir)
+	if err != nil {
+		log.Printf("Failed to read plugins directory: %v", err)
+		pluginsMeta["unknown"] = PluginMeta{Version: "unknown", PluginType: "unknown"}
+		return pluginsMeta
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			pluginName := entry.Name()
+			versionFilePath := filepath.Join(pluginsDir, pluginName, "VERSION")
+			version := readVersionFile(versionFilePath)
+			if pluginType == "" || version.PluginType == pluginType {
+				pluginsMeta[pluginName] = version
+			}
+		}
+	}
+	return pluginsMeta
+}
+
+// readVersionFile reads and parses the version file as JSON.
+func readVersionFile(versionFilePath string) PluginMeta {
+	var pm PluginMeta
+	data, err := os.ReadFile(versionFilePath)
+	if err != nil {
+		return PluginMeta{Version: "unknown", PluginType: "unknown"}
+	}
+	if err := json.Unmarshal(data, &pm); err != nil {
+		return PluginMeta{Version: "unknown", PluginType: "unknown"}
+	}
+	return pm
 }
 
 func WithPlugin(cfg *config.Config, loggerName string, pluginType string, pluginName string, f func(interface{}) error) error {

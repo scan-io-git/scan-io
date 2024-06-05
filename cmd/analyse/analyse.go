@@ -1,8 +1,8 @@
 package analyse
 
 import (
-	// "fmt"
-	// "strings"
+	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -57,7 +57,6 @@ var AnalyseCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Example:               exampleAnalyseUsage,
 	Short:                 "Provides a top-level interface with orchestration for running a specified scanner",
-	// Long:                  generateLongDescription(),
 
 	RunE: runAnalyseCommand,
 }
@@ -65,6 +64,7 @@ var AnalyseCmd = &cobra.Command{
 // Init initializes the global configuration variable.
 func Init(cfg *config.Config) {
 	AppConfig = cfg
+	AnalyseCmd.Long = generateLongDescription(AppConfig)
 }
 
 // runAnalyseCommand executes the analyse command.
@@ -112,14 +112,18 @@ func runAnalyseCommand(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// // generateLongDescription generates the long description dynamically with the list of available plugins.
-// func generateLongDescription() string {
-// 	// plugins := getAvailablePlugins(config.GetScanioPluginsHome(AppConfig))
-// 	return fmt.Sprintf(`The main function is to present a top-level interface for a specified scanner
+// / generateLongDescription generates the long description dynamically with the list of available scanner plugins.
+func generateLongDescription(AppConfig *config.Config) string {
+	pluginsMeta := shared.GetPluginVersions(config.GetScanioPluginsHome(AppConfig), "scanner")
+	var plugins []string
+	for plugin := range pluginsMeta {
+		plugins = append(plugins, plugin)
+	}
+	return fmt.Sprintf(`The main function is to present a top-level interface for a specified scanner
 
-// List of plugins:
-// %s`, strings.Join(plugins, "\n"))
-// }
+List of plugins:
+  %s`, strings.Join(plugins, "\n  "))
+}
 
 // Initialize flags for the analyse command.
 func init() {

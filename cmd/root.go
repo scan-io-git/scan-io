@@ -53,6 +53,6 @@ func initConfig() {
 		os.Exit(1)
 	}
 
-	version.Init(AppConfig)
 	analyse.Init(AppConfig)
+	version.Init(AppConfig)
 }
