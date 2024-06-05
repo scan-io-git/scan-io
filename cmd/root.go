@@ -12,16 +12,16 @@ import (
 )
 
 var (
-	cfgFile   string
 	AppConfig *config.Config
+	cfgFile   string
 	rootCmd   = &cobra.Command{
 		Use:                   "scanio [command]",
 		SilenceUsage:          true,
 		DisableFlagsInUseLine: true,
-		Short:                 "Scanio is an orchestrator for a variety of tools.",
-		Long: `Scanio is an orchestrator that consolidates various security scanning capabilities, 
-	including SAST, dynamic application security testing DAST, secret search, and dependency analysis.
-	`,
+		Short:                 "Comprehensive tool orchestration for security checks",
+		Long: `Scanio is an orchestrator that consolidates various security scanning capabilities, including static application security testing (SAST), secret detection, dependency analysis, etc.
+
+  Learn more at: https://github.com/scan-io-git/scan-io`,
 	}
 )
 
@@ -33,6 +33,7 @@ func init() {
 	rootCmd.AddCommand(version.NewVersionCmd())
 }
 
+// Execute adds all child commands to the root command and sets flags appropriately.
 func Execute() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	if err := rootCmd.Execute(); err != nil {
@@ -40,6 +41,7 @@ func Execute() {
 	}
 }
 
+// initConfig reads in config file and ENV variables if set and initialize commands with the loaded config.
 func initConfig() {
 	var err error
 	AppConfig, err = config.LoadConfig(cfgFile)
