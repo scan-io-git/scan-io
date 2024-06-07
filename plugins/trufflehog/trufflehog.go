@@ -22,50 +22,74 @@ var (
 	BuildTime     = "unknown"
 )
 
+// ScannerTrufflehog represents the Trufflehog scanner with its configuration and logger.
 type ScannerTrufflehog struct {
 	logger       hclog.Logger
 	globalConfig *config.Config
 }
 
-func (g *ScannerTrufflehog) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
-	var (
-		commandArgs []string
-		cmd         *exec.Cmd
-		stdBuffer   bytes.Buffer
-		result      shared.ScannerScanResponse
-	)
+// newScannerTrufflehog creates a new instance of ScannerTrufflehog.
+func newScannerTrufflehog(logger hclog.Logger) *ScannerTrufflehog {
+	return &ScannerTrufflehog{
+		logger: logger,
+	}
+}
 
-	g.logger.Info("Scan is starting", "project", args.TargetPath)
-	g.logger.Debug("Debug info", "args", args)
+// setGlobalConfig sets the global configuration for the ScannerTrufflehog instance.
+func (g *ScannerTrufflehog) setGlobalConfig(globalConfig *config.Config) {
+	g.globalConfig = globalConfig
+}
 
-	// Add additional arguments
+// buildCommandArgs constructs the command-line arguments for the Trufflehog command.
+func (g *ScannerTrufflehog) buildCommandArgs(args shared.ScannerScanRequest) []string {
+	var commandArgs []string
+
+	appendArg := func(arg ...string) {
+		commandArgs = append(commandArgs, arg...)
+	}
+
 	if len(args.AdditionalArgs) != 0 {
-		commandArgs = append(commandArgs, args.AdditionalArgs...)
+		appendArg(args.AdditionalArgs...)
 	}
 
 	if args.ConfigPath != "" {
-		commandArgs = append(commandArgs, "--config", args.ConfigPath)
+		appendArg("--config", args.ConfigPath)
 	}
 
-	if args.ReportFormat != "" && args.ReportFormat == "json" {
-		reportFormat := fmt.Sprintf("--%v", args.ReportFormat)
-		commandArgs = append(commandArgs, reportFormat)
-	} else if args.ReportFormat != "" {
-		g.logger.Warn("Trufflehog supports only a json non default format. Will be used default format instead of your reportFormat", "reportFormat", args.ReportFormat)
+	if args.ReportFormat != "" {
+		appendArg(fmt.Sprintf("--%v", args.ReportFormat))
 	}
 
-	commandArgs = append(commandArgs, "--no-verification", "filesystem", args.TargetPath)
-	cmd = exec.Command("trufflehog", commandArgs...)
-	g.logger.Debug("Debug info", "cmd", cmd.Args)
+	appendArg("--no-verification", "filesystem")
+	appendArg(args.TargetPath)
+	return commandArgs
+}
 
-	// trufflehog doesn't support writing results in file, only to stdout
+// Scan executes the Trufflehog scan with the provided arguments and returns the scan response.
+func (g *ScannerTrufflehog) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
+	var result shared.ScannerScanResponse
+	g.logger.Info("Scan is starting", "project", args.TargetPath)
+	g.logger.Debug("Debug info", "args", args)
+
+	if err := g.validateScan(&args); err != nil {
+		g.logger.Error("validation failed for scan operation", "error", err)
+		return result, err
+	}
+
+	commandArgs := g.buildCommandArgs(args)
+
+	cmd := exec.Command("trufflehog", commandArgs...)
+	g.logger.Debug("debug info", "cmd", cmd.Args)
+
+	// Trufflehog doesn't support writing results to a file, only to stdout
 	// writing stdout to a file with results
 	resultsFile, err := os.Create(args.ResultsPath)
 	if err != nil {
-		return result, err
+		return result, fmt.Errorf("failed to create results file: %w", err)
 	}
 	defer resultsFile.Close()
 
+	var stdBuffer bytes.Buffer
 	mw := io.MultiWriter(g.logger.StandardWriter(&hclog.StandardLoggerOptions{
 		InferLevels: true,
 	}), &stdBuffer, resultsFile)
@@ -73,22 +97,20 @@ func (g *ScannerTrufflehog) Scan(args shared.ScannerScanRequest) (shared.Scanner
 	cmd.Stdout = mw
 	cmd.Stderr = mw
 
-	err = cmd.Run()
-	if err != nil {
-		err := fmt.Errorf(stdBuffer.String())
-		g.logger.Error("Trufflehog execution error", "error", err)
-		return result, err
+	if err := cmd.Run(); err != nil {
+		g.logger.Error("trufflehog execution error", "error", err)
+		return result, fmt.Errorf("trufflehog execution error: %w. Output: %s", err, stdBuffer.String())
 	}
-
-	result.ResultsPath = args.TargetPath
-	g.logger.Info("Scan finished for", "project", args.TargetPath)
-	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
-	g.logger.Debug("Debug info", "project", args.TargetPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
+	result.ResultsPath = args.ResultsPath
+	g.logger.Info("scan finished", "project", args.TargetPath)
+	g.logger.Info("result saved", "path", args.ResultsPath)
+	g.logger.Debug("debug info", "project", args.TargetPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
 	return result, nil
 }
 
+// Setup initializes the global configuration for the ScannerTrufflehog instance.
 func (g *ScannerTrufflehog) Setup(configData config.Config) (bool, error) {
-	g.globalConfig = &configData
+	g.setGlobalConfig(&configData)
 	return true, nil
 }
 
@@ -99,16 +121,13 @@ func main() {
 		JSONFormat: true,
 	})
 
-	Scanner := &ScannerTrufflehog{
-		logger: logger,
-	}
-
-	var pluginMap = map[string]plugin.Plugin{
-		shared.PluginTypeScanner: &shared.ScannerPlugin{Impl: Scanner},
-	}
+	trufflehogInstance := newScannerTrufflehog(logger)
 
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: shared.HandshakeConfig,
-		Plugins:         pluginMap,
+		Plugins: map[string]plugin.Plugin{
+			shared.PluginTypeVCS: &shared.ScannerPlugin{Impl: trufflehogInstance},
+		},
+		Logger: logger,
 	})
 }

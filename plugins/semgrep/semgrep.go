@@ -29,7 +29,7 @@ var (
 	BuildTime     = "unknown"
 )
 
-// ScannerSemgrep represents the semgrep scanner with its configuration and logger.
+// ScannerSemgrep represents the Semgrep scanner with its configuration and logger.
 type ScannerSemgrep struct {
 	logger       hclog.Logger
 	globalConfig *config.Config
@@ -47,7 +47,7 @@ func (g *ScannerSemgrep) setGlobalConfig(globalConfig *config.Config) {
 	g.globalConfig = globalConfig
 }
 
-// buildCommandArgs constructs the command-line arguments for the semgrep command.
+// buildCommandArgs constructs the command-line arguments for the Semgrep command.
 func (g *ScannerSemgrep) buildCommandArgs(args shared.ScannerScanRequest) []string {
 	var commandArgs []string
 
@@ -81,14 +81,14 @@ func (g *ScannerSemgrep) buildCommandArgs(args shared.ScannerScanRequest) []stri
 	return commandArgs
 }
 
-// Scan executes the semgrep scan with the provided arguments and returns the scan response.
+// Scan executes the Semgrep scan with the provided arguments and returns the scan response.
 func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
 	var result shared.ScannerScanResponse
 	g.logger.Info("scan is starting", "project", args.TargetPath)
 	g.logger.Debug("debug info", "args", args)
 
 	if err := g.validateScan(&args); err != nil {
-		g.logger.Error("validation failed for fetch operation", "error", err)
+		g.logger.Error("validation failed for scan operation", "error", err)
 		return result, err
 	}
 

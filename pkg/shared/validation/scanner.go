@@ -18,26 +18,13 @@ func ValidateScanArgs(args *shared.ScannerScanRequest) error {
 		return fmt.Errorf("results path is required")
 	}
 
-	paths := map[string]string{
-		"target path":  args.TargetPath,
-		"results path": args.ResultsPath,
+	expandedPath, err := files.ExpandPath(args.TargetPath)
+	if err != nil {
+		return fmt.Errorf("failed to expand path '%s': %w", expandedPath, err)
 	}
 
-	for name, path := range paths {
-		expandedPath, err := files.ExpandPath(path)
-		if err != nil {
-			return fmt.Errorf("failed to expand path '%s': %w", path, err)
-		}
-
-		if name == "results path" {
-			if err := files.CreateFolderIfNotExists(expandedPath); err != nil {
-				return fmt.Errorf("failed to create results path '%s': %w", expandedPath, err)
-			}
-		} else {
-			if _, err := os.Stat(expandedPath); os.IsNotExist(err) {
-				return fmt.Errorf("%s does not exist: %s", name, expandedPath)
-			}
-		}
+	if _, err := os.Stat(expandedPath); os.IsNotExist(err) {
+		return fmt.Errorf("target path does not exist: %s", expandedPath)
 	}
 
 	return nil
