@@ -110,6 +110,7 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) (shared.ScannerSca
 		g.logger.Error("semgrep execution error", "error", err)
 		return result, fmt.Errorf("semgrep execution error: %w. Output: %s", err, stdBuffer.String())
 	}
+
 	result.ResultsPath = args.ResultsPath
 	g.logger.Info("scan finished", "project", args.TargetPath)
 	g.logger.Info("result saved", "path", args.ResultsPath)

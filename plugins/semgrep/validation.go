@@ -21,7 +21,7 @@ func (g *ScannerSemgrep) validateFormatSoft(format string) {
 	formatList := []string{"json", "junit-xml", "sarif", "text", "vim"}
 	if !shared.IsInList(format, formatList) {
 		g.logger.Warn(
-			"the used known version of Semgrep doesn't support the passed format type. Continue scan...",
+			"the used known version of Semgrep doesn't support the passed format type. Continuing scan...",
 			"reportFormat", format,
 			"supportedFormats", strings.Join(formatList, ", "),
 		)

@@ -25,7 +25,7 @@ func (g *ScannerTrufflehog) validateFormatSoft(format string) {
 	formatList := []string{"json"}
 	if !shared.IsInList(format, formatList) {
 		g.logger.Warn(
-			"the used version of Trufflehog doesn't support the passed format type. Continue scan...",
+			"the used version of Trufflehog doesn't support the passed format type. Continuing scan...",
 			"reportFormat", format,
 			"supportedFormats", strings.Join(formatList, ", "),
 		)
