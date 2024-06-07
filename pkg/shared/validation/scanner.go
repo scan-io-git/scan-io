@@ -22,6 +22,7 @@ func ValidateScanArgs(args *shared.ScannerScanRequest) error {
 	if err != nil {
 		return fmt.Errorf("failed to expand path '%s': %w", expandedPath, err)
 	}
+	args.TargetPath = expandedPath
 
 	if _, err := os.Stat(expandedPath); os.IsNotExist(err) {
 		return fmt.Errorf("target path does not exist: %s", expandedPath)

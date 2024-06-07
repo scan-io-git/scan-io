@@ -178,3 +178,13 @@ func WriteGenericResult(cfg *config.Config, logger hclog.Logger, result GenericL
 
 	return nil
 }
+
+// IsInList checks if the target string is in the list of strings.
+func IsInList(target string, list []string) bool {
+	for _, item := range list {
+		if item == target {
+			return true
+		}
+	}
+	return false
+}

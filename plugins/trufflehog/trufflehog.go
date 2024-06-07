@@ -68,8 +68,8 @@ func (g *ScannerTrufflehog) buildCommandArgs(args shared.ScannerScanRequest) []s
 // Scan executes the Trufflehog scan with the provided arguments and returns the scan response.
 func (g *ScannerTrufflehog) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
 	var result shared.ScannerScanResponse
-	g.logger.Info("Scan is starting", "project", args.TargetPath)
-	g.logger.Debug("Debug info", "args", args)
+	g.logger.Info("scan is starting", "project", args.TargetPath)
+	g.logger.Debug("debug info", "args", args)
 
 	if err := g.validateScan(&args); err != nil {
 		g.logger.Error("validation failed for scan operation", "error", err)
