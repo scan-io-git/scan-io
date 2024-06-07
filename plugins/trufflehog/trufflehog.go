@@ -126,7 +126,7 @@ func main() {
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: shared.HandshakeConfig,
 		Plugins: map[string]plugin.Plugin{
-			shared.PluginTypeVCS: &shared.ScannerPlugin{Impl: trufflehogInstance},
+			shared.PluginTypeScanner: &shared.ScannerPlugin{Impl: trufflehogInstance},
 		},
 		Logger: logger,
 	})

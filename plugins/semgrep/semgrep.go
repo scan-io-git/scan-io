@@ -134,7 +134,7 @@ func main() {
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: shared.HandshakeConfig,
 		Plugins: map[string]plugin.Plugin{
-			shared.PluginTypeVCS: &shared.ScannerPlugin{Impl: semgrepInstance},
+			shared.PluginTypeScanner: &shared.ScannerPlugin{Impl: semgrepInstance},
 		},
 		Logger: logger,
 	})
