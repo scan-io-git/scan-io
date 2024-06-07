@@ -62,6 +62,7 @@ func (g *ScannerSemgrep) buildCommandArgs(args shared.ScannerScanRequest) []stri
 	}
 
 	if args.ReportFormat != "" {
+		g.validateFormatSoft(args.ReportFormat)
 		appendArg(fmt.Sprintf("--%v", args.ReportFormat))
 	}
 

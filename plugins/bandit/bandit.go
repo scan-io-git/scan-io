@@ -52,6 +52,7 @@ func (g *ScannerBandit) buildCommandArgs(args shared.ScannerScanRequest) []strin
 	}
 
 	if args.ReportFormat != "" {
+		g.validateFormatSoft(args.ReportFormat)
 		appendArg("-f", args.ReportFormat)
 	}
 

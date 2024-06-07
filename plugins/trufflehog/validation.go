@@ -17,16 +17,15 @@ func (g *ScannerTrufflehog) validateScan(args *shared.ScannerScanRequest) error 
 	if err := validation.ValidateScanArgs(args); err != nil {
 		return err
 	}
-	g.validateFormatSoft(args.ReportFormat)
 	return nil
 }
 
 // validateFormatSoft verifies if the given format is supported and logs a warning if it is not.
 func (g *ScannerTrufflehog) validateFormatSoft(format string) {
-	formatList := []string{"", "json"}
+	formatList := []string{"json"}
 	if !shared.IsInList(format, formatList) {
 		g.logger.Warn(
-			"the used version of Trufflehog doesn't support the passed format type",
+			"the used version of Trufflehog doesn't support the passed format type. Continue scan...",
 			"reportFormat", format,
 			"supportedFormats", strings.Join(formatList, ", "),
 		)

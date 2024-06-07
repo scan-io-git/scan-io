@@ -21,7 +21,7 @@ func (g *ScannerBandit) validateFormatSoft(format string) {
 	formatList := []string{"csv", "custom", "html", "json", "screen", "txt", "xml", "yaml"}
 	if !shared.IsInList(format, formatList) {
 		g.logger.Warn(
-			"the used known version of Bandit doesn't support the passed format type",
+			"the used known version of Bandit doesn't support the passed format type. Continue scan...",
 			"reportFormat", format,
 			"supportedFormats", strings.Join(formatList, ", "),
 		)

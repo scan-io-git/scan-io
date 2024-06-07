@@ -57,6 +57,7 @@ func (g *ScannerTrufflehog) buildCommandArgs(args shared.ScannerScanRequest) []s
 	}
 
 	if args.ReportFormat != "" {
+		g.validateFormatSoft(args.ReportFormat)
 		appendArg(fmt.Sprintf("--%v", args.ReportFormat))
 	}
 
