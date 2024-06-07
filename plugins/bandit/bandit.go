@@ -14,6 +14,7 @@ import (
 )
 
 // TODO: Wrap it in a custom error handler to add to the stack trace.
+// Metadata of the plugin
 var (
 	Version       = "unknown"
 	GolangVersion = "unknown"
