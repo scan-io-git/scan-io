@@ -71,6 +71,7 @@ func (pr *PullRequest) AddComment(commentText string, paths []string) (*PullRequ
 
 	var attachmentsText strings.Builder
 	if len(paths) != 0 {
+		attachmentsText.WriteString("\n**Report(s):**")
 		for _, filePath := range paths {
 			attachment, filename, err := pr.AttachFileToRepository(filePath)
 			if err != nil {
@@ -81,7 +82,7 @@ func (pr *PullRequest) AddComment(commentText string, paths []string) (*PullRequ
 				)
 				return nil, fmt.Errorf("failed to attach file to the repository: %w", err)
 			}
-			attachmentLink := fmt.Sprintf("[%s](%s)", filename, attachment.Links.Attachment.Href)
+			attachmentLink := fmt.Sprintf("* [%s](%s)", filename, attachment.Links.Attachment.Href)
 			attachmentsText.WriteString("\n" + attachmentLink)
 		}
 	}
