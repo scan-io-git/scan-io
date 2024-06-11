@@ -170,7 +170,7 @@ func (s *Scanner) scanRepo(cfg *config.Config, scanArg shared.ScannerScanRequest
 		var err error
 		result, err = scanner.Scan(scanArg)
 		if err != nil {
-			s.logger.Error("scanner plugin scan failed")
+			s.logger.Error("scanner plugin scan failed: %v. Error: %w", scanArg, err)
 			return fmt.Errorf("scanner plugin scan failed. Scan arguments: %v. Error: %w", scanArg, err)
 		}
 		return nil
@@ -180,11 +180,12 @@ func (s *Scanner) scanRepo(cfg *config.Config, scanArg shared.ScannerScanRequest
 }
 
 // ScanRepos scans multiple repositories concurrently and returns the aggregated results.
-func (s *Scanner) ScanRepos(cfg *config.Config, scanArgs []shared.ScannerScanRequest) shared.GenericLaunchesResult {
+func (s *Scanner) ScanRepos(cfg *config.Config, scanArgs []shared.ScannerScanRequest) (shared.GenericLaunchesResult, error) {
 	s.logger.Info("scan starting", "total", len(scanArgs), "goroutines", s.concurrentJobs)
 
 	var results shared.GenericLaunchesResult
 	resultsChannel := make(chan shared.GenericResult, len(scanArgs))
+	errorChannel := make(chan error, len(scanArgs))
 	values := make([]interface{}, len(scanArgs))
 	for i := range scanArgs {
 		values[i] = scanArgs[i]
@@ -193,22 +194,38 @@ func (s *Scanner) ScanRepos(cfg *config.Config, scanArgs []shared.ScannerScanReq
 	shared.ForEveryStringWithBoundedGoroutines(s.concurrentJobs, values, func(i int, value interface{}) {
 		scanArg, ok := value.(shared.ScannerScanRequest)
 		if !ok {
-			s.logger.Error("invalid scan argument type")
+			err := fmt.Errorf("invalid scan argument type at index %d", i)
+			s.logger.Error(err.Error())
+			errorChannel <- err
 			return
 		}
-		s.logger.Info("goroutine started", "#", i+1, "args", scanArg)
+		s.logger.Info("goroutine started", "index", i+1, "args", scanArg)
 
 		result, err := s.scanRepo(cfg, scanArg)
 		if err != nil {
 			resultsChannel <- shared.GenericResult{Args: scanArg, Result: result, Status: "FAILED", Message: err.Error()}
+			errorChannel <- err
 		} else {
 			resultsChannel <- shared.GenericResult{Args: scanArg, Result: result, Status: "OK", Message: ""}
 		}
 	})
 
 	close(resultsChannel)
+	close(errorChannel)
+
 	for result := range resultsChannel {
 		results.Launches = append(results.Launches, result)
 	}
-	return results
+
+	var errs []error
+	for err := range errorChannel {
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		s.logger.Debug("scanners execution errors", "errors", errs)
+		return results, fmt.Errorf("one or more scans failed. Check the results file")
+	}
+
+	return results, nil
 }

@@ -27,7 +27,6 @@ type RunOptionsAnalyse struct {
 var (
 	AppConfig           *config.Config
 	analyseOptions      RunOptionsAnalyse
-	analyseResult       shared.GenericLaunchesResult
 	exampleAnalyseUsage = `  # Running semgrep scanner with an input file
   scanio analyse --scanner semgrep --input-file /path/to/list_output.file
 	
@@ -57,8 +56,7 @@ var AnalyseCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Example:               exampleAnalyseUsage,
 	Short:                 "Provides a top-level interface with orchestration for running a specified scanner",
-
-	RunE: runAnalyseCommand,
+	RunE:                  runAnalyseCommand,
 }
 
 // Init initializes the global configuration variable.
@@ -77,6 +75,7 @@ func runAnalyseCommand(cmd *cobra.Command, args []string) error {
 	argsLenAtDash := cmd.ArgsLenAtDash()
 
 	if err := validateAnalyseArgs(&analyseOptions, args, argsLenAtDash); err != nil {
+		logger.Error("invalid analyse arguments", "error", err)
 		return err
 	}
 
@@ -103,12 +102,19 @@ func runAnalyseCommand(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	analyseResult = s.ScanRepos(AppConfig, analyseArgs)
+	analyseResult, scanErr := s.ScanRepos(AppConfig, analyseArgs)
+
 	if err := shared.WriteGenericResult(AppConfig, logger, analyseResult, "ANALYSE"); err != nil {
 		logger.Error("failed to write result", "error", err)
 		return err
 	}
 
+	if scanErr != nil {
+		logger.Error("analyse command failed", "error", scanErr)
+		return scanErr
+	}
+
+	logger.Info("analyse command completed successfully")
 	return nil
 }
 

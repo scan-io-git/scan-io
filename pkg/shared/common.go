@@ -159,7 +159,6 @@ func ForEveryStringWithBoundedGoroutines(limit int, values []interface{}, f func
 		wg.Add(1)
 		go func(i int, value interface{}) {
 			defer wg.Done()
-			// defer func() { <-guard }()
 			f(i, value)
 			<-guard
 		}(i, value)

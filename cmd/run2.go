@@ -48,7 +48,7 @@ func run2analyzeRepos(repos []shared.RepositoryParams) error {
 		return err
 	}
 
-	_ = s.ScanRepos(AppConfig, scanArgs)
+	_, _ = s.ScanRepos(AppConfig, scanArgs)
 
 	return nil
 }
