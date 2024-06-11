@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
+
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
@@ -15,7 +16,7 @@ import (
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 )
 
-// Scanner represents the basic configuration and behavior of a scanner.
+// Scanner represents the configuration and behavior of a scanner.
 type Scanner struct {
 	pluginName     string       // Name of the scanner plugin to use
 	configPath     string       // Path to the configuration file for the scanner
@@ -42,34 +43,25 @@ func (s *Scanner) PrepareScanArgs(cfg *config.Config, repos []shared.RepositoryP
 	var scanArgs []shared.ScannerScanRequest
 
 	// Determine report extension based on the format
-	reportExt := "raw"
-	if s.reportFormat != "" {
-		reportExt = s.reportFormat
-	}
+	reportExt := s.getReportExtension()
 
-	// Determine the name template based on the CI mode
+	// Generate the name template based on the CI mode
 	nameTemplate := s.generateNameTemplate(cfg, reportExt)
 
 	// Handle single target path scenario
 	if targetPath != "" {
 		resultsFile, err := s.determineResultsFilePath(targetPath, outputPath, nameTemplate)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to determine results file path: %w", err)
 		}
 
-		scanArgs = append(scanArgs, shared.ScannerScanRequest{
-			TargetPath:     targetPath,
-			ResultsPath:    resultsFile,
-			ConfigPath:     s.configPath,
-			ReportFormat:   s.reportFormat,
-			AdditionalArgs: s.additionalArgs,
-		})
+		scanArgs = append(scanArgs, s.createScanRequest(targetPath, resultsFile))
 	} else {
 		// Handle multiple repositories scenario
 		for _, repo := range repos {
 			scanArg, err := s.prepareRepoScanArg(cfg, repo, nameTemplate)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to prepare scan arguments for repository: %w", err)
 			}
 			scanArgs = append(scanArgs, scanArg)
 		}
@@ -84,7 +76,7 @@ func (s *Scanner) prepareRepoScanArg(cfg *config.Config, repo shared.RepositoryP
 	if err != nil {
 		domain, err = utils.GetDomain(repo.HttpLink)
 		if err != nil {
-			return shared.ScannerScanRequest{}, err
+			return shared.ScannerScanRequest{}, fmt.Errorf("failed to get domain from repository links: %w", err)
 		}
 	}
 
@@ -96,25 +88,19 @@ func (s *Scanner) prepareRepoScanArg(cfg *config.Config, repo shared.RepositoryP
 		return shared.ScannerScanRequest{}, fmt.Errorf("failed to create results folder '%s': %w", resultsFolderPath, err)
 	}
 
-	return shared.ScannerScanRequest{
-		TargetPath:     targetPath,
-		ResultsPath:    resultsFile,
-		ConfigPath:     s.configPath,
-		ReportFormat:   s.reportFormat,
-		AdditionalArgs: s.additionalArgs,
-	}, nil
+	return s.createScanRequest(targetPath, resultsFile), nil
 }
 
 // determineResultsFilePath determines the results file path based on target and output paths.
 func (s *Scanner) determineResultsFilePath(targetPath, outputPath, nameTemplate string) (string, error) {
 	if outputPath != "" {
-		return s.handleOutputPath(outputPath, nameTemplate)
+		return s.getOutputFilePath(outputPath, nameTemplate)
 	}
-	return s.handleOutputPath(targetPath, nameTemplate)
+	return s.getOutputFilePath(targetPath, nameTemplate)
 }
 
-// handleOutputPath handles the output path, creating directories as necessary.
-func (s *Scanner) handleOutputPath(path, nameTemplate string) (string, error) {
+// getOutputFilePath handles the output path, creating directories as necessary.
+func (s *Scanner) getOutputFilePath(path, nameTemplate string) (string, error) {
 	var resultsFile, resultsFolder string
 
 	fileInfo, err := os.Stat(path)
@@ -153,18 +139,39 @@ func (s *Scanner) generateNameTemplate(cfg *config.Config, reportExt string) str
 	return nameTemplate
 }
 
-func (s Scanner) scanRepo(cfg *config.Config, scanArg shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
-	var (
-		result shared.ScannerScanResponse
-		err    error
-	)
+// getReportExtension returns the report extension based on the report format.
+func (s *Scanner) getReportExtension() string {
+	if s.reportFormat != "" {
+		return s.reportFormat
+	}
+	return "raw"
+}
 
-	err = shared.WithPlugin(cfg, "plugin-scanner", shared.PluginTypeScanner, s.pluginName, func(raw interface{}) error {
-		scanner := raw.(shared.Scanner)
+// createScanRequest creates a ScannerScanRequest with the specified parameters.
+func (s *Scanner) createScanRequest(targetPath, resultsFile string) shared.ScannerScanRequest {
+	return shared.ScannerScanRequest{
+		TargetPath:     targetPath,
+		ResultsPath:    resultsFile,
+		ConfigPath:     s.configPath,
+		ReportFormat:   s.reportFormat,
+		AdditionalArgs: s.additionalArgs,
+	}
+}
+
+// scanRepo executes the scanning of a repository using the specified plugin.
+func (s *Scanner) scanRepo(cfg *config.Config, scanArg shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
+	var result shared.ScannerScanResponse
+
+	err := shared.WithPlugin(cfg, "plugin-scanner", shared.PluginTypeScanner, s.pluginName, func(raw interface{}) error {
+		scanner, ok := raw.(shared.Scanner)
+		if !ok {
+			return fmt.Errorf("invalid plugin type")
+		}
+		var err error
 		result, err = scanner.Scan(scanArg)
 		if err != nil {
-			s.logger.Error("Scanner plugin is failed")
-			return err
+			s.logger.Error("scanner plugin scan failed")
+			return fmt.Errorf("scanner plugin scan failed. Scan arguments: %v. Error: %w", scanArg, err)
 		}
 		return nil
 	})
@@ -172,9 +179,9 @@ func (s Scanner) scanRepo(cfg *config.Config, scanArg shared.ScannerScanRequest)
 	return result, err
 }
 
-func (s Scanner) ScanRepos(cfg *config.Config, scanArgs []shared.ScannerScanRequest) shared.GenericLaunchesResult {
-
-	s.logger.Info("Scan starting", "total", len(scanArgs), "goroutines", s.concurrentJobs)
+// ScanRepos scans multiple repositories concurrently and returns the aggregated results.
+func (s *Scanner) ScanRepos(cfg *config.Config, scanArgs []shared.ScannerScanRequest) shared.GenericLaunchesResult {
+	s.logger.Info("scan starting", "total", len(scanArgs), "goroutines", s.concurrentJobs)
 
 	var results shared.GenericLaunchesResult
 	resultsChannel := make(chan shared.GenericResult, len(scanArgs))
@@ -184,17 +191,18 @@ func (s Scanner) ScanRepos(cfg *config.Config, scanArgs []shared.ScannerScanRequ
 	}
 
 	shared.ForEveryStringWithBoundedGoroutines(s.concurrentJobs, values, func(i int, value interface{}) {
-		scanArg := value.(shared.ScannerScanRequest)
-		s.logger.Info("Goroutine started", "#", i+1, "args", scanArg)
+		scanArg, ok := value.(shared.ScannerScanRequest)
+		if !ok {
+			s.logger.Error("invalid scan argument type")
+			return
+		}
+		s.logger.Info("goroutine started", "#", i+1, "args", scanArg)
 
 		result, err := s.scanRepo(cfg, scanArg)
 		if err != nil {
-			s.logger.Error("scanners's scanRepo() failed", "err", err)
-			resultAnalyse := shared.GenericResult{Args: scanArg, Result: result, Status: "FAILED", Message: err.Error()}
-			resultsChannel <- resultAnalyse
+			resultsChannel <- shared.GenericResult{Args: scanArg, Result: result, Status: "FAILED", Message: err.Error()}
 		} else {
-			resultAnalyse := shared.GenericResult{Args: scanArg, Result: result, Status: "OK", Message: ""}
-			resultsChannel <- resultAnalyse
+			resultsChannel <- shared.GenericResult{Args: scanArg, Result: result, Status: "OK", Message: ""}
 		}
 	})
 

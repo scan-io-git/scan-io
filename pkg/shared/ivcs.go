@@ -106,21 +106,6 @@ type ListFuncResult struct {
 	Message string                     `json:"message"`
 }
 
-type GenericLaunchesResult struct {
-	Launches []GenericResult `json:"launches"`
-}
-
-type GenericResult struct {
-	Args    interface{} `json:"args"`
-	Result  interface{} `json:"result"`
-	Status  string      `json:"status"`
-	Message string      `json:"message"`
-}
-
-type EvnVariables struct {
-	Username, Token, VcsPort, SshKeyPassword string
-}
-
 type VCSFetchResponse struct {
 	Path string
 }

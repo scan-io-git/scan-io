@@ -1,22 +1,17 @@
 package shared
 
 import (
+	"fmt"
 	"net/rpc"
 
 	"github.com/hashicorp/go-plugin"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
+// Scanner defines the interface for scanner-related operations.
 type Scanner interface {
 	Setup(configData config.Config) (bool, error)
 	Scan(args ScannerScanRequest) (ScannerScanResponse, error)
-}
-
-type ScannerScanResult struct {
-	Args    ScannerScanRequest
-	Result  []string
-	Status  string
-	Message string
 }
 
 // ScannerScanRequest represents a single scan request.
@@ -28,57 +23,72 @@ type ScannerScanRequest struct {
 	AdditionalArgs []string // Additional arguments for the scanner
 }
 
+// ScannerScanResponse represents the response from a scan plugin.
 type ScannerScanResponse struct {
-	ResultsPath string
+	ResultsPath string // Path to the saved results of the scan
 }
 
-type ScannerRPCClient struct{ client *rpc.Client }
+// ScannerRPCClient implements the Scanner interface for RPC clients.
+type ScannerRPCClient struct {
+	client *rpc.Client
+}
 
-func (g *ScannerRPCClient) Setup(configData config.Config) (bool, error) {
+// Setup calls the Setup method on the RPC client.
+func (c *ScannerRPCClient) Setup(configData config.Config) (bool, error) {
 	var resp bool
-	err := g.client.Call("Plugin.Setup", configData, &resp)
+	err := c.client.Call("Plugin.Setup", configData, &resp)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("RPC client Setup call failed: %w", err)
 	}
 	return resp, nil
 }
 
-func (g *ScannerRPCClient) Scan(req ScannerScanRequest) (ScannerScanResponse, error) {
+// Scan calls the Scan method on the RPC client.
+func (c *ScannerRPCClient) Scan(req ScannerScanRequest) (ScannerScanResponse, error) {
 	var resp ScannerScanResponse
-
-	err := g.client.Call("Plugin.Scan", req, &resp)
-
+	err := c.client.Call("Plugin.Scan", req, &resp)
 	if err != nil {
-		return resp, err
+		return resp, fmt.Errorf("RPC client Scan call failed: %w", err)
 	}
-
 	return resp, nil
 }
 
+// ScannerRPCServer wraps a Scanner implementation to provide an RPC server.
 type ScannerRPCServer struct {
 	Impl Scanner
 }
 
+// Setup calls the Setup method on the Scanner implementation.
 func (s *ScannerRPCServer) Setup(configData config.Config, resp *bool) error {
 	var err error
 	*resp, err = s.Impl.Setup(configData)
-	return err
+	if err != nil {
+		return fmt.Errorf("Scanner Setup failed: %w", err)
+	}
+	return nil
 }
 
+// Scan calls the Scan method on the Scanner implementation.
 func (s *ScannerRPCServer) Scan(args ScannerScanRequest, resp *ScannerScanResponse) error {
 	var err error
 	*resp, err = s.Impl.Scan(args)
-	return err
+	if err != nil {
+		return fmt.Errorf("Scanner Scan failed: %w", err)
+	}
+	return nil
 }
 
+// ScannerPlugin is the implementation of the plugin.Plugin interface for scanners.
 type ScannerPlugin struct {
 	Impl Scanner
 }
 
+// Server returns an RPC server for the Scanner plugin.
 func (p *ScannerPlugin) Server(*plugin.MuxBroker) (interface{}, error) {
 	return &ScannerRPCServer{Impl: p.Impl}, nil
 }
 
-func (ScannerPlugin) Client(b *plugin.MuxBroker, c *rpc.Client) (interface{}, error) {
+// Client returns an RPC client for the Scanner plugin.
+func (p *ScannerPlugin) Client(b *plugin.MuxBroker, c *rpc.Client) (interface{}, error) {
 	return &ScannerRPCClient{client: c}, nil
 }
