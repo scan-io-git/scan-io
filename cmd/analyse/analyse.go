@@ -67,7 +67,7 @@ func Init(cfg *config.Config) {
 
 // runAnalyseCommand executes the analyse command.
 func runAnalyseCommand(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
+	if len(args) == 0 && !shared.HasFlags(cmd.Flags()) {
 		return cmd.Help()
 	}
 

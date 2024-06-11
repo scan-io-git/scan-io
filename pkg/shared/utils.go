@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/spf13/pflag"
 
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
@@ -187,4 +188,15 @@ func IsInList(target string, list []string) bool {
 		}
 	}
 	return false
+}
+
+// hasFlags checks if any flags have been set.
+func HasFlags(flags *pflag.FlagSet) bool {
+	hasFlags := false
+	flags.VisitAll(func(flag *pflag.Flag) {
+		if flag.Changed {
+			hasFlags = true
+		}
+	})
+	return hasFlags
 }
