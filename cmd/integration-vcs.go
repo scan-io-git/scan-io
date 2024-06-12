@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
@@ -70,7 +71,6 @@ List of actions for github:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
 			arguments             Arguments
-			resultIntegrationVCS  shared.GenericResult
 			resultsIntegrationVCS shared.GenericLaunchesResult
 		)
 
@@ -170,22 +170,7 @@ List of actions for github:
 			}
 
 			logger := logger.NewLogger(AppConfig, "core-integration-vcs")
-
-			shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, allArgumentsIntegrationVCS.VCSPlugName, func(raw interface{}) error {
-				vcsName := raw.(shared.VCS)
-				result, err := performAction(allArgumentsIntegrationVCS.Action, vcsName, arguments)
-
-				if err != nil {
-					resultIntegrationVCS = shared.GenericResult{Args: arguments, Result: result, Status: "FAILED", Message: err.Error()}
-					logger.Error("A function of VCS integrations is failed", "action", allArgumentsIntegrationVCS.Action)
-					logger.Error("Error", "message", resultIntegrationVCS.Message)
-					return err
-				}
-				resultIntegrationVCS = shared.GenericResult{Args: arguments, Result: result, Status: "OK", Message: ""}
-				logger.Info("A function of VCS integrations is successfully", "status", resultIntegrationVCS.Status, "action", allArgumentsIntegrationVCS.Action)
-
-				return nil
-			})
+			resultIntegrationVCS, integrationErr := integrationAction(AppConfig, shared.PluginTypeVCS, allArgumentsIntegrationVCS.VCSPlugName, arguments)
 
 			resultsIntegrationVCS.Launches = append(resultsIntegrationVCS.Launches, resultIntegrationVCS)
 			_, err := json.Marshal(resultsIntegrationVCS)
@@ -195,7 +180,15 @@ List of actions for github:
 			}
 
 			logger.Debug("Integration result", "result", resultsIntegrationVCS)
-			return shared.WriteGenericResult(AppConfig, logger, resultFetch, fmt.Sprintf("VCS-INTEGRATION-%v", strings.ToUpper(allArgumentsIntegrationVCS.Action)))
+			if err := shared.WriteGenericResult(AppConfig, logger, resultFetch, fmt.Sprintf("VCS-INTEGRATION-%v", strings.ToUpper(allArgumentsIntegrationVCS.Action))); err != nil {
+				logger.Error("failed to write result", "error", err)
+				return err
+			}
+
+			if integrationErr != nil {
+				return fmt.Errorf("vcs plugin integration failed. Integration arguments: %v. Error: %w", arguments, integrationErr)
+			}
+			return nil
 		}
 
 		if err := checkArgs(); err != nil {
@@ -203,6 +196,31 @@ List of actions for github:
 		}
 		return nil
 	},
+}
+
+// scanRepo executes the scanning of a repository using the specified plugin.
+func integrationAction(cfg *config.Config, pluginType, pluginName string, arguments interface{}) (shared.GenericResult, error) {
+	var result shared.GenericResult
+	err := shared.WithPlugin(cfg, "plugin-vcs", pluginType, pluginName, func(raw interface{}) error {
+		vcsName, ok := raw.(shared.VCS)
+		if !ok {
+			return fmt.Errorf("invalid plugin type")
+		}
+		var err error
+		result, err := performAction(allArgumentsIntegrationVCS.Action, vcsName, arguments)
+		if err != nil {
+			result = shared.GenericResult{Args: arguments, Result: result, Status: "FAILED", Message: err.Error()}
+			// logger.Error("A function of VCS integrations is failed", "action", allArgumentsIntegrationVCS.Action)
+			// logger.Error("Error", "message", result.Message)
+			return err
+		}
+		result = shared.GenericResult{Args: arguments, Result: result, Status: "OK", Message: ""}
+		// logger.Info("A function of VCS integrations is successfully", "status", result.Status, "action", allArgumentsIntegrationVCS.Action)
+
+		return nil
+	})
+
+	return result, err
 }
 
 func validateCommonArguments() error {
