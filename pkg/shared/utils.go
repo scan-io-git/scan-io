@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/spf13/pflag"
 
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
@@ -177,4 +178,25 @@ func WriteGenericResult(cfg *config.Config, logger hclog.Logger, result GenericL
 	logger.Info("results saved to file", "path", outputFilePath)
 
 	return nil
+}
+
+// IsInList checks if the target string is in the list of strings.
+func IsInList(target string, list []string) bool {
+	for _, item := range list {
+		if item == target {
+			return true
+		}
+	}
+	return false
+}
+
+// hasFlags checks if any flags have been set.
+func HasFlags(flags *pflag.FlagSet) bool {
+	hasFlags := false
+	flags.VisitAll(func(flag *pflag.Flag) {
+		if flag.Changed {
+			hasFlags = true
+		}
+	})
+	return hasFlags
 }

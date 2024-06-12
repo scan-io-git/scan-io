@@ -21,11 +21,15 @@ github_plugin:
   token: ""              # Github access token for authentication. Default: none. Can be overridden with the environment variable SCANIO_GITHUB_TOKEN.
   ssh_key_password: ""   # Password for the SSH key used in Github operations. Default: none. Can be overridden with the environment variable SCANIO_GITHUB_SSH_KEY_PASSWORD.
 
-## Github plugin config
+## Gitlab plugin config
 gitlab_plugin:
-  username: ""           # Github username for authentication. Default: none. Can be overridden with the environment variable SCANIO_GITLAB_USERNAME.
-  token: ""              # Github access token for authentication. Default: none. Can be overridden with the environment variable SCANIO_GITLAB_TOKEN.
-  ssh_key_password: ""   # Password for the SSH key used in Github operations. Default: none. Can be overridden with the environment variable SCANIO_GITLAB_SSH_KEY_PASSWORD.
+  username: ""           # Gitlab username for authentication. Default: none. Can be overridden with the environment variable SCANIO_GITLAB_USERNAME.
+  token: ""              # Gitlab access token for authentication. Default: none. Can be overridden with the environment variable SCANIO_GITLAB_TOKEN.
+  ssh_key_password: ""   # Password for the SSH key used in Gitlab operations. Default: none. Can be overridden with the environment variable SCANIO_GITLAB_SSH_KEY_PASSWORD.
+
+## CodeQL plugin config
+codeql_plugin:
+  db_language: ""           # CodeQL language for building a DB. Default: none. Can be overridden with the environment variable SCANIO_CODEQL_DB_LANGUAGE.
 
 ## Logger config
 logger:

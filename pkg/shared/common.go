@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	PluginTypeVCS     string = "vcs"
-	PluginTypeScanner string = "scanner"
+	PluginTypeVCS     = "vcs"
+	PluginTypeScanner = "scanner"
+	unknownVersion    = "unknown"
 )
 
 var HandshakeConfig = plugin.HandshakeConfig{
@@ -26,9 +27,23 @@ var HandshakeConfig = plugin.HandshakeConfig{
 	MagicCookieValue: "a65de33ff91e68ab6f5cd1fd5abb1235294816f5",
 }
 
+// PluginMap defines the available plugins.
 var PluginMap = map[string]plugin.Plugin{
 	PluginTypeVCS:     &VCSPlugin{},
 	PluginTypeScanner: &ScannerPlugin{},
+}
+
+// GenericResult represents the result of a generic operation.
+type GenericResult struct {
+	Args    interface{} `json:"args"`
+	Result  interface{} `json:"result"`
+	Status  string      `json:"status"`
+	Message string      `json:"message"`
+}
+
+// GenericLaunchesResult represents a list of launches.
+type GenericLaunchesResult struct {
+	Launches []GenericResult `json:"launches"`
 }
 
 // Versions holds meta information for binaries.
@@ -50,7 +65,7 @@ func GetPluginVersions(pluginsDir, pluginType string) map[string]PluginMeta {
 	entries, err := os.ReadDir(pluginsDir)
 	if err != nil {
 		log.Printf("Failed to read plugins directory: %v", err)
-		pluginsMeta["unknown"] = PluginMeta{Version: "unknown", PluginType: "unknown"}
+		pluginsMeta[unknownVersion] = PluginMeta{Version: unknownVersion, PluginType: unknownVersion}
 		return pluginsMeta
 	}
 	for _, entry := range entries {
@@ -71,15 +86,16 @@ func readVersionFile(versionFilePath string) PluginMeta {
 	var pm PluginMeta
 	data, err := os.ReadFile(versionFilePath)
 	if err != nil {
-		return PluginMeta{Version: "unknown", PluginType: "unknown"}
+		return PluginMeta{Version: unknownVersion, PluginType: unknownVersion}
 	}
 	if err := json.Unmarshal(data, &pm); err != nil {
-		return PluginMeta{Version: "unknown", PluginType: "unknown"}
+		return PluginMeta{Version: unknownVersion, PluginType: unknownVersion}
 	}
 	return pm
 }
 
-func WithPlugin(cfg *config.Config, loggerName string, pluginType string, pluginName string, f func(interface{}) error) error {
+// WithPlugin initializes the plugin client, sets up the plugin, and executes the provided function.
+func WithPlugin(cfg *config.Config, loggerName, pluginType, pluginName string, f func(interface{}) error) error {
 	logger := logger.NewLogger(cfg, loggerName)
 
 	pluginPath := filepath.Join(config.GetScanioPluginsHome(cfg), pluginName, pluginName)
@@ -93,59 +109,53 @@ func WithPlugin(cfg *config.Config, loggerName string, pluginType string, plugin
 
 	rpcClient, err := client.Client()
 	if err != nil {
-		log.Fatal(err)
-		return err
+		logger.Error("failed to get RPC client", "error", err)
+		return fmt.Errorf("failed to get RPC client: %w", err)
 	}
 
-	// Request the plugin
 	raw, err := rpcClient.Dispense(pluginType)
 	if err != nil {
-		log.Fatal(err)
-		return err
+		logger.Error("failed to dispense plugin", "pluginType", pluginType, "error", err)
+		return fmt.Errorf("failed to dispense plugin: %w", err)
 	}
 
-	// TODO: Use universal approach
-	var setupErr error
+	if err = setupPlugin(cfg, pluginType, raw); err != nil {
+		logger.Error("failed to setup plugin", "pluginType", pluginType, "error", err)
+		return fmt.Errorf("failed to setup plugin: %w", err)
+	}
+
+	return f(raw)
+}
+
+// setupPlugin sets up the plugin based on its type.
+func setupPlugin(cfg *config.Config, pluginType string, raw interface{}) error {
+	var err error
 	switch pluginType {
-	case "vcs":
+	case PluginTypeVCS:
 		pluginInstance, ok := raw.(VCS)
 		if !ok {
-			err := fmt.Errorf("plugin does not implement VCS interface")
-			logger.Error(err.Error())
-			return err
+			return fmt.Errorf("plugin does not implement VCS interface")
 		}
-		_, setupErr = pluginInstance.Setup(*cfg)
-	case "scanner":
+		_, err = pluginInstance.Setup(*cfg)
+	case PluginTypeScanner:
 		pluginInstance, ok := raw.(Scanner)
 		if !ok {
-			err := fmt.Errorf("plugin does not implement Scanner interface")
-			logger.Error(err.Error())
-			return err
+			return fmt.Errorf("plugin does not implement Scanner interface")
 		}
-		_, setupErr = pluginInstance.Setup(*cfg)
-
+		_, err = pluginInstance.Setup(*cfg)
 	default:
 		return fmt.Errorf("unsupported plugin type: %s", pluginType)
 	}
-
-	if setupErr != nil {
-		logger.Error("failed to setup plugin", "error", setupErr)
-		return setupErr
-	}
-
-	err = f(raw)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
+// ForEveryStringWithBoundedGoroutines limits the number of concurrent goroutines and executes the provided function.
 func ForEveryStringWithBoundedGoroutines(limit int, values []interface{}, f func(i int, value interface{})) {
 	guard := make(chan struct{}, limit)
 	var wg sync.WaitGroup
+
 	for i, value := range values {
-		guard <- struct{}{} // would block if guard channel is already filled
+		guard <- struct{}{}
 		wg.Add(1)
 		go func(i int, value interface{}) {
 			defer wg.Done()
