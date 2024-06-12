@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
-	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
@@ -63,7 +62,13 @@ func do() {
 			logger.Info("The amount of repositories is", "numbers", len(projects))
 		}
 
-		files.WriteJsonFile(allArgumentsList.OutputFile, logger, resultVCS)
+		var results shared.GenericLaunchesResult
+		results.Launches = append(results.Launches, resultVCS)
+		if err := shared.WriteGenericResult(AppConfig, logger, results, "LIST"); err != nil {
+			logger.Error("failed to write result", "error", err)
+			return err
+		}
+
 		return nil
 	})
 }

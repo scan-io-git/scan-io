@@ -163,16 +163,16 @@ func StructToMap(data interface{}) (map[string]string, error) {
 	return result, nil
 }
 
-// WriteGenericResult writes the provided result to a JSON file in the Scanio home directory.
+// WriteGenericResult writes the provided result to a JSON file.
 func WriteGenericResult(cfg *config.Config, logger hclog.Logger, result GenericLaunchesResult, commandName string) error {
 	outputFilePath := fmt.Sprintf("%v/%s.scanio-result", config.GetScanioHome(cfg), commandName)
 
-	resultData, err := json.Marshal(result)
+	resultData, err := json.MarshalIndent(result, "", "    ")
 	if err != nil {
 		return fmt.Errorf("error marshaling the result data: %w", err)
 	}
 
-	if err := files.WriteJsonFile(outputFilePath, logger, resultData); err != nil {
+	if err := files.WriteJsonFile(outputFilePath, resultData); err != nil {
 		return fmt.Errorf("error writing result to log file: %w", err)
 	}
 	logger.Info("results saved to file", "path", outputFilePath)
