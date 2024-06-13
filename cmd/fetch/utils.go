@@ -32,7 +32,7 @@ func prepareFetchTargets(allArgumentsFetch *RunOptionsFetch, args []string, mode
 		targetURL := args[0]
 		repoInfo, err := vcsurl.ExtractRepositoryInfoFromURL(targetURL, allArgumentsFetch.VCSPluginName)
 		if err != nil {
-			fmt.Errorf("failed to extract data from provided URL '%s': %w", targetURL, err)
+			return reposInfo, fmt.Errorf("failed to extract data from provided URL '%s': %w", targetURL, err)
 		}
 		reposInfo = append(reposInfo, repoInfo)
 

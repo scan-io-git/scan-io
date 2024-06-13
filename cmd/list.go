@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
@@ -61,6 +63,17 @@ func do() {
 			logger.Info("A function of listing repositories finished with", "status", resultVCS.Status)
 			logger.Info("The amount of repositories is", "numbers", len(projects))
 		}
+
+		// TODO: fix temporary code
+		resultData, err := json.MarshalIndent(projects, "", "    ")
+		if err != nil {
+			return fmt.Errorf("error marshaling the result data: %w", err)
+		}
+		if err := files.WriteJsonFile(allArgumentsList.OutputFile, resultData); err != nil {
+			logger.Error("failed to write result", "error", err)
+			return err
+		}
+		logger.Info("results saved to file", "path", allArgumentsList.OutputFile)
 
 		var results shared.GenericLaunchesResult
 		results.Launches = append(results.Launches, resultVCS)
