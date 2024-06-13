@@ -34,12 +34,21 @@ func prepareFetchTargets(allArgumentsFetch *RunOptionsFetch, args []string, mode
 		if err != nil {
 			return reposInfo, fmt.Errorf("failed to extract data from provided URL '%s': %w", targetURL, err)
 		}
+
+		if err = validationRepoInfo(repoInfo); err != nil {
+			return reposInfo, err
+		}
 		reposInfo = append(reposInfo, repoInfo)
 
 	case ModeInputFile:
 		reposData, err := utils.ReadReposFile2(allArgumentsFetch.InputFile)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing the input file %s: %v", allArgumentsFetch.InputFile, err)
+		}
+		for _, repoInfo := range reposData {
+			if err = validationRepoInfo(repoInfo); err != nil {
+				return reposInfo, err
+			}
 		}
 		reposInfo = reposData
 	}

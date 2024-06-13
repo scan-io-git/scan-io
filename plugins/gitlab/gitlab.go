@@ -207,8 +207,8 @@ func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse,
 	}
 
 	switch args.Mode {
-	case "PRscan":
-		return shared.VCSFetchResponse{}, errors.NewNotImplementedError("PRscan", "Gitlab plugin")
+	case "fetchPR":
+		return shared.VCSFetchResponse{}, errors.NewNotImplementedError("fetchPR", "Gitlab plugin")
 
 	default:
 		pluginConfigMap, err := shared.StructToMap(g.globalConfig.BitbucketPlugin)

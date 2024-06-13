@@ -312,7 +312,7 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchRespon
 	}
 
 	switch args.Mode {
-	case "PRscan":
+	case "fetchPR":
 		path, err := g.fetchPR(&args)
 		if err != nil {
 			g.logger.Error("failed to fetch pull request")

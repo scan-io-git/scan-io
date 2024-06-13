@@ -64,3 +64,14 @@ func validateFetchArgs(allArgumentsFetch *RunOptionsFetch, args []string) error 
 
 	return nil
 }
+
+// validationRepoInfo validates the provided RepositoryParams struct.
+func validationRepoInfo(repo shared.RepositoryParams) error {
+	if repo.Namespace == "" {
+		return fmt.Errorf("fetch all projects across VCS is not supported. Use the list command first")
+	}
+	if repo.Repository == "" {
+		return fmt.Errorf("fetch an entire project is not supported. Use the list command first")
+	}
+	return nil
+}

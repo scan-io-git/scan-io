@@ -15,7 +15,7 @@ import (
 
 const (
 	BasicMode  = "basic"
-	PRScanMode = "pr_scan"
+	PRScanMode = "fetchPR"
 )
 
 // Fetcher represents the configuration and behavior of a fetcher.
