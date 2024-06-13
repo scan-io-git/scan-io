@@ -9,6 +9,7 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
+	"github.com/scan-io-git/scan-io/pkg/shared/vcsurl"
 )
 
 type RunOptionsList struct {
@@ -114,13 +115,13 @@ List of plugins:
 				}
 
 				URL := args[0]
-				hostname, namespace, repository, _, _, _, err := shared.ExtractRepositoryInfoFromURL(URL, allArgumentsList.VCSPlugName)
+				repoInfo, err := vcsurl.ExtractRepositoryInfoFromURL(URL, allArgumentsList.VCSPlugName)
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to extract data from provided URL '%s': %w", URL, err)
 				}
-				allArgumentsList.VCSURL = hostname
-				allArgumentsList.Namespace = namespace
-				allArgumentsList.Repository = repository
+				allArgumentsList.VCSURL = repoInfo.VCSUrl
+				allArgumentsList.Namespace = repoInfo.Namespace
+				allArgumentsList.Repository = repoInfo.Repository
 			} else {
 				if len(allArgumentsList.VCSURL) == 0 {
 					return fmt.Errorf(("'vcs-url' flag must be specified!"))

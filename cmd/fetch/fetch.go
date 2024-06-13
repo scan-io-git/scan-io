@@ -42,10 +42,10 @@ var (
   # Fetching using SSH agent authentication, with a URL pointing to a specific repository, and removing specific file extensions after fetching
   scanio fetch --vcs github --auth-type ssh-agent --rm-ext zip,tar.gz,log https://github.com/scan-io-git/scan-io
 
-  # Fetching using SSH agent authentication, specifying a branch and URL pointing to a specific project, with multiple concurrent jobs
+  # Fetching using SSH agent authentication, specifying a branch and URL pointing to a specific project, with multiple concurrent jobs (not implemented)
   scanio fetch --vcs github --auth-type ssh-agent -b develop -j 5 https://github.com/scan-io-git/
 
-  # Fetching using SSH agent authentication, specifying a branch and URL pointing to the whole VCS, with multiple concurrent jobs
+  # Fetching using SSH agent authentication, specifying a branch and URL pointing to the whole VCS, with multiple concurrent jobs (not implemented)
   scanio fetch --vcs github --auth-type ssh-agent -b main -j 5 https://github.com/
 
   # Fetching from an input file using SSH agent authentication with multiple concurrent threads
