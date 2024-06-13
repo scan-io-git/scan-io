@@ -180,7 +180,7 @@ List of actions for github:
 			}
 
 			logger.Debug("Integration result", "result", resultsIntegrationVCS)
-			if err := shared.WriteGenericResult(AppConfig, logger, resultFetch, fmt.Sprintf("VCS-INTEGRATION-%v", strings.ToUpper(allArgumentsIntegrationVCS.Action))); err != nil {
+			if err := shared.WriteGenericResult(AppConfig, logger, resultsIntegrationVCS, fmt.Sprintf("VCS-INTEGRATION-%v", strings.ToUpper(allArgumentsIntegrationVCS.Action))); err != nil {
 				logger.Error("failed to write result", "error", err)
 				return err
 			}
@@ -280,7 +280,7 @@ func init() {
 	rootCmd.AddCommand(integrationVcsCmd)
 
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.VCSPlugName, "vcs", "", "the plugin name of the VCS used. Eg. bitbucket, gitlab, github, etc.")
-	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.VCSURL, "vcs-url", "", "URL to a root of the VCS API. Eg. github.co.")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.VCSURL, "vcs-url", "", "URL to a root of the VCS API. Eg. github.com.")
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Action, "action", "", "the action to execute")
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Namespace, "namespace", "", "the name of a specific namespace. Namespace for Gitlab is an organization, for Bitbucket_v1 is a project")
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Repository, "repository", "", "the name of a specific repository")
@@ -290,5 +290,5 @@ func init() {
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Status, "status", "", "status for integrations. For example, set a status of PR")
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Comment, "comment", "", "Comment for integrations. This text will be used as a comment on the pull request.")
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.CommentFile, "comment-file", "", "File containing the comment text for integrations. This text will be used as a comment on the pull request.")
-	integrationVcsCmd.Flags().StringSliceVar(&allArgumentsIntegrationVCS.AttachFiles, "files", nil, "List of paths to files. These files will be uploaded and attached to the comment.")
+	integrationVcsCmd.Flags().StringSliceVar(&allArgumentsIntegrationVCS.AttachFiles, "files", nil, "Comma-separated list of paths to files. These files will be uploaded and attached to the comment.")
 }

@@ -61,10 +61,10 @@ func (g *VCSGithub) ListRepositories(args shared.VCSListRepositoriesRequest) ([]
 	for i, repo := range repos {
 		parts := strings.Split(*repo.FullName, "/")
 		reposParams[i] = shared.RepositoryParams{
-			Namespace: strings.Join(parts[:len(parts)-1], "/"),
-			RepoName:  *repo.Name,
-			SshLink:   *repo.SSHURL,
-			HttpLink:  *repo.CloneURL,
+			Namespace:  strings.Join(parts[:len(parts)-1], "/"),
+			Repository: *repo.Name,
+			HTTPLink:   *repo.CloneURL,
+			SSHLink:    *repo.SSHURL,
 		}
 	}
 

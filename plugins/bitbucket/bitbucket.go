@@ -243,8 +243,8 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	}
 
 	// TODO: Change the RepoParam structure to int
-	prID, _ := strconv.Atoi(args.RepoParam.PRID)
-	prData, err := client.PullRequests.Get(args.RepoParam.Namespace, args.RepoParam.RepoName, prID)
+	prID, _ := strconv.Atoi(args.RepoParam.PullRequestId)
+	prData, err := client.PullRequests.Get(args.RepoParam.Namespace, args.RepoParam.Repository, prID)
 	if err != nil {
 		g.logger.Error("failed to retrieve information about the PR", "PRID", prID, "error", err)
 		return "", err
@@ -278,7 +278,7 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		return "", err
 	}
 
-	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.VCSURL, args.RepoParam.Namespace, args.RepoParam.RepoName, prID)
+	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.VCSUrl, args.RepoParam.Namespace, args.RepoParam.Repository, prID)
 
 	g.logger.Debug("copying files that have changed")
 	for _, val := range *changes {

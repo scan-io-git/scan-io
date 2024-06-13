@@ -78,7 +78,7 @@ func getResultsPath(logger hclog.Logger, repo string) string {
 	return filepath.Join(config.GetScanioResultsHome(AppConfig), getS3Path(repo))
 }
 
-func fetch(repo string) {
+func fetchCode(repo string) {
 	logger := logger.NewLogger(AppConfig, "core-run")
 	logger.Info("Fetching starting", "VCSURL", o.VCSURL, "repo", repo)
 
@@ -512,7 +512,7 @@ var runCmd = &cobra.Command{
 		// }
 		if o.Runtime == "local" {
 			for _, repo := range repos {
-				fetch(repo)
+				fetchCode(repo)
 				scan(repo)
 				if o.StorageType == "s3" {
 					uploadResults(repo)

@@ -147,10 +147,10 @@ func (g *VCSGitlab) ListRepositories(args shared.VCSListRepositoriesRequest) ([]
 					}
 				}
 				reposParams = append(reposParams, shared.RepositoryParams{
-					Namespace: project.Namespace.FullPath,
-					RepoName:  project.Path,
-					HttpLink:  project.HTTPURLToRepo,
-					SshLink:   project.SSHURLToRepo,
+					Namespace:  project.Namespace.FullPath,
+					Repository: project.Path,
+					HTTPLink:   project.HTTPURLToRepo,
+					SSHLink:    project.SSHURLToRepo,
 				})
 			}
 
