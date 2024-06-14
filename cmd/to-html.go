@@ -18,6 +18,7 @@ import (
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/spf13/cobra"
 
+	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
@@ -31,6 +32,7 @@ type ToHTMLOptions struct {
 
 var allToHTMLOptions ToHTMLOptions
 
+// enrichResultsTitleProperty function enriches sarif results properties with title and description values
 func enrichResultsTitleProperty(sarifReport *sarif.Report) {
 	rulesMap := map[string]*sarif.ReportingDescriptor{}
 	for _, rule := range sarifReport.Runs[0].Tool.Driver.Rules {
@@ -54,6 +56,7 @@ func enrichResultsTitleProperty(sarifReport *sarif.Report) {
 	}
 }
 
+// readLineFromFile function reads a line from a file by the given location
 func readLineFromFile(loc *sarif.PhysicalLocation) (string, error) {
 	//return error if allToHTMLOptions.SourceFolder is not specified
 	if allToHTMLOptions.SourceFolder == "" {
@@ -61,8 +64,10 @@ func readLineFromFile(loc *sarif.PhysicalLocation) (string, error) {
 	}
 
 	// Construct the file path
-	filePath := filepath.Join(allToHTMLOptions.SourceFolder, *loc.ArtifactLocation.URI)
-
+	filePath, err := files.ExpandPath(filepath.Join(allToHTMLOptions.SourceFolder, *loc.ArtifactLocation.URI))
+	if err != nil {
+		return "", fmt.Errorf("failed to contruct a file path: %w", err)
+	}
 	// Open the file
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -87,7 +92,7 @@ func readLineFromFile(loc *sarif.PhysicalLocation) (string, error) {
 	return "", fmt.Errorf("line %d not found in file", *loc.Region.StartLine)
 }
 
-// function to enrich location properties with code and URI
+// enrichResultsLocationProperty function enriches sarif location properties with source code and URI values
 func enrichResultsLocationProperty(location *sarif.Location) error {
 	artifactLocation := location.PhysicalLocation.ArtifactLocation
 	if artifactLocation.Properties == nil {
@@ -135,6 +140,7 @@ func enrichResultsLocationProperty(location *sarif.Location) error {
 	return nil
 }
 
+// enrichResultsCodeFlowProperty function enriches code flow location properties with source code and URI values
 func enrichResultsCodeFlowProperty(sarifReport *sarif.Report) {
 	// init logger
 	logger := logger.NewLogger(AppConfig, "core")
@@ -196,17 +202,22 @@ func enrichResultsLevelProperty(sarifReport *sarif.Report) {
 	}
 }
 
+// enrichResultsProperties function enriches sarif results properties with title, description, location and level values
+// for better html report representation
 func enrichResultsProperties(sarifReport *sarif.Report) {
 	enrichResultsTitleProperty(sarifReport)
 	enrichResultsCodeFlowProperty(sarifReport)
 	enrichResultsLevelProperty(sarifReport)
 }
 
+// add adds two integers and returns the result.
+// helper function for html template
 func add(a, b int) int {
 	return a + b
 }
 
 // generateSequence generates a slice of integers from 1 to n.
+// helper function for html template
 func generateSequence(n int) []int {
 	var sequence []int
 	for i := 1; i <= n; i++ {
@@ -215,7 +226,8 @@ func generateSequence(n int) []int {
 	return sequence
 }
 
-// reads a sarif report from Input file
+// readSarifReport function reads a sarif report from a file
+// helper function for html template
 func readSarifReport() (*sarif.Report, error) {
 	jsonFile, err := os.Open(allToHTMLOptions.Input)
 	if err != nil {
@@ -230,7 +242,7 @@ func readSarifReport() (*sarif.Report, error) {
 	return &sarifReport, nil
 }
 
-// function that finds a path to git repository from the source folder
+// findGitRepositoryPath function finds a git repository path for a given source folder
 func findGitRepositoryPath(sourceFolder string) (string, error) {
 	if sourceFolder == "" {
 		return "", fmt.Errorf("source folder is not set")
@@ -278,7 +290,8 @@ type ReportMetadata struct {
 	SeverityInfo map[string]int
 }
 
-// function to collect metadata about the repository
+// collectRepositoryMetadata function collects repository metadata
+// that includes branch name, commit hash, repository full name, subfolder and repository root folder
 func collectRepositoryMetadata() (*RepositoryMetadata, error) {
 	defaultRepositoryMetadata := &RepositoryMetadata{
 		RepoRootFolder: allToHTMLOptions.SourceFolder,
@@ -322,6 +335,8 @@ func collectRepositoryMetadata() (*RepositoryMetadata, error) {
 	}, nil
 }
 
+// ordinalDate returns a string with the ordinal number of the day
+// helper function for html template
 func ordinalDate(day int) string {
 	suffix := "th"
 	switch day {
@@ -336,12 +351,13 @@ func ordinalDate(day int) string {
 }
 
 // formatDateTime formats a time.Time object into the specified string format.
+// helper function for html template
 func formatDateTime(t time.Time) string {
 	day := ordinalDate(t.Day())
 	return fmt.Sprintf("%s %s %d %d:%02d:%02d %s", day, t.Month(), t.Year(), t.Hour()%12, t.Minute(), t.Second(), t.Format("pm"))
 }
 
-// extract Tool name an version from sarifreport
+// extractToolNameAndVersion function extracts tool name and version from a sarif report
 func extractToolNameAndVersion(sarifReport *sarif.Report) (*ToolMetadata, error) {
 	toolName := sarifReport.Runs[0].Tool.Driver.Name
 	toolVersion := sarifReport.Runs[0].Tool.Driver.SemanticVersion
@@ -351,7 +367,7 @@ func extractToolNameAndVersion(sarifReport *sarif.Report) (*ToolMetadata, error)
 	}, nil
 }
 
-// sort results by level
+// sortResultsByLevel function sorts sarif results by level
 func sortResultsByLevel(results []*sarif.Result) {
 	// sort results by level
 	// order: error, warning, note, none
@@ -370,6 +386,7 @@ func sortResultsByLevel(results []*sarif.Result) {
 	})
 }
 
+// function that calculates md5 hash for a given text
 func calculateMD5Hash(text string) string {
 	hash := md5.New()
 	io.WriteString(hash, text)
@@ -449,10 +466,14 @@ func collectSeverityInfo(sarifReport *sarif.Report) map[string]int {
 	return severityInfo
 }
 
+var execExampleToHTML = `  # Generate html report for semgrep sarif output
+  scanio to-html --input /tmp/juice-shop/semgrep.sarif --output /tmp/juice-shop/semgrep.html --source /tmp/juice-shop`
+
 // toHtmlCmd represents the toHtml command
 var toHtmlCmd = &cobra.Command{
-	Use:   "to-html",
-	Short: "Generate HTML formatted report",
+	Use:     "to-html -i /path/to/input/report.sarif -o /path/to/output/report.html -s /path/to/source/folder",
+	Short:   "Generate HTML formatted report",
+	Example: execExampleToHTML,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logger := logger.NewLogger(AppConfig, "core")
 		logger.Info("to-html called")
