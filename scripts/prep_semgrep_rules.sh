@@ -220,5 +220,3 @@ case $MODE in
              MERGE_PATH=$RULES_DIR
              handle_merging $MERGE_PATH;;
 esac
-
-
