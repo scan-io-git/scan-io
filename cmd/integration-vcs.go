@@ -1,12 +1,15 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/scan-io-git/scan-io/pkg/shared"
-	"github.com/spf13/cobra"
 	"strings"
+
+	"github.com/spf13/cobra"
+
+	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 type RunOptionsIntegrationVCS struct {
@@ -20,6 +23,7 @@ type RunOptionsIntegrationVCS struct {
 	Role          string
 	Status        string
 	Comment       string
+	Files         []string
 }
 
 type Arguments interface{}
@@ -64,7 +68,6 @@ List of actions for github:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
 			arguments             Arguments
-			outputBuffer          bytes.Buffer // Decision maker MVP needs
 			resultIntegrationVCS  shared.GenericResult
 			resultsIntegrationVCS shared.GenericLaunchesResult
 		)
@@ -75,7 +78,7 @@ List of actions for github:
 			}
 			switch allArgumentsIntegrationVCS.Action {
 			case "checkPR":
-				arguments = shared.VCSRetrivePRInformationRequest{
+				arguments = shared.VCSRetrievePRInformationRequest{
 					VCSRequestBase: shared.VCSRequestBase{
 						VCSURL:        allArgumentsIntegrationVCS.VCSURL,
 						Action:        allArgumentsIntegrationVCS.Action,
@@ -132,16 +135,17 @@ List of actions for github:
 						Repository:    allArgumentsIntegrationVCS.Repository,
 						PullRequestId: allArgumentsIntegrationVCS.PullRequestId,
 					},
-					Comment: allArgumentsIntegrationVCS.Comment,
+					Comment:   allArgumentsIntegrationVCS.Comment,
+					FilePaths: allArgumentsIntegrationVCS.Files,
 				}
 			default:
 				return fmt.Errorf("The action is not implemented %v", allArgumentsIntegrationVCS.Action)
 
 			}
 
-			logger := shared.NewLogger("core-integration-vcs")
+			logger := logger.NewLogger(AppConfig, "core-integration-vcs")
 
-			shared.WithPlugin("plugin-vcs", shared.PluginTypeVCS, allArgumentsIntegrationVCS.VCSPlugName, func(raw interface{}) error {
+			shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, allArgumentsIntegrationVCS.VCSPlugName, func(raw interface{}) error {
 				vcsName := raw.(shared.VCS)
 				result, err := performAction(allArgumentsIntegrationVCS.Action, vcsName, arguments)
 
@@ -149,31 +153,23 @@ List of actions for github:
 					resultIntegrationVCS = shared.GenericResult{Args: arguments, Result: result, Status: "FAILED", Message: err.Error()}
 					logger.Error("A function of VCS integrations is failed", "action", allArgumentsIntegrationVCS.Action)
 					logger.Error("Error", "message", resultIntegrationVCS.Message)
-				} else {
-					resultIntegrationVCS = shared.GenericResult{Args: arguments, Result: result, Status: "OK", Message: ""}
-					logger.Info("A function of VCS integrations finished with", "status", resultIntegrationVCS.Status, "action", allArgumentsIntegrationVCS.Action)
+					return err
 				}
+				resultIntegrationVCS = shared.GenericResult{Args: arguments, Result: result, Status: "OK", Message: ""}
+				logger.Info("A function of VCS integrations is successfully", "status", resultIntegrationVCS.Status, "action", allArgumentsIntegrationVCS.Action)
 
 				return nil
-
 			})
 
 			resultsIntegrationVCS.Launches = append(resultsIntegrationVCS.Launches, resultIntegrationVCS)
-			resultJSON, err := json.Marshal(resultsIntegrationVCS)
-			outputBuffer.Write(resultJSON)
+			_, err := json.Marshal(resultsIntegrationVCS)
 			if err != nil {
 				logger.Error("Error", "message", err)
 				return err
 			}
 
-			// Decision maker MVP needs
-			shared.ResultBufferMutex.Lock()
-			shared.ResultBuffer = outputBuffer
-			shared.ResultBufferMutex.Unlock()
-			outputBuffer.Write(resultJSON)
-
 			logger.Debug("Integration result", "result", resultsIntegrationVCS)
-			shared.WriteJsonFile(fmt.Sprintf("%v/VCS-INTEGRATION-%v.scanio-result", shared.GetScanioHome(), strings.ToUpper(allArgumentsIntegrationVCS.Action)), logger, resultsIntegrationVCS)
+			shared.WriteJsonFile(fmt.Sprintf("%v/VCS-INTEGRATION-%v.scanio-result", config.GetScanioHome(AppConfig), strings.ToUpper(allArgumentsIntegrationVCS.Action)), logger, resultsIntegrationVCS)
 
 			return nil
 		}
@@ -210,11 +206,11 @@ func validateCommonArguments() error {
 func performAction(action string, vcsName shared.VCS, args Arguments) (interface{}, error) {
 	switch action {
 	case "checkPR":
-		checkPRArgs, ok := args.(shared.VCSRetrivePRInformationRequest)
+		checkPRArgs, ok := args.(shared.VCSRetrievePRInformationRequest)
 		if !ok {
 			return nil, fmt.Errorf("Invalid argument type for action 'checkPR'")
 		}
-		return vcsName.RetrivePRInformation(checkPRArgs)
+		return vcsName.RetrievePRInformation(checkPRArgs)
 	case "addRoleToPR":
 		addReviewArgs, ok := args.(shared.VCSAddRoleToPRRequest)
 		if !ok {
@@ -232,7 +228,7 @@ func performAction(action string, vcsName shared.VCS, args Arguments) (interface
 		if !ok {
 			return nil, fmt.Errorf("Invalid argument type for action 'addComment'")
 		}
-		return vcsName.AddComment(addComment)
+		return vcsName.AddCommentToPR(addComment)
 	default:
 		return nil, fmt.Errorf("Unsupported action: %s", action)
 	}
@@ -242,13 +238,14 @@ func init() {
 	rootCmd.AddCommand(integrationVcsCmd)
 
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.VCSPlugName, "vcs", "", "the plugin name of the VCS used. Eg. bitbucket, gitlab, github, etc.")
-	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.VCSURL, "vcs-url", "", "URL to a root of the VCS API. Eg. github.com.")
-	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Action, "action", "", "the action to execute.")
-	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Namespace, "namespace", "", "the name of a specific namespace. Namespace for Gitlab is an organization, for Bitbucket_v1 is a project.")
-	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Repository, "repository", "", "the name of a specific repository.")
-	integrationVcsCmd.Flags().IntVar(&allArgumentsIntegrationVCS.PullRequestId, "pull-request-id", 0, "the id of specific PR form the repository.")
-	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Login, "login", "", "login for integrations. For example, add reviewer with this login to PR.")
-	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Role, "role", "", "role for integrations. For example, add a person with specific role to PR.")
-	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Status, "status", "", "status for integrations. For example, set a status of PR.")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.VCSURL, "vcs-url", "", "URL to a root of the VCS API. Eg. github.co.")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Action, "action", "", "the action to execute")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Namespace, "namespace", "", "the name of a specific namespace. Namespace for Gitlab is an organization, for Bitbucket_v1 is a project")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Repository, "repository", "", "the name of a specific repository")
+	integrationVcsCmd.Flags().IntVar(&allArgumentsIntegrationVCS.PullRequestId, "pull-request-id", 0, "the id of specific PR form the repository")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Login, "login", "", "login for integrations. For example, add reviewer with this login to PR")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Role, "role", "", "role for integrations. For example, add a person with specific role to PR")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Status, "status", "", "status for integrations. For example, set a status of PR")
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Comment, "comment", "", "comment for integrations. The text will be used like a comment to PR")
+	integrationVcsCmd.Flags().StringSliceVar(&allArgumentsIntegrationVCS.Files, "files", nil, "list of paths to file. The filese will be uploaded and attached to the comment") // New flag for file paths
 }

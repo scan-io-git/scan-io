@@ -1,24 +1,22 @@
 package shared
 
 import (
-	"bytes"
+	"fmt"
 	"log"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
 
-	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
+
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 const (
 	PluginTypeVCS     string = "vcs"
 	PluginTypeScanner string = "scanner"
 )
-
-var ResultBuffer bytes.Buffer
-var ResultBufferMutex sync.Mutex
 
 var HandshakeConfig = plugin.HandshakeConfig{
 	ProtocolVersion:  1,
@@ -31,52 +29,16 @@ var PluginMap = map[string]plugin.Plugin{
 	PluginTypeScanner: &ScannerPlugin{},
 }
 
-func NewLogger(name string) hclog.Logger {
-	loglevel := hclog.Info
-	jsonFormat := false
-	if os.Getenv("SCANIO_LOGLEVEL") == "DEBUG" {
-		loglevel = hclog.Debug
-		jsonFormat = false
-	}
-	return hclog.New(&hclog.LoggerOptions{
-		Name:        name,
-		DisableTime: true,
-		Output:      os.Stdout,
-		Level:       loglevel,
-		JSONFormat:  jsonFormat,
-	})
+type Versions struct {
+	Version       string `json:"version"`
+	GolangVersion string `json:"golang_version"`
+	BuildTime     string `json:"build_time"`
 }
 
-func GetScanioHome() string {
-	envScanioHome := os.Getenv("SCANIO_HOME")
-	if envScanioHome != "" {
-		return envScanioHome
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		panic("unable to get home folder")
-	}
-	defaultScanioHome := filepath.Join(home, "/.scanio")
-	return defaultScanioHome
-}
+func WithPlugin(cfg *config.Config, loggerName string, pluginType string, pluginName string, f func(interface{}) error) error {
+	logger := logger.NewLogger(cfg, loggerName)
 
-func getScanioPluginsFolder() string {
-	envScanioPlugins := os.Getenv("SCANIO_PLUGINS_FOLDER")
-	if envScanioPlugins != "" {
-		return envScanioPlugins
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		panic("unable to get home folder")
-	}
-	defaultScanioPlugins := filepath.Join(home, "/.scanio/plugins")
-	return defaultScanioPlugins
-}
-
-func WithPlugin(loggerName string, pluginType string, pluginName string, f func(interface{}) error) error {
-	logger := NewLogger(loggerName)
-
-	pluginPath := filepath.Join(getScanioPluginsFolder(), pluginName)
+	pluginPath := filepath.Join(config.GetScanioPluginsHome(cfg), pluginName, pluginName)
 	client := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig: HandshakeConfig,
 		Plugins:         PluginMap,
@@ -98,7 +60,35 @@ func WithPlugin(loggerName string, pluginType string, pluginName string, f func(
 		return err
 	}
 
-	// result, err := f(raw)
+	// TODO: Use universal approach
+	var setupErr error
+	switch pluginType {
+	case "vcs":
+		pluginInstance, ok := raw.(VCS)
+		if !ok {
+			err := fmt.Errorf("plugin does not implement VCS interface")
+			logger.Error(err.Error())
+			return err
+		}
+		_, setupErr = pluginInstance.Setup(*cfg)
+	case "scanner":
+		pluginInstance, ok := raw.(Scanner)
+		if !ok {
+			err := fmt.Errorf("plugin does not implement Scanner interface")
+			logger.Error(err.Error())
+			return err
+		}
+		_, setupErr = pluginInstance.Setup(*cfg)
+
+	default:
+		return fmt.Errorf("unsupported plugin type: %s", pluginType)
+	}
+
+	if setupErr != nil {
+		logger.Error("failed to setup plugin", "error", setupErr)
+		return setupErr
+	}
+
 	err = f(raw)
 	if err != nil {
 		return err
@@ -120,30 +110,4 @@ func ForEveryStringWithBoundedGoroutines(limit int, values []interface{}, f func
 		}(i, value)
 	}
 	wg.Wait()
-}
-
-func GetProjectsHome() string {
-	projectsFolder := filepath.Join(GetScanioHome(), "/projects")
-	if _, err := os.Stat(projectsFolder); os.IsNotExist(err) {
-		NewLogger("core").Info("projectsFolder does not exists. Creating...", "projectsFolder", projectsFolder)
-		if err := os.MkdirAll(projectsFolder, os.ModePerm); err != nil {
-			panic(err)
-		}
-	}
-	return projectsFolder
-}
-
-func GetResultsHome() string {
-	resultsFolder := filepath.Join(GetScanioHome(), "/results")
-	if _, err := os.Stat(resultsFolder); os.IsNotExist(err) {
-		NewLogger("core").Info("resultsFolder does not exists. Creating...", "resultsFolder", resultsFolder)
-		if err := os.MkdirAll(resultsFolder, os.ModePerm); err != nil {
-			panic(err)
-		}
-	}
-	return resultsFolder
-}
-
-func GetRepoPath(VCSURL, repoWithNamespace string) string {
-	return filepath.Join(GetProjectsHome(), VCSURL, repoWithNamespace)
 }

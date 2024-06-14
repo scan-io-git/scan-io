@@ -1,15 +1,18 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 
-	"github.com/scan-io-git/scan-io/internal/scanner"
-	utils "github.com/scan-io-git/scan-io/internal/utils"
-	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
+
+	utils "github.com/scan-io-git/scan-io/internal/utils"
+
+	"github.com/scan-io-git/scan-io/internal/scanner"
+	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 type RunOptionsAnalyse struct {
@@ -56,11 +59,11 @@ List of plugins:
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			reposInf     []shared.RepositoryParams
-			path         string
-			outputBuffer bytes.Buffer // Decision maker MVP needs
+			reposInf []shared.RepositoryParams
+			path     string
 		)
 
+		logger := logger.NewLogger(AppConfig, "core-analyze")
 		argsLenAtDash := cmd.ArgsLenAtDash()
 		checkArgs := func() error {
 			if len(allArgumentsAnalyse.ScannerPluginName) == 0 {
@@ -103,29 +106,21 @@ List of plugins:
 			return err
 		}
 
-		logger := shared.NewLogger("core-analyze-scanner")
 		s := scanner.New(allArgumentsAnalyse.ScannerPluginName, allArgumentsAnalyse.Threads, allArgumentsAnalyse.Config, allArgumentsAnalyse.ReportFormat, allArgumentsAnalyse.AdditionalArgs, logger)
 
-		analyseArgs, err := s.PrepScanArgs(reposInf, path, allArgumentsAnalyse.OutputPrefix)
+		analyseArgs, err := s.PrepScanArgs(AppConfig, reposInf, path, allArgumentsAnalyse.OutputPrefix)
 		if err != nil {
 			return err
 		}
 
-		resultAnalyse = s.ScanRepos(analyseArgs)
-		resultJSON, err := json.Marshal(resultAnalyse)
-		outputBuffer.Write(resultJSON)
+		resultAnalyse = s.ScanRepos(AppConfig, analyseArgs)
+		_, err = json.Marshal(resultAnalyse)
 		if err != nil {
 			logger.Error("Error", "message", err)
 			return err
 		}
 
-		// Decision maker MVP needs
-		shared.ResultBufferMutex.Lock()
-		shared.ResultBuffer = outputBuffer
-		shared.ResultBufferMutex.Unlock()
-		outputBuffer.Write(resultJSON)
-
-		shared.WriteJsonFile(fmt.Sprintf("%v/ANALYSE.scanio-result", shared.GetScanioHome()), logger, resultAnalyse)
+		shared.WriteJsonFile(fmt.Sprintf("%v/ANALYSE.scanio-result", config.GetScanioHome(AppConfig)), logger, resultAnalyse)
 		return nil
 	},
 }
