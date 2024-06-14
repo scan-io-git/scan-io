@@ -16,8 +16,9 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/owenrumney/go-sarif/v2/sarif"
-	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/spf13/cobra"
+
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 type ToHTMLOptions struct {
@@ -136,7 +137,7 @@ func enrichResultsLocationProperty(location *sarif.Location) error {
 
 func enrichResultsCodeFlowProperty(sarifReport *sarif.Report) {
 	// init logger
-	logger := shared.NewLogger("core")
+	logger := logger.NewLogger(AppConfig, "core")
 
 	for _, result := range sarifReport.Runs[0].Results {
 
@@ -453,7 +454,7 @@ var toHtmlCmd = &cobra.Command{
 	Use:   "to-html",
 	Short: "Generate HTML formatted report",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		logger := shared.NewLogger("core")
+		logger := logger.NewLogger(AppConfig, "core")
 		logger.Info("to-html called")
 
 		sarifReport, err := readSarifReport()
