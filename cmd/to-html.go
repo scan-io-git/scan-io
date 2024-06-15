@@ -11,6 +11,7 @@ import (
 	"github.com/scan-io-git/scan-io/internal/git"
 	scaniosarif "github.com/scan-io-git/scan-io/internal/sarif"
 	"github.com/scan-io-git/scan-io/internal/template"
+	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
@@ -79,7 +80,12 @@ var toHtmlCmd = &cobra.Command{
 		}
 
 		// parse html template and generate report file with metadata
-		tmpl, err := template.NewTemplate(filepath.Join(allToHTMLOptions.TempatesPath, "report.html"))
+		templateFile, err := files.ExpandPath(filepath.Join(allToHTMLOptions.TempatesPath, "report.html"))
+		if err != nil {
+			return err
+		}
+
+		tmpl, err := template.NewTemplate(templateFile)
 		if err != nil {
 			return err
 		}
