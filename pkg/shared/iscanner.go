@@ -19,12 +19,13 @@ type ScannerScanResult struct {
 	Message string
 }
 
+// ScannerScanRequest represents a single scan request.
 type ScannerScanRequest struct {
-	RepoPath       string
-	ReportFormat   string
-	ConfigPath     string
-	ResultsPath    string
-	AdditionalArgs []string
+	TargetPath     string   // Path to the target to scan
+	ResultsPath    string   // Path to save the results of the scan
+	ConfigPath     string   // Path to the configuration file for the scanner
+	ReportFormat   string   // Format of the report to generate (e.g., JSON, Sarif)
+	AdditionalArgs []string // Additional arguments for the scanner
 }
 
 type ScannerScanResponse struct {

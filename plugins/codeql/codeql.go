@@ -45,14 +45,14 @@ func (g *ScannerCodeQL) createDatabase(databaseDir string, args shared.ScannerSc
 
 	var stdBuffer bytes.Buffer
 
-	g.logger.Debug("Creating CodeQL database", "project", args.RepoPath)
+	g.logger.Debug("Creating CodeQL database", "project", args.TargetPath)
 
 	language := os.Getenv("SCANIO_CODEQL_LANGUAGE")
 	if !isLanguageSupported(language) {
 		return fmt.Errorf("unsupported language for CodeQL")
 	}
 
-	commandArgs := []string{"database", "create", databaseDir, "--language", language, "--source-root", args.RepoPath}
+	commandArgs := []string{"database", "create", databaseDir, "--language", language, "--source-root", args.TargetPath}
 
 	cmd := exec.Command("codeql", commandArgs...)
 	mw := io.MultiWriter(g.logger.StandardWriter(&hclog.StandardLoggerOptions{
@@ -73,7 +73,7 @@ func (g *ScannerCodeQL) createDatabase(databaseDir string, args shared.ScannerSc
 }
 
 func (g *ScannerCodeQL) analyzeDatabase(databaseDir string, args shared.ScannerScanRequest) error {
-	g.logger.Debug("Analyzing CodeQL database", "project", args.RepoPath)
+	g.logger.Debug("Analyzing CodeQL database", "project", args.TargetPath)
 
 	// codeql database analyze /tmp/scanio.codeqldb/ --format sarifv2.1.0 codeql/go-queries -o /tmp/scanio.sarif
 
@@ -108,7 +108,7 @@ func (g *ScannerCodeQL) analyzeDatabase(databaseDir string, args shared.ScannerS
 
 func (g *ScannerCodeQL) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
 
-	g.logger.Info("CodeQL flow starting", "project", args.RepoPath)
+	g.logger.Info("CodeQL flow starting", "project", args.TargetPath)
 	g.logger.Debug("Debug info", "args", args)
 
 	databaseDir, err := os.MkdirTemp("", "codeqdb")
@@ -126,9 +126,9 @@ func (g *ScannerCodeQL) Scan(args shared.ScannerScanRequest) (shared.ScannerScan
 	}
 
 	result.ResultsPath = args.ResultsPath
-	g.logger.Info("Scan finished for", "project", args.RepoPath)
+	g.logger.Info("Scan finished for", "project", args.TargetPath)
 	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
-	g.logger.Debug("Debug info", "project", args.RepoPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath)
+	g.logger.Debug("Debug info", "project", args.TargetPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath)
 	return result, nil
 }
 

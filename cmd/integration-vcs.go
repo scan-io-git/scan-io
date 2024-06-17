@@ -3,12 +3,14 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
@@ -23,7 +25,8 @@ type RunOptionsIntegrationVCS struct {
 	Role          string
 	Status        string
 	Comment       string
-	Files         []string
+	CommentFile   string
+	AttachFiles   []string
 }
 
 type Arguments interface{}
@@ -89,10 +92,10 @@ List of actions for github:
 				}
 			case "addRoleToPR":
 				if len(allArgumentsIntegrationVCS.Login) == 0 {
-					return fmt.Errorf("The 'login' flag must be specified!")
+					return fmt.Errorf("'login' flag must be specified")
 				}
 				if len(allArgumentsIntegrationVCS.Role) == 0 {
-					return fmt.Errorf("The 'role' flag must be specified!")
+					return fmt.Errorf("'role' flag must be specified")
 				}
 				arguments = shared.VCSAddRoleToPRRequest{
 					VCSRequestBase: shared.VCSRequestBase{
@@ -107,10 +110,10 @@ List of actions for github:
 				}
 			case "setStatusOfPR":
 				if len(allArgumentsIntegrationVCS.Login) == 0 {
-					return fmt.Errorf("The 'login' flag must be specified!")
+					return fmt.Errorf("'login' flag must be specified")
 				}
 				if len(allArgumentsIntegrationVCS.Status) == 0 {
-					return fmt.Errorf("The 'status' flag must be specified!")
+					return fmt.Errorf("'status' flag must be specified")
 				}
 				arguments = shared.VCSSetStatusOfPRRequest{
 					VCSRequestBase: shared.VCSRequestBase{
@@ -124,9 +127,33 @@ List of actions for github:
 					Status: allArgumentsIntegrationVCS.Status,
 				}
 			case "addComment":
-				if len(allArgumentsIntegrationVCS.Comment) == 0 {
-					return fmt.Errorf("The 'comment' flag must be specified!")
+				if allArgumentsIntegrationVCS.Comment == "" && allArgumentsIntegrationVCS.CommentFile == "" {
+					return fmt.Errorf("either 'comment' or 'comment-file' flag must be specified")
 				}
+				if allArgumentsIntegrationVCS.Comment != "" && allArgumentsIntegrationVCS.CommentFile != "" {
+					return fmt.Errorf("only one of 'comment' or 'comment-file' flag can be specified, not both")
+				}
+
+				var commentContent string
+				if allArgumentsIntegrationVCS.CommentFile != "" {
+					expandedPath, err := files.ExpandPath(allArgumentsIntegrationVCS.CommentFile)
+					if err != nil {
+						return fmt.Errorf("failed to expand path '%s': %w", allArgumentsIntegrationVCS.CommentFile, err)
+					}
+
+					if err := files.ValidatePath(expandedPath); err != nil {
+						return fmt.Errorf("failed to validate path '%s': %w", expandedPath, err)
+					}
+
+					data, err := os.ReadFile(expandedPath)
+					if err != nil {
+						return fmt.Errorf("failed to read comment file: %v", err)
+					}
+					commentContent = string(data)
+				} else {
+					commentContent = allArgumentsIntegrationVCS.Comment
+				}
+
 				arguments = shared.VCSAddCommentToPRRequest{
 					VCSRequestBase: shared.VCSRequestBase{
 						VCSURL:        allArgumentsIntegrationVCS.VCSURL,
@@ -135,11 +162,11 @@ List of actions for github:
 						Repository:    allArgumentsIntegrationVCS.Repository,
 						PullRequestId: allArgumentsIntegrationVCS.PullRequestId,
 					},
-					Comment:   allArgumentsIntegrationVCS.Comment,
-					FilePaths: allArgumentsIntegrationVCS.Files,
+					Comment:   commentContent,
+					FilePaths: allArgumentsIntegrationVCS.AttachFiles,
 				}
 			default:
-				return fmt.Errorf("The action is not implemented %v", allArgumentsIntegrationVCS.Action)
+				return fmt.Errorf("ation is not implemented %v", allArgumentsIntegrationVCS.Action)
 
 			}
 
@@ -183,22 +210,22 @@ List of actions for github:
 
 func validateCommonArguments() error {
 	if len(allArgumentsIntegrationVCS.VCSPlugName) == 0 {
-		return fmt.Errorf("The 'vcs' flag must be specified!")
+		return fmt.Errorf("'vcs' flag must be specified")
 	}
 	if len(allArgumentsIntegrationVCS.Action) == 0 {
-		return fmt.Errorf("The 'action' flag must be specified!")
+		return fmt.Errorf("'action' flag must be specified")
 	}
 	if len(allArgumentsIntegrationVCS.VCSURL) == 0 {
-		return fmt.Errorf("The 'vcs-url' flag must be specified!")
+		return fmt.Errorf("'vcs-url' flag must be specified")
 	}
 	if len(allArgumentsIntegrationVCS.Namespace) == 0 {
-		return fmt.Errorf("The 'namespace' flag must be specified!")
+		return fmt.Errorf("'namespace' flag must be specified")
 	}
 	if len(allArgumentsIntegrationVCS.Repository) == 0 {
-		return fmt.Errorf("The 'repository' flag must be specified!")
+		return fmt.Errorf("'repository' flag must be specified")
 	}
 	if allArgumentsIntegrationVCS.PullRequestId == 0 {
-		return fmt.Errorf("The 'pull-request-id' flag must be specified!")
+		return fmt.Errorf("'pull-request-id' flag must be specified")
 	}
 	return nil
 }
@@ -208,29 +235,29 @@ func performAction(action string, vcsName shared.VCS, args Arguments) (interface
 	case "checkPR":
 		checkPRArgs, ok := args.(shared.VCSRetrievePRInformationRequest)
 		if !ok {
-			return nil, fmt.Errorf("Invalid argument type for action 'checkPR'")
+			return nil, fmt.Errorf("invalid argument type for action 'checkPR'")
 		}
 		return vcsName.RetrievePRInformation(checkPRArgs)
 	case "addRoleToPR":
 		addReviewArgs, ok := args.(shared.VCSAddRoleToPRRequest)
 		if !ok {
-			return nil, fmt.Errorf("Invalid argument type for action 'addRoleToPR'")
+			return nil, fmt.Errorf("invalid argument type for action 'addRoleToPR'")
 		}
 		return vcsName.AddRoleToPR(addReviewArgs)
 	case "setStatusOfPR":
 		setStatusArgs, ok := args.(shared.VCSSetStatusOfPRRequest)
 		if !ok {
-			return nil, fmt.Errorf("Invalid argument type for action 'addRoleToPR'")
+			return nil, fmt.Errorf("invalid argument type for action 'addRoleToPR'")
 		}
 		return vcsName.SetStatusOfPR(setStatusArgs)
 	case "addComment":
 		addComment, ok := args.(shared.VCSAddCommentToPRRequest)
 		if !ok {
-			return nil, fmt.Errorf("Invalid argument type for action 'addComment'")
+			return nil, fmt.Errorf("invalid argument type for action 'addComment'")
 		}
 		return vcsName.AddCommentToPR(addComment)
 	default:
-		return nil, fmt.Errorf("Unsupported action: %s", action)
+		return nil, fmt.Errorf("unsupported action: %s", action)
 	}
 }
 
@@ -246,6 +273,7 @@ func init() {
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Login, "login", "", "login for integrations. For example, add reviewer with this login to PR")
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Role, "role", "", "role for integrations. For example, add a person with specific role to PR")
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Status, "status", "", "status for integrations. For example, set a status of PR")
-	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Comment, "comment", "", "comment for integrations. The text will be used like a comment to PR")
-	integrationVcsCmd.Flags().StringSliceVar(&allArgumentsIntegrationVCS.Files, "files", nil, "list of paths to file. The filese will be uploaded and attached to the comment") // New flag for file paths
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Comment, "comment", "", "Comment for integrations. This text will be used as a comment on the pull request.")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.CommentFile, "comment-file", "", "File containing the comment text for integrations. This text will be used as a comment on the pull request.")
+	integrationVcsCmd.Flags().StringSliceVar(&allArgumentsIntegrationVCS.AttachFiles, "files", nil, "List of paths to files. These files will be uploaded and attached to the comment.")
 }
