@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	gitconfig "github.com/go-git/go-git/v5/config"
@@ -283,4 +284,29 @@ func pullLatestChanges(ctx context.Context, repo *git.Repository, cfg *config.Co
 		return fmt.Errorf("error occurred during pull: %w", err)
 	}
 	return nil
+}
+
+// findGitRepositoryPath function finds a git repository path for a given source folder
+func findGitRepositoryPath(sourceFolder string) (string, error) {
+	if sourceFolder == "" {
+		return "", fmt.Errorf("source folder is not set")
+	}
+
+	// check if source folder is a subfolder of a git repository
+	for {
+		_, err := git.PlainOpen(sourceFolder)
+		if err == nil {
+			return sourceFolder, nil
+		}
+
+		// move up one level
+		sourceFolder = filepath.Dir(sourceFolder)
+
+		// check if reached the root folder
+		if sourceFolder == filepath.Dir(sourceFolder) {
+			break
+		}
+	}
+
+	return "", fmt.Errorf("source folder is not a git repository")
 }
