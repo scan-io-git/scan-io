@@ -9,7 +9,7 @@ import (
 
 // validateCommonCredentials checks for the presence of common credentials.
 func (g *VCSBitbucket) validateCommonCredentials() error {
-	return validation.ValidateCommonCredentials(g.globalConfig.GitlabPlugin.Username, g.globalConfig.GitlabPlugin.Token)
+	return validation.ValidateCommonCredentials(g.globalConfig.BitbucketPlugin.Username, g.globalConfig.BitbucketPlugin.Token)
 }
 
 // validateFetch checks the necessary fields in VCSFetchRequest and returns errors if they are not set.
@@ -20,7 +20,7 @@ func (g *VCSBitbucket) validateFetch(args *shared.VCSFetchRequest) error {
 
 	switch args.AuthType {
 	case "ssh-key":
-		if g.globalConfig.GitlabPlugin.SSHKeyPassword == "" {
+		if g.globalConfig.BitbucketPlugin.SSHKeyPassword == "" {
 			return fmt.Errorf("SSH key password is required for SSH-key authentication")
 		}
 	case "http":

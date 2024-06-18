@@ -15,17 +15,32 @@ import (
 )
 
 // TODO: Wrap it in a custom error handler to add to the stack trace.
+// Metadata of the plugin
 var (
 	Version       = "unknown"
 	GolangVersion = "unknown"
 	BuildTime     = "unknown"
 )
 
+// setGlobalConfig sets the global configuration for the ScannerTrufflehog3 instance.
+func (g *ScannerTrufflehog3) setGlobalConfig(globalConfig *config.Config) {
+	g.globalConfig = globalConfig
+}
+
+// ScannerTrufflehog3 represents the Trufflehog3 scanner with its configuration and logger.
 type ScannerTrufflehog3 struct {
 	logger       hclog.Logger
 	globalConfig *config.Config
 }
 
+// newScannerScannerTrufflehog3 creates a new instance of ScannerTrufflehog3.
+func newScannerTrufflehog3(logger hclog.Logger) *ScannerTrufflehog3 {
+	return &ScannerTrufflehog3{
+		logger: logger,
+	}
+}
+
+// Scan executes the Trufflehog3 scan with the provided arguments and returns the scan response.
 func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
 	var (
 		commandArgs []string
@@ -80,8 +95,9 @@ func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) (shared.Scanne
 	return result, nil
 }
 
+// Setup initializes the global configuration for the ScannerTrufflehog3 instance.
 func (g *ScannerTrufflehog3) Setup(configData config.Config) (bool, error) {
-	g.globalConfig = &configData
+	g.setGlobalConfig(&configData)
 	return true, nil
 }
 
@@ -92,16 +108,13 @@ func main() {
 		JSONFormat: true,
 	})
 
-	Scanner := &ScannerTrufflehog3{
-		logger: logger,
-	}
-
-	var pluginMap = map[string]plugin.Plugin{
-		shared.PluginTypeScanner: &shared.ScannerPlugin{Impl: Scanner},
-	}
+	trufflehog3Instance := newScannerTrufflehog3(logger)
 
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: shared.HandshakeConfig,
-		Plugins:         pluginMap,
+		Plugins: map[string]plugin.Plugin{
+			shared.PluginTypeScanner: &shared.ScannerPlugin{Impl: trufflehog3Instance},
+		},
+		Logger: logger,
 	})
 }

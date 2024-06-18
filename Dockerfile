@@ -9,7 +9,7 @@ FROM golang:1.19.8-alpine3.17 AS build-scanio
 
 WORKDIR /usr/src/scanio
 
-## Copy go.mod and go.sum for dependency resolution
+# Copy go.mod and go.sum for dependency resolution
 COPY go.mod go.sum ./
 RUN go mod download
 
@@ -21,8 +21,11 @@ ARG TARGETOS
 ARG TARGETARCH
 
 # Install make and other build dependencies
-RUN apk update && apk add --no-cache make
-#     apk upgrade
+RUN apk update && \
+    apk upgrade && \
+    apk add --no-cache \
+    make \
+    jq
 
 # Build the core and plugins using the Makefile
 RUN echo "Building binaries and plugins for $TARGETOS/$TARGETARCH"
@@ -30,7 +33,6 @@ RUN make build CORE_BINARY=/usr/bin/scanio PLUGINS_DIR=/usr/bin/plugins
 
 # Stage 2: Prepare the runtime environment
 FROM python:3.11-alpine3.17
-# Here we are preparing a container with all 3rd party dependencies for Scanio 
 
 # RUN addgroup -g 101 scanio && \
 #     adduser -h /home/scanio -s /bin/bash --uid 1001 -G scanio -D scanio && \
@@ -71,15 +73,13 @@ RUN python3 -m pip install semgrep
 # Installing Bandit 
 RUN python3 -m pip install bandit
 
-
 # Install Trufflehog Go
-# ENV TRUFFLEHOG_VERSION 3.31.3
 RUN export TRUFFLEHOG_VER="$(curl -s -qI https://github.com/trufflesecurity/trufflehog/releases/latest | awk -F '/' '/^location/ {print  substr($NF, 1, length($NF)-1)}' | awk -F 'v' '{print $2}')" && \
     export TRUFFLEHOG_SHA="$(curl -Ls https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/trufflehog_${TRUFFLEHOG_VER}_checksums.txt | grep trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz | awk '{print $1}')"  && \
     curl -LOs "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz" && \
     echo "${TRUFFLEHOG_SHA}  trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz" | sha256sum -c - && \
-    tar -xzf trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz  && \
-    rm -rf trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz  && \
+    tar -xzf trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz && \
+    rm -rf trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz && \
     mv trufflehog /usr/local/bin 
 
 # Install Kubectl
@@ -100,8 +100,7 @@ RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/s
 ENV JOB_HELM_CHART_PATH=/scanio-helm/scanio-job
 
 # Create necessary directories
-RUN mkdir -p /scanio
-RUN mkdir -p /data
+RUN mkdir -p /scanio /data
 
 # Copy built binaries and other necessary files from the build stage
 COPY --from=build-scanio /usr/bin/scanio /bin/scanio

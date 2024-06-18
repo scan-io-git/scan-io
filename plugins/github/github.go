@@ -16,6 +16,7 @@ import (
 )
 
 // TODO: Wrap it in a custom error handler to add to the stack trace.
+// Metadata of the plugin
 var (
 	Version       = "unknown"
 	GolangVersion = "unknown"
@@ -60,10 +61,10 @@ func (g *VCSGithub) ListRepositories(args shared.VCSListRepositoriesRequest) ([]
 	for i, repo := range repos {
 		parts := strings.Split(*repo.FullName, "/")
 		reposParams[i] = shared.RepositoryParams{
-			Namespace: strings.Join(parts[:len(parts)-1], "/"),
-			RepoName:  *repo.Name,
-			SshLink:   *repo.SSHURL,
-			HttpLink:  *repo.CloneURL,
+			Namespace:  strings.Join(parts[:len(parts)-1], "/"),
+			Repository: *repo.Name,
+			HTTPLink:   *repo.CloneURL,
+			SSHLink:    *repo.SSHURL,
 		}
 	}
 
@@ -112,8 +113,8 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse,
 	}
 
 	switch args.Mode {
-	case "PRscan":
-		return shared.VCSFetchResponse{}, errors.NewNotImplementedError("PRscan", "GitHub plugin")
+	case "fetchPR":
+		return shared.VCSFetchResponse{}, errors.NewNotImplementedError("fetchPR", "GitHub plugin")
 
 	default:
 		pluginConfigMap, err := shared.StructToMap(g.globalConfig.BitbucketPlugin)
