@@ -3,6 +3,7 @@ package fetcher
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/go-hclog"
 
@@ -55,6 +56,9 @@ func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.Repository
 
 		repo.VCSUrl = domain
 		fetchMode := getFetchMode(repo)
+		if f.pluginName == "bitbucket" && strings.HasPrefix(repo.Namespace, "~") {
+			repo.Namespace = strings.TrimPrefix(repo.Namespace, "~") // in the case of user repos we should put results into the same folder for ssh and http links
+		}
 		targetFolder := config.GetRepositoryPath(cfg, domain, filepath.Join(repo.Namespace, repo.Repository))
 
 		fetchReqList = append(fetchReqList, f.createFetchRequest(repo, cloneURL, targetFolder, fetchMode))
