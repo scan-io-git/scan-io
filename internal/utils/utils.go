@@ -31,7 +31,7 @@ func ReadReposFile(inputFile string) ([]string, error) {
 }
 
 func ReadReposFile2(inputFile string) ([]shared.RepositoryParams, error) {
-	var wholeFile shared.ListFuncResult
+	var wholeFile shared.GenericLaunchesResult
 	var result []shared.RepositoryParams
 
 	readFile, err := os.Open(inputFile)
@@ -40,12 +40,35 @@ func ReadReposFile2(inputFile string) ([]shared.RepositoryParams, error) {
 	}
 	defer readFile.Close()
 
-	byteValue, _ := ioutil.ReadAll(readFile)
+	byteValue, err := ioutil.ReadAll(readFile)
+	if err != nil {
+		return nil, err
+	}
 	err = json.Unmarshal(byteValue, &wholeFile)
 	if err != nil {
 		return result, err
 	}
-	return wholeFile.Result, nil
+
+	// TODO: temporary fix
+	if len(wholeFile.Launches) > 0 {
+		if repos, ok := wholeFile.Launches[0].Result.([]interface{}); ok {
+			for _, repo := range repos {
+				repoBytes, err := json.Marshal(repo)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal repo: %w", err)
+				}
+				var repoParam shared.RepositoryParams
+				err = json.Unmarshal(repoBytes, &repoParam)
+				if err != nil {
+					return nil, fmt.Errorf("failed to unmarshal repo: %w", err)
+				}
+				result = append(result, repoParam)
+			}
+			return result, nil
+		}
+	}
+
+	return nil, fmt.Errorf("unexpected type for result: %T", wholeFile.Launches[0].Result)
 }
 
 func GetDomain(repositoryURL string) (string, error) {

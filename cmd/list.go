@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -8,6 +9,7 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
+	"github.com/scan-io-git/scan-io/pkg/shared/vcsurl"
 )
 
 type RunOptionsList struct {
@@ -63,7 +65,24 @@ func do() {
 			logger.Info("The amount of repositories is", "numbers", len(projects))
 		}
 
-		files.WriteJsonFile(allArgumentsList.OutputFile, logger, resultVCS)
+		// TODO: fix temporary code
+		resultData, err := json.MarshalIndent(projects, "", "    ")
+		if err != nil {
+			return fmt.Errorf("error marshaling the result data: %w", err)
+		}
+		if err := files.WriteJsonFile(allArgumentsList.OutputFile, resultData); err != nil {
+			logger.Error("failed to write result", "error", err)
+			return err
+		}
+		logger.Info("results saved to file", "path", allArgumentsList.OutputFile)
+
+		var results shared.GenericLaunchesResult
+		results.Launches = append(results.Launches, resultVCS)
+		if err := shared.WriteGenericResult(AppConfig, logger, results, "LIST"); err != nil {
+			logger.Error("failed to write result", "error", err)
+			return err
+		}
+
 		return nil
 	})
 }
@@ -96,13 +115,13 @@ List of plugins:
 				}
 
 				URL := args[0]
-				hostname, namespace, repository, _, _, _, err := shared.ExtractRepositoryInfoFromURL(URL, allArgumentsList.VCSPlugName)
+				repoInfo, err := vcsurl.ExtractRepositoryInfoFromURL(URL, allArgumentsList.VCSPlugName)
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to extract data from provided URL '%s': %w", URL, err)
 				}
-				allArgumentsList.VCSURL = hostname
-				allArgumentsList.Namespace = namespace
-				allArgumentsList.Repository = repository
+				allArgumentsList.VCSURL = repoInfo.VCSUrl
+				allArgumentsList.Namespace = repoInfo.Namespace
+				allArgumentsList.Repository = repoInfo.Repository
 			} else {
 				if len(allArgumentsList.VCSURL) == 0 {
 					return fmt.Errorf(("'vcs-url' flag must be specified!"))

@@ -11,12 +11,12 @@ type Args interface {
 }
 
 type RepositoryParams struct {
-	Namespace string `json:"namespace"`
-	RepoName  string `json:"repo_name"`
-	PRID      string `json:"pr_id,omitempty"`
-	VCSURL    string `json:"vcs_url,omitempty"`
-	HttpLink  string `json:"http_link,omitempty"`
-	SshLink   string `json:"ssh_link"`
+	VCSUrl        string `json:"vcs_url,omitempty"`
+	Namespace     string `json:"namespace"`
+	Repository    string `json:"repository"`
+	PullRequestId string `json:"pull_request_id,omitempty"`
+	HTTPLink      string `json:"http_link,omitempty"`
+	SSHLink       string `json:"ssh_link"`
 }
 
 type ProjectParams struct {

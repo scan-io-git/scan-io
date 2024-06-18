@@ -72,16 +72,16 @@ func (s *Scanner) PrepareScanArgs(cfg *config.Config, repos []shared.RepositoryP
 
 // prepareRepoScanArg prepares the scan arguments for a repository.
 func (s *Scanner) prepareRepoScanArg(cfg *config.Config, repo shared.RepositoryParams, nameTemplate string) (shared.ScannerScanRequest, error) {
-	domain, err := utils.GetDomain(repo.SshLink)
+	domain, err := utils.GetDomain(repo.SSHLink)
 	if err != nil {
-		domain, err = utils.GetDomain(repo.HttpLink)
+		domain, err = utils.GetDomain(repo.HTTPLink)
 		if err != nil {
 			return shared.ScannerScanRequest{}, fmt.Errorf("failed to get domain from repository links: %w", err)
 		}
 	}
 
-	resultsFolderPath := filepath.Join(config.GetScanioResultsHome(cfg), strings.ToLower(domain), strings.ToLower(repo.Namespace), strings.ToLower(repo.RepoName))
-	targetPath := config.GetRepositoryPath(cfg, domain, filepath.Join(repo.Namespace, repo.RepoName))
+	resultsFolderPath := filepath.Join(config.GetScanioResultsHome(cfg), strings.ToLower(domain), strings.ToLower(repo.Namespace), strings.ToLower(repo.Repository))
+	targetPath := config.GetRepositoryPath(cfg, domain, filepath.Join(repo.Namespace, repo.Repository))
 	resultsFile := filepath.Join(resultsFolderPath, nameTemplate)
 
 	if err := files.CreateFolderIfNotExists(resultsFolderPath); err != nil {

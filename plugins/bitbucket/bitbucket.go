@@ -243,8 +243,8 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	}
 
 	// TODO: Change the RepoParam structure to int
-	prID, _ := strconv.Atoi(args.RepoParam.PRID)
-	prData, err := client.PullRequests.Get(args.RepoParam.Namespace, args.RepoParam.RepoName, prID)
+	prID, _ := strconv.Atoi(args.RepoParam.PullRequestId)
+	prData, err := client.PullRequests.Get(args.RepoParam.Namespace, args.RepoParam.Repository, prID)
 	if err != nil {
 		g.logger.Error("failed to retrieve information about the PR", "PRID", prID, "error", err)
 		return "", err
@@ -272,13 +272,13 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	}
 
 	// TODO: Fix a strange bug when it fetches only pr changes without all other files in case of PR fetch
-	_, err = clientGit.CloneRepository(args, "main")
+	_, err = clientGit.CloneRepository(args, "master")
 	if err != nil {
 		g.logger.Error("failed to clone repository", "error", err)
 		return "", err
 	}
 
-	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.VCSURL, args.RepoParam.Namespace, args.RepoParam.RepoName, prID)
+	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.VCSUrl, args.RepoParam.Namespace, args.RepoParam.Repository, prID)
 
 	g.logger.Debug("copying files that have changed")
 	for _, val := range *changes {
@@ -312,7 +312,7 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchRespon
 	}
 
 	switch args.Mode {
-	case "PRscan":
+	case "fetchPR":
 		path, err := g.fetchPR(&args)
 		if err != nil {
 			g.logger.Error("failed to fetch pull request")
@@ -333,7 +333,7 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchRespon
 			return result, err
 		}
 
-		path, err := clientGit.CloneRepository(&args, "main")
+		path, err := clientGit.CloneRepository(&args, "master")
 		if err != nil {
 			g.logger.Error("failed to clone repository", "error", err)
 			return result, err

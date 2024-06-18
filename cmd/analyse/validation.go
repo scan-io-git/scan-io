@@ -37,6 +37,10 @@ func validateAnalyseArgs(allArgumentsAnalyse *RunOptionsAnalyse, args []string, 
 		return fmt.Errorf("the 'input-file' flag must be specified")
 	}
 
+	if allArgumentsAnalyse.Threads <= 0 {
+		return fmt.Errorf("the 'threads' flag must be a positive integer")
+	}
+
 	// TODO: add validation for the input file format
 	return nil
 }
