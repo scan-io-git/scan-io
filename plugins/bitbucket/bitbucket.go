@@ -249,15 +249,18 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		g.logger.Error("failed to retrieve information about the PR", "PRID", prID, "error", err)
 		return "", err
 	}
+	g.logger.Debug("debug info", "prData", prData)
 
 	changes, err := prData.GetChanges()
 	if err != nil {
 		g.logger.Error("failed to retrieve PR changes", "PRID", prID, "error", err)
 		return "", err
 	}
+	g.logger.Debug("debug info", "changes", changes)
 
 	g.logger.Debug("starting to fetch PR code")
-	args.Branch = prData.FromReference.DisplayID
+	args.Branch = prData.FromReference.ID
+	g.logger.Debug("debug info", "branch", args.Branch)
 
 	pluginConfigMap, err := shared.StructToMap(g.globalConfig.BitbucketPlugin)
 	if err != nil {
