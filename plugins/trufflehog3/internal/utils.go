@@ -60,24 +60,18 @@ func (tf Trufflehog3Report) Render() string {
 	return strings.Join(report, "\n")
 }
 
-func ParseTrufflehog3Json(filePath string, maxLength int) (string, bool, error) {
+func jsonToPlainReport(filePath string) (string, error) {
 	var reportBuilder strings.Builder
 	reportTrufflehog3 := Trufflehog3Report{}
 	fileTrufflehog3, err := os.ReadFile(filePath)
 	if err != nil {
-		return "", false, fmt.Errorf("error opening file: %v", err)
+		return "", fmt.Errorf("error opening file: %v", err)
 	}
 	reportBuilder.WriteString("**Trufflehog3 scanner resutls**\n")
 
-	if len(fileTrufflehog3) == 0 {
-		reportBuilder.WriteString(fmt.Sprintf("The scanner found 0 issues.\n\n"))
-		return reportBuilder.String(), true, nil
-
-	}
-
 	err = json.Unmarshal(fileTrufflehog3, &reportTrufflehog3)
 	if err != nil {
-		return "", false, fmt.Errorf("error parsing report: %v", err)
+		return "", fmt.Errorf("error parsing report: %v", err)
 	}
 
 	reportBuilder.WriteString(fmt.Sprintf("The scanner found %d issues.\n\n", len(reportTrufflehog3)))
@@ -85,12 +79,7 @@ func ParseTrufflehog3Json(filePath string, maxLength int) (string, bool, error) 
 	preReport := reportTrufflehog3.Render()
 	reportBuilder.WriteString(preReport)
 	finalReport := reportBuilder.String()
-	if len(finalReport) > maxLength {
-		truncatedReport := finalReport[:maxLength] + "\n```\n ⚠️ output was truncated\n"
-		return truncatedReport, false, nil
-	} else {
-		reportBuilder.WriteString("```\n")
-	}
+	reportBuilder.WriteString("```\n")
 
-	return finalReport, false, nil
+	return finalReport, nil
 }

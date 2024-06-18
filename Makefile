@@ -1,7 +1,7 @@
 # Makefile for building Scanio core and plugins
 
 # Define variables
-VERSION := $(shell cat VERSION)
+VERSION := $(shell jq -r '.version' VERSION)
 GO_VERSION := $(shell go version | awk '{print $$3}')
 BUILD_TIME := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 CORE_BINARY ?= ~/.local/bin/scanio
@@ -32,12 +32,13 @@ build-plugins: check-go-dependency clean-plugins prepare-plugins ## Build Scanio
 	@echo "Building Scanio plugis..."
 	@for dir in plugins/*/ ; do \
 	    plugin_name=$$(basename $$dir); \
-	    version=$$(cat $$dir/VERSION); \
+	    version=$$(jq -r '.version' $$dir/VERSION); \
+	    plugin_type=$$(jq -r '.plugin_type' $$dir/VERSION); \
 	    output_dir=$(PLUGINS_DIR)/$$plugin_name; \
 	    LDFLAGS_PLUGINS="-X main.Version=$$version \
 	                     -X main.GolangVersion=$(GO_VERSION) \
 	                     -X main.BuildTime=$(BUILD_TIME)"; \
-	    echo "Building plugin: $$plugin_name v$$version"; \
+	    echo "Building plugin name: '$$plugin_name', version: 'v$$version', type: '$$plugin_type' "; \
 		echo "Writing to $$output_dir"; \
 	    mkdir -p $$output_dir; \
 	    go build -ldflags "$$LDFLAGS_PLUGINS" -o $$output_dir/$$plugin_name ./$$dir || { echo "Failed to build plugin: $$plugin_name"; exit 1; }; \

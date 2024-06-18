@@ -15,105 +15,93 @@ import (
 )
 
 // TODO: Wrap it in a custom error handler to add to the stack trace.
+// Metadata of the plugin
 var (
 	Version       = "unknown"
 	GolangVersion = "unknown"
 	BuildTime     = "unknown"
 )
 
+// ScannerCodeQL represents the CodeQL scanner with its configuration and logger.
 type ScannerCodeQL struct {
 	logger       hclog.Logger
 	globalConfig *config.Config
 }
 
-var (
-	CODEQL_SUPPORTED_LANGUAGES = []string{"cpp", "csharp", "go", "java", "javascript", "python", "ruby", "swift"}
-	result                     shared.ScannerScanResponse
-)
-
-func isLanguageSupported(language string) bool {
-	for _, l := range CODEQL_SUPPORTED_LANGUAGES {
-		if l == language {
-			return true
-		}
+// newScannerCodeQL creates a new instance of ScannerCodeQL.
+func newScannerCodeQL(logger hclog.Logger) *ScannerCodeQL {
+	return &ScannerCodeQL{
+		logger: logger,
 	}
-	return false
 }
 
-func (g *ScannerCodeQL) createDatabase(databaseDir string, args shared.ScannerScanRequest) error {
-	// codeql database create /tmp/scanio.codeqldb --language go
+// setGlobalConfig sets the global configuration for the ScannerCodeQL instance.
+func (g *ScannerCodeQL) setGlobalConfig(globalConfig *config.Config) {
+	g.globalConfig = globalConfig
+}
 
+// executeCommand runs the specified command and captures its output.
+func (g *ScannerCodeQL) executeCommand(cmd *exec.Cmd) error {
 	var stdBuffer bytes.Buffer
-
-	g.logger.Debug("Creating CodeQL database", "project", args.TargetPath)
-
-	language := os.Getenv("SCANIO_CODEQL_LANGUAGE")
-	if !isLanguageSupported(language) {
-		return fmt.Errorf("unsupported language for CodeQL")
-	}
-
-	commandArgs := []string{"database", "create", databaseDir, "--language", language, "--source-root", args.TargetPath}
-
-	cmd := exec.Command("codeql", commandArgs...)
-	mw := io.MultiWriter(g.logger.StandardWriter(&hclog.StandardLoggerOptions{
-		InferLevels: true,
-	}), &stdBuffer)
+	mw := io.MultiWriter(g.logger.StandardWriter(&hclog.StandardLoggerOptions{InferLevels: true}), &stdBuffer)
 
 	cmd.Stdout = mw
 	cmd.Stderr = mw
 
-	err := cmd.Run()
-	if err != nil {
-		err := fmt.Errorf(stdBuffer.String())
-		g.logger.Error("codeql execution error", "error", err)
-		return err
+	if err := cmd.Run(); err != nil {
+		g.logger.Error(fmt.Sprintf("%s execution error", cmd.Path), "error", err)
+		return fmt.Errorf("%s execution error: %w. Output: %s", cmd.Path, err, stdBuffer.String())
 	}
-
 	return nil
 }
 
+// createDatabase creates a CodeQL database for the given project.
+func (g *ScannerCodeQL) createDatabase(databaseDir string, args shared.ScannerScanRequest) error {
+	g.logger.Debug("Creating CodeQL database", "project", args.TargetPath)
+	language := g.globalConfig.CodeQLPlugin.DBLanguage
+	if err := validateLanguageHard(language); err != nil {
+		return err
+	}
+
+	commandArgs := []string{"database", "create", databaseDir, "--language", language, "--source-root", args.TargetPath}
+	cmd := exec.Command("codeql", commandArgs...)
+	return g.executeCommand(cmd)
+}
+
+// analyzeDatabase analyzes the CodeQL database and generates a report.
 func (g *ScannerCodeQL) analyzeDatabase(databaseDir string, args shared.ScannerScanRequest) error {
 	g.logger.Debug("Analyzing CodeQL database", "project", args.TargetPath)
 
-	// codeql database analyze /tmp/scanio.codeqldb/ --format sarifv2.1.0 codeql/go-queries -o /tmp/scanio.sarif
+	commandArgs := []string{"database", "analyze", databaseDir}
+	if args.ReportFormat != "" {
+		g.validateFormatSoft(args.ReportFormat)
+		commandArgs = append(commandArgs, "--format", args.ReportFormat)
+	}
+	commandArgs = append(commandArgs, args.ConfigPath, "--output", args.ResultsPath)
 
-	// query := os.Getenv("SCANIO_CODEQL_QUERY")
-
-	var stdBuffer bytes.Buffer
-
-	commandArgs := []string{"database", "analyze", databaseDir, "--format", args.ReportFormat, args.ConfigPath, "--output", args.ResultsPath}
-
-	// Add additional arguments
 	if len(args.AdditionalArgs) != 0 {
 		commandArgs = append(commandArgs, args.AdditionalArgs...)
 	}
 
 	cmd := exec.Command("codeql", commandArgs...)
-	mw := io.MultiWriter(g.logger.StandardWriter(&hclog.StandardLoggerOptions{
-		InferLevels: true,
-	}), &stdBuffer)
-
-	cmd.Stdout = mw
-	cmd.Stderr = mw
-
-	err := cmd.Run()
-	if err != nil {
-		err := fmt.Errorf(stdBuffer.String())
-		g.logger.Error("codeql execution error", "error", err)
-		return err
-	}
-
-	return nil
+	return g.executeCommand(cmd)
 }
 
+// Scan executes the CodeQL scan with the provided arguments and returns the scan response.
 func (g *ScannerCodeQL) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
+	var result shared.ScannerScanResponse
+	g.logger.Info("codeQL scan starting", "project", args.TargetPath)
+	g.logger.Debug("debug info", "args", args)
 
-	g.logger.Info("CodeQL flow starting", "project", args.TargetPath)
-	g.logger.Debug("Debug info", "args", args)
-
-	databaseDir, err := os.MkdirTemp("", "codeqdb")
-	if err != nil {
+	if err := g.validateScan(&args); err != nil {
+		g.logger.Error("validation failed for scan operation", "error", err)
 		return result, err
+	}
+
+	scanioTmp := config.GetScanioTempHome(g.globalConfig)
+	databaseDir, err := os.MkdirTemp(scanioTmp, "codeql_db")
+	if err != nil {
+		return result, fmt.Errorf("failed to create temp directory: %w", err)
 	}
 	defer os.RemoveAll(databaseDir)
 
@@ -126,14 +114,15 @@ func (g *ScannerCodeQL) Scan(args shared.ScannerScanRequest) (shared.ScannerScan
 	}
 
 	result.ResultsPath = args.ResultsPath
-	g.logger.Info("Scan finished for", "project", args.TargetPath)
-	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
-	g.logger.Debug("Debug info", "project", args.TargetPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath)
+	g.logger.Info("scan finished", "project", args.TargetPath)
+	g.logger.Info("result saved", "path", args.ResultsPath)
+	g.logger.Debug("debug info", "project", args.TargetPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath)
 	return result, nil
 }
 
+// Setup initializes the global configuration for the ScannerCodeQL instance.
 func (g *ScannerCodeQL) Setup(configData config.Config) (bool, error) {
-	g.globalConfig = &configData
+	g.setGlobalConfig(&configData)
 	return true, nil
 }
 
@@ -144,16 +133,13 @@ func main() {
 		JSONFormat: true,
 	})
 
-	Scanner := &ScannerCodeQL{
-		logger: logger,
-	}
-
-	var pluginMap = map[string]plugin.Plugin{
-		shared.PluginTypeScanner: &shared.ScannerPlugin{Impl: Scanner},
-	}
+	codeQLInstance := newScannerCodeQL(logger)
 
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: shared.HandshakeConfig,
-		Plugins:         pluginMap,
+		Plugins: map[string]plugin.Plugin{
+			shared.PluginTypeScanner: &shared.ScannerPlugin{Impl: codeQLInstance},
+		},
+		Logger: logger,
 	})
 }

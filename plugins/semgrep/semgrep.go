@@ -14,75 +14,91 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
+const (
+	defaultCommand  = "scan"
+	autoConfig      = "auto"
+	metricsFlag     = "--metrics"
+	metricsOffValue = "off"
+)
+
 // TODO: Wrap it in a custom error handler to add to the stack trace.
+// Metadata of the plugin
 var (
 	Version       = "unknown"
 	GolangVersion = "unknown"
 	BuildTime     = "unknown"
 )
 
+// ScannerSemgrep represents the Semgrep scanner with its configuration and logger.
 type ScannerSemgrep struct {
 	logger       hclog.Logger
 	globalConfig *config.Config
 }
 
-const SEMGREP_RULES_FOLDER = "/scanio-rules/semgrep"
-
-func (g *ScannerSemgrep) getDefaultConfig() string {
-	if config.IsCI(g.globalConfig) {
-		if _, err := os.Stat(SEMGREP_RULES_FOLDER); !os.IsNotExist(err) {
-			return SEMGREP_RULES_FOLDER
-		}
-		return "p/ci"
+// newScannerSemgrep creates a new instance of ScannerSemgrep.
+func newScannerSemgrep(logger hclog.Logger) *ScannerSemgrep {
+	return &ScannerSemgrep{
+		logger: logger,
 	}
-
-	return "p/default"
 }
 
-func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
-	var result shared.ScannerScanResponse
-	g.logger.Info("Scan is starting", "project", args.TargetPath)
-	g.logger.Debug("Debug info", "args", args)
+// setGlobalConfig sets the global configuration for the ScannerSemgrep instance.
+func (g *ScannerSemgrep) setGlobalConfig(globalConfig *config.Config) {
+	g.globalConfig = globalConfig
+}
 
+// buildCommandArgs constructs the command-line arguments for the Semgrep command.
+func (g *ScannerSemgrep) buildCommandArgs(args shared.ScannerScanRequest) []string {
 	var commandArgs []string
-	var cmd *exec.Cmd
-	var reportFormat string
-	var stdBuffer bytes.Buffer
 
-	commandArgs = []string{"scan"}
+	appendArg := func(arg ...string) {
+		commandArgs = append(commandArgs, arg...)
+	}
 
-	// Add additional arguments
+	appendArg(defaultCommand)
+
 	if len(args.AdditionalArgs) != 0 {
-		commandArgs = append(commandArgs, args.AdditionalArgs...)
+		appendArg(args.AdditionalArgs...)
 	}
 
 	if args.ReportFormat != "" {
-		reportFormat = fmt.Sprintf("--%v", args.ReportFormat)
-		commandArgs = append(commandArgs, reportFormat)
+		g.validateFormatSoft(args.ReportFormat)
+		appendArg(fmt.Sprintf("--%v", args.ReportFormat))
 	}
 
-	// use "p/deafult" by default to not send metrics
 	configPath := args.ConfigPath
-	if args.ConfigPath == "" {
-		configPath = g.getDefaultConfig()
+	if configPath == "" {
+		configPath = getDefaultRuleSet(g.globalConfig)
+	}
+	appendArg("-f", configPath)
+
+	if configPath != autoConfig {
+		appendArg(metricsFlag, metricsOffValue)
 	}
 
-	// auto config requires sendings metrics
-	commandArgs = append(commandArgs, "-f", configPath)
-	if configPath != "auto" {
-		commandArgs = append(commandArgs, "--metrics", "off")
+	appendArg("--output", args.ResultsPath)
+	appendArg(args.TargetPath)
+
+	return commandArgs
+}
+
+// Scan executes the Semgrep scan with the provided arguments and returns the scan response.
+func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
+	var result shared.ScannerScanResponse
+	g.logger.Info("scan is starting", "project", args.TargetPath)
+	g.logger.Debug("debug info", "args", args)
+
+	if err := g.validateScan(&args); err != nil {
+		g.logger.Error("validation failed for scan operation", "error", err)
+		return result, err
 	}
 
-	// output file
-	commandArgs = append(commandArgs, "--output", args.ResultsPath)
+	commandArgs := g.buildCommandArgs(args)
 
-	// repo path
-	commandArgs = append(commandArgs, args.TargetPath)
+	cmd := exec.Command("semgrep", commandArgs...)
+	g.logger.Debug("debug info", "cmd", cmd.Args)
 
-	// prep cmd
-	cmd = exec.Command("semgrep", commandArgs...)
-	g.logger.Debug("Debug info", "cmd", cmd.Args)
-
+	var stdBuffer bytes.Buffer
 	mw := io.MultiWriter(g.logger.StandardWriter(&hclog.StandardLoggerOptions{
 		InferLevels: true,
 	}), &stdBuffer)
@@ -90,22 +106,21 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) (shared.ScannerSca
 	cmd.Stdout = mw
 	cmd.Stderr = mw
 
-	err := cmd.Run()
-	if err != nil {
-		err := fmt.Errorf(stdBuffer.String())
-		g.logger.Error("Semgrep execution error", "error", err)
-		return result, err
+	if err := cmd.Run(); err != nil {
+		g.logger.Error("semgrep execution error", "error", err)
+		return result, fmt.Errorf("semgrep execution error: %w. Output: %s", err, stdBuffer.String())
 	}
 
 	result.ResultsPath = args.ResultsPath
-	g.logger.Info("Scan finished for", "project", args.TargetPath)
-	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
-	g.logger.Debug("Debug info", "project", args.TargetPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
+	g.logger.Info("scan finished", "project", args.TargetPath)
+	g.logger.Info("result saved", "path", args.ResultsPath)
+	g.logger.Debug("debug info", "project", args.TargetPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
 	return result, nil
 }
 
+// Setup initializes the global configuration for the ScannerSemgrep instance.
 func (g *ScannerSemgrep) Setup(configData config.Config) (bool, error) {
-	g.globalConfig = &configData
+	g.setGlobalConfig(&configData)
 	return true, nil
 }
 
@@ -116,16 +131,13 @@ func main() {
 		JSONFormat: true,
 	})
 
-	Scanner := &ScannerSemgrep{
-		logger: logger,
-	}
-
-	var pluginMap = map[string]plugin.Plugin{
-		shared.PluginTypeScanner: &shared.ScannerPlugin{Impl: Scanner},
-	}
+	semgrepInstance := newScannerSemgrep(logger)
 
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: shared.HandshakeConfig,
-		Plugins:         pluginMap,
+		Plugins: map[string]plugin.Plugin{
+			shared.PluginTypeScanner: &shared.ScannerPlugin{Impl: semgrepInstance},
+		},
+		Logger: logger,
 	})
 }

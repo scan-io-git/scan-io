@@ -19,6 +19,7 @@ import (
 )
 
 // TODO: Wrap it in a custom error handler to add to the stack trace.
+// Metadata of the plugin
 var (
 	Version       = "unknown"
 	GolangVersion = "unknown"
@@ -31,14 +32,14 @@ type VCSBitbucket struct {
 	globalConfig *config.Config
 }
 
-// NewVCSBitbucket creates a new instance of VCSBitbucket.
+// newVCSBitbucket creates a new instance of VCSBitbucket.
 func newVCSBitbucket(logger hclog.Logger) *VCSBitbucket {
 	return &VCSBitbucket{
 		logger: logger,
 	}
 }
 
-// SetGlobalConfig sets the global configuration for the VCSBitbucket instance.
+// setGlobalConfig sets the global configuration for the VCSBitbucket instance.
 func (g *VCSBitbucket) setGlobalConfig(globalConfig *config.Config) {
 	g.globalConfig = globalConfig
 }
@@ -242,8 +243,8 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	}
 
 	// TODO: Change the RepoParam structure to int
-	prID, _ := strconv.Atoi(args.RepoParam.PRID)
-	prData, err := client.PullRequests.Get(args.RepoParam.Namespace, args.RepoParam.RepoName, prID)
+	prID, _ := strconv.Atoi(args.RepoParam.PullRequestId)
+	prData, err := client.PullRequests.Get(args.RepoParam.Namespace, args.RepoParam.Repository, prID)
 	if err != nil {
 		g.logger.Error("failed to retrieve information about the PR", "PRID", prID, "error", err)
 		return "", err
@@ -258,14 +259,26 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	g.logger.Debug("starting to fetch PR code")
 	args.Branch = prData.FromReference.DisplayID
 
+	pluginConfigMap, err := shared.StructToMap(g.globalConfig.BitbucketPlugin)
+	if err != nil {
+		g.logger.Error("error converting struct to map", "error", err)
+		return "", err
+	}
+
+	clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, args)
+	if err != nil {
+		g.logger.Error("failed to initialize Git client", "error", err)
+		return "", err
+	}
+
 	// TODO: Fix a strange bug when it fetches only pr changes without all other files in case of PR fetch
-	_, err = git.CloneRepository(g.logger, g.globalConfig, args, "master")
+	_, err = clientGit.CloneRepository(args, "master")
 	if err != nil {
 		g.logger.Error("failed to clone repository", "error", err)
 		return "", err
 	}
 
-	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.VCSURL, args.RepoParam.Namespace, args.RepoParam.RepoName, prID)
+	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.VCSUrl, args.RepoParam.Namespace, args.RepoParam.Repository, prID)
 
 	g.logger.Debug("copying files that have changed")
 	for _, val := range *changes {
@@ -299,7 +312,7 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchRespon
 	}
 
 	switch args.Mode {
-	case "PRscan":
+	case "fetchPR":
 		path, err := g.fetchPR(&args)
 		if err != nil {
 			g.logger.Error("failed to fetch pull request")
@@ -308,11 +321,24 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchRespon
 		result.Path = path
 
 	default:
-		path, err := git.CloneRepository(g.logger, g.globalConfig, &args, "master")
+		pluginConfigMap, err := shared.StructToMap(g.globalConfig.BitbucketPlugin)
+		if err != nil {
+			g.logger.Error("error converting struct to map", "error", err)
+			return result, err
+		}
+
+		clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, &args)
+		if err != nil {
+			g.logger.Error("failed to initialize Git client", "error", err)
+			return result, err
+		}
+
+		path, err := clientGit.CloneRepository(&args, "master")
 		if err != nil {
 			g.logger.Error("failed to clone repository", "error", err)
 			return result, err
 		}
+
 		result.Path = path
 	}
 

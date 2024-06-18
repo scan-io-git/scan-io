@@ -1,6 +1,3 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -51,7 +48,7 @@ func run2analyzeRepos(repos []shared.RepositoryParams) error {
 		return err
 	}
 
-	_ = s.ScanRepos(AppConfig, scanArgs)
+	_, _ = s.ScanRepos(AppConfig, scanArgs)
 
 	return nil
 }
@@ -59,14 +56,22 @@ func run2analyzeRepos(repos []shared.RepositoryParams) error {
 func run2fetchRepos(repos []shared.RepositoryParams) error {
 
 	logger := logger.NewLogger(AppConfig, "core-run2-fetcher")
-	f := fetcher.New(allRun2Options.AuthType, allRun2Options.SSHKey, allRun2Options.Jobs, allRun2Options.Branch, allRun2Options.VCSPlugName, strings.Split(allRun2Options.RmExts, ","), logger)
+	f := fetcher.New(
+		allRun2Options.VCSPlugName,
+		allRun2Options.AuthType,
+		allRun2Options.SSHKey,
+		allRun2Options.Branch,
+		strings.Split(allRun2Options.RmExts, ","),
+		allRun2Options.Jobs,
+		logger,
+	)
 
-	fetchArgs, err := f.PrepFetchArgs(AppConfig, logger, repos)
+	fetchArgs, err := f.PrepFetchReqList(AppConfig, repos)
 	if err != nil {
 		return err
 	}
 
-	_ = f.FetchRepos(AppConfig, fetchArgs)
+	_, _ = f.FetchRepos(AppConfig, fetchArgs)
 
 	return nil
 }
@@ -78,10 +83,10 @@ func convertRawRepoURLToRepoParams(repoURL string) (*shared.RepositoryParams, er
 	}
 	namespace, repoName := utils.SplitPathOnNamespaceAndRepoName(path)
 	return &shared.RepositoryParams{
-		Namespace: namespace,
-		RepoName:  repoName,
-		HttpLink:  repoURL,
-		SshLink:   repoURL,
+		Namespace:  namespace,
+		Repository: repoName,
+		HTTPLink:   repoURL,
+		SSHLink:    repoURL,
 	}, nil
 }
 
@@ -139,9 +144,9 @@ func run2WithHelm(repos []shared.RepositoryParams) error {
 
 		jobID := uuid.New()
 
-		repoURL := repo.HttpLink
+		repoURL := repo.HTTPLink
 		if allRun2Options.AuthType != "http" {
-			repoURL = repo.SshLink
+			repoURL = repo.SSHLink
 		}
 
 		logger.Info("run2WithHelm's goroutine started", "#", i+1, "repo", repoURL)

@@ -2,9 +2,6 @@ package version
 
 import (
 	"fmt"
-	"log"
-	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -21,8 +18,8 @@ var (
 
 // Versions struct holds version information for the core application and plugins.
 type CoreVersions struct {
-	Versions       shared.Versions   `json:"versions"`
-	PluginVersions map[string]string `json:"plugin_versions"`
+	Versions      shared.Versions              `json:"versions"`
+	PluginDetails map[string]shared.PluginMeta `json:"plugin_details"`
 }
 
 // Init initializes the global configuration variable.
@@ -44,8 +41,8 @@ func NewVersionCmd() *cobra.Command {
 				BuildTime:     BuildTime,
 			}
 			version := CoreVersions{
-				Versions:       versionInfo,
-				PluginVersions: getPluginVersions(config.GetScanioPluginsHome(AppConfig)),
+				Versions:      versionInfo,
+				PluginDetails: shared.GetPluginVersions(config.GetScanioPluginsHome(AppConfig), ""),
 			}
 
 			printVersionInfo(&version)
@@ -53,41 +50,12 @@ func NewVersionCmd() *cobra.Command {
 	}
 }
 
-// getVersion reads the version from the given version file.
-func readVersionFile(versionFilePath string) string {
-	data, err := os.ReadFile(versionFilePath)
-	if err != nil {
-		return "unknown"
-	}
-	return string(data)
-}
-
-// getPluginVersions iterates through the plugin directories and reads their version files.
-func getPluginVersions(pluginsDir string) map[string]string {
-	pluginVersions := make(map[string]string)
-	entries, err := os.ReadDir(pluginsDir)
-	if err != nil {
-		log.Printf("Failed to read plugins directory: %v", err)
-		pluginVersions["unknown"] = "unknown"
-		return pluginVersions
-	}
-	for _, entry := range entries {
-		if entry.IsDir() {
-			pluginName := entry.Name()
-			versionFilePath := filepath.Join(pluginsDir, pluginName, "VERSION")
-			version := readVersionFile(versionFilePath)
-			pluginVersions[pluginName] = version
-		}
-	}
-	return pluginVersions
-}
-
 // printVersionInfo prints the version information for the core application and plugins.
 func printVersionInfo(versions *CoreVersions) {
 	fmt.Printf("Core Version: v%s\n", versions.Versions.Version)
 	fmt.Println("Plugin Versions:")
-	for plugin, version := range versions.PluginVersions {
-		fmt.Printf("  %s: v%s\n", plugin, version)
+	for plugin, version := range versions.PluginDetails {
+		fmt.Printf("  %s: v%s (Type: %s)\n", plugin, version.Version, version.PluginType)
 	}
 	fmt.Printf("Go Version: %s\n", versions.Versions.GolangVersion)
 	fmt.Printf("Build Time: %s\n", versions.Versions.BuildTime)

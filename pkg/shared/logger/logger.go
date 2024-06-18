@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"io"
 	"os"
 	"strings"
 
@@ -52,4 +53,12 @@ func parseLogLevel(levelStr string) hclog.Level {
 		}).Warn("Unrecognized log level, defaulting to INFO", "providedLevel", levelStr)
 		return hclog.Info
 	}
+}
+
+// GetLoggerOutput prepares the logger output.
+func GetLoggerOutput(logger hclog.Logger) io.Writer {
+	return logger.StandardWriter(&hclog.StandardLoggerOptions{
+		InferLevels: true,
+		ForceLevel:  logger.GetLevel(),
+	})
 }

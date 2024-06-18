@@ -6,38 +6,36 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/scan-io-git/scan-io/cmd/analyse"
+	"github.com/scan-io-git/scan-io/cmd/fetch"
 	"github.com/scan-io-git/scan-io/cmd/version"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
+// Global variables for configuration and the command.
 var (
-	cfgFile   string
 	AppConfig *config.Config
+	cfgFile   string
 	rootCmd   = &cobra.Command{
 		Use:                   "scanio [command]",
 		SilenceUsage:          true,
 		DisableFlagsInUseLine: true,
-		Short:                 "Scanio is an orchestrator for a variety of tools.",
-		Long: `Scanio is an orchestrator that consolidates various security scanning capabilities, 
-	including SAST, dynamic application security testing DAST, secret search, and dependency analysis.
-	`,
+		Short:                 "Comprehensive tool orchestration for security checks",
+		Long: `Scanio is an orchestrator that consolidates various security scanning capabilities, including static code analysis, secret detection, dependency analysis, etc.
+
+  Learn more at: https://github.com/scan-io-git/scan-io`,
 	}
 )
 
-func init() {
-	cobra.OnInitialize(initConfig)
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is .config.yml)")
-	rootCmd.AddCommand(version.NewVersionCmd())
-}
-
+// Execute adds all child commands to the root command and sets flags appropriately.
 func Execute() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error executing command: %v\n", err)
 		os.Exit(1)
 	}
 }
 
+// initConfig reads the configuration file and initializes the commands with the loaded configuration.
 func initConfig() {
 	var err error
 	AppConfig, err = config.LoadConfig(cfgFile)
@@ -52,6 +50,17 @@ func initConfig() {
 		os.Exit(1)
 	}
 
+	analyse.Init(AppConfig)
+	fetch.Init(AppConfig)
 	version.Init(AppConfig)
+}
 
+func init() {
+	cobra.OnInitialize(initConfig)
+
+	rootCmd.Flags().BoolP("help", "h", false, "Show help for Scanio.")
+	rootCmd.AddCommand(analyse.AnalyseCmd)
+	rootCmd.AddCommand(fetch.FetchCmd)
+	rootCmd.AddCommand(version.NewVersionCmd())
+	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is .config.yml)")
 }

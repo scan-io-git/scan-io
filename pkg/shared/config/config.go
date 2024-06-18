@@ -14,6 +14,9 @@ import (
 type Config struct {
 	Scanio          Scanio          `yaml:"scanio"`           // Scanio configuration settings.
 	BitbucketPlugin BitbucketPlugin `yaml:"bitbucket_plugin"` // Bitbucket plugin configuration settings.
+	GithubPlugin    GithubPlugin    `yaml:"github_plugin"`    // Github plugin configuration settings.
+	GitlabPlugin    GithubPlugin    `yaml:"gitlab_plugin"`    // Gitlab plugin configuration settings.
+	CodeQLPlugin    CodeQLPlugin    `yaml:"codeql_plugin"`    // CodeQL plugin configuration settings.
 	Logger          Logger          `yaml:"logger"`           // Logger configuration settings.
 	HTTPClient      HTTPClient      `yaml:"http_client"`      // HTTP client configuration settings.
 	GitClient       GitClient       `yaml:"git_client"`       // Git client configuration settings.
@@ -35,6 +38,25 @@ type BitbucketPlugin struct {
 	Username       string `yaml:"username"`         // Username for Bitbucket integrations.
 	Token          string `yaml:"token"`            // Access token for Bitbucket.
 	SSHKeyPassword string `yaml:"ssh_key_password"` // Password for the SSH key used in fetching operations.
+}
+
+// GithubPlugin holds configuration specific to the Github plugin.
+type GithubPlugin struct {
+	Username       string `yaml:"username"`         // Username for Github integrations.
+	Token          string `yaml:"token"`            // Access token for Github.
+	SSHKeyPassword string `yaml:"ssh_key_password"` // Password for the SSH key used in fetching operations.
+}
+
+// GitlabPlugin holds configuration specific to the Gitlab plugin.
+type GitlabPlugin struct {
+	Username       string `yaml:"username"`         // Username for Gitlab integrations.
+	Token          string `yaml:"token"`            // Access token for Gitlab.
+	SSHKeyPassword string `yaml:"ssh_key_password"` // Password for the SSH key used in fetching operations.
+}
+
+// CodeQLPlugin holds configuration specific to the CodeQL plugin.
+type CodeQLPlugin struct {
+	DBLanguage string `yaml:"db_language"` // Language for building the CodeQL DB.
 }
 
 // Logger configures the hclog logging aspects of the application.
