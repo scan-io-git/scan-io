@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"sync"
 
 	"github.com/hashicorp/go-plugin"
@@ -68,6 +69,7 @@ func GetPluginVersions(pluginsDir, pluginType string) map[string]PluginMeta {
 		pluginsMeta[unknownVersion] = PluginMeta{Version: unknownVersion, PluginType: unknownVersion}
 		return pluginsMeta
 	}
+
 	for _, entry := range entries {
 		if entry.IsDir() {
 			pluginName := entry.Name()
@@ -78,7 +80,19 @@ func GetPluginVersions(pluginsDir, pluginType string) map[string]PluginMeta {
 			}
 		}
 	}
-	return pluginsMeta
+
+	sortedPluginNames := make([]string, 0, len(pluginsMeta))
+	for name := range pluginsMeta {
+		sortedPluginNames = append(sortedPluginNames, name)
+	}
+	sort.Strings(sortedPluginNames)
+
+	sortedPluginsMeta := make(map[string]PluginMeta)
+	for _, name := range sortedPluginNames {
+		sortedPluginsMeta[name] = pluginsMeta[name]
+	}
+
+	return sortedPluginsMeta
 }
 
 // readVersionFile reads and parses the version file as JSON.
