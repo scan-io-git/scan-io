@@ -60,3 +60,9 @@ __debug_bin
 
 # vagrant
 .vagrant/
+
+# reports
+*.sarif
+*.json
+scanio-report.html
+snyk-to-html-report.html
