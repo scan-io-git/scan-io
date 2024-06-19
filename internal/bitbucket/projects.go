@@ -50,12 +50,12 @@ func (ps *projectsService) List() (*[]Project, error) {
 		}
 
 		result = append(result, resp.Values...)
-		if resp.IsLastPage {
+		if resp.IsLastPage || resp.NextPageStart == nil {
 			ps.client.Logger.Debug("last page of projects reached")
 			break
 		}
 
-		start = resp.NextPageStart
+		start = *resp.NextPageStart
 	}
 
 	ps.client.Logger.Debug("successfully fetched all projects",

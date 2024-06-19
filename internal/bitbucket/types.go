@@ -8,7 +8,7 @@ var (
 
 // Response wraps API responses that include pagination details.
 type Response[T any] struct {
-	NextPageStart int  `json:"nextPageStart"`
+	NextPageStart *int `json:"nextPageStart"`
 	IsLastPage    bool `json:"isLastPage"`
 	Limit         int  `json:"limit"`
 	Size          int  `json:"size"`
