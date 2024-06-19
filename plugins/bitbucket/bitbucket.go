@@ -251,7 +251,6 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		g.logger.Error("failed to retrieve information about the PR", "PRID", prID, "error", err)
 		return "", err
 	}
-	// g.logger.Debug("debug info", "prData", prData)
 
 	fromRefLink := prData.FromReference.Repository.Links.Self[0].Href
 	u, err := url.ParseRequestURI(fromRefLink)
@@ -259,15 +258,13 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		return "", err
 	}
 
+	// TODO: decide set or not explicit branch from user
+	args.Branch = prData.FromReference.ID
 	pathDirs := vcsurl.GetPathDirs(u.Path)
-
 	if pathDirs[0] == "users" {
-		g.logger.Info("found merging from user personal repository", "fromRefLink", fromRefLink)
-		repoInfo, err := vcsurl.ExtractRepositoryInfoFromURL(fromRefLink, "bitbucket")
-		if err != nil {
-			return "", fmt.Errorf("failed to extract data from provided URL '%s': %w", fromRefLink, err)
-		}
-		args.CloneURL = repoInfo.SSHLink
+		args.Branch = prData.FromReference.LatestCommit
+		g.logger.Warn("found merging from user personal repository", "fromRefLink", fromRefLink)
+		g.logger.Warn("changes will be taken from the default branch and latest commit", "latest_commit", prData.FromReference.LatestCommit)
 	}
 
 	changes, err := prData.GetChanges()
@@ -275,11 +272,8 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		g.logger.Error("failed to retrieve PR changes", "PRID", prID, "error", err)
 		return "", err
 	}
-	// g.logger.Debug("debug info", "changes", changes)
 
 	g.logger.Debug("starting to fetch PR code")
-	args.Branch = prData.FromReference.ID
-	g.logger.Debug("debug info", "branch", args.Branch)
 
 	pluginConfigMap, err := shared.StructToMap(g.globalConfig.BitbucketPlugin)
 	if err != nil {

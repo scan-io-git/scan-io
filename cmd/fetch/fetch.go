@@ -24,6 +24,7 @@ type RunOptionsFetch struct {
 }
 
 // Global variables for configuration and command arguments
+// TODO: add PR example for github
 var (
 	AppConfig         *config.Config
 	fetchOptions      RunOptionsFetch
