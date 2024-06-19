@@ -57,13 +57,13 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest, defaultBranch str
 			c.logger.Error("cannot open existing repository", "error", err, "targetFolder", targetFolder)
 			return "", fmt.Errorf("cannot open existing repository: %w", err)
 		}
-
-		// TODO: fix - update move the confition to "fatal: bad object HEAD" and as a result the rep is stuck in "fatal: You are on a branch yet to be born"
-		repo, err = updateRepository(ctx, repo, c.auth, c.logger, c.globalConfig, output, targetFolder, reference.Branch)
-		if err != nil {
-			return "", err
-		}
 	}
+	// TODO: shallow and unshallow repo strategy
+	repo, err = updateRepository(ctx, repo, c.auth, c.logger, c.globalConfig, output, targetFolder, reference.Branch)
+	if err != nil {
+		return "", err
+	}
+
 	if reference.IsCommit {
 		c.logger.Warn("found commit fetching", "targetFolder", targetFolder)
 		err = checkoutCommit(repo, reference.Hash, c.logger, targetFolder)
@@ -135,7 +135,7 @@ func checkoutCommit(repo *git.Repository, commitHash plumbing.Hash, logger hclog
 		logger.Error("error accessing worktree", "error", err, "targetFolder", targetFolder)
 		return fmt.Errorf("error accessing worktree: %w", err)
 	}
-	h, err := repo.ResolveRevision(plumbing.Revision(commitHash.String())) // It should be support branch, hash, tag
+	h, err := repo.ResolveRevision(plumbing.Revision(commitHash.String()))
 	if err != nil {
 		logger.Error("error resolving revision", "error", err, "revision", commitHash.String(), "targetFolder", targetFolder)
 		return fmt.Errorf("error accessing worktree: %w", err)
