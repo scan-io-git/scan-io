@@ -15,10 +15,10 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/hashicorp/go-hclog"
 
-	log "github.com/scan-io-git/scan-io/pkg/shared/logger"
-
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+
+	log "github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 func (c *Client) CloneRepository(args *shared.VCSFetchRequest, defaultBranch string) (string, error) {
@@ -30,17 +30,17 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest, defaultBranch str
 		return "", fmt.Errorf("failed to parse VCS URL: %w", err)
 	}
 
-	branch := determineBranch(args.Branch, defaultBranch)
+	reference := determineBranch(args.Branch, defaultBranch)
 	output := log.GetLoggerOutput(c.logger)
 
 	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	c.logger.Debug("starting repository fetch", "repository", info.Name, "branch", branch, "targetFolder", targetFolder)
+	c.logger.Debug("starting repository fetch", "repository", info.Name, "branch", reference.Branch, "cloneURL", args.CloneURL, "targetFolder", targetFolder)
 	repo, err := git.PlainCloneContext(ctx, targetFolder, false, &git.CloneOptions{
 		Auth:            c.auth,
 		URL:             args.CloneURL,
-		ReferenceName:   branch,
+		ReferenceName:   reference.Branch,
 		Progress:        output,
 		Depth:           config.SetThen(c.globalConfig.GitClient.Depth, 1),
 		InsecureSkipTLS: config.GetBoolValue(c.globalConfig.GitClient, "InsecureTLS", false),
@@ -58,27 +58,35 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest, defaultBranch str
 			return "", fmt.Errorf("cannot open existing repository: %w", err)
 		}
 
-		repo, err = updateRepository(ctx, repo, c.auth, c.logger, c.globalConfig, output, targetFolder, branch)
+		// TODO: fix - update move the confition to "fatal: bad object HEAD" and as a result the rep is stuck in "fatal: You are on a branch yet to be born"
+		repo, err = updateRepository(ctx, repo, c.auth, c.logger, c.globalConfig, output, targetFolder, reference.Branch)
 		if err != nil {
 			return "", err
 		}
 	}
-	if err = checkoutAndResetBranch(repo, branch, c.logger, targetFolder); err != nil {
+	if reference.IsCommit {
+		c.logger.Warn("found commit fetching", "targetFolder", targetFolder)
+		err = checkoutCommit(repo, reference.Hash, c.logger, targetFolder)
+	} else {
+		err = checkoutAndResetBranch(repo, reference.Branch, c.logger, targetFolder)
+	}
+	if err != nil {
 		return "", err
 	}
 
 	if err == git.ErrRepositoryAlreadyExists {
-		if err := pullLatestChanges(ctx, repo, c.globalConfig, c.auth, branch, c.logger, output); err != nil {
+		if err := pullLatestChanges(ctx, repo, c.globalConfig, c.auth, reference.Branch, c.logger, output); err != nil {
 			return "", err
 		}
 	}
 
-	c.logger.Info("repository operation completed successfully", "repository", info.Name, "branch", branch, "targetFolder", targetFolder)
+	c.logger.Info("repository operation completed successfully", "repository", info.Name, "branch", reference.Branch, "targetFolder", targetFolder)
 	return targetFolder, nil
 }
 
 // updateRepository fetches updates from the remote repository and handles errors.
 func updateRepository(ctx context.Context, repo *git.Repository, auth transport.AuthMethod, logger hclog.Logger, globalConfig *config.Config, output io.Writer, targetFolder string, branch plumbing.ReferenceName) (*git.Repository, error) {
+	logger.Debug("update repo by using fetch", "targetFolder", targetFolder)
 	fetchOptions := &git.FetchOptions{
 		RemoteName:      "origin",
 		Auth:            auth,
@@ -118,6 +126,30 @@ func updateRepository(ctx context.Context, repo *git.Repository, auth transport.
 		}
 	}
 	return repo, nil
+}
+
+// checkoutCommit checks out a specific commit in the repository.
+func checkoutCommit(repo *git.Repository, commitHash plumbing.Hash, logger hclog.Logger, targetFolder string) error {
+	w, err := repo.Worktree()
+	if err != nil {
+		logger.Error("error accessing worktree", "error", err, "targetFolder", targetFolder)
+		return fmt.Errorf("error accessing worktree: %w", err)
+	}
+	h, err := repo.ResolveRevision(plumbing.Revision(commitHash.String())) // It should be support branch, hash, tag
+	if err != nil {
+		logger.Error("error resolving revision", "error", err, "revision", commitHash.String(), "targetFolder", targetFolder)
+		return fmt.Errorf("error accessing worktree: %w", err)
+	}
+
+	logger.Debug("checking out commit", "commit", commitHash.String(), "targetFolder", targetFolder)
+	if err := w.Checkout(&git.CheckoutOptions{
+		Hash:  *h,
+		Force: true,
+	}); err != nil {
+		logger.Error("error occurred during checkout", "error", err, "targetFolder", targetFolder)
+		return fmt.Errorf("error occurred during checkout: %w", err)
+	}
+	return nil
 }
 
 // checkoutAndResetBranch checks out and resets the branch.

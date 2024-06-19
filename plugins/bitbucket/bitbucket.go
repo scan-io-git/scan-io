@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
+	"github.com/scan-io-git/scan-io/pkg/shared/vcsurl"
 
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 )
@@ -249,14 +251,31 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		g.logger.Error("failed to retrieve information about the PR", "PRID", prID, "error", err)
 		return "", err
 	}
-	g.logger.Debug("debug info", "prData", prData)
+	// g.logger.Debug("debug info", "prData", prData)
+
+	fromRefLink := prData.FromReference.Repository.Links.Self[0].Href
+	u, err := url.ParseRequestURI(fromRefLink)
+	if err != nil {
+		return "", err
+	}
+
+	pathDirs := vcsurl.GetPathDirs(u.Path)
+
+	if pathDirs[0] == "users" {
+		g.logger.Info("found merging from user personal repository", "fromRefLink", fromRefLink)
+		repoInfo, err := vcsurl.ExtractRepositoryInfoFromURL(fromRefLink, "bitbucket")
+		if err != nil {
+			return "", fmt.Errorf("failed to extract data from provided URL '%s': %w", fromRefLink, err)
+		}
+		args.CloneURL = repoInfo.SSHLink
+	}
 
 	changes, err := prData.GetChanges()
 	if err != nil {
 		g.logger.Error("failed to retrieve PR changes", "PRID", prID, "error", err)
 		return "", err
 	}
-	g.logger.Debug("debug info", "changes", changes)
+	// g.logger.Debug("debug info", "changes", changes)
 
 	g.logger.Debug("starting to fetch PR code")
 	args.Branch = prData.FromReference.ID

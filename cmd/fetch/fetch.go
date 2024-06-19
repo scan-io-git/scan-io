@@ -33,6 +33,9 @@ var (
   # Fetching using SSH agent authentication, specifying a branch and SSH URL pointing to a specific repository
   scanio fetch --vcs github --auth-type ssh-agent -b develop ssh://git@github.com:scan-io-git/scan-io.git
 
+  # Fetching using SSH agent authentication, specifying a commit hash and URL pointing to a specific repository
+  scanio fetch --vcs github --auth-type ssh-agent -b c0c9e9af80666d80e564881a5bdfa661c60e053e https://github.com/scan-io-git/scan-io
+
   # Fetching the main branch using HTTP authentication, with a URL pointing to a specific repository
   scanio fetch --vcs github --auth-type http https://github.com/scan-io-git/scan-io
 
@@ -53,7 +56,7 @@ var (
 )
 
 var FetchCmd = &cobra.Command{
-	Use:                   "fetch --vcs/p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [--rm-ext LIST_OF_EXTENTIONS][-j THREADS_NUMBER, default=1] {--input-file/-i PATH | [-b BRANCH] URL}",
+	Use:                   "fetch --vcs/p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [--rm-ext LIST_OF_EXTENTIONS][-j THREADS_NUMBER, default=1] {--input-file/-i PATH | [-b BRANCH/HASH] URL}",
 	SilenceUsage:          true,
 	DisableFlagsInUseLine: true,
 	Example:               exampleFetchUsage,

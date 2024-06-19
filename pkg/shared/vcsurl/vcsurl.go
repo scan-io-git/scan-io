@@ -19,7 +19,7 @@ func ExtractRepositoryInfoFromURL(urlStr, vcsPlugName string) (shared.Repository
 
 	repoInfo.VCSUrl = u.Hostname()
 	scheme := u.Scheme
-	pathDirs := getPathDirs(u.Path)
+	pathDirs := GetPathDirs(u.Path)
 	isHTTP := scheme == "http" || scheme == "https"
 
 	switch vcsPlugName {
@@ -35,7 +35,7 @@ func ExtractRepositoryInfoFromURL(urlStr, vcsPlugName string) (shared.Repository
 }
 
 // getPathDirs splits the URL path into non-empty segments.
-func getPathDirs(path string) []string {
+func GetPathDirs(path string) []string {
 	var pathDirs []string
 	for _, dir := range strings.Split(path, "/") {
 		if dir != "" {
@@ -91,7 +91,7 @@ func handleBitbucket(repoInfo shared.RepositoryParams, scheme, urlStr, port stri
 		repoInfo.Namespace = pathDirs[0]
 		if strings.HasSuffix(pathDirs[len(pathDirs)-1], ".git") {
 			repoInfo.Repository = strings.TrimSuffix(pathDirs[len(pathDirs)-1], ".git")
-			setBitbucketURLs(&repoInfo, true, port, strings.HasPrefix(pathDirs[0], "~")) // User can override a port if they use an ssh scheme format of URL
+			setBitbucketURLs(&repoInfo, true, port, false) // User can override a port if they use an ssh scheme format of URL
 		}
 		return repoInfo, nil
 	default:
