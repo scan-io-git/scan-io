@@ -44,3 +44,11 @@ func SetThen[T any](value T, defaultValue T) T {
 	}
 	return value
 }
+
+// SetThenPtr returns the dereferenced value if the pointer is not nil; otherwise, it returns the default value.
+func SetThenPtr[T any](value *T, defaultValue T) T {
+	if value == nil {
+		return defaultValue
+	}
+	return *value
+}

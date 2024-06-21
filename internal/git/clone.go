@@ -42,7 +42,7 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest, defaultBranch str
 		URL:             args.CloneURL,
 		ReferenceName:   reference.Branch,
 		Progress:        output,
-		Depth:           config.SetThen(c.globalConfig.GitClient.Depth, 1),
+		Depth:           config.SetThen(c.globalConfig.GitClient.Depth, 0),
 		InsecureSkipTLS: config.GetBoolValue(c.globalConfig.GitClient, "InsecureTLS", false),
 	})
 	if err != nil {
@@ -58,8 +58,8 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest, defaultBranch str
 			return "", fmt.Errorf("cannot open existing repository: %w", err)
 		}
 	}
-	// TODO: shallow and unshallow repo strategy
-	repo, err = updateRepository(ctx, repo, c.auth, c.logger, c.globalConfig, output, targetFolder, reference.Branch)
+
+	repo, err = updateRepository(ctx, repo, c.auth, c.logger, c.globalConfig, output, targetFolder, reference.Branch, args)
 	if err != nil {
 		return "", err
 	}
@@ -85,37 +85,37 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest, defaultBranch str
 }
 
 // updateRepository fetches updates from the remote repository and handles errors.
-func updateRepository(ctx context.Context, repo *git.Repository, auth transport.AuthMethod, logger hclog.Logger, globalConfig *config.Config, output io.Writer, targetFolder string, branch plumbing.ReferenceName) (*git.Repository, error) {
-	logger.Debug("update repo by using fetch", "targetFolder", targetFolder)
+func updateRepository(ctx context.Context, repo *git.Repository, auth transport.AuthMethod, logger hclog.Logger, globalConfig *config.Config, output io.Writer, targetFolder string, branch plumbing.ReferenceName, args *shared.VCSFetchRequest) (*git.Repository, error) {
 	fetchOptions := &git.FetchOptions{
 		RemoteName:      "origin",
 		Auth:            auth,
 		Progress:        output,
 		RefSpecs:        []gitconfig.RefSpec{"+refs/*:refs/*"},
-		Depth:           config.SetThen(globalConfig.GitClient.Depth, 1),
+		Depth:           config.SetThen(globalConfig.GitClient.Depth, 0),
 		InsecureSkipTLS: config.GetBoolValue(globalConfig.GitClient, "InsecureTLS", false),
 	}
+	logger.Debug("update repo by using fetch", "depth", fetchOptions.Depth, "targetFolder", targetFolder)
 
 	if err := repo.FetchContext(ctx, fetchOptions); err != nil {
 		if errors.Is(err, git.NoErrAlreadyUpToDate) {
 			logger.Info("repository already up-to-date", "targetFolder", targetFolder)
 		} else if err.Error() == "object not found" || err.Error() == "reference not found" {
 			logger.Error("object/reference not found in the repository. Cleaning up the repo ...", "targetFolder", targetFolder, "error", err)
-			// TODO: double test it
 			if err := os.RemoveAll(targetFolder); err != nil {
 				logger.Error("failed to remove repository", "error", err)
 				return nil, fmt.Errorf("failed to remove repository: %w", err)
 			}
 
 			// TODO: should we send the new repo to global context?
-			_, err := git.PlainCloneContext(ctx, targetFolder, false, &git.CloneOptions{
+			repo, err = git.PlainCloneContext(ctx, targetFolder, false, &git.CloneOptions{
 				Auth:            auth,
-				URL:             fetchOptions.RemoteName,
+				URL:             args.CloneURL,
 				ReferenceName:   branch,
 				Progress:        output,
 				Depth:           fetchOptions.Depth,
 				InsecureSkipTLS: fetchOptions.InsecureSkipTLS,
 			})
+			logger.Debug("reclone of corrupted", "url", args.CloneURL, "referenceName", branch, "depth", fetchOptions.Depth)
 			if err != nil {
 				logger.Error("retrying clone failed", "error", err)
 				return nil, fmt.Errorf("retrying clone failed: %w", err)
@@ -130,6 +130,7 @@ func updateRepository(ctx context.Context, repo *git.Repository, auth transport.
 
 // checkoutCommit checks out a specific commit in the repository.
 func checkoutCommit(repo *git.Repository, commitHash plumbing.Hash, logger hclog.Logger, targetFolder string) error {
+	logger.Debug("checking out commit", "commit", commitHash.String(), "targetFolder", targetFolder)
 	w, err := repo.Worktree()
 	if err != nil {
 		logger.Error("error accessing worktree", "error", err, "targetFolder", targetFolder)
@@ -138,10 +139,9 @@ func checkoutCommit(repo *git.Repository, commitHash plumbing.Hash, logger hclog
 	h, err := repo.ResolveRevision(plumbing.Revision(commitHash.String()))
 	if err != nil {
 		logger.Error("error resolving revision", "error", err, "revision", commitHash.String(), "targetFolder", targetFolder)
-		return fmt.Errorf("error accessing worktree: %w", err)
+		return fmt.Errorf("error resolving revision: %w", err)
 	}
 
-	logger.Debug("checking out commit", "commit", commitHash.String(), "targetFolder", targetFolder)
 	if err := w.Checkout(&git.CheckoutOptions{
 		Hash:  *h,
 		Force: true,
