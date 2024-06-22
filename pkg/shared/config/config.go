@@ -116,7 +116,6 @@ func LoadConfig(configPath string) (*Config, error) {
 // searchDefaultConfig searches for a config file in default paths.
 func (c *Config) searchDefaultConfig() error {
 	defaultPaths := []string{
-		"config.yml",           // Development default path
 		"~/.scanio/config.yml", // Local install default path
 		"/scanio/config.yml",   // Docker default path
 	}
