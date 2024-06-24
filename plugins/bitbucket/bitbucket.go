@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
+	"github.com/scan-io-git/scan-io/pkg/shared/vcsurl"
 
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 )
@@ -250,6 +252,21 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		return "", err
 	}
 
+	fromRefLink := prData.FromReference.Repository.Links.Self[0].Href
+	u, err := url.ParseRequestURI(fromRefLink)
+	if err != nil {
+		return "", err
+	}
+
+	// TODO: decide set or not explicit branch from user
+	args.Branch = prData.FromReference.ID
+	pathDirs := vcsurl.GetPathDirs(u.Path)
+	if pathDirs[0] == "users" {
+		args.Branch = prData.FromReference.LatestCommit
+		g.logger.Warn("found merging from user personal repository", "fromRefLink", fromRefLink)
+		g.logger.Warn("changes will be taken from the default branch and latest commit", "latest_commit", prData.FromReference.LatestCommit)
+	}
+
 	changes, err := prData.GetChanges()
 	if err != nil {
 		g.logger.Error("failed to retrieve PR changes", "PRID", prID, "error", err)
@@ -257,7 +274,6 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	}
 
 	g.logger.Debug("starting to fetch PR code")
-	args.Branch = prData.FromReference.DisplayID
 
 	pluginConfigMap, err := shared.StructToMap(g.globalConfig.BitbucketPlugin)
 	if err != nil {

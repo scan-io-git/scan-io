@@ -10,6 +10,7 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 )
 
+// TODO: fix issue with sending pointer to plugins which are not sharing address space with the core by serializing json
 // Config holds configuration settings parsed from a YAML config file.
 type Config struct {
 	Scanio          Scanio          `yaml:"scanio"`           // Scanio configuration settings.

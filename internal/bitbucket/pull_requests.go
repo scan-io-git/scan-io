@@ -243,12 +243,12 @@ func (pr *PullRequest) paginateChanges(path string, client *Client) (*[]Change, 
 		}
 
 		result = append(result, resp.Values...)
-		if resp.IsLastPage {
+		if resp.IsLastPage || resp.NextPageStart == nil {
 			client.Logger.Debug("last page of changes reached")
 			break
 		}
 
-		start = resp.NextPageStart
+		start = *resp.NextPageStart
 	}
 
 	client.Logger.Debug("successfully fetched all changes",

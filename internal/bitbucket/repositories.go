@@ -52,12 +52,12 @@ func (rs *repositoriesService) List(project string) (*[]Repository, error) {
 		}
 
 		result = append(result, resp.Values...)
-		if resp.IsLastPage {
+		if resp.IsLastPage || resp.NextPageStart == nil {
 			rs.client.Logger.Debug("last page of repositories reached")
 			break
 		}
 
-		start = resp.NextPageStart
+		start = *resp.NextPageStart
 	}
 
 	rs.client.Logger.Debug("successfully fetched all repositories",

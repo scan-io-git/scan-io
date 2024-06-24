@@ -8,16 +8,37 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 )
 
+type RefType struct {
+	Branch   plumbing.ReferenceName
+	Hash     plumbing.Hash
+	IsCommit bool
+}
+
 // determineBranch returns the appropriate branch reference.
-func determineBranch(branch, defaultBranch string) plumbing.ReferenceName {
+func determineBranch(branch, defaultBranch string) RefType {
+	var result RefType
+	var ref plumbing.ReferenceName
 	if branch == "" {
 		branch = defaultBranch
 	}
-	ref := plumbing.ReferenceName(branch)
-	if !ref.IsBranch() && !ref.IsRemote() && !ref.IsTag() && !ref.IsNote() {
-		return plumbing.NewBranchReferenceName(branch)
+
+	if plumbing.IsHash(branch) {
+		result.Hash = plumbing.NewHash(branch)
+		result.IsCommit = true
 	}
-	return ref
+
+	if result.IsCommit {
+		ref = plumbing.ReferenceName(defaultBranch)
+	} else {
+		ref = plumbing.ReferenceName(branch)
+	}
+
+	if !ref.IsBranch() && !ref.IsRemote() && !ref.IsTag() && !ref.IsNote() {
+		result.Branch = plumbing.NewBranchReferenceName(ref.String())
+		return result
+	}
+	result.Branch = ref
+	return result
 }
 
 // findGitRepositoryPath function finds a git repository path for a given source folder

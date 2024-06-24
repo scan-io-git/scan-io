@@ -170,7 +170,7 @@ func (s *Scanner) scanRepo(cfg *config.Config, scanArg shared.ScannerScanRequest
 		var err error
 		result, err = scanner.Scan(scanArg)
 		if err != nil {
-			s.logger.Error("scanner plugin scan failed: %v. Error: %w", scanArg, err)
+			s.logger.Error("scanner plugin scan failed.", "scanArg", scanArg, "Error", err)
 			return fmt.Errorf("scanner plugin scan failed. Scan arguments: %v. Error: %w", scanArg, err)
 		}
 		return nil
