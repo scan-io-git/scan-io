@@ -2,7 +2,7 @@ module github.com/scan-io-git/scan-io
 
 go 1.22.0
 
-toolchain go1.22.2
+toolchain go1.23
 
 require (
 	github.com/aws/aws-sdk-go v1.44.114
