@@ -75,3 +75,8 @@ check-go-dependency:
 .PHONY: check-docker-dependency
 check-docker-dependency:
 	@command -v docker >/dev/null 2>&1 || { echo >&2 "Docker is not installed. Aborting."; exit 1; }
+
+.PHONY: test
+test:
+	go test ./... && echo "Everything is OK!"
+
