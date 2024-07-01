@@ -29,3 +29,15 @@ jobs:
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: '.'
+
+      - name: Scanio to html
+        uses: scan-io-git/scanio-action/to-html@fdd45089627bfa42714e8888f3c23d5e0e47f1f7
+        with:
+          input: scanio-report-semgrep.sarif
+          output: scanio-report-semgrep.html
+
+      - name: Upload scanio report
+        uses: actions/upload-artifact@v4
+        with:
+          name: scanio-report
+          path: scanio-report-semgrep.html
