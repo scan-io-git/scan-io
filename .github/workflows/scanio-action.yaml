@@ -2,10 +2,10 @@ name: "Scanio for Semgrep"
 
 on:
   push:
-    branches: [ "main", "japroc/experiment-with-to-html-action"]
+    branches: [ "main", "japroc/update-ci-workflows"]
   pull_request:
     # The branches below must be a subset of the branches above
-    branches: [ "main", "japroc/experiment-with-to-html-action"]
+    branches: [ "main", "japroc/update-ci-workflows"]
   schedule:
     - cron: '37 10 * * 5'
 
