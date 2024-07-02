@@ -26,16 +26,12 @@ jobs:
           scanner: semgrep
 
       - name: Upload SARIF results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: '.'
       
-      # run ls for workspace folder
-      - name: List files in workspace
-        run: ls -la
-      
       - name: Scanio to html
-        uses: scan-io-git/scanio-action/to-html@75396dd14d4609e6869ff83f3325c3d1f7bad39e
+        uses: scan-io-git/scanio-action/to-html@v0.1.0
         with:
           input: scanio-report-semgrep.sarif
           output: scanio-report-semgrep.html
