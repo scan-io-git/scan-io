@@ -1,4 +1,4 @@
-name: "Scanio for Semgrep"
+name: "Scanio over Semgrep"
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
     - cron: '37 10 * * 5'
 
 jobs:
-  hello_world_job:
+  scanio-action-job:
     runs-on: ubuntu-latest
     name: A job to test scanio action
     # permissions:
@@ -31,7 +31,7 @@ jobs:
           sarif_file: '.'
 
       - name: Scanio to html
-        uses: scan-io-git/scanio-action/to-html@v0.1.0
+        uses: scan-io-git/scanio-action/to-html@75396dd14d4609e6869ff83f3325c3d1f7bad39e
         with:
           input: scanio-report-semgrep.sarif
           output: scanio-report-semgrep.html
