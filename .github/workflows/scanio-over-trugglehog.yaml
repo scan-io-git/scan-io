@@ -21,10 +21,11 @@ jobs:
 
       - name: Scanio analyze
         id: scanio-action
-        uses: scan-io-git/scanio-action/analyze@051d8a9b47de47b15d2984a86ee5a6bb5545c4cd
+        uses: scan-io-git/scanio-action/analyze@107c5a545de8f2841b7b860a496ca67d136e9a9a
         with:
           scanner: trufflehog
           format: json
+          extra_args: "-x '.git'"
 
       - name: Upload scanio report
         uses: actions/upload-artifact@v4
