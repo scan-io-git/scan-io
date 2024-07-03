@@ -1,2 +1,2 @@
-*.html linguist-vendored=false
-*.groovy linguist-vendored=false
+*.html linguist-documentation
+*.groovy linguist-documentation
