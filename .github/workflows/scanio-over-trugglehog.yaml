@@ -21,6 +21,7 @@ jobs:
 
       - name: Scanio analyze
         id: scanio-action
-        uses: scan-io-git/scanio-action/analyze@v0.1.0
+        uses: scan-io-git/scanio-action/analyze@051d8a9b47de47b15d2984a86ee5a6bb5545c4cd
         with:
           scanner: trufflehog
+          format: json
