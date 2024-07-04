@@ -73,7 +73,7 @@ Vagrant.configure("2") do |config|
   # Enable provisioning with a shell script. Additional provisioners such as
   # Ansible, Chef, Docker, Puppet and Salt are also available. Please see the
   # documentation for more information about their specific syntax and use.
-  config.vm.provision "shell", env: {"GO_TARBALL_NAME" => "go1.22.2.linux-amd64.tar.gz"}, inline: <<-SHELL
+  config.vm.provision "shell", env: {"GO_TARBALL_NAME" => "go1.22.2.linux-amd64.tar.gz", "TRUFFLEHOG_VER" => "3.79.0", "TARGETOS" => "linux", "TARGETARCH" => "amd64"}, inline: <<-SHELL
     apt-get update && apt-get -y upgrade
     # install golang
     curl -O https://storage.googleapis.com/golang/$GO_TARBALL_NAME
@@ -82,10 +82,21 @@ Vagrant.configure("2") do |config|
     echo "export PATH=\$PATH:/usr/local/go/bin" >> /home/vagrant/.bash_profile
     # setup scanio core path
     echo "export PATH=\$PATH:\$HOME/.local/bin" >> /home/vagrant/.bash_profile 
-    # install semgrep
+    # install python
     apt-get install -y python3.8
     pip3 install --upgrade pip
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 20
+    # install semgrep
     python3 -m pip install semgrep
+    # install trufflehog
+    cd /tmp
+    export TRUFFLEHOG_ARCHIVE="trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz" && \
+      export TRUFFLEHOG_SHA="$(curl -Ls https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/trufflehog_${TRUFFLEHOG_VER}_checksums.txt | grep ${TRUFFLEHOG_ARCHIVE} | awk '{print $1}')"  && \
+      curl -LOs "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/${TRUFFLEHOG_ARCHIVE}" && \
+      echo "${TRUFFLEHOG_SHA}  ${TRUFFLEHOG_ARCHIVE}" | sha256sum -c - && \
+      tar -xzf ${TRUFFLEHOG_ARCHIVE} && \
+      rm -rf ${TRUFFLEHOG_ARCHIVE} && \
+      mv trufflehog /usr/local/bin && \
+      trufflehog filesystem
   SHELL
 end
