@@ -48,10 +48,6 @@ func (g *ScannerTrufflehog) buildCommandArgs(args shared.ScannerScanRequest) []s
 		commandArgs = append(commandArgs, arg...)
 	}
 
-	if len(args.AdditionalArgs) != 0 {
-		appendArg(args.AdditionalArgs...)
-	}
-
 	if args.ConfigPath != "" {
 		appendArg("--config", args.ConfigPath)
 	}
@@ -62,6 +58,11 @@ func (g *ScannerTrufflehog) buildCommandArgs(args shared.ScannerScanRequest) []s
 	}
 
 	appendArg("--no-verification", "filesystem")
+
+	if len(args.AdditionalArgs) != 0 {
+		appendArg(args.AdditionalArgs...)
+	}
+
 	appendArg(args.TargetPath)
 	return commandArgs
 }
