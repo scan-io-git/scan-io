@@ -59,6 +59,8 @@ func (g *ScannerTrufflehog) buildCommandArgs(args shared.ScannerScanRequest) []s
 
 	appendArg("--no-verification", "filesystem")
 
+	// additional arguments should be added after command name
+	// ref: https://github.com/scan-io-git/scan-io/issues/86
 	if len(args.AdditionalArgs) != 0 {
 		appendArg(args.AdditionalArgs...)
 	}
