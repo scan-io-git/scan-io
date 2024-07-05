@@ -62,13 +62,13 @@ var toHtmlCmd = &cobra.Command{
 		if err != nil {
 			logger.Debug("can't collect repository metadata", "err", err)
 		}
-		logger.Debug("repositoryMetadata", "repositoryMetadata", repositoryMetadata)
+		logger.Debug("repositoryMetadata", "repositoryMetadata", *repositoryMetadata)
 
 		toolMetadata, err := sarifReport.ExtractToolNameAndVersion()
 		if err != nil {
 			return err
 		}
-		logger.Debug("toolMetadata", "toolMetadata", toolMetadata)
+		logger.Debug("toolMetadata", "toolMetadata", *toolMetadata)
 
 		severityInfo := sarifReport.CollectSeverityInfo()
 
@@ -80,7 +80,7 @@ var toHtmlCmd = &cobra.Command{
 			SourceFolder:       allToHTMLOptions.SourceFolder,
 			SeverityInfo:       severityInfo,
 		}
-		logger.Debug("metadata", "metadata", metadata)
+		logger.Debug("metadata", "metadata", *metadata)
 
 		// parse html template and generate report file with metadata
 		templateFile, err := files.ExpandPath(filepath.Join(allToHTMLOptions.TempatesPath, "report.html"))

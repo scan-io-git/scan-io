@@ -11,7 +11,7 @@ name: Create and publish a Docker image
 
 on:
   push:
-    branches: ['main', 'japroc/improve-tohtml-logs']
+    branches: ['main']
   release:
     types: [published]
   pull_request:
