@@ -62,13 +62,13 @@ var toHtmlCmd = &cobra.Command{
 		if err != nil {
 			logger.Debug("can't collect repository metadata", "err", err)
 		}
-		logger.Debug("repositoryMetadata", "repositoryMetadata", *repositoryMetadata)
+		logger.Debug("repositoryMetadata", "BranchName", *repositoryMetadata.BranchName, "CommitHash", *repositoryMetadata.CommitHash, "RepositoryFullName", *repositoryMetadata.RepositoryFullName, "Subfolder", repositoryMetadata.Subfolder, "RepoRootFolder", repositoryMetadata.RepoRootFolder)
 
 		toolMetadata, err := sarifReport.ExtractToolNameAndVersion()
 		if err != nil {
 			return err
 		}
-		logger.Debug("toolMetadata", "toolMetadata", *toolMetadata)
+		logger.Debug("toolMetadata", "Name", toolMetadata.Name, "Version", toolMetadata.Version)
 
 		severityInfo := sarifReport.CollectSeverityInfo()
 
