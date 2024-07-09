@@ -76,7 +76,7 @@ func (f *Fetcher) getCloneURL(repo shared.RepositoryParams) string {
 
 // getFetchMode determines the mode for the fetch request.
 func getFetchMode(repo shared.RepositoryParams) string {
-	if repo.PullRequestId != "" {
+	if repo.PullRequestID != "" {
 		return PRScanMode
 	}
 	return BasicMode

@@ -21,7 +21,7 @@ type RunOptionsIntegrationVCS struct {
 	Namespace     string
 	Repository    string
 	Login         string
-	PullRequestId int
+	PullRequestId string
 	Role          string
 	Status        string
 	Comment       string
@@ -82,11 +82,13 @@ List of actions for github:
 			case "checkPR":
 				arguments = shared.VCSRetrievePRInformationRequest{
 					VCSRequestBase: shared.VCSRequestBase{
-						Domain:        allArgumentsIntegrationVCS.VCSURL,
-						Action:        allArgumentsIntegrationVCS.Action,
-						Namespace:     allArgumentsIntegrationVCS.Namespace,
-						Repository:    allArgumentsIntegrationVCS.Repository,
-						PullRequestId: allArgumentsIntegrationVCS.PullRequestId,
+						RepoParam: shared.RepositoryParams{
+							Domain:        allArgumentsIntegrationVCS.VCSURL,
+							Namespace:     allArgumentsIntegrationVCS.Namespace,
+							Repository:    allArgumentsIntegrationVCS.Repository,
+							PullRequestID: allArgumentsIntegrationVCS.PullRequestId,
+						},
+						Action: allArgumentsIntegrationVCS.Action,
 					},
 				}
 			case "addRoleToPR":
@@ -98,11 +100,13 @@ List of actions for github:
 				}
 				arguments = shared.VCSAddRoleToPRRequest{
 					VCSRequestBase: shared.VCSRequestBase{
-						Domain:        allArgumentsIntegrationVCS.VCSURL,
-						Action:        allArgumentsIntegrationVCS.Action,
-						Namespace:     allArgumentsIntegrationVCS.Namespace,
-						Repository:    allArgumentsIntegrationVCS.Repository,
-						PullRequestId: allArgumentsIntegrationVCS.PullRequestId,
+						RepoParam: shared.RepositoryParams{
+							Domain:        allArgumentsIntegrationVCS.VCSURL,
+							Namespace:     allArgumentsIntegrationVCS.Namespace,
+							Repository:    allArgumentsIntegrationVCS.Repository,
+							PullRequestID: allArgumentsIntegrationVCS.PullRequestId,
+						},
+						Action: allArgumentsIntegrationVCS.Action,
 					},
 					Login: allArgumentsIntegrationVCS.Login,
 					Role:  allArgumentsIntegrationVCS.Role,
@@ -116,11 +120,13 @@ List of actions for github:
 				}
 				arguments = shared.VCSSetStatusOfPRRequest{
 					VCSRequestBase: shared.VCSRequestBase{
-						Domain:        allArgumentsIntegrationVCS.VCSURL,
-						Action:        allArgumentsIntegrationVCS.Action,
-						Namespace:     allArgumentsIntegrationVCS.Namespace,
-						Repository:    allArgumentsIntegrationVCS.Repository,
-						PullRequestId: allArgumentsIntegrationVCS.PullRequestId,
+						RepoParam: shared.RepositoryParams{
+							Domain:        allArgumentsIntegrationVCS.VCSURL,
+							Namespace:     allArgumentsIntegrationVCS.Namespace,
+							Repository:    allArgumentsIntegrationVCS.Repository,
+							PullRequestID: allArgumentsIntegrationVCS.PullRequestId,
+						},
+						Action: allArgumentsIntegrationVCS.Action,
 					},
 					Login:  allArgumentsIntegrationVCS.Login,
 					Status: allArgumentsIntegrationVCS.Status,
@@ -155,11 +161,13 @@ List of actions for github:
 
 				arguments = shared.VCSAddCommentToPRRequest{
 					VCSRequestBase: shared.VCSRequestBase{
-						Domain:        allArgumentsIntegrationVCS.VCSURL,
-						Action:        allArgumentsIntegrationVCS.Action,
-						Namespace:     allArgumentsIntegrationVCS.Namespace,
-						Repository:    allArgumentsIntegrationVCS.Repository,
-						PullRequestId: allArgumentsIntegrationVCS.PullRequestId,
+						RepoParam: shared.RepositoryParams{
+							Domain:        allArgumentsIntegrationVCS.VCSURL,
+							Namespace:     allArgumentsIntegrationVCS.Namespace,
+							Repository:    allArgumentsIntegrationVCS.Repository,
+							PullRequestID: allArgumentsIntegrationVCS.PullRequestId,
+						},
+						Action: allArgumentsIntegrationVCS.Action,
 					},
 					Comment:   commentContent,
 					FilePaths: allArgumentsIntegrationVCS.AttachFiles,
@@ -239,7 +247,7 @@ func validateCommonArguments() error {
 	if len(allArgumentsIntegrationVCS.Repository) == 0 {
 		return fmt.Errorf("'repository' flag must be specified")
 	}
-	if allArgumentsIntegrationVCS.PullRequestId == 0 {
+	if allArgumentsIntegrationVCS.PullRequestId == "" {
 		return fmt.Errorf("'pull-request-id' flag must be specified")
 	}
 	return nil
@@ -284,7 +292,7 @@ func init() {
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Action, "action", "", "the action to execute")
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Namespace, "namespace", "", "the name of a specific namespace. Namespace for Gitlab is an organization, for Bitbucket_v1 is a project")
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Repository, "repository", "", "the name of a specific repository")
-	integrationVcsCmd.Flags().IntVar(&allArgumentsIntegrationVCS.PullRequestId, "pull-request-id", 0, "the id of specific PR form the repository")
+	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.PullRequestId, "pull-request-id", "", "the id of specific PR form the repository")
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Login, "login", "", "login for integrations. For example, add reviewer with this login to PR")
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Role, "role", "", "role for integrations. For example, add a person with specific role to PR")
 	integrationVcsCmd.Flags().StringVar(&allArgumentsIntegrationVCS.Status, "status", "", "status for integrations. For example, set a status of PR")
