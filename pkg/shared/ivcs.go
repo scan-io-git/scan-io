@@ -249,9 +249,9 @@ func (s *VCSRPCServer) RetrievePRInformation(args VCSRetrievePRInformationReques
 }
 
 // AddRoleToPR calls the AddRoleToPR method on the VCS implementation.
-func (s *VCSRPCServer) AddRoleToPR(args VCSAddRoleToPRRequest, resp *VCSRetrievePRInformationResponse) error {
+func (s *VCSRPCServer) AddRoleToPR(args VCSAddRoleToPRRequest, resp *bool) error {
 	var err error
-	_, err = s.Impl.AddRoleToPR(args)
+	*resp, err = s.Impl.AddRoleToPR(args)
 	if err != nil {
 		return fmt.Errorf("VCS AddRoleToPR failed: %w", err)
 	}
@@ -259,9 +259,9 @@ func (s *VCSRPCServer) AddRoleToPR(args VCSAddRoleToPRRequest, resp *VCSRetrieve
 }
 
 // SetStatusOfPR calls the SetStatusOfPR method on the VCS implementation.
-func (s *VCSRPCServer) SetStatusOfPR(args VCSSetStatusOfPRRequest, resp *VCSRetrievePRInformationResponse) error {
+func (s *VCSRPCServer) SetStatusOfPR(args VCSSetStatusOfPRRequest, resp *bool) error {
 	var err error
-	_, err = s.Impl.SetStatusOfPR(args)
+	*resp, err = s.Impl.SetStatusOfPR(args)
 	if err != nil {
 		return fmt.Errorf("VCS SetStatusOfPR failed: %w", err)
 	}
@@ -269,9 +269,9 @@ func (s *VCSRPCServer) SetStatusOfPR(args VCSSetStatusOfPRRequest, resp *VCSRetr
 }
 
 // AddCommentToPR calls the AddCommentToPR method on the VCS implementation.
-func (s *VCSRPCServer) AddCommentToPR(args VCSAddCommentToPRRequest, resp *VCSRetrievePRInformationResponse) error {
+func (s *VCSRPCServer) AddCommentToPR(args VCSAddCommentToPRRequest, resp *bool) error {
 	var err error
-	_, err = s.Impl.AddCommentToPR(args)
+	*resp, err = s.Impl.AddCommentToPR(args)
 	if err != nil {
 		return fmt.Errorf("VCS AddCommentToPR failed: %w", err)
 	}

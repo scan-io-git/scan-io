@@ -42,7 +42,7 @@ func validateFetchArgs(options *RunOptionsFetch, args []string) error {
 	}
 
 	if options.InputFile != "" && len(args) != 0 {
-		return fmt.Errorf("you cannot use both 'input-file' flag and a target URL at the same time")
+		return fmt.Errorf("you cannot use 'input-file' flag with a target URL")
 	}
 
 	if len(args) == 1 {
