@@ -92,7 +92,7 @@ func (g *VCSGitlab) ListRepositories(args shared.VCSListRepositoriesRequest) ([]
 		return nil, err
 	}
 
-	gitlabClient, err := getGitlabClient(args.RepoParam.VCSUrl)
+	gitlabClient, err := getGitlabClient(args.RepoParam.Domain)
 	if err != nil {
 		g.logger.Error("Failed to create gitlab Client", "error", err)
 		return nil, err

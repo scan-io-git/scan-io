@@ -17,7 +17,7 @@ func ValidateCommonCredentials(username, token string) error {
 // ValidateBaseArgs checks the common fields in VCSRequestBase and returns errors if they are not set.
 func ValidateBaseArgs(args *shared.VCSRequestBase) error {
 	requiredFields := map[string]string{
-		"repository URL": args.VCSURL,
+		"repository URL": args.Domain,
 		"namespace":      args.Namespace,
 		"repository":     args.Repository,
 		// "Action": args.Action,
@@ -53,7 +53,7 @@ func ValidateFetchArgs(args *shared.VCSFetchRequest) error {
 
 // ValidateListArgs checks the necessary fields in VCSListRepositoriesRequest and returns errors if they are not set.
 func ValidateListArgs(args *shared.VCSListRepositoriesRequest) error {
-	if args.RepoParam.VCSUrl == "" {
+	if args.RepoParam.Domain == "" {
 		return fmt.Errorf("repository URL is required")
 	}
 	return nil

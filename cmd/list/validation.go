@@ -19,7 +19,7 @@ func validateListArgs(options *vcsintegrator.RunOptionsIntegrationVCS, args []st
 	}
 
 	if len(args) == 1 {
-		if options.VCSUrl != "" || options.Namespace != "" {
+		if options.Domain != "" || options.Namespace != "" {
 			return fmt.Errorf("you cannot use both 'domain' and 'namespace' flags and a target URL at the same time")
 		}
 		_, err := url.ParseRequestURI(args[0])
@@ -27,7 +27,7 @@ func validateListArgs(options *vcsintegrator.RunOptionsIntegrationVCS, args []st
 			return fmt.Errorf("provided URL is not valid: %w", err)
 		}
 		return nil
-	} else if options.VCSUrl == "" {
+	} else if options.Domain == "" {
 		return fmt.Errorf("the 'vcs-url' flag must be specified")
 	}
 

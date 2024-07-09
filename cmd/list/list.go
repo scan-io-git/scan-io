@@ -132,7 +132,7 @@ List of avaliable vcs plugins:
 
 func init() {
 	ListCmd.Flags().StringVarP(&listOptions.VCSPluginName, "vcs", "p", "", "Name of the VCS plugin to use (e.g., bitbucket, gitlab, github).")
-	ListCmd.Flags().StringVar(&listOptions.VCSUrl, "domain", "", "Domain name of the VCS (e.g., github.com).")
+	ListCmd.Flags().StringVar(&listOptions.Domain, "domain", "", "Domain name of the VCS (e.g., github.com).")
 	ListCmd.Flags().BoolP("help", "h", false, "Show help for the list command.")
 	ListCmd.Flags().StringVar(&listOptions.Namespace, "namespace", "", "Name of the specific namespace, project, or organization.")
 	ListCmd.Flags().StringVarP(&listOptions.OutputPath, "output", "o", "", "Path to the output file or directory where the list result will be saved.")

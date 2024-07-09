@@ -27,7 +27,7 @@ type VCSIntegrator struct {
 // RunOptionsIntegrationVCS holds the arguments for VCS integration actions.
 type RunOptionsIntegrationVCS struct {
 	VCSPluginName string
-	VCSUrl        string
+	Domain        string
 	Namespace     string
 	Repository    string
 	PullRequestId int
@@ -64,7 +64,7 @@ func (i *VCSIntegrator) createListRequest(repo shared.RepositoryParams, language
 func (i *VCSIntegrator) createCheckPRRequest(repo shared.RepositoryParams) shared.VCSRetrievePRInformationRequest {
 	return shared.VCSRetrievePRInformationRequest{
 		VCSRequestBase: shared.VCSRequestBase{
-			VCSURL:     repo.VCSUrl,
+			Domain:     repo.Domain,
 			Action:     i.action,
 			Namespace:  repo.Namespace,
 			Repository: repo.Repository,
@@ -77,7 +77,7 @@ func (i *VCSIntegrator) createCheckPRRequest(repo shared.RepositoryParams) share
 func (i *VCSIntegrator) createAddCommentRequest(repo shared.RepositoryParams, options *RunOptionsIntegrationVCS) shared.VCSAddCommentToPRRequest {
 	return shared.VCSAddCommentToPRRequest{
 		VCSRequestBase: shared.VCSRequestBase{
-			VCSURL:     repo.VCSUrl,
+			Domain:     repo.Domain,
 			Action:     i.action,
 			Namespace:  repo.Namespace,
 			Repository: repo.Repository,
@@ -92,7 +92,7 @@ func (i *VCSIntegrator) createAddCommentRequest(repo shared.RepositoryParams, op
 func (i *VCSIntegrator) createAddRoleToPRRequest(repo shared.RepositoryParams, options *RunOptionsIntegrationVCS) shared.VCSAddRoleToPRRequest {
 	return shared.VCSAddRoleToPRRequest{
 		VCSRequestBase: shared.VCSRequestBase{
-			VCSURL:     repo.VCSUrl,
+			Domain:     repo.Domain,
 			Action:     i.action,
 			Namespace:  repo.Namespace,
 			Repository: repo.Repository,
@@ -107,7 +107,7 @@ func (i *VCSIntegrator) createAddRoleToPRRequest(repo shared.RepositoryParams, o
 func (i *VCSIntegrator) createSetStatusOfPRRequest(repo shared.RepositoryParams, options *RunOptionsIntegrationVCS) shared.VCSSetStatusOfPRRequest {
 	return shared.VCSSetStatusOfPRRequest{
 		VCSRequestBase: shared.VCSRequestBase{
-			VCSURL:     repo.VCSUrl,
+			Domain:     repo.Domain,
 			Action:     i.action,
 			Namespace:  repo.Namespace,
 			Repository: repo.Repository,
