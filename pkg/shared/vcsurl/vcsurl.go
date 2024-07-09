@@ -67,7 +67,7 @@ func handleBitbucket(repoInfo shared.RepositoryParams, scheme, urlStr, port stri
 		// PR fetching case - the type doesn't exist in SCM URLs - https://bitbucket.com/projects/<project_name>/repos/<repo_name>/pull-requests/<id>
 		repoInfo.Namespace = pathDirs[1]
 		repoInfo.Repository = pathDirs[3]
-		repoInfo.PullRequestId = pathDirs[5]
+		repoInfo.PullRequestID = pathDirs[5]
 		setBitbucketURLs(&repoInfo, false, "", false)
 		return repoInfo, nil
 	case len(pathDirs) > 3 && pathDirs[0] == "projects" && pathDirs[2] == "repos" && isHTTP:

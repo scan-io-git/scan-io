@@ -54,9 +54,11 @@ func New(pluginName, action string, logger hclog.Logger) *VCSIntegrator {
 // createListRequest creates a VCSListRepositoriesRequest with the specified parameters.
 func (i *VCSIntegrator) createListRequest(repo shared.RepositoryParams, language string) shared.VCSListRepositoriesRequest {
 	return shared.VCSListRepositoriesRequest{
-		RepoParam: repo,
-		Action:    i.action,
-		Language:  language,
+		VCSRequestBase: shared.VCSRequestBase{
+			RepoParam: repo,
+			Action:    i.action,
+		},
+		Language: language,
 	}
 }
 
@@ -64,11 +66,13 @@ func (i *VCSIntegrator) createListRequest(repo shared.RepositoryParams, language
 func (i *VCSIntegrator) createCheckPRRequest(repo shared.RepositoryParams) shared.VCSRetrievePRInformationRequest {
 	return shared.VCSRetrievePRInformationRequest{
 		VCSRequestBase: shared.VCSRequestBase{
-			Domain:     repo.Domain,
-			Action:     i.action,
-			Namespace:  repo.Namespace,
-			Repository: repo.Repository,
-			// PullRequestId: repo.PullRequestId, // TODO: come up with string/int
+			RepoParam: shared.RepositoryParams{
+				Domain:        repo.Domain,
+				Namespace:     repo.Namespace,
+				Repository:    repo.Repository,
+				PullRequestID: repo.PullRequestID,
+			},
+			Action: i.action,
 		},
 	}
 }
@@ -77,11 +81,13 @@ func (i *VCSIntegrator) createCheckPRRequest(repo shared.RepositoryParams) share
 func (i *VCSIntegrator) createAddCommentRequest(repo shared.RepositoryParams, options *RunOptionsIntegrationVCS) shared.VCSAddCommentToPRRequest {
 	return shared.VCSAddCommentToPRRequest{
 		VCSRequestBase: shared.VCSRequestBase{
-			Domain:     repo.Domain,
-			Action:     i.action,
-			Namespace:  repo.Namespace,
-			Repository: repo.Repository,
-			// PullRequestId: repo.PullRequestId, // TODO: come up with string/int
+			RepoParam: shared.RepositoryParams{
+				Domain:        repo.Domain,
+				Namespace:     repo.Namespace,
+				Repository:    repo.Repository,
+				PullRequestID: repo.PullRequestID,
+			},
+			Action: i.action,
 		},
 		Comment:   options.Comment,
 		FilePaths: options.AttachFiles,
@@ -92,11 +98,13 @@ func (i *VCSIntegrator) createAddCommentRequest(repo shared.RepositoryParams, op
 func (i *VCSIntegrator) createAddRoleToPRRequest(repo shared.RepositoryParams, options *RunOptionsIntegrationVCS) shared.VCSAddRoleToPRRequest {
 	return shared.VCSAddRoleToPRRequest{
 		VCSRequestBase: shared.VCSRequestBase{
-			Domain:     repo.Domain,
-			Action:     i.action,
-			Namespace:  repo.Namespace,
-			Repository: repo.Repository,
-			// PullRequestId: repo.PullRequestId, // TODO: come up with string/int
+			RepoParam: shared.RepositoryParams{
+				Domain:        repo.Domain,
+				Namespace:     repo.Namespace,
+				Repository:    repo.Repository,
+				PullRequestID: repo.PullRequestID,
+			},
+			Action: i.action,
 		},
 		Login: options.Login,
 		Role:  options.Role,
@@ -107,11 +115,13 @@ func (i *VCSIntegrator) createAddRoleToPRRequest(repo shared.RepositoryParams, o
 func (i *VCSIntegrator) createSetStatusOfPRRequest(repo shared.RepositoryParams, options *RunOptionsIntegrationVCS) shared.VCSSetStatusOfPRRequest {
 	return shared.VCSSetStatusOfPRRequest{
 		VCSRequestBase: shared.VCSRequestBase{
-			Domain:     repo.Domain,
-			Action:     i.action,
-			Namespace:  repo.Namespace,
-			Repository: repo.Repository,
-			// PullRequestId: repo.PullRequestId, // TODO: come up with string/int
+			RepoParam: shared.RepositoryParams{
+				Domain:        repo.Domain,
+				Namespace:     repo.Namespace,
+				Repository:    repo.Repository,
+				PullRequestID: repo.PullRequestID,
+			},
+			Action: i.action,
 		},
 		Login:  options.Login,
 		Status: options.Status,
