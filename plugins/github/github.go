@@ -51,7 +51,7 @@ func (g *VCSGithub) ListRepositories(args shared.VCSListRepositoriesRequest) ([]
 
 	client := github.NewClient(nil)
 	opt := &github.RepositoryListByOrgOptions{Type: "public"}
-	repos, _, err := client.Repositories.ListByOrg(context.Background(), args.Namespace, opt)
+	repos, _, err := client.Repositories.ListByOrg(context.Background(), args.RepoParam.Namespace, opt)
 	if err != nil {
 		g.logger.Error("A particular organisation function is failed", "error", err)
 		return nil, err

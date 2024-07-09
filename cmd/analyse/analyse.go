@@ -119,8 +119,8 @@ func runAnalyseCommand(cmd *cobra.Command, args []string) error {
 }
 
 // generateLongDescription generates the long description dynamically with the list of available scanner plugins.
-func generateLongDescription(AppConfig *config.Config) string {
-	pluginsMeta := shared.GetPluginVersions(config.GetScanioPluginsHome(AppConfig), "scanner")
+func generateLongDescription(cfg *config.Config) string {
+	pluginsMeta := shared.GetPluginVersions(config.GetScanioPluginsHome(cfg), "scanner")
 	var plugins []string
 	for plugin := range pluginsMeta {
 		plugins = append(plugins, plugin)

@@ -43,7 +43,7 @@ func New(pluginName, authType, sshKey, branch string, rmListExts []string, jobs 
 	}
 }
 
-// PrepFetchArgs prepares fetch arguments for the repositories.
+// PrepFetchReqList prepares fetch arguments for the repositories.
 func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.RepositoryParams) ([]shared.VCSFetchRequest, error) {
 	var fetchReqList []shared.VCSFetchRequest
 
