@@ -54,7 +54,7 @@ func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.Repository
 			return nil, fmt.Errorf("failed to get domain for URL %s: %w", cloneURL, err)
 		}
 
-		repo.VCSUrl = domain
+		repo.Domain = domain
 		fetchMode := getFetchMode(repo)
 		if f.pluginName == "bitbucket" && strings.HasPrefix(repo.Namespace, "~") {
 			repo.Namespace = strings.TrimPrefix(repo.Namespace, "~") // in the case of user repos we should put results into the same folder for ssh and http links

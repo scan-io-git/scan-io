@@ -11,10 +11,10 @@ type Args interface {
 }
 
 type RepositoryParams struct {
-	VCSUrl        string `json:"vcs_url,omitempty"`
+	Domain        string `json:"vcs_url,omitempty"`
 	Namespace     string `json:"namespace"`
 	Repository    string `json:"repository"`
-	PullRequestId string `json:"pull_request_id,omitempty"`
+	PullRequestId string `json:"pull_request_id,omitempty"` // TODO: move to separated struct
 	HTTPLink      string `json:"http_link,omitempty"`
 	SSHLink       string `json:"ssh_link"`
 }
@@ -60,11 +60,11 @@ type VCSFetchRequest struct {
 }
 
 type VCSRequestBase struct {
+	Domain        string
 	Namespace     string
-	VCSURL        string
-	Action        string
 	Repository    string
 	PullRequestId int
+	Action        string
 }
 
 type VCSListRepositoriesRequest struct {

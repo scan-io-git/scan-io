@@ -17,7 +17,7 @@ func ExtractRepositoryInfoFromURL(urlStr, vcsPlugName string) (shared.Repository
 		return repoInfo, err
 	}
 
-	repoInfo.VCSUrl = u.Hostname()
+	repoInfo.Domain = u.Hostname()
 	scheme := u.Scheme
 	pathDirs := GetPathDirs(u.Path)
 	isHTTP := scheme == "http" || scheme == "https"
@@ -102,17 +102,17 @@ func handleBitbucket(repoInfo shared.RepositoryParams, scheme, urlStr, port stri
 // setBitbucketURLs sets the HTTP and SSH URLs for repositories.
 func setBitbucketURLs(repoInfo *shared.RepositoryParams, usePort bool, port string, isUserRepo bool) {
 	if isUserRepo {
-		repoInfo.HTTPLink = fmt.Sprintf("https://%s/users/%s/repos/%s/browse", repoInfo.VCSUrl, repoInfo.Namespace, repoInfo.Repository)
-		repoInfo.SSHLink = fmt.Sprintf("ssh://git@%s:7989/~%s/%s.git", repoInfo.VCSUrl, repoInfo.Namespace, repoInfo.Repository)
+		repoInfo.HTTPLink = fmt.Sprintf("https://%s/users/%s/repos/%s/browse", repoInfo.Domain, repoInfo.Namespace, repoInfo.Repository)
+		repoInfo.SSHLink = fmt.Sprintf("ssh://git@%s:7989/~%s/%s.git", repoInfo.Domain, repoInfo.Namespace, repoInfo.Repository)
 	} else {
-		repoInfo.HTTPLink = fmt.Sprintf("https://%s/scm/%s/%s.git", repoInfo.VCSUrl, repoInfo.Namespace, repoInfo.Repository)
-		repoInfo.SSHLink = fmt.Sprintf("ssh://git@%s:7989/%s/%s.git", repoInfo.VCSUrl, repoInfo.Namespace, repoInfo.Repository)
+		repoInfo.HTTPLink = fmt.Sprintf("https://%s/scm/%s/%s.git", repoInfo.Domain, repoInfo.Namespace, repoInfo.Repository)
+		repoInfo.SSHLink = fmt.Sprintf("ssh://git@%s:7989/%s/%s.git", repoInfo.Domain, repoInfo.Namespace, repoInfo.Repository)
 	}
 
 	if usePort {
-		repoInfo.SSHLink = fmt.Sprintf("ssh://git@%s:%s/%s/%s.git", repoInfo.VCSUrl, port, repoInfo.Namespace, repoInfo.Repository)
+		repoInfo.SSHLink = fmt.Sprintf("ssh://git@%s:%s/%s/%s.git", repoInfo.Domain, port, repoInfo.Namespace, repoInfo.Repository)
 		if isUserRepo {
-			repoInfo.SSHLink = fmt.Sprintf("ssh://git@%s:%s/~%s/%s.git", repoInfo.VCSUrl, port, repoInfo.Namespace, repoInfo.Repository)
+			repoInfo.SSHLink = fmt.Sprintf("ssh://git@%s:%s/~%s/%s.git", repoInfo.Domain, port, repoInfo.Namespace, repoInfo.Repository)
 		}
 	}
 }
@@ -133,8 +133,8 @@ func handleGithub(repoInfo shared.RepositoryParams, pathDirs []string) (shared.R
 	if len(pathDirs) == 2 {
 		repoInfo.Namespace = pathDirs[0]
 		repoInfo.Repository = pathDirs[1]
-		repoInfo.HTTPLink = fmt.Sprintf("https://%s/%s/%s.git", repoInfo.VCSUrl, repoInfo.Namespace, repoInfo.Repository)
-		repoInfo.SSHLink = fmt.Sprintf("ssh://git@%s/%s/%s.git", repoInfo.VCSUrl, repoInfo.Namespace, repoInfo.Repository)
+		repoInfo.HTTPLink = fmt.Sprintf("https://%s/%s/%s.git", repoInfo.Domain, repoInfo.Namespace, repoInfo.Repository)
+		repoInfo.SSHLink = fmt.Sprintf("ssh://git@%s/%s/%s.git", repoInfo.Domain, repoInfo.Namespace, repoInfo.Repository)
 		return repoInfo, nil
 	}
 
@@ -148,8 +148,8 @@ func handleGitlab(repoInfo shared.RepositoryParams, pathDirs []string) (shared.R
 
 	repoInfo.Namespace = path.Join(pathDirs[0 : len(pathDirs)-1]...)
 	repoInfo.Repository = pathDirs[len(pathDirs)-1]
-	repoInfo.HTTPLink = fmt.Sprintf("https://%s/%s/%s.git", repoInfo.VCSUrl, repoInfo.Namespace, repoInfo.Repository)
-	repoInfo.SSHLink = fmt.Sprintf("git@%s:%s/%s.git", repoInfo.VCSUrl, repoInfo.Namespace, repoInfo.Repository)
+	repoInfo.HTTPLink = fmt.Sprintf("https://%s/%s/%s.git", repoInfo.Domain, repoInfo.Namespace, repoInfo.Repository)
+	repoInfo.SSHLink = fmt.Sprintf("git@%s:%s/%s.git", repoInfo.Domain, repoInfo.Namespace, repoInfo.Repository)
 
 	return repoInfo, nil
 }

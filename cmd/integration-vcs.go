@@ -82,7 +82,7 @@ List of actions for github:
 			case "checkPR":
 				arguments = shared.VCSRetrievePRInformationRequest{
 					VCSRequestBase: shared.VCSRequestBase{
-						VCSURL:        allArgumentsIntegrationVCS.VCSURL,
+						Domain:        allArgumentsIntegrationVCS.VCSURL,
 						Action:        allArgumentsIntegrationVCS.Action,
 						Namespace:     allArgumentsIntegrationVCS.Namespace,
 						Repository:    allArgumentsIntegrationVCS.Repository,
@@ -98,7 +98,7 @@ List of actions for github:
 				}
 				arguments = shared.VCSAddRoleToPRRequest{
 					VCSRequestBase: shared.VCSRequestBase{
-						VCSURL:        allArgumentsIntegrationVCS.VCSURL,
+						Domain:        allArgumentsIntegrationVCS.VCSURL,
 						Action:        allArgumentsIntegrationVCS.Action,
 						Namespace:     allArgumentsIntegrationVCS.Namespace,
 						Repository:    allArgumentsIntegrationVCS.Repository,
@@ -116,7 +116,7 @@ List of actions for github:
 				}
 				arguments = shared.VCSSetStatusOfPRRequest{
 					VCSRequestBase: shared.VCSRequestBase{
-						VCSURL:        allArgumentsIntegrationVCS.VCSURL,
+						Domain:        allArgumentsIntegrationVCS.VCSURL,
 						Action:        allArgumentsIntegrationVCS.Action,
 						Namespace:     allArgumentsIntegrationVCS.Namespace,
 						Repository:    allArgumentsIntegrationVCS.Repository,
@@ -155,7 +155,7 @@ List of actions for github:
 
 				arguments = shared.VCSAddCommentToPRRequest{
 					VCSRequestBase: shared.VCSRequestBase{
-						VCSURL:        allArgumentsIntegrationVCS.VCSURL,
+						Domain:        allArgumentsIntegrationVCS.VCSURL,
 						Action:        allArgumentsIntegrationVCS.Action,
 						Namespace:     allArgumentsIntegrationVCS.Namespace,
 						Repository:    allArgumentsIntegrationVCS.Repository,

@@ -35,7 +35,7 @@ func prepareListTargets(options *vcsintegrator.RunOptionsIntegrationVCS, args []
 
 	case ModeFlags:
 		return shared.RepositoryParams{
-			VCSUrl:    options.VCSUrl,
+			Domain:    options.Domain,
 			Namespace: options.Namespace,
 		}, nil
 
