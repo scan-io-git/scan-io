@@ -23,7 +23,7 @@ func determineMode(args []string) string {
 }
 
 // prepareListTargets prepares the targets for listing based on the validated arguments.
-func prepareListTargets(options *vcsintegrator.RunOptionsIntegrationVCS, args []string, mode string) (shared.RepositoryParams, error) {
+func prepareListTarget(options *vcsintegrator.RunOptionsIntegrationVCS, args []string, mode string) (shared.RepositoryParams, error) {
 	switch mode {
 	case ModeSingleURL:
 		targetURL := args[0]

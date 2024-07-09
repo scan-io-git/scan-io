@@ -23,15 +23,16 @@ var (
   scanio list --vcs github --domain github.com -o /path/to/list_output.file
 
   # List all repositories in a specific namespace in a VCS
-  scanio list --vcs github --domain github.com --namespace scan-io -o /path/to/list_output.file
+  scanio list --vcs github --domain github.com --namespace scan-io-git -o /path/to/list_output.file
 
   # List all repositories in a VCS using a direct URL
   scanio list --vcs github -o /path/tolist_output.file https://github.com/
 
   # List all repositories in a specific namespace using a direct URL
-  scanio list --vcs github -o /path/to/list_output.file https://github.com/projects/scan-io/`
+  scanio list --vcs github -o /path/to/list_output.file https://github.com/scan-io-git/`
 )
 
+// ListCmd represents the command for list command.
 var ListCmd = &cobra.Command{
 	Use:                   "list --vcs/-p PLUGIN_NAME --output/-o PATH [--language LANGUAGE] {--domain VCS_DOMAIN_NAME --namespace NAMESPACE | URL}",
 	SilenceUsage:          true,
@@ -68,7 +69,7 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 		logger,
 	)
 
-	repoParams, err := prepareListTargets(&listOptions, args, mode)
+	repoParams, err := prepareListTarget(&listOptions, args, mode)
 	if err != nil {
 		logger.Error("failed to prepare fetch targets", "error", err)
 		return err
@@ -133,8 +134,8 @@ List of avaliable vcs plugins:
 func init() {
 	ListCmd.Flags().StringVarP(&listOptions.VCSPluginName, "vcs", "p", "", "Name of the VCS plugin to use (e.g., bitbucket, gitlab, github).")
 	ListCmd.Flags().StringVar(&listOptions.Domain, "domain", "", "Domain name of the VCS (e.g., github.com).")
-	ListCmd.Flags().BoolP("help", "h", false, "Show help for the list command.")
 	ListCmd.Flags().StringVar(&listOptions.Namespace, "namespace", "", "Name of the specific namespace, project, or organization.")
 	ListCmd.Flags().StringVarP(&listOptions.OutputPath, "output", "o", "", "Path to the output file or directory where the list result will be saved.")
 	ListCmd.Flags().StringVarP(&listOptions.Language, "language", "l", "", "Collect only projects that use the specified language (supported only for GitLab).")
+	ListCmd.Flags().BoolP("help", "h", false, "Show help for the list command.")
 }

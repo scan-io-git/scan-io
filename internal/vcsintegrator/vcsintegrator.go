@@ -30,7 +30,7 @@ type RunOptionsIntegrationVCS struct {
 	Domain        string
 	Namespace     string
 	Repository    string
-	PullRequestId int
+	PullRequestID string
 	Action        string
 	Login         string
 	Language      string

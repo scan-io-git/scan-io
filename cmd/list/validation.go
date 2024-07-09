@@ -9,7 +9,6 @@ import (
 
 // validateListArgs validates the arguments provided to the list command.
 func validateListArgs(options *vcsintegrator.RunOptionsIntegrationVCS, args []string) error {
-
 	if len(args) > 1 {
 		return fmt.Errorf("invalid argument(s) received, only one positional argument is allowed")
 	}
@@ -20,7 +19,7 @@ func validateListArgs(options *vcsintegrator.RunOptionsIntegrationVCS, args []st
 
 	if len(args) == 1 {
 		if options.Domain != "" || options.Namespace != "" {
-			return fmt.Errorf("you cannot use both 'domain' and 'namespace' flags and a target URL at the same time")
+			return fmt.Errorf("you cannot use 'domain', 'namespace' flags with a target URL")
 		}
 		_, err := url.ParseRequestURI(args[0])
 		if err != nil {
@@ -28,7 +27,7 @@ func validateListArgs(options *vcsintegrator.RunOptionsIntegrationVCS, args []st
 		}
 		return nil
 	} else if options.Domain == "" {
-		return fmt.Errorf("the 'vcs-url' flag must be specified")
+		return fmt.Errorf("the 'domain' flag must be specified")
 	}
 
 	if options.Language != "" && options.VCSPluginName != "gitlab" {

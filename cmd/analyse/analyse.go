@@ -135,9 +135,9 @@ List of avaliable scanner plugins:
 func init() {
 	AnalyseCmd.Flags().StringVarP(&analyseOptions.ScannerConfig, "config", "c", "", "Path or type of configuration for the scanner. The format depends on the specific scanner being used.")
 	AnalyseCmd.Flags().StringVarP(&analyseOptions.ReportFormat, "format", "f", "", "Format for the report with results.")
-	AnalyseCmd.Flags().BoolP("help", "h", false, "Show help for the analyse command.")
 	AnalyseCmd.Flags().StringVarP(&analyseOptions.InputFile, "input-file", "i", "", "Path to a file in Scanio format containing a list of repositories to analyse. Use the list command to prepare this file.")
 	AnalyseCmd.Flags().StringVarP(&analyseOptions.OutputPath, "output", "o", "", "Path to the output file or directory where the scanner's results will be saved.")
 	AnalyseCmd.Flags().StringVarP(&analyseOptions.Scanner, "scanner", "p", "", "Name of the scanner plugin to use (e.g., semgrep, bandit).")
 	AnalyseCmd.Flags().IntVarP(&analyseOptions.Threads, "threads", "j", 1, "Number of concurrent threads to use.")
+	AnalyseCmd.Flags().BoolP("help", "h", false, "Show help for the analyse command.")
 }
