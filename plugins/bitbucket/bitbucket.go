@@ -106,13 +106,13 @@ func (g *VCSBitbucket) ListRepositories(args shared.VCSListRepositoriesRequest) 
 		return nil, err
 	}
 
-	client, err := g.initializeBitbucketClient(args.VCSURL)
+	client, err := g.initializeBitbucketClient(args.RepoParam.VCSUrl)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(args.Namespace) > 0 {
-		return g.listRepositoriesForProject(client, args.Namespace)
+	if len(args.RepoParam.Namespace) > 0 {
+		return g.listRepositoriesForProject(client, args.RepoParam.Namespace)
 	}
 	return g.listRepositoriesForAllProjects(client)
 }

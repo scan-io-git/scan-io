@@ -6,22 +6,22 @@ import (
 )
 
 // validateAnalyseArgs validates the arguments provided to the analyse command.
-func validateAnalyseArgs(allArgumentsAnalyse *RunOptionsAnalyse, args []string, argsLenAtDash int) error {
-	if allArgumentsAnalyse.Scanner == "" {
+func validateAnalyseArgs(options *RunOptionsAnalyse, args []string, argsLenAtDash int) error {
+	if options.Scanner == "" {
 		return fmt.Errorf("the 'scanner' flag must be specified")
 	}
 
 	if argsLenAtDash > -1 {
-		allArgumentsAnalyse.AdditionalArgs = args[argsLenAtDash:]
+		options.AdditionalArgs = args[argsLenAtDash:]
 	}
 
-	if (len(args) == 0 || (len(args) > 0 && argsLenAtDash == 0)) && allArgumentsAnalyse.InputFile == "" {
+	if (len(args) == 0 || (len(args) > 0 && argsLenAtDash == 0)) && options.InputFile == "" {
 		return fmt.Errorf("either 'input-file' flag or a target path must be specified")
 	}
 
 	// TODO: add checking a format and using input file in case of the right given file as a single file
 	if len(args) > 0 && (argsLenAtDash == -1 || argsLenAtDash == 1) {
-		if allArgumentsAnalyse.InputFile != "" {
+		if options.InputFile != "" {
 			return fmt.Errorf("you cannot use an 'input-file' flag and a target path at the same time")
 		}
 
@@ -33,11 +33,11 @@ func validateAnalyseArgs(allArgumentsAnalyse *RunOptionsAnalyse, args []string, 
 		return nil
 	}
 
-	if allArgumentsAnalyse.InputFile == "" {
+	if options.InputFile == "" {
 		return fmt.Errorf("the 'input-file' flag must be specified")
 	}
 
-	if allArgumentsAnalyse.Threads <= 0 {
+	if options.Threads <= 0 {
 		return fmt.Errorf("the 'threads' flag must be a positive integer")
 	}
 

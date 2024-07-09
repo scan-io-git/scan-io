@@ -108,9 +108,9 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	retchResult, fetchErr := f.FetchRepos(AppConfig, fetchReqList)
+	fetchResult, fetchErr := f.FetchRepos(AppConfig, fetchReqList)
 
-	if err := shared.WriteGenericResult(AppConfig, logger, retchResult, "FETCH"); err != nil {
+	if err := shared.WriteGenericResult(AppConfig, logger, fetchResult, "FETCH"); err != nil {
 		logger.Error("failed to write result", "error", err)
 		return err
 	}
@@ -120,14 +120,14 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 		return fetchErr
 	}
 
-	logger.Debug("fetch result", "result", retchResult)
+	logger.Debug("fetch result", "result", fetchResult)
 	logger.Info("fetch command completed successfully")
 	return nil
 }
 
 // generateLongDescription generates the long description dynamically with the list of available scanner plugins.
-func generateLongDescription(AppConfig *config.Config) string {
-	pluginsMeta := shared.GetPluginVersions(config.GetScanioPluginsHome(AppConfig), "vcs")
+func generateLongDescription(cfg *config.Config) string {
+	pluginsMeta := shared.GetPluginVersions(config.GetScanioPluginsHome(cfg), "vcs")
 	var plugins []string
 	for plugin := range pluginsMeta {
 		plugins = append(plugins, plugin)

@@ -49,13 +49,6 @@ type Reference struct {
 	LatestCommit string
 }
 
-type VCSListRepositoriesRequest struct {
-	Namespace  string
-	VCSURL     string
-	Repository string
-	Language   string
-}
-
 type VCSFetchRequest struct {
 	CloneURL     string
 	Branch       string
@@ -72,6 +65,12 @@ type VCSRequestBase struct {
 	Action        string
 	Repository    string
 	PullRequestId int
+}
+
+type VCSListRepositoriesRequest struct {
+	RepoParam RepositoryParams
+	Action    string
+	Language  string
 }
 
 type VCSRetrievePRInformationRequest struct {

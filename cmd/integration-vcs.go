@@ -170,7 +170,7 @@ List of actions for github:
 			}
 
 			logger := logger.NewLogger(AppConfig, "core-integration-vcs")
-			resultIntegrationVCS, integrationErr := integrationAction(AppConfig, shared.PluginTypeVCS, allArgumentsIntegrationVCS.VCSPlugName, arguments)
+			resultIntegrationVCS, integrationErr := integrationAction(AppConfig, allArgumentsIntegrationVCS.VCSPlugName, arguments)
 
 			resultsIntegrationVCS.Launches = append(resultsIntegrationVCS.Launches, resultIntegrationVCS)
 			_, err := json.Marshal(resultsIntegrationVCS)
@@ -198,10 +198,10 @@ List of actions for github:
 	},
 }
 
-// scanRepo executes the scanning of a repository using the specified plugin.
-func integrationAction(cfg *config.Config, pluginType, pluginName string, arguments interface{}) (shared.GenericResult, error) {
+// integrationAction executes the scanning of a repository using the specified plugin.
+func integrationAction(cfg *config.Config, pluginName string, arguments interface{}) (shared.GenericResult, error) {
 	var result shared.GenericResult
-	err := shared.WithPlugin(cfg, "plugin-vcs", pluginType, pluginName, func(raw interface{}) error {
+	err := shared.WithPlugin(cfg, "plugin-vcs", "vcs", pluginName, func(raw interface{}) error {
 		vcsName, ok := raw.(shared.VCS)
 		if !ok {
 			return fmt.Errorf("invalid plugin type")

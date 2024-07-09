@@ -53,7 +53,7 @@ func ValidateFetchArgs(args *shared.VCSFetchRequest) error {
 
 // ValidateListArgs checks the necessary fields in VCSListRepositoriesRequest and returns errors if they are not set.
 func ValidateListArgs(args *shared.VCSListRepositoriesRequest) error {
-	if args.VCSURL == "" {
+	if args.RepoParam.VCSUrl == "" {
 		return fmt.Errorf("repository URL is required")
 	}
 	return nil
