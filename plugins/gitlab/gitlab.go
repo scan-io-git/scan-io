@@ -92,13 +92,13 @@ func (g *VCSGitlab) ListRepositories(args shared.VCSListRepositoriesRequest) ([]
 		return nil, err
 	}
 
-	gitlabClient, err := getGitlabClient(args.VCSURL)
+	gitlabClient, err := getGitlabClient(args.RepoParam.Domain)
 	if err != nil {
 		g.logger.Error("Failed to create gitlab Client", "error", err)
 		return nil, err
 	}
 
-	allGroups, err := g.getGitlabGroups(gitlabClient, args.Namespace)
+	allGroups, err := g.getGitlabGroups(gitlabClient, args.RepoParam.Namespace)
 	if err != nil {
 		g.logger.Error("Failed to get list of Gitlab groups", "error", err)
 		return nil, err

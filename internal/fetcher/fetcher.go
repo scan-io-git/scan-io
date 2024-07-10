@@ -43,7 +43,7 @@ func New(pluginName, authType, sshKey, branch string, rmListExts []string, jobs 
 	}
 }
 
-// PrepFetchArgs prepares fetch arguments for the repositories.
+// PrepFetchReqList prepares fetch arguments for the repositories.
 func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.RepositoryParams) ([]shared.VCSFetchRequest, error) {
 	var fetchReqList []shared.VCSFetchRequest
 
@@ -54,7 +54,7 @@ func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.Repository
 			return nil, fmt.Errorf("failed to get domain for URL %s: %w", cloneURL, err)
 		}
 
-		repo.VCSUrl = domain
+		repo.Domain = domain
 		fetchMode := getFetchMode(repo)
 		if f.pluginName == "bitbucket" && strings.HasPrefix(repo.Namespace, "~") {
 			repo.Namespace = strings.TrimPrefix(repo.Namespace, "~") // in the case of user repos we should put results into the same folder for ssh and http links
@@ -76,7 +76,7 @@ func (f *Fetcher) getCloneURL(repo shared.RepositoryParams) string {
 
 // getFetchMode determines the mode for the fetch request.
 func getFetchMode(repo shared.RepositoryParams) string {
-	if repo.PullRequestId != "" {
+	if repo.PullRequestID != "" {
 		return PRScanMode
 	}
 	return BasicMode

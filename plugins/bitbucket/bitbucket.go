@@ -47,12 +47,12 @@ func (g *VCSBitbucket) setGlobalConfig(globalConfig *config.Config) {
 }
 
 // initializeBitbucketClient creates and initializes a new Bitbucket client.
-func (g *VCSBitbucket) initializeBitbucketClient(vcsURL string) (*bitbucket.Client, error) {
+func (g *VCSBitbucket) initializeBitbucketClient(domain string) (*bitbucket.Client, error) {
 	authInfo := bitbucket.AuthInfo{
 		Username: g.globalConfig.BitbucketPlugin.Username,
 		Token:    g.globalConfig.BitbucketPlugin.Token,
 	}
-	client, err := bitbucket.New(g.logger, vcsURL, authInfo, g.globalConfig)
+	client, err := bitbucket.New(g.logger, domain, authInfo, g.globalConfig)
 	if err != nil {
 		g.logger.Error("initialization of Bitbucket client failed", "error", err)
 		return nil, err
@@ -106,13 +106,13 @@ func (g *VCSBitbucket) ListRepositories(args shared.VCSListRepositoriesRequest) 
 		return nil, err
 	}
 
-	client, err := g.initializeBitbucketClient(args.VCSURL)
+	client, err := g.initializeBitbucketClient(args.RepoParam.Domain)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(args.Namespace) > 0 {
-		return g.listRepositoriesForProject(client, args.Namespace)
+	if len(args.RepoParam.Namespace) > 0 {
+		return g.listRepositoriesForProject(client, args.RepoParam.Namespace)
 	}
 	return g.listRepositoriesForAllProjects(client)
 }
@@ -126,14 +126,15 @@ func (g *VCSBitbucket) RetrievePRInformation(args shared.VCSRetrievePRInformatio
 		return shared.PRParams{}, err
 	}
 
-	client, err := g.initializeBitbucketClient(args.VCSURL)
+	client, err := g.initializeBitbucketClient(args.RepoParam.Domain)
 	if err != nil {
 		return shared.PRParams{}, err
 	}
 
-	prData, err := client.PullRequests.Get(args.Namespace, args.Repository, args.PullRequestId)
+	prID, _ := strconv.Atoi(args.RepoParam.PullRequestID)
+	prData, err := client.PullRequests.Get(args.RepoParam.Namespace, args.RepoParam.Repository, prID)
 	if err != nil {
-		g.logger.Error("failed to retrieve information about the PR", "PRID", args.PullRequestId, "error", err)
+		g.logger.Error("failed to retrieve information about the PR", "PRID", prID, "error", err)
 		return shared.PRParams{}, err
 	}
 
@@ -149,14 +150,15 @@ func (g *VCSBitbucket) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, err
 		return false, err
 	}
 
-	client, err := g.initializeBitbucketClient(args.VCSURL)
+	client, err := g.initializeBitbucketClient(args.RepoParam.Domain)
 	if err != nil {
 		return false, err
 	}
 
-	prData, err := client.PullRequests.Get(args.Namespace, args.Repository, args.PullRequestId)
+	prID, _ := strconv.Atoi(args.RepoParam.PullRequestID)
+	prData, err := client.PullRequests.Get(args.RepoParam.Namespace, args.RepoParam.Repository, prID)
 	if err != nil {
-		g.logger.Error("failed to retrieve information about the PR", "PRID", args.PullRequestId, "error", err)
+		g.logger.Error("failed to retrieve information about the PR", "PRID", prID, "error", err)
 		return false, err
 	}
 
@@ -178,17 +180,18 @@ func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool,
 		return false, err
 	}
 
-	client, err := g.initializeBitbucketClient(args.VCSURL)
+	client, err := g.initializeBitbucketClient(args.RepoParam.Domain)
 	if err != nil {
 		return false, err
 	}
 
-	prData, err := client.PullRequests.Get(args.Namespace, args.Repository, args.PullRequestId)
+	prID, _ := strconv.Atoi(args.RepoParam.PullRequestID)
+	prData, err := client.PullRequests.Get(args.RepoParam.Namespace, args.RepoParam.Repository, prID)
 	if err != nil {
-		g.logger.Error("failed to retrieve information about the PR", "PRID", args.PullRequestId, "error", err)
+		g.logger.Error("failed to retrieve information about the PR", "PRID", prID, "error", err)
 		return false, err
 	}
-	g.logger.Info("changing status of a particular PR", "PR", fmt.Sprintf("%v/%v/%v/%v", args.VCSURL, args.Namespace, args.Repository, args.PullRequestId))
+	g.logger.Info("changing status of a particular PR", "PR", fmt.Sprintf("%v/%v/%v/%v", args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, prID))
 
 	_, err = prData.SetStatus(args.Status, args.Login)
 	if err != nil {
@@ -196,7 +199,7 @@ func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool,
 		return false, err
 	}
 
-	g.logger.Info("PR successfully moved to status", "status", args.Status, "PR_id", args.PullRequestId, "last_commit", prData.Author.LastReviewedCommit)
+	g.logger.Info("PR successfully moved to status", "status", args.Status, "PR_ID", prID, "last_commit", prData.Author.LastReviewedCommit)
 	return true, nil
 }
 
@@ -209,24 +212,25 @@ func (g *VCSBitbucket) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (boo
 		return false, err
 	}
 
-	client, err := g.initializeBitbucketClient(args.VCSURL)
+	client, err := g.initializeBitbucketClient(args.RepoParam.Domain)
 	if err != nil {
 		return false, err
 	}
 
-	prData, err := client.PullRequests.Get(args.Namespace, args.Repository, args.PullRequestId)
+	prID, _ := strconv.Atoi(args.RepoParam.PullRequestID)
+	prData, err := client.PullRequests.Get(args.RepoParam.Namespace, args.RepoParam.Repository, prID)
 	if err != nil {
-		g.logger.Error("failed to retrieve information about the PR", "PRID", args.PullRequestId, "error", err)
+		g.logger.Error("failed to retrieve information about the PR", "PRID", prID, "error", err)
 		return false, err
 	}
-	g.logger.Info("commenting on a particular PR", "PR URL", fmt.Sprintf("%v/%v/%v/%v", args.VCSURL, args.Namespace, args.Repository, args.PullRequestId))
+	g.logger.Info("commenting on a particular PR", "PR URL", fmt.Sprintf("%v/%v/%v/%v", args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, prID))
 
 	if _, err := prData.AddComment(args.Comment, args.FilePaths); err != nil {
 		g.logger.Error("failed to add comment to PR", "error", err)
 		return false, err
 	}
 
-	g.logger.Info("successfully added a comment to PR", "PR", args.PullRequestId)
+	g.logger.Info("successfully added a comment to PR", "PR", prID)
 	return true, nil
 }
 
@@ -244,8 +248,7 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		return "", err
 	}
 
-	// TODO: Change the RepoParam structure to int
-	prID, _ := strconv.Atoi(args.RepoParam.PullRequestId)
+	prID, _ := strconv.Atoi(args.RepoParam.PullRequestID)
 	prData, err := client.PullRequests.Get(args.RepoParam.Namespace, args.RepoParam.Repository, prID)
 	if err != nil {
 		g.logger.Error("failed to retrieve information about the PR", "PRID", prID, "error", err)
@@ -294,7 +297,7 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		return "", err
 	}
 
-	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.VCSUrl, args.RepoParam.Namespace, args.RepoParam.Repository, prID)
+	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, prID)
 
 	g.logger.Debug("copying files that have changed")
 	for _, val := range *changes {

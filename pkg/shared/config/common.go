@@ -74,13 +74,13 @@ func GetScanioTempHome(cfg *Config) string {
 }
 
 // GetRepositoryPath constructs the path to a repository based on the VCS URL and repository namespace.
-func GetRepositoryPath(cfg *Config, VCSURL, repoWithNamespace string) string {
-	return filepath.Join(GetScanioProjectsHome(cfg), strings.ToLower(VCSURL), strings.ToLower(repoWithNamespace))
+func GetRepositoryPath(cfg *Config, Domain, repoWithNamespace string) string {
+	return filepath.Join(GetScanioProjectsHome(cfg), strings.ToLower(Domain), strings.ToLower(repoWithNamespace))
 }
 
 // GetPRTempPath constructs the path to the temporary folder for a pull request based on the VCS URL, namespace, and repository name.
-func GetPRTempPath(cfg *Config, VCSURL, Namespace, RepoName string, PRId int) string {
-	basePath := filepath.Join(GetScanioTempHome(cfg), strings.ToLower(VCSURL), strings.ToLower(Namespace), strings.ToLower(RepoName), "scanio-pr-tmp", strconv.Itoa(PRId))
+func GetPRTempPath(cfg *Config, Domain, Namespace, RepoName string, PRId int) string {
+	basePath := filepath.Join(GetScanioTempHome(cfg), strings.ToLower(Domain), strings.ToLower(Namespace), strings.ToLower(RepoName), "scanio-pr-tmp", strconv.Itoa(PRId))
 
 	// Append timestamp if not in CI environment
 	if !IsCI(cfg) {

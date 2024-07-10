@@ -56,6 +56,7 @@ var (
   scanio fetch --vcs github --input-file /path/to/list_output.file --auth-type ssh-agent -j 5`
 )
 
+// FetchCmd represents the command for fetch command.
 var FetchCmd = &cobra.Command{
 	Use:                   "fetch --vcs/p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [--rm-ext LIST_OF_EXTENTIONS][-j THREADS_NUMBER, default=1] {--input-file/-i PATH | [-b BRANCH/HASH] URL}",
 	SilenceUsage:          true,
@@ -108,9 +109,9 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	retchResult, fetchErr := f.FetchRepos(AppConfig, fetchReqList)
+	fetchResult, fetchErr := f.FetchRepos(AppConfig, fetchReqList)
 
-	if err := shared.WriteGenericResult(AppConfig, logger, retchResult, "FETCH"); err != nil {
+	if err := shared.WriteGenericResult(AppConfig, logger, fetchResult, "FETCH"); err != nil {
 		logger.Error("failed to write result", "error", err)
 		return err
 	}
@@ -120,14 +121,14 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 		return fetchErr
 	}
 
-	logger.Debug("fetch result", "result", retchResult)
+	logger.Debug("fetch result", "result", fetchResult)
 	logger.Info("fetch command completed successfully")
 	return nil
 }
 
 // generateLongDescription generates the long description dynamically with the list of available scanner plugins.
-func generateLongDescription(AppConfig *config.Config) string {
-	pluginsMeta := shared.GetPluginVersions(config.GetScanioPluginsHome(AppConfig), "vcs")
+func generateLongDescription(cfg *config.Config) string {
+	pluginsMeta := shared.GetPluginVersions(config.GetScanioPluginsHome(cfg), "vcs")
 	var plugins []string
 	for plugin := range pluginsMeta {
 		plugins = append(plugins, plugin)
@@ -145,7 +146,7 @@ func init() {
 	FetchCmd.Flags().StringVarP(&fetchOptions.AuthType, "auth-type", "a", "", "Type of authentication (e.g., http, ssh-agent, ssh-key).")
 	FetchCmd.Flags().StringVarP(&fetchOptions.SSHKey, "ssh-key", "k", "", "Path to an SSH key.")
 	FetchCmd.Flags().StringVarP(&fetchOptions.Branch, "branch", "b", "", "Specific branch to fetch (default: main or master).")
-	FetchCmd.Flags().BoolP("help", "h", false, "Show help for the fetch command.")
 	FetchCmd.Flags().StringSliceVar(&fetchOptions.RmListExts, "rm-ext", []string{"csv", "png", "ipynb", "txt", "md", "mp4", "zip", "gif", "gz", "jpg", "jpeg", "cache", "tar", "svg", "bin", "lock", "exe"}, "Comma-separated list of file extensions to remove automatically after fetching.")
 	FetchCmd.Flags().IntVarP(&fetchOptions.Threads, "threads", "j", 1, "Number of concurrent threads to use.")
+	FetchCmd.Flags().BoolP("help", "h", false, "Show help for the fetch command.")
 }

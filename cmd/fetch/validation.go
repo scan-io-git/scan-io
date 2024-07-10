@@ -14,35 +14,35 @@ const (
 )
 
 // validateFetchArgs validates the arguments provided to the fetch command.
-func validateFetchArgs(allArgumentsFetch *RunOptionsFetch, args []string) error {
+func validateFetchArgs(options *RunOptionsFetch, args []string) error {
 	if len(args) > 1 {
 		return fmt.Errorf("invalid argument(s) received, only one positional argument is allowed")
 	}
 
-	if allArgumentsFetch.VCSPluginName == "" {
+	if options.VCSPluginName == "" {
 		return fmt.Errorf("the 'vcs' flag must be specified")
 	}
 
-	if allArgumentsFetch.AuthType == "" {
+	if options.AuthType == "" {
 		return fmt.Errorf("the 'auth-type' flag must be specified")
 	}
 
 	authTypesList := []string{AuthTypeHTTP, AuthTypeSSHKey, AuthTypeSSHAgent}
-	if !shared.IsInList(allArgumentsFetch.AuthType, authTypesList) {
-		return fmt.Errorf("unknown auth-type: %v", allArgumentsFetch.AuthType)
+	if !shared.IsInList(options.AuthType, authTypesList) {
+		return fmt.Errorf("unknown auth-type: %v", options.AuthType)
 	}
 
 	// TODO: add SSHKey verification
-	if allArgumentsFetch.AuthType == AuthTypeSSHKey && allArgumentsFetch.SSHKey == "" {
+	if options.AuthType == AuthTypeSSHKey && options.SSHKey == "" {
 		return fmt.Errorf("you must specify ssh-key with auth-type 'ssh-key'")
 	}
 
-	if len(args) == 0 && allArgumentsFetch.InputFile == "" {
+	if len(args) == 0 && options.InputFile == "" {
 		return fmt.Errorf("either 'input-file' flag or a target URL must be specified")
 	}
 
-	if allArgumentsFetch.InputFile != "" && len(args) != 0 {
-		return fmt.Errorf("you cannot use both 'input-file' flag and a target URL at the same time")
+	if options.InputFile != "" && len(args) != 0 {
+		return fmt.Errorf("you cannot use 'input-file' flag with a target URL")
 	}
 
 	if len(args) == 1 {
@@ -54,11 +54,11 @@ func validateFetchArgs(allArgumentsFetch *RunOptionsFetch, args []string) error 
 	}
 
 	// TODO: add validation for the input file format
-	if allArgumentsFetch.InputFile == "" {
+	if options.InputFile == "" {
 		return fmt.Errorf("the 'input-file' flag must be specified")
 	}
 
-	if allArgumentsFetch.Threads <= 0 {
+	if options.Threads <= 0 {
 		return fmt.Errorf("the 'threads' flag must be a positive integer")
 	}
 

@@ -56,7 +56,7 @@ terraform.rc
 .terraform.lock.hcl
 
 # 
-__debug_bin
+__debug_bin*
 
 # vagrant
 .vagrant/

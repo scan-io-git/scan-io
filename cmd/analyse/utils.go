@@ -23,7 +23,7 @@ func determineMode(args []string, argsLenAtDash int) string {
 }
 
 // prepareScanTargets prepares the targets for scanning based on the validated arguments.
-func prepareScanTargets(allArgumentsAnalyse *RunOptionsAnalyse, args []string, mode string) ([]shared.RepositoryParams, string, error) {
+func prepareScanTargets(options *RunOptionsAnalyse, args []string, mode string) ([]shared.RepositoryParams, string, error) {
 	var reposInf []shared.RepositoryParams
 	var targetPath string
 
@@ -31,12 +31,12 @@ func prepareScanTargets(allArgumentsAnalyse *RunOptionsAnalyse, args []string, m
 	case ModeSinglePath:
 		targetPath = args[0]
 	case ModeInputFile:
-		reposData, err := utils.ReadReposFile2(allArgumentsAnalyse.InputFile)
+		reposData, err := utils.ReadReposFile2(options.InputFile)
 		if err != nil {
-			return nil, "", fmt.Errorf("error parsing the input file %s: %v", allArgumentsAnalyse.InputFile, err)
+			return nil, "", fmt.Errorf("error parsing the input file %s: %v", options.InputFile, err)
 		}
 		reposInf = reposData
 	}
 
-	return reposInf, targetPath, nil
+	return reposInf, targetPath, fmt.Errorf("invalid analysing mode: %s", mode)
 }

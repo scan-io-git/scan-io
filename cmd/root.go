@@ -8,6 +8,8 @@ import (
 
 	"github.com/scan-io-git/scan-io/cmd/analyse"
 	"github.com/scan-io-git/scan-io/cmd/fetch"
+	"github.com/scan-io-git/scan-io/cmd/integration-vcs"
+	"github.com/scan-io-git/scan-io/cmd/list"
 	"github.com/scan-io-git/scan-io/cmd/version"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
@@ -50,8 +52,10 @@ func initConfig() {
 		os.Exit(1)
 	}
 
-	analyse.Init(AppConfig)
+	list.Init(AppConfig)
 	fetch.Init(AppConfig)
+	analyse.Init(AppConfig)
+	integrationvcs.Init(AppConfig)
 	version.Init(AppConfig)
 }
 
@@ -59,8 +63,10 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.Flags().BoolP("help", "h", false, "Show help for Scanio.")
-	rootCmd.AddCommand(analyse.AnalyseCmd)
+	rootCmd.AddCommand(list.ListCmd)
 	rootCmd.AddCommand(fetch.FetchCmd)
+	rootCmd.AddCommand(analyse.AnalyseCmd)
+	rootCmd.AddCommand(integrationvcs.IntegrationVCSCmd)
 	rootCmd.AddCommand(version.NewVersionCmd())
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is .config.yml)")
 }

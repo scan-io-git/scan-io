@@ -28,7 +28,7 @@ func convertToPRParams(pr *bitbucket.PullRequest) shared.PRParams {
 		selfLink = "no-link-available"
 	}
 	return shared.PRParams{
-		Id:          pr.ID,
+		ID:          pr.ID,
 		Title:       pr.Title,
 		Description: pr.Description,
 		State:       pr.State,
@@ -36,12 +36,12 @@ func convertToPRParams(pr *bitbucket.PullRequest) shared.PRParams {
 		SelfLink:    selfLink,
 		Source: shared.Reference{
 			ID:           pr.FromReference.ID,
-			DisplayId:    pr.FromReference.DisplayID,
+			DisplayID:    pr.FromReference.DisplayID,
 			LatestCommit: pr.FromReference.LatestCommit,
 		},
 		Destination: shared.Reference{
 			ID:           pr.ToReference.ID,
-			DisplayId:    pr.ToReference.DisplayID,
+			DisplayID:    pr.ToReference.DisplayID,
 			LatestCommit: pr.ToReference.LatestCommit,
 		},
 		CreatedDate: pr.CreatedDate,
