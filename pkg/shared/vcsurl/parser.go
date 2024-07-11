@@ -12,7 +12,7 @@ type Protocol int
 
 const (
 	SSH Protocol = iota
-	HTTPS
+	HTTP
 )
 
 type VCSType int
@@ -42,8 +42,8 @@ func isValidScheme(scheme string) bool {
 type VCSURL struct {
 	Namespace     string
 	Repository    string
-	HTTPUrl       string
-	SSHUrl        string
+	HTTPRepoLink  string
+	SSHRepoLink   string
 	Raw           string
 	PullRequestId string
 	VCSType       VCSType
@@ -54,10 +54,10 @@ type VCSURL struct {
 	// Username   string
 }
 
-// GetProtocol returns the protocol of the VCS URL (HTTPS or SSH)
+// GetProtocol returns the protocol of the VCS URL (HTTP or SSH)
 func (u *VCSURL) Protocol() Protocol {
 	if u.ParsedURL.Scheme == "http" || u.ParsedURL.Scheme == "https" {
-		return HTTPS
+		return HTTP
 	} else {
 		return SSH
 	}
@@ -141,8 +141,8 @@ func handleGenericVCS(u VCSURL) (*VCSURL, error) {
 	// Case of working with the certain repo
 	u.Namespace = path.Join(pathDirs[0 : len(pathDirs)-1]...)
 	u.Repository = pathDirs[len(pathDirs)-1]
-	u.HTTPUrl = fmt.Sprintf("https://%s/%s/%s", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
-	u.SSHUrl = fmt.Sprintf("ssh://git@%s/%s/%s.git", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
+	u.HTTPRepoLink = fmt.Sprintf("https://%s/%s/%s", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
+	u.SSHRepoLink = fmt.Sprintf("ssh://git@%s/%s/%s.git", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
 	return &u, nil
 }
 
@@ -153,33 +153,33 @@ func handleBitbucket2(u VCSURL) (*VCSURL, error) {
 	switch {
 	case len(pathDirs) == 0:
 		// Case for fetching the whole VCS - https://bitbucket.com/
-		u.HTTPUrl = u.Raw
+		u.HTTPRepoLink = u.Raw
 		return &u, nil
-	case len(pathDirs) == 2 && pathDirs[0] == "projects" && u.Protocol() == HTTPS:
+	case len(pathDirs) == 2 && pathDirs[0] == "projects" && u.Protocol() == HTTP:
 		// Case for working with a whole project from a Web UI URL format - https://bitbucket.com/projects/<project_name>
 		u.Namespace = pathDirs[1]
-		u.HTTPUrl = u.Raw
+		u.HTTPRepoLink = u.Raw
 		return &u, nil
-	case len(pathDirs) > 3 && pathDirs[0] == "users" && pathDirs[2] == "repos" && u.Protocol() == HTTPS:
+	case len(pathDirs) > 3 && pathDirs[0] == "users" && pathDirs[2] == "repos" && u.Protocol() == HTTP:
 		// Case for working with user repositories - https://bitbucket.com/users/<username>/repos/<repo_name>/browse
 		u.Namespace = pathDirs[1]
 		u.Repository = pathDirs[3]
 		setBitbucketURLs2(&u, false, "", true)
 		return &u, nil
-	case len(pathDirs) > 4 && pathDirs[0] == "projects" && pathDirs[4] == "pull-requests" && u.Protocol() == HTTPS:
+	case len(pathDirs) > 4 && pathDirs[0] == "projects" && pathDirs[4] == "pull-requests" && u.Protocol() == HTTP:
 		// PR fetching case - the type doesn't exist in SCM URLs - https://bitbucket.com/projects/<project_name>/repos/<repo_name>/pull-requests/<id>
 		u.Namespace = pathDirs[1]
 		u.Repository = pathDirs[3]
 		u.PullRequestId = pathDirs[5]
 		setBitbucketURLs2(&u, false, "", false)
 		return &u, nil
-	case len(pathDirs) > 3 && pathDirs[0] == "projects" && pathDirs[2] == "repos" && u.Protocol() == HTTPS:
+	case len(pathDirs) > 3 && pathDirs[0] == "projects" && pathDirs[2] == "repos" && u.Protocol() == HTTP:
 		// Case for working with a specific repo from a Web UI URL format - https://bitbucket.com/projects/<project_name>/repos/<repo_name>/browse
 		u.Namespace = pathDirs[1]
 		u.Repository = pathDirs[3]
 		setBitbucketURLs2(&u, false, "", false)
 		return &u, nil
-	case len(pathDirs) >= 2 && u.Protocol() == HTTPS && pathDirs[0] == "scm":
+	case len(pathDirs) >= 2 && u.Protocol() == HTTP && pathDirs[0] == "scm":
 		// Case for SCM path - https://bitbucket.com/scm/<project_name>/
 		u.Namespace = pathDirs[1]
 		if len(pathDirs) > 2 {
@@ -205,17 +205,17 @@ func handleBitbucket2(u VCSURL) (*VCSURL, error) {
 // setBitbucketURLs sets the HTTP and SSH URLs for repositories.
 func setBitbucketURLs2(u *VCSURL, usePort bool, port string, isUserRepo bool) {
 	if isUserRepo {
-		u.HTTPUrl = fmt.Sprintf("https://%s/users/%s/repos/%s/browse", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
-		u.SSHUrl = fmt.Sprintf("ssh://git@%s:7989/~%s/%s.git", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
+		u.HTTPRepoLink = fmt.Sprintf("https://%s/users/%s/repos/%s/browse", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
+		u.SSHRepoLink = fmt.Sprintf("ssh://git@%s:7989/~%s/%s.git", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
 	} else {
-		u.HTTPUrl = fmt.Sprintf("https://%s/scm/%s/%s.git", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
-		u.SSHUrl = fmt.Sprintf("ssh://git@%s:7989/%s/%s.git", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
+		u.HTTPRepoLink = fmt.Sprintf("https://%s/scm/%s/%s.git", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
+		u.SSHRepoLink = fmt.Sprintf("ssh://git@%s:7989/%s/%s.git", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
 	}
 
 	if usePort {
-		u.SSHUrl = fmt.Sprintf("ssh://git@%s:%s/%s/%s.git", u.ParsedURL.Hostname(), port, u.Namespace, u.Repository)
+		u.SSHRepoLink = fmt.Sprintf("ssh://git@%s:%s/%s/%s.git", u.ParsedURL.Hostname(), port, u.Namespace, u.Repository)
 		if isUserRepo {
-			u.SSHUrl = fmt.Sprintf("ssh://git@%s:%s/~%s/%s.git", u.ParsedURL.Hostname(), port, u.Namespace, u.Repository)
+			u.SSHRepoLink = fmt.Sprintf("ssh://git@%s:%s/~%s/%s.git", u.ParsedURL.Hostname(), port, u.Namespace, u.Repository)
 		}
 	}
 }
