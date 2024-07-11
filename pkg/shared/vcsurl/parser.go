@@ -88,16 +88,16 @@ func ParseForVCSType(raw string, vcsType VCSType) (*VCSURL, error) {
 	vcsURL.Raw = raw
 
 	// preparse special type of URLs like "git@<host>:<path>"
-	rawURL := raw
-	if parts := regexp.MustCompile(`^git@([^:]+)\:(.*)$`).FindStringSubmatch(rawURL); len(parts) == 3 {
-		rawURL = fmt.Sprintf("ssh://%s/%s", parts[1], parts[2])
+	spec := raw
+	if parts := regexp.MustCompile(`^git@([^:]+)\:(.*)$`).FindStringSubmatch(spec); len(parts) == 3 {
+		spec = fmt.Sprintf("ssh://%s/%s", parts[1], parts[2])
 	}
 
 	// strip .git suffix from the URL
-	rawURL = strings.TrimSuffix(rawURL, ".git")
+	spec = strings.TrimSuffix(spec, ".git")
 
 	// parse URL and save it as a struct field
-	parsedURL, err := url.ParseRequestURI(rawURL)
+	parsedURL, err := url.ParseRequestURI(spec)
 	if err != nil {
 		return nil, err
 	}
