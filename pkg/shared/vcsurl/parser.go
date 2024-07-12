@@ -153,12 +153,10 @@ func handleBitbucket2(u VCSURL) (*VCSURL, error) {
 	switch {
 	case len(pathDirs) == 0:
 		// Case for fetching the whole VCS - https://bitbucket.com/
-		u.HTTPRepoLink = u.Raw
 		return &u, nil
 	case len(pathDirs) == 2 && pathDirs[0] == "projects" && u.Protocol() == HTTP:
 		// Case for working with a whole project from a Web UI URL format - https://bitbucket.com/projects/<project_name>
 		u.Namespace = pathDirs[1]
-		u.HTTPRepoLink = u.Raw
 		return &u, nil
 	case len(pathDirs) > 3 && pathDirs[0] == "users" && pathDirs[2] == "repos" && u.Protocol() == HTTP:
 		// Case for working with user repositories - https://bitbucket.com/users/<username>/repos/<repo_name>/browse
@@ -194,7 +192,7 @@ func handleBitbucket2(u VCSURL) (*VCSURL, error) {
 		u.Namespace = pathDirs[0]
 		if len(pathDirs) > 1 {
 			u.Repository = pathDirs[len(pathDirs)-1]
-			setBitbucketURLs2(&u, true, u.ParsedURL.Port(), false) // User can override a port if they use an ssh scheme format of URL
+			setBitbucketURLs2(&u, u.ParsedURL.Port() != "", u.ParsedURL.Port(), false) // User can override a port if they use an ssh scheme format of URL
 		}
 		return &u, nil
 	default:

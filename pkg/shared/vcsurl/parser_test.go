@@ -159,7 +159,7 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 		expected VCSURL
 	}{
 		{
-			name:  "Bitbucket API1 root of VCS URL",
+			name:  "Bitbucket HTTPS APIv1 root of VCS URL",
 			input: "https://bitbucket.org/",
 			expected: VCSURL{
 				Namespace:     "",
@@ -172,20 +172,20 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			},
 		},
 		{
-			name:  "Bitbucket API1 project URL", // fails
+			name:  "Bitbucket HTTPS APIv1 project URL", // fixed
 			input: "https://bitbucket.org/projects/scanio-project",
 			expected: VCSURL{
 				Namespace:     "scanio-project",
 				Repository:    "",
-				HTTPRepoLink:  "", // for some reason parser returns "https://bitbucket.org/projects/scanio-project" here
-				SSHRepoLink:   "", // no ssh link's generated for the case
+				HTTPRepoLink:  "", // delete u.raw
+				SSHRepoLink:   "",
 				Raw:           "https://bitbucket.org/projects/scanio-project",
 				PullRequestId: "",
 				VCSType:       Bitbucket,
 			},
 		},
 		{
-			name:  "Bitbucket HTTPS API1 URL with Username no port",
+			name:  "Bitbucket HTTPS APIv1 repo URL with Username",
 			input: "https://bitbucket.org/users/scanio-bot/repos/scanio-test-repository/browse",
 			expected: VCSURL{
 				Namespace:     "scanio-bot",
@@ -198,20 +198,7 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			},
 		},
 		{
-			name:  "Bitbucket HTTPS API1 URL with Username with port", // fails
-			input: "https://bitbucket.org:22/users/scanio-bot/repos/scanio-test-repository/browse",
-			expected: VCSURL{
-				Namespace:     "scanio-bot",
-				Repository:    "scanio-test-repository",
-				HTTPRepoLink:  "https://bitbucket.org/users/scanio-bot/repos/scanio-test-repository/browse",
-				SSHRepoLink:   "ssh://git@bitbucket.org:22/~scanio-bot/scanio-test-repository.git", // port is ignored, and here is an actual returned value: "ssh://git@bitbucket.org:7989/~scanio-bot/scanio-test-repository.git"
-				Raw:           "https://bitbucket.org:22/users/scanio-bot/repos/scanio-test-repository/browse",
-				PullRequestId: "",
-				VCSType:       Bitbucket,
-			},
-		},
-		{
-			name:  "Bitbucket API1 pullrequest no port URL",
+			name:  "Bitbucket HTTPS APIv1 pullrequest URL",
 			input: "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository/pull-requests/1",
 			expected: VCSURL{
 				Namespace:     "scanio-project",
@@ -224,7 +211,7 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			},
 		},
 		{
-			name:  "Bitbucket API1 pullrequest with port URL",
+			name:  "Bitbucket HTTPS APIv1 repo URL",
 			input: "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository/browse",
 			expected: VCSURL{
 				Namespace:     "scanio-project",
@@ -236,21 +223,9 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 				VCSType:       Bitbucket,
 			},
 		},
+
 		{
-			name:  "Bitbucket API1 repo with port URL", // fails
-			input: "https://bitbucket.org:22/projects/scanio-project/repos/scanio-test-repository/browse",
-			expected: VCSURL{
-				Namespace:     "scanio-project",
-				Repository:    "scanio-test-repository",
-				HTTPRepoLink:  "https://bitbucket.org/scm/scanio-project/scanio-test-repository.git",
-				SSHRepoLink:   "ssh://git@bitbucket.org:22/scanio-project/scanio-test-repository.git", // port is ignored, the actual returned value is "ssh://git@bitbucket.org:7989/scanio-project/scanio-test-repository.git"
-				Raw:           "https://bitbucket.org:22/projects/scanio-project/repos/scanio-test-repository/browse",
-				PullRequestId: "",
-				VCSType:       Bitbucket,
-			},
-		},
-		{
-			name:  "Bitbucket API1 scm project URL",
+			name:  "Bitbucket HTTPS APIv1 scm project URL",
 			input: "https://bitbucket.org/scm/scanio-project",
 			expected: VCSURL{
 				Namespace:     "scanio-project",
@@ -263,7 +238,7 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			},
 		},
 		{
-			name:  "Bitbucket API1 scm repository no port URL",
+			name:  "Bitbucket HTTPS APIv1 scm repo URL",
 			input: "https://bitbucket.org/scm/scanio-project/scanio-test-repository.git",
 			expected: VCSURL{
 				Namespace:     "scanio-project",
@@ -276,20 +251,7 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			},
 		},
 		{
-			name:  "Bitbucket API1 scm repository with port URL", // fails
-			input: "https://bitbucket.org:22/scm/scanio-project/scanio-test-repository.git",
-			expected: VCSURL{
-				Namespace:     "scanio-project",
-				Repository:    "scanio-test-repository",
-				HTTPRepoLink:  "https://bitbucket.org/scm/scanio-project/scanio-test-repository.git",
-				SSHRepoLink:   "ssh://git@bitbucket.org:22/scanio-project/scanio-test-repository.git", // port is ignored, actual value is "ssh://git@bitbucket.org:7989/scanio-project/scanio-test-repository.git"
-				Raw:           "https://bitbucket.org:22/scm/scanio-project/scanio-test-repository.git",
-				PullRequestId: "",
-				VCSType:       Bitbucket,
-			},
-		},
-		{
-			name:  "Bitbucket API1 SSH project no port URL",
+			name:  "Bitbucket APIv1 SSH project URL",
 			input: "ssh://git@bitbucket.org/scanio-project/",
 			expected: VCSURL{
 				Namespace:     "scanio-project",
@@ -302,20 +264,20 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			},
 		},
 		{
-			name:  "Bitbucket API1 SSH repo no port URL", // fails
+			name:  "Bitbucket APIv1 SSH repo no port URL",
 			input: "ssh://git@bitbucket.org/scanio-project/scanio-test-repository.git",
 			expected: VCSURL{
 				Namespace:     "scanio-project",
 				Repository:    "scanio-test-repository",
 				HTTPRepoLink:  "https://bitbucket.org/scm/scanio-project/scanio-test-repository.git",
-				SSHRepoLink:   "ssh://git@bitbucket.org:7989/scanio-project/scanio-test-repository.git", // the actual value for some reason is "ssh://git@bitbucket.org:/scanio-project/scanio-test-repository.git", there should be a check that input url has port specified
+				SSHRepoLink:   "ssh://git@bitbucket.org:7989/scanio-project/scanio-test-repository.git",
 				Raw:           "ssh://git@bitbucket.org/scanio-project/scanio-test-repository.git",
 				PullRequestId: "",
 				VCSType:       Bitbucket,
 			},
 		},
 		{
-			name:  "Bitbucket API1 SSH repo with port URL",
+			name:  "Bitbucket APIv1 SSH repo with port URL",
 			input: "ssh://git@bitbucket.org:22/scanio-project/scanio-test-repository.git",
 			expected: VCSURL{
 				Namespace:     "scanio-project",
