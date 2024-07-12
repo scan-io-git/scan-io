@@ -164,7 +164,7 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			expected: VCSURL{
 				Namespace:     "",
 				Repository:    "",
-				HTTPRepoLink:  "https://bitbucket.org/",
+				HTTPRepoLink:  "",
 				SSHRepoLink:   "",
 				Raw:           "https://bitbucket.org/",
 				PullRequestId: "",
