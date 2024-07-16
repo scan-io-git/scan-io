@@ -123,6 +123,7 @@ func ParseForVCSType(raw string, vcsType VCSType) (*VCSURL, error) {
 	}
 }
 
+// handleGenericVCS processes generic VCS URLs to extract repository information
 func handleGenericVCS(u VCSURL) (*VCSURL, error) {
 
 	pathDirs := GetPathDirs(u.ParsedURL.Path)
@@ -146,7 +147,7 @@ func handleGenericVCS(u VCSURL) (*VCSURL, error) {
 	return &u, nil
 }
 
-// handleBitbucket processes Bitbucket URLs to extract repository information. The case is for a Bitbucket APIv1/Onprem URL format
+// parseBitbucket processes Bitbucket URLs to extract repository information. The case is for a Bitbucket APIv1/Onprem URL format
 func parseBitbucket(u VCSURL) (*VCSURL, error) {
 	pathDirs := GetPathDirs(u.ParsedURL.Path)
 
@@ -200,7 +201,7 @@ func parseBitbucket(u VCSURL) (*VCSURL, error) {
 	}
 }
 
-// setBitbucketURLs sets the HTTP and SSH URLs for repositories.
+// buildBitbucketURLs sets the HTTP and SSH URLs for repositories.
 func buildBitbucketURLs(u *VCSURL, usePort bool, port string, isUserRepo bool) {
 	if isUserRepo {
 		u.HTTPRepoLink = fmt.Sprintf("https://%s/users/%s/repos/%s/browse", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
