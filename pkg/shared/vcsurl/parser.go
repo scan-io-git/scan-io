@@ -117,7 +117,7 @@ func ParseForVCSType(raw string, vcsType VCSType) (*VCSURL, error) {
 
 	// handle the URL based on the VCS type
 	if effectiveVCSType == Bitbucket {
-		return handleBitbucket2(vcsURL)
+		return parseBitbucket(vcsURL)
 	} else {
 		return handleGenericVCS(vcsURL)
 	}
@@ -147,7 +147,7 @@ func handleGenericVCS(u VCSURL) (*VCSURL, error) {
 }
 
 // handleBitbucket processes Bitbucket URLs to extract repository information. The case is for a Bitbucket APIv1/Onprem URL format
-func handleBitbucket2(u VCSURL) (*VCSURL, error) {
+func parseBitbucket(u VCSURL) (*VCSURL, error) {
 	pathDirs := GetPathDirs(u.ParsedURL.Path)
 
 	switch {
@@ -162,20 +162,20 @@ func handleBitbucket2(u VCSURL) (*VCSURL, error) {
 		// Case for working with user repositories - https://bitbucket.com/users/<username>/repos/<repo_name>/browse
 		u.Namespace = pathDirs[1]
 		u.Repository = pathDirs[3]
-		setBitbucketURLs2(&u, false, "", true)
+		buildBitbucketURLs(&u, false, "", true)
 		return &u, nil
 	case len(pathDirs) > 4 && pathDirs[0] == "projects" && pathDirs[4] == "pull-requests" && u.Protocol() == HTTP:
 		// PR fetching case - the type doesn't exist in SCM URLs - https://bitbucket.com/projects/<project_name>/repos/<repo_name>/pull-requests/<id>
 		u.Namespace = pathDirs[1]
 		u.Repository = pathDirs[3]
 		u.PullRequestId = pathDirs[5]
-		setBitbucketURLs2(&u, false, "", false)
+		buildBitbucketURLs(&u, false, "", false)
 		return &u, nil
 	case len(pathDirs) > 3 && pathDirs[0] == "projects" && pathDirs[2] == "repos" && u.Protocol() == HTTP:
 		// Case for working with a specific repo from a Web UI URL format - https://bitbucket.com/projects/<project_name>/repos/<repo_name>/browse
 		u.Namespace = pathDirs[1]
 		u.Repository = pathDirs[3]
-		setBitbucketURLs2(&u, false, "", false)
+		buildBitbucketURLs(&u, false, "", false)
 		return &u, nil
 	case len(pathDirs) >= 2 && u.Protocol() == HTTP && pathDirs[0] == "scm":
 		// Case for SCM path - https://bitbucket.com/scm/<project_name>/
@@ -183,7 +183,7 @@ func handleBitbucket2(u VCSURL) (*VCSURL, error) {
 		if len(pathDirs) > 2 {
 			// https://bitbucket.com/scm/<project_name>/<repo_name>.git
 			u.Repository = pathDirs[len(pathDirs)-1]
-			setBitbucketURLs2(&u, false, "", false)
+			buildBitbucketURLs(&u, false, "", false)
 		}
 		return &u, nil
 	case u.Protocol() == SSH:
@@ -192,7 +192,7 @@ func handleBitbucket2(u VCSURL) (*VCSURL, error) {
 		u.Namespace = pathDirs[0]
 		if len(pathDirs) > 1 {
 			u.Repository = pathDirs[len(pathDirs)-1]
-			setBitbucketURLs2(&u, u.ParsedURL.Port() != "", u.ParsedURL.Port(), false) // User can override a port if they use an ssh scheme format of URL
+			buildBitbucketURLs(&u, u.ParsedURL.Port() != "", u.ParsedURL.Port(), false) // User can override a port if they use an ssh scheme format of URL
 		}
 		return &u, nil
 	default:
@@ -201,7 +201,7 @@ func handleBitbucket2(u VCSURL) (*VCSURL, error) {
 }
 
 // setBitbucketURLs sets the HTTP and SSH URLs for repositories.
-func setBitbucketURLs2(u *VCSURL, usePort bool, port string, isUserRepo bool) {
+func buildBitbucketURLs(u *VCSURL, usePort bool, port string, isUserRepo bool) {
 	if isUserRepo {
 		u.HTTPRepoLink = fmt.Sprintf("https://%s/users/%s/repos/%s/browse", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
 		u.SSHRepoLink = fmt.Sprintf("ssh://git@%s:7989/~%s/%s.git", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
