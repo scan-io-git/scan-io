@@ -30,7 +30,16 @@ func prepareFetchTargets(options *RunOptionsFetch, args []string, mode string) (
 	switch mode {
 	case ModeSingleURL:
 		targetURL := args[0]
-		repoInfo, err := vcsurl.ExtractRepositoryInfoFromURL(targetURL, options.VCSPluginName)
+		vcsType := vcsurl.StringToVCSType(options.VCSPluginName)
+		url, err := vcsurl.ParseForVCSType(targetURL, vcsType)
+		repoInfo := shared.RepositoryParams{
+			Domain:        url.ParsedURL.Hostname(),
+			Namespace:     url.Namespace,
+			Repository:    url.Repository,
+			PullRequestID: url.PullRequestId,
+			HTTPLink:      url.HTTPRepoLink,
+			SSHLink:       url.SSHRepoLink,
+		}
 		if err != nil {
 			return reposInfo, fmt.Errorf("failed to extract data from provided URL '%s': %w", targetURL, err)
 		}
