@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	// "html/template"
+	"html/template"
 	"os"
 	"path/filepath"
 	"time"
@@ -10,9 +10,10 @@ import (
 
 	"github.com/scan-io-git/scan-io/internal/git"
 	scaniosarif "github.com/scan-io-git/scan-io/internal/sarif"
-	"github.com/scan-io-git/scan-io/internal/template"
+	scaniotemplate "github.com/scan-io-git/scan-io/internal/template"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
+	"github.com/scan-io-git/scan-io/pkg/shared/vcsurl"
 )
 
 type ToHTMLOptions struct {
@@ -36,6 +37,14 @@ type ReportMetadata struct {
 
 var execExampleToHTML = `  # Generate html report for semgrep sarif output
   scanio to-html --input /tmp/juice-shop/semgrep.sarif --output /tmp/juice-shop/semgrep.html --source /tmp/juice-shop`
+
+func gitURLtoWebURL(gitURL string) string {
+	u, err := vcsurl.Parse(gitURL)
+	if err != nil {
+		return gitURL
+	}
+	return u.HTTPRepoLink
+}
 
 // toHtmlCmd represents the toHtml command
 var toHtmlCmd = &cobra.Command{
@@ -88,7 +97,7 @@ var toHtmlCmd = &cobra.Command{
 			return err
 		}
 
-		tmpl, err := template.NewTemplate(templateFile)
+		tmpl, err := scaniotemplate.NewTemplate(templateFile, scaniotemplate.WithFuncs(template.FuncMap{"gitURLtoWebURL": gitURLtoWebURL}))
 		if err != nil {
 			return err
 		}
