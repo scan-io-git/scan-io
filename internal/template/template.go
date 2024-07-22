@@ -44,12 +44,21 @@ func formatDateTime(t time.Time) string {
 	return fmt.Sprintf("%s %s %d %d:%02d:%02d %s", day, t.Month(), t.Year(), t.Hour()%12, t.Minute(), t.Second(), t.Format("pm"))
 }
 
-func NewTemplate(templateFile string) (*template.Template, error) {
-	return template.New("report.html").
+func NewTemplate(templateFile string, options ...func(*template.Template)) (*template.Template, error) {
+	t := template.New("report.html").
 		Funcs(template.FuncMap{
 			"add":              add,
 			"generateSequence": generateSequence,
 			"formatDateTime":   formatDateTime,
-		}).
-		ParseFiles(templateFile)
+		})
+	for _, o := range options {
+		o(t)
+	}
+	return t.ParseFiles(templateFile)
+}
+
+func WithFuncs(funcs template.FuncMap) func(*template.Template) {
+	return func(t *template.Template) {
+		t.Funcs(funcs)
+	}
 }
