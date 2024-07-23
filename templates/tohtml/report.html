@@ -223,9 +223,10 @@
 </head>
 
 {{ $repo := .Metadata.RepositoryMetadata.RepositoryFullName }}
-{{ $webURL := gitURLtoWebURL $repo }}
 {{ $branch := .Metadata.RepositoryMetadata.BranchName }}
 {{ $commit := .Metadata.RepositoryMetadata.CommitHash }}
+
+{{ $webURL := gitURLtoWebURL $repo }}
 
 <body>
   <!-- header goes here -->
