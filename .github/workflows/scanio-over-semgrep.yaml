@@ -21,7 +21,7 @@ jobs:
 
       - name: Scanio analyze
         id: scanio-action
-        uses: scan-io-git/scanio-action/analyze@v0.1.0
+        uses: scan-io-git/scanio-action/analyze@v0.1.2
         with:
           scanner: semgrep
 
@@ -31,7 +31,7 @@ jobs:
           sarif_file: '.'
       
       - name: Scanio to html
-        uses: scan-io-git/scanio-action/to-html@d89db494b1096af9e598ae0f03577986c068c565
+        uses: scan-io-git/scanio-action/to-html@v0.1.2
         with:
           input: scanio-report-semgrep.sarif
           output: scanio-report-semgrep.html
