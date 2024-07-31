@@ -36,7 +36,9 @@ func prepareScanTargets(options *RunOptionsAnalyse, args []string, mode string) 
 			return nil, "", fmt.Errorf("error parsing the input file %s: %v", options.InputFile, err)
 		}
 		reposInf = reposData
+	default:
+		return nil, "", fmt.Errorf("invalid analysing mode: %s", mode)
 	}
 
-	return reposInf, targetPath, fmt.Errorf("invalid analysing mode: %s", mode)
+	return reposInf, targetPath, nil
 }

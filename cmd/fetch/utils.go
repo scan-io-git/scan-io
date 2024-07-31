@@ -60,7 +60,9 @@ func prepareFetchTargets(options *RunOptionsFetch, args []string, mode string) (
 			}
 		}
 		reposInfo = reposData
+	default:
+		return reposInfo, fmt.Errorf("invalid analysing mode: %s", mode)
 	}
 
-	return reposInfo, fmt.Errorf("invalid fetching mode: %s", mode)
+	return reposInfo, nil
 }
