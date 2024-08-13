@@ -52,7 +52,8 @@ func (g *VCSBitbucket) initializeBitbucketClient(domain string) (*bitbucket.Clie
 		Username: g.globalConfig.BitbucketPlugin.Username,
 		Token:    g.globalConfig.BitbucketPlugin.Token,
 	}
-	client, err := bitbucket.New(g.logger, domain, authInfo, g.globalConfig)
+
+	client, err := bitbucket.New(g.globalConfig, g.logger, domain, authInfo)
 	if err != nil {
 		g.logger.Error("initialization of Bitbucket client failed", "error", err)
 		return nil, err

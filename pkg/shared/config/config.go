@@ -77,12 +77,13 @@ type Logger struct {
 
 // HTTPClient configures settings for the HTTP client used within the application.
 type HTTPClient struct {
-	RetryCount       int             `yaml:"retry_count"`         // The number of times to retry an HTTP request before failing.
-	RetryWaitTime    time.Duration   `yaml:"retry_wait_time"`     // The duration to wait before the first retry of a failed HTTP request.
-	RetryMaxWaitTime time.Duration   `yaml:"retry_max_wait_time"` // The maximum duration to wait before subsequent retries of a failed HTTP request.
-	Timeout          time.Duration   `yaml:"timeout"`             // The maximum duration for the HTTP request before timing it out.
-	TLSClientConfig  TLSClientConfig `yaml:"tls_client_config"`   // TLS configuration for HTTPS connections.
-	Proxy            Proxy           `yaml:"proxy"`               // A proxy configuration.
+	RetryCount       int               `yaml:"retry_count"`         // The number of times to retry an HTTP request before failing.
+	RetryWaitTime    time.Duration     `yaml:"retry_wait_time"`     // The duration to wait before the first retry of a failed HTTP request.
+	RetryMaxWaitTime time.Duration     `yaml:"retry_max_wait_time"` // The maximum duration to wait before subsequent retries of a failed HTTP request.
+	Timeout          time.Duration     `yaml:"timeout"`             // The maximum duration for the HTTP request before timing it out.
+	TLSClientConfig  TLSClientConfig   `yaml:"tls_client_config"`   // TLS configuration for HTTPS connections.
+	Proxy            Proxy             `yaml:"proxy"`               // A proxy configuration.
+	CustomHeaders    map[string]string `yaml:"custom_headers"`      // Custom headers to be added to each request.
 }
 
 // TLSClientConfig configures the TLS aspects of HTTP connections.
@@ -151,14 +152,15 @@ func (c *Config) loadConfig(path string) error {
 		return fmt.Errorf("failed to validate path '%s': %w", expandedPath, err)
 	}
 
-	file, err := os.Open(expandedPath)
+	fileContent, err := os.ReadFile(expandedPath)
 	if err != nil {
 		return fmt.Errorf("failed to read config file '%s': %w", expandedPath, err)
 	}
-	defer file.Close()
 
-	decoder := yaml.NewDecoder(file)
-	if err = decoder.Decode(&c); err != nil {
+	// Simple replace environment variable placeholders
+	expandedContent := os.ExpandEnv(string(fileContent))
+
+	if err := yaml.Unmarshal([]byte(expandedContent), c); err != nil {
 		return fmt.Errorf("failed to unmarshal config '%s': %w", expandedPath, err)
 	}
 	return nil

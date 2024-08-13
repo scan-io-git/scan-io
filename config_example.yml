@@ -63,7 +63,9 @@ http_client:
   proxy:
     host: "127.0.0.1"   # Proxy server address. Default: none. Can include scheme; defaults to http:// if unspecified.
     port: 8080          # Proxy server port. Default: none.
-
+  custom_headers:                          # Custom headers to be added to each HTTP request.
+    Authorization: "Bearer ${TOKEN}"      # Example custom header 1 with its corresponding value.
+  
 ## GitClient config
 git_client:
   depth: 0              # Default: 0. Full gclone is 0 (usefull if you need to search secrets in git history).
