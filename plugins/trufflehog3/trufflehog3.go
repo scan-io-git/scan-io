@@ -12,6 +12,8 @@ import (
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+
+	plugin_internal "github.com/scan-io-git/scan-io/plugins/trufflehog3/internal"
 )
 
 // TODO: Wrap it in a custom error handler to add to the stack trace.
@@ -40,6 +42,21 @@ func newScannerTrufflehog3(logger hclog.Logger) *ScannerTrufflehog3 {
 	}
 }
 
+// handleGlobalConfig processes the global configuration for the Trufflehog3 scanner.
+func (g *ScannerTrufflehog3) handleGlobalConfig(args shared.ScannerScanRequest) error {
+	err := plugin_internal.HandleScannerConfig(
+		g.logger,
+		g.globalConfig.Trufflehog3Plugin.ExcludePaths,
+		args.TargetPath,
+		g.globalConfig.Trufflehog3Plugin.WriteDefaultConfig,
+		g.globalConfig.Trufflehog3Plugin.OverwriteConfig,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to process configuration for Trufflehog3 plugin: %w", err)
+	}
+	return nil
+}
+
 // Scan executes the Trufflehog3 scan with the provided arguments and returns the scan response.
 func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
 	var (
@@ -51,6 +68,8 @@ func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) (shared.Scanne
 
 	g.logger.Info("Scan is starting", "project", args.TargetPath)
 	g.logger.Debug("Debug info", "args", args)
+
+	g.handleGlobalConfig(args)
 
 	// Add additional arguments
 	if len(args.AdditionalArgs) != 0 {
@@ -69,6 +88,7 @@ func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) (shared.Scanne
 	}
 
 	// Here we added -z flag because Trufflehog3 sends a not correct exit code even when it finished without errors
+	// TODO: should we move -z to the scanio config file
 	commandArgs = append(commandArgs, "-z", "--output", args.ResultsPath, args.TargetPath)
 
 	cmd = exec.Command("trufflehog3", commandArgs...)

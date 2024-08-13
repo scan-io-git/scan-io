@@ -1,4 +1,4 @@
-package trufflehog3Shared
+package internal
 
 import (
 	"encoding/json"
