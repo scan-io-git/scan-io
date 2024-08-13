@@ -19,8 +19,8 @@ const (
 
 // VCSIntegrator represents the configuration and behavior of VCS integration actions.
 type VCSIntegrator struct {
-	pluginName string       // Name of the VCS plugin to use
-	action     string       // Action to perform
+	PluginName string       // Name of the VCS plugin to use
+	Action     string       // Action to perform
 	logger     hclog.Logger // Logger for logging messages and errors
 }
 
@@ -45,8 +45,8 @@ type RunOptionsIntegrationVCS struct {
 // New creates a new VCSIntegrator instance with the provided configuration.
 func New(pluginName, action string, logger hclog.Logger) *VCSIntegrator {
 	return &VCSIntegrator{
-		pluginName: pluginName,
-		action:     action,
+		PluginName: pluginName,
+		Action:     action,
 		logger:     logger,
 	}
 }
@@ -56,7 +56,7 @@ func (i *VCSIntegrator) createListRequest(repo shared.RepositoryParams, language
 	return shared.VCSListRepositoriesRequest{
 		VCSRequestBase: shared.VCSRequestBase{
 			RepoParam: repo,
-			Action:    i.action,
+			Action:    i.Action,
 		},
 		Language: language,
 	}
@@ -72,7 +72,7 @@ func (i *VCSIntegrator) createCheckPRRequest(repo shared.RepositoryParams) share
 				Repository:    repo.Repository,
 				PullRequestID: repo.PullRequestID,
 			},
-			Action: i.action,
+			Action: i.Action,
 		},
 	}
 }
@@ -87,7 +87,7 @@ func (i *VCSIntegrator) createAddCommentRequest(repo shared.RepositoryParams, op
 				Repository:    repo.Repository,
 				PullRequestID: repo.PullRequestID,
 			},
-			Action: i.action,
+			Action: i.Action,
 		},
 		Comment:   options.Comment,
 		FilePaths: options.AttachFiles,
@@ -104,7 +104,7 @@ func (i *VCSIntegrator) createAddRoleToPRRequest(repo shared.RepositoryParams, o
 				Repository:    repo.Repository,
 				PullRequestID: repo.PullRequestID,
 			},
-			Action: i.action,
+			Action: i.Action,
 		},
 		Login: options.Login,
 		Role:  options.Role,
@@ -121,7 +121,7 @@ func (i *VCSIntegrator) createSetStatusOfPRRequest(repo shared.RepositoryParams,
 				Repository:    repo.Repository,
 				PullRequestID: repo.PullRequestID,
 			},
-			Action: i.action,
+			Action: i.Action,
 		},
 		Login:  options.Login,
 		Status: options.Status,
@@ -132,7 +132,7 @@ func (i *VCSIntegrator) createSetStatusOfPRRequest(repo shared.RepositoryParams,
 func (i *VCSIntegrator) PrepIntegrationRequest(cfg *config.Config, options *RunOptionsIntegrationVCS, repo shared.RepositoryParams) (interface{}, error) {
 	var arguments interface{}
 
-	switch i.action {
+	switch i.Action {
 	case VCSListing:
 		arguments = i.createListRequest(repo, options.Language)
 	case VCSCheckPR:
@@ -144,7 +144,7 @@ func (i *VCSIntegrator) PrepIntegrationRequest(cfg *config.Config, options *RunO
 	case VCSSetStatusOfPR:
 		arguments = i.createSetStatusOfPRRequest(repo, options)
 	default:
-		return arguments, fmt.Errorf("action is not implemented: %v", i.action)
+		return arguments, fmt.Errorf("action is not implemented: %v", i.Action)
 	}
 
 	return arguments, nil
@@ -190,20 +190,20 @@ func performAction(vcsPlugin shared.VCS, options interface{}, action string) (in
 
 // IntegrationAction executes the integration action using the VCS plugin.
 func (i *VCSIntegrator) IntegrationAction(cfg *config.Config, actionRequest interface{}) (shared.GenericLaunchesResult, error) {
-	i.logger.Info("vcs integrator action starting", "action", i.action)
+	i.logger.Info("vcs integrator action starting", "action", i.Action)
 
 	var result shared.GenericLaunchesResult
-	err := shared.WithPlugin(cfg, "plugin-vcs", shared.PluginTypeVCS, i.pluginName, func(raw interface{}) error {
+	err := shared.WithPlugin(cfg, "plugin-vcs", shared.PluginTypeVCS, i.PluginName, func(raw interface{}) error {
 		vcsPlugin, ok := raw.(shared.VCS)
 		if !ok {
 			return fmt.Errorf("invalid plugin type")
 		}
 
 		var err error
-		actionResult, err := performAction(vcsPlugin, actionRequest, i.action)
+		actionResult, err := performAction(vcsPlugin, actionRequest, i.Action)
 		if err != nil {
 			result.Launches = append(result.Launches, shared.GenericResult{Args: actionRequest, Result: actionResult, Status: "FAILED", Message: err.Error()})
-			i.logger.Error("VCS plugin integration failed", "action", i.action, "actionArgs", actionRequest, "error", err)
+			i.logger.Error("VCS plugin integration failed", "action", i.Action, "actionArgs", actionRequest, "error", err)
 			return fmt.Errorf("VCS plugin integration failed. Action arguments: %v. Error: %w", actionRequest, err)
 		}
 		result.Launches = append(result.Launches, shared.GenericResult{Args: actionRequest, Result: actionResult, Status: "OK", Message: ""})

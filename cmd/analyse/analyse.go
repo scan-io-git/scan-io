@@ -3,6 +3,7 @@ package analyse
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -104,8 +105,14 @@ func runAnalyseCommand(cmd *cobra.Command, args []string) error {
 
 	analyseResult, scanErr := s.ScanRepos(AppConfig, analyseArgs)
 
-	resultFileName := fmt.Sprintf("ANALYSE_%v", s.PluginName)
-	if err := shared.WriteGenericResult(AppConfig, logger, analyseResult, resultFileName); err != nil {
+	// TODO: use a logger system to write it in a persistent log
+	metaDataFileName := fmt.Sprintf("ANALYSE_%s", strings.ToUpper(s.PluginName))
+	if config.IsCI(AppConfig) {
+		startTime := time.Now().UTC().Format(time.RFC3339)
+		metaDataFileName = fmt.Sprintf("ANALYSE_%s_%v", strings.ToUpper(s.PluginName), startTime)
+	}
+
+	if err := shared.WriteGenericResult(AppConfig, logger, analyseResult, metaDataFileName); err != nil {
 		logger.Error("failed to write result", "error", err)
 		return err
 	}
