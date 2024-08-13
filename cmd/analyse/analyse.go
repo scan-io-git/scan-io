@@ -104,7 +104,8 @@ func runAnalyseCommand(cmd *cobra.Command, args []string) error {
 
 	analyseResult, scanErr := s.ScanRepos(AppConfig, analyseArgs)
 
-	if err := shared.WriteGenericResult(AppConfig, logger, analyseResult, "ANALYSE"); err != nil {
+	resultFileName := fmt.Sprintf("ANALYSE_%v", s.PluginName)
+	if err := shared.WriteGenericResult(AppConfig, logger, analyseResult, resultFileName); err != nil {
 		logger.Error("failed to write result", "error", err)
 		return err
 	}

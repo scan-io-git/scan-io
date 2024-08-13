@@ -18,22 +18,22 @@ import (
 
 // Scanner represents the configuration and behavior of a scanner.
 type Scanner struct {
-	pluginName     string       // Name of the scanner plugin to use
-	configPath     string       // Path to the configuration file for the scanner
-	reportFormat   string       // Format of the report to generate (e.g., JSON, Sarif)
-	additionalArgs []string     // Additional arguments for the scanner
-	concurrentJobs int          // Number of concurrent jobs to run
+	PluginName     string       // Name of the scanner plugin to use
+	ConfigPath     string       // Path to the configuration file for the scanner
+	ReportFormat   string       // Format of the report to generate (e.g., JSON, Sarif)
+	AdditionalArgs []string     // Additional arguments for the scanner
+	ConcurrentJobs int          // Number of concurrent jobs to run
 	logger         hclog.Logger // Logger for logging messages and errors
 }
 
 // New creates a new Scanner instance with the provided configuration.
 func New(pluginName, configPath, reportFormat string, additionalArgs []string, concurrentJobs int, logger hclog.Logger) *Scanner {
 	return &Scanner{
-		pluginName:     pluginName,
-		configPath:     configPath,
-		reportFormat:   reportFormat,
-		additionalArgs: additionalArgs,
-		concurrentJobs: concurrentJobs,
+		PluginName:     pluginName,
+		ConfigPath:     configPath,
+		ReportFormat:   reportFormat,
+		AdditionalArgs: additionalArgs,
+		ConcurrentJobs: concurrentJobs,
 		logger:         logger,
 	}
 }
@@ -131,18 +131,18 @@ func (s *Scanner) getOutputFilePath(path, nameTemplate string) (string, error) {
 
 // generateNameTemplate generates a name template for the results file based on the CI mode.
 func (s *Scanner) generateNameTemplate(cfg *config.Config, reportExt string) string {
-	nameTemplate := fmt.Sprintf("scanio-report-%s.%s", s.pluginName, reportExt)
+	nameTemplate := fmt.Sprintf("scanio-report-%s.%s", s.PluginName, reportExt)
 	if !config.IsCI(cfg) {
 		startTime := time.Now().UTC().Format(time.RFC3339)
-		nameTemplate = fmt.Sprintf("scanio-report-%s-%s.%s", s.pluginName, startTime, reportExt)
+		nameTemplate = fmt.Sprintf("scanio-report-%s-%s.%s", s.PluginName, startTime, reportExt)
 	}
 	return nameTemplate
 }
 
 // getReportExtension returns the report extension based on the report format.
 func (s *Scanner) getReportExtension() string {
-	if s.reportFormat != "" {
-		return s.reportFormat
+	if s.ReportFormat != "" {
+		return s.ReportFormat
 	}
 	return "raw"
 }
@@ -152,9 +152,9 @@ func (s *Scanner) createScanRequest(targetPath, resultsFile string) shared.Scann
 	return shared.ScannerScanRequest{
 		TargetPath:     targetPath,
 		ResultsPath:    resultsFile,
-		ConfigPath:     s.configPath,
-		ReportFormat:   s.reportFormat,
-		AdditionalArgs: s.additionalArgs,
+		ConfigPath:     s.ConfigPath,
+		ReportFormat:   s.ReportFormat,
+		AdditionalArgs: s.AdditionalArgs,
 	}
 }
 
@@ -162,7 +162,7 @@ func (s *Scanner) createScanRequest(targetPath, resultsFile string) shared.Scann
 func (s *Scanner) scanRepo(cfg *config.Config, scanArg shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
 	var result shared.ScannerScanResponse
 
-	err := shared.WithPlugin(cfg, "plugin-scanner", shared.PluginTypeScanner, s.pluginName, func(raw interface{}) error {
+	err := shared.WithPlugin(cfg, "plugin-scanner", shared.PluginTypeScanner, s.PluginName, func(raw interface{}) error {
 		scanner, ok := raw.(shared.Scanner)
 		if !ok {
 			return fmt.Errorf("invalid plugin type")
@@ -181,7 +181,7 @@ func (s *Scanner) scanRepo(cfg *config.Config, scanArg shared.ScannerScanRequest
 
 // ScanRepos scans multiple repositories concurrently and returns the aggregated results.
 func (s *Scanner) ScanRepos(cfg *config.Config, scanArgs []shared.ScannerScanRequest) (shared.GenericLaunchesResult, error) {
-	s.logger.Info("scan starting", "total", len(scanArgs), "goroutines", s.concurrentJobs)
+	s.logger.Info("scan starting", "total", len(scanArgs), "goroutines", s.ConcurrentJobs)
 
 	var results shared.GenericLaunchesResult
 	resultsChannel := make(chan shared.GenericResult, len(scanArgs))
@@ -191,7 +191,7 @@ func (s *Scanner) ScanRepos(cfg *config.Config, scanArgs []shared.ScannerScanReq
 		values[i] = scanArgs[i]
 	}
 
-	shared.ForEveryStringWithBoundedGoroutines(s.concurrentJobs, values, func(i int, value interface{}) {
+	shared.ForEveryStringWithBoundedGoroutines(s.ConcurrentJobs, values, func(i int, value interface{}) {
 		scanArg, ok := value.(shared.ScannerScanRequest)
 		if !ok {
 			err := fmt.Errorf("invalid scan argument type at index %d", i)
