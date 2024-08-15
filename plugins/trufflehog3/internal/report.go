@@ -68,7 +68,7 @@ func (report Trufflehog3Report) Render() string {
 
 		output.WriteString(fmt.Sprintf("#### Path: %v\n```\n", filePath))
 		for _, issue := range issues {
-			output.WriteString(fmt.Sprintf("    %s (%s severity) line %s: %s\n",
+			output.WriteString(fmt.Sprintf("    %s (%s severity) line %s: %s\n\n",
 				issue.Rule.ID, issue.Rule.Severity, issue.Line, issue.Secret))
 		}
 		output.WriteString("```\n")
