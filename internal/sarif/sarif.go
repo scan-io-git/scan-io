@@ -48,10 +48,20 @@ func ReadReport(inputPath string, logger hclog.Logger, sourceFolder string) (*Re
 		return nil, err
 	}
 
+	// make an absolute path of source folder
+	expandedSourceFolder, err := files.ExpandPath(sourceFolder)
+	if err != nil {
+		return nil, fmt.Errorf("failed to expand source folder: %w", err)
+	}
+	absPath, err := filepath.Abs(expandedSourceFolder)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Report{
 		Report:       sarifReport,
 		logger:       logger,
-		sourceFolder: sourceFolder,
+		sourceFolder: absPath,
 	}, nil
 }
 
@@ -123,7 +133,18 @@ func (r Report) EnrichResultsLocationProperty(location *sarif.Location) error {
 	if artifactLocation.Properties == nil {
 		artifactLocation.Properties = make(map[string]interface{})
 	}
-	artifactLocation.Properties["URI"] = *artifactLocation.URI
+
+	// set artifactLocation.Properties["URI"] to be *artifactLocation.URI if it's a relative path,
+	// otherwise trim prefix of r.sourceFolder from *artifactLocation.URI
+	if !filepath.IsAbs(*artifactLocation.URI) {
+		artifactLocation.Properties["URI"] = *artifactLocation.URI
+	} else {
+		artifactLocation.Properties["URI"] = (*artifactLocation.URI)[len(r.sourceFolder):]
+		// remove slash if string start with slash
+		if len(artifactLocation.Properties["URI"].(string)) > 0 && artifactLocation.Properties["URI"].(string)[0] == '/' {
+			artifactLocation.Properties["URI"] = artifactLocation.Properties["URI"].(string)[1:]
+		}
+	}
 
 	if location.PhysicalLocation.Region.Properties == nil {
 		location.PhysicalLocation.Region.Properties = make(map[string]interface{})
@@ -173,10 +194,16 @@ func (r Report) readLineFromFile(loc *sarif.PhysicalLocation) (string, error) {
 	}
 
 	// Construct the file path
-	filePath, err := files.ExpandPath(filepath.Join(r.sourceFolder, *loc.ArtifactLocation.URI))
-	if err != nil {
-		return "", fmt.Errorf("failed to contruct a file path: %w", err)
+	// Use *loc.ArtifactLocation.URI value if it's an absolute path, and make a concatenation of r.sourceFolder and *loc.ArtifactLocation.URI otherwise
+	filePath := *loc.ArtifactLocation.URI
+	if !filepath.IsAbs(filePath) {
+		fixedFilePath, err := files.ExpandPath(filepath.Join(r.sourceFolder, *loc.ArtifactLocation.URI))
+		if err != nil {
+			return "", fmt.Errorf("failed to contruct a file path: %w", err)
+		}
+		filePath = fixedFilePath
 	}
+
 	// Open the file
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -255,6 +282,33 @@ func (r Report) EnrichResultsLevelProperty() {
 				} else {
 					// just a fallback, should never happen
 					result.Properties["Level"] = "unknown"
+				}
+			}
+		}
+	}
+}
+
+func (r Report) EnrichResultsURIProperty() {
+	for _, result := range r.Runs[0].Results {
+		// if result location length is at least 1
+		if len(result.Locations) > 0 {
+			// get the first location
+			location := result.Locations[0]
+			// get the artifact location
+			artifactLocation := location.PhysicalLocation.ArtifactLocation
+			// if the artifact location has a URI
+			if artifactLocation.URI != nil {
+				// set the URI to the artifact location properties
+				// set artifactLocation.Properties["URI"] to be *artifactLocation.URI if it's a relative path,
+				// otherwise trim prefix of r.sourceFolder from *artifactLocation.URI
+				if !filepath.IsAbs(*artifactLocation.URI) {
+					artifactLocation.Properties["URI"] = *artifactLocation.URI
+				} else {
+					artifactLocation.Properties["URI"] = (*artifactLocation.URI)[len(r.sourceFolder):]
+					// remove slash if string start with slash
+					if len(artifactLocation.Properties["URI"].(string)) > 0 && artifactLocation.Properties["URI"].(string)[0] == '/' {
+						artifactLocation.Properties["URI"] = artifactLocation.Properties["URI"].(string)[1:]
+					}
 				}
 			}
 		}
