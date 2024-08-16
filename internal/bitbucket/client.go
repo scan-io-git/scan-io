@@ -120,7 +120,7 @@ func unmarshalResponse[T any](resp *resty.Response, out *T) error {
 }
 
 // New initializes a new API client with configured services.
-func New(logger hclog.Logger, domain string, auth AuthInfo, globalConfig *config.Config) (*Client, error) {
+func New(globalConfig *config.Config, logger hclog.Logger, domain string, auth AuthInfo) (*Client, error) {
 	httpClient, err := httpclient.New(logger, globalConfig)
 	if err != nil {
 		logger.Error("failed to initialize HTTP client", "error", err)

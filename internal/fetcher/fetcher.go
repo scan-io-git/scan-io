@@ -21,24 +21,24 @@ const (
 
 // Fetcher represents the configuration and behavior of a fetcher.
 type Fetcher struct {
-	pluginName     string       // Name of the VCS plugin to use
-	authType       string       // Authentication type (e.g., "http", "ssh")
-	sshKey         string       // Path to the SSH key
-	branch         string       // Branch to fetch
-	rmListExts     []string     // List of extensions to remove after fetching
-	concurrentJobs int          // Number of concurrent jobs to run
+	PluginName     string       // Name of the VCS plugin to use
+	AuthType       string       // Authentication type (e.g., "http", "ssh")
+	SshKey         string       // Path to the SSH key
+	Branch         string       // Branch to fetch
+	RmListExts     []string     // List of extensions to remove after fetching
+	ConcurrentJobs int          // Number of concurrent jobs to run
 	logger         hclog.Logger // Logger for logging messages and errors
 }
 
 // New creates a new Fetcher instance with the provided configuration.
 func New(pluginName, authType, sshKey, branch string, rmListExts []string, jobs int, logger hclog.Logger) *Fetcher {
 	return &Fetcher{
-		pluginName:     pluginName,
-		authType:       authType,
-		sshKey:         sshKey,
-		branch:         branch,
-		rmListExts:     rmListExts,
-		concurrentJobs: jobs,
+		PluginName:     pluginName,
+		AuthType:       authType,
+		SshKey:         sshKey,
+		Branch:         branch,
+		RmListExts:     rmListExts,
+		ConcurrentJobs: jobs,
 		logger:         logger,
 	}
 }
@@ -56,7 +56,7 @@ func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.Repository
 
 		repo.Domain = domain
 		fetchMode := getFetchMode(repo)
-		if f.pluginName == "bitbucket" && strings.HasPrefix(repo.Namespace, "~") {
+		if f.PluginName == "bitbucket" && strings.HasPrefix(repo.Namespace, "~") {
 			repo.Namespace = strings.TrimPrefix(repo.Namespace, "~") // in the case of user repos we should put results into the same folder for ssh and http links
 		}
 		targetFolder := config.GetRepositoryPath(cfg, domain, filepath.Join(repo.Namespace, repo.Repository))
@@ -68,7 +68,7 @@ func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.Repository
 
 // getCloneURL returns the appropriate clone URL based on the auth type.
 func (f *Fetcher) getCloneURL(repo shared.RepositoryParams) string {
-	if f.authType == "http" {
+	if f.AuthType == "http" {
 		return repo.HTTPLink
 	}
 	return repo.SSHLink
@@ -86,9 +86,9 @@ func getFetchMode(repo shared.RepositoryParams) string {
 func (f *Fetcher) createFetchRequest(repo shared.RepositoryParams, cloneURL, targetFolder, fetchMode string) shared.VCSFetchRequest {
 	return shared.VCSFetchRequest{
 		CloneURL:     cloneURL,
-		Branch:       f.branch,
-		AuthType:     f.authType,
-		SSHKey:       f.sshKey,
+		Branch:       f.Branch,
+		AuthType:     f.AuthType,
+		SSHKey:       f.SshKey,
 		TargetFolder: targetFolder,
 		Mode:         fetchMode,
 		RepoParam:    repo,
@@ -99,7 +99,7 @@ func (f *Fetcher) createFetchRequest(repo shared.RepositoryParams, cloneURL, tar
 func (f *Fetcher) fetchRepo(cfg *config.Config, fetchArgs shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
 	var result shared.VCSFetchResponse
 
-	err := shared.WithPlugin(cfg, "plugin-vcs", shared.PluginTypeVCS, f.pluginName, func(raw interface{}) error {
+	err := shared.WithPlugin(cfg, "plugin-vcs", shared.PluginTypeVCS, f.PluginName, func(raw interface{}) error {
 		vcsPlugin, ok := raw.(shared.VCS)
 		if !ok {
 			return fmt.Errorf("invalid plugin type")
@@ -111,7 +111,7 @@ func (f *Fetcher) fetchRepo(cfg *config.Config, fetchArgs shared.VCSFetchRequest
 			return fmt.Errorf("VCS plugin fetch failed. Fetch arguments: %v. Error: %w", fetchArgs, err)
 		}
 
-		files.FindByExtAndRemove(fetchArgs.TargetFolder, f.rmListExts)
+		files.FindByExtAndRemove(fetchArgs.TargetFolder, f.RmListExts)
 		return nil
 	})
 
@@ -120,7 +120,7 @@ func (f *Fetcher) fetchRepo(cfg *config.Config, fetchArgs shared.VCSFetchRequest
 
 // FetchRepos fetches repositories concurrently.
 func (f *Fetcher) FetchRepos(cfg *config.Config, fetchReqList []shared.VCSFetchRequest) (shared.GenericLaunchesResult, error) {
-	f.logger.Info("fetch starting", "total", len(fetchReqList), "goroutines", f.concurrentJobs)
+	f.logger.Info("fetch starting", "total", len(fetchReqList), "goroutines", f.ConcurrentJobs)
 
 	var results shared.GenericLaunchesResult
 	resultsChannel := make(chan shared.GenericResult, len(fetchReqList))
@@ -130,7 +130,7 @@ func (f *Fetcher) FetchRepos(cfg *config.Config, fetchReqList []shared.VCSFetchR
 		values[i] = fetchReqList[i]
 	}
 
-	shared.ForEveryStringWithBoundedGoroutines(f.concurrentJobs, values, func(i int, value interface{}) {
+	shared.ForEveryStringWithBoundedGoroutines(f.ConcurrentJobs, values, func(i int, value interface{}) {
 		fetchArgs, ok := value.(shared.VCSFetchRequest)
 		if !ok {
 			err := fmt.Errorf("invalid fetch argument type at index %d", i)

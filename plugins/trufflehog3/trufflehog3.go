@@ -6,12 +6,15 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+
+	plugin_internal "github.com/scan-io-git/scan-io/plugins/trufflehog3/internal"
 )
 
 // TODO: Wrap it in a custom error handler to add to the stack trace.
@@ -21,11 +24,6 @@ var (
 	GolangVersion = "unknown"
 	BuildTime     = "unknown"
 )
-
-// setGlobalConfig sets the global configuration for the ScannerTrufflehog3 instance.
-func (g *ScannerTrufflehog3) setGlobalConfig(globalConfig *config.Config) {
-	g.globalConfig = globalConfig
-}
 
 // ScannerTrufflehog3 represents the Trufflehog3 scanner with its configuration and logger.
 type ScannerTrufflehog3 struct {
@@ -40,22 +38,28 @@ func newScannerTrufflehog3(logger hclog.Logger) *ScannerTrufflehog3 {
 	}
 }
 
-// Scan executes the Trufflehog3 scan with the provided arguments and returns the scan response.
-func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
-	var (
-		commandArgs []string
-		cmd         *exec.Cmd
-		stdBuffer   bytes.Buffer
-		result      shared.ScannerScanResponse
-	)
+// setGlobalConfig sets the global configuration for the ScannerTrufflehog3 instance.
+func (g *ScannerTrufflehog3) setGlobalConfig(globalConfig *config.Config) {
+	g.globalConfig = globalConfig
+}
 
-	g.logger.Info("Scan is starting", "project", args.TargetPath)
-	g.logger.Debug("Debug info", "args", args)
-
-	// Add additional arguments
-	if len(args.AdditionalArgs) != 0 {
-		commandArgs = append(commandArgs, args.AdditionalArgs...)
+// handleGlobalConfig processes the global configuration for the Trufflehog3 scanner.
+func (g *ScannerTrufflehog3) handleGlobalConfig(args shared.ScannerScanRequest) error {
+	if err := plugin_internal.HandleScannerConfig(
+		g.logger,
+		g.globalConfig.Trufflehog3Plugin.ExcludePaths,
+		args.TargetPath,
+		g.globalConfig.Trufflehog3Plugin.WriteDefaultConfig,
+		g.globalConfig.Trufflehog3Plugin.OverwriteConfig,
+	); err != nil {
+		return fmt.Errorf("failed to process configuration for Trufflehog3 plugin: %w", err)
 	}
+	return nil
+}
+
+// buildCommandArgs constructs the command-line arguments for the Trufflehog3 command.
+func (g *ScannerTrufflehog3) buildCommandArgs(args shared.ScannerScanRequest, reportFormat string) []string {
+	commandArgs := append([]string{}, args.AdditionalArgs...)
 
 	// Trufflehog3 --rules is a rules file that contains regexes that might trigger
 	// --config it's a flag for .trufflehog3.yml file with wider configuration rather than rules
@@ -64,15 +68,57 @@ func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) (shared.Scanne
 		commandArgs = append(commandArgs, "--rules", args.ConfigPath)
 	}
 
-	if args.ReportFormat != "" {
-		commandArgs = append(commandArgs, "--format", args.ReportFormat)
+	if reportFormat != "" {
+		commandArgs = append(commandArgs, "--format", reportFormat)
 	}
 
 	// Here we added -z flag because Trufflehog3 sends a not correct exit code even when it finished without errors
+	// TODO: should we move -z to the scanio config file
 	commandArgs = append(commandArgs, "-z", "--output", args.ResultsPath, args.TargetPath)
 
+	return commandArgs
+}
+
+// convertReportFormat handles the conversion of the scan result to the desired format.
+func (g *ScannerTrufflehog3) convertReportFormat(originalFormat, resultsPath string, updatedResultsPath *string) error {
+	var err error
+
+	switch originalFormat {
+	case "sarif":
+		*updatedResultsPath, err = plugin_internal.JsonToSarifReport(resultsPath)
+	case "markdown":
+		*updatedResultsPath, err = plugin_internal.JsonToPlainReport(resultsPath)
+	default:
+		err = fmt.Errorf("unsupported format: %s", originalFormat)
+	}
+	return err
+}
+
+// Scan executes the Trufflehog3 scan with the provided arguments and returns the scan response.
+func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
+	var (
+		cmd          *exec.Cmd
+		stdBuffer    bytes.Buffer
+		result       shared.ScannerScanResponse
+		reportFormat string
+	)
+
+	g.logger.Info("Scan is starting", "project", args.TargetPath)
+	g.logger.Debug("Scan arguments", "args", args)
+
+	if err := g.handleGlobalConfig(args); err != nil {
+		g.logger.Error("Failed to handle global configuration", "error", err)
+		return result, fmt.Errorf("failed to handle global configuration: %w", err)
+	}
+
+	originalFormat, reportFormat, needsConversion := g.CheckReportFormat(&args)
+	if reportFormat != "" {
+		args.ResultsPath = strings.TrimSuffix(args.ResultsPath, "."+originalFormat) + "." + reportFormat
+	}
+	commandArgs := g.buildCommandArgs(args, reportFormat)
+
 	cmd = exec.Command("trufflehog3", commandArgs...)
-	g.logger.Debug("Debug info", "cmd", cmd.Args)
+	g.logger.Debug("Executing command", "cmd", cmd.Args)
 
 	mw := io.MultiWriter(g.logger.StandardWriter(&hclog.StandardLoggerOptions{
 		InferLevels: true,
@@ -81,15 +127,23 @@ func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) (shared.Scanne
 	cmd.Stdout = mw
 	cmd.Stderr = mw
 
-	err := cmd.Run()
-	if err != nil {
-		err := fmt.Errorf(stdBuffer.String())
-		g.logger.Error("Trufflehog3 execution error", "error", err)
-		return result, err
+	if err := cmd.Run(); err != nil {
+		g.logger.Error("trufflehog3 execution error", "error", err, "output", stdBuffer.String())
+		return result, fmt.Errorf("trufflehog3 execution failed: %w", err)
 	}
 
 	result.ResultsPath = args.ResultsPath
-	g.logger.Info("Scan finished for", "project", args.TargetPath)
+	g.logger.Info("Scan finished for", "project", args.TargetPath, "resultsPath", result.ResultsPath)
+
+	if needsConversion {
+		g.logger.Warn("Converting report", "originalFormat", originalFormat)
+		if err := g.convertReportFormat(originalFormat, args.ResultsPath, &result.ResultsPath); err != nil {
+			g.logger.Error("Error during report conversion", "error", err)
+			return result, fmt.Errorf("report conversion failed: %w", err)
+		}
+		g.logger.Info("Report conversion finished", "newFormat", originalFormat, "convertedPath", result.ResultsPath)
+	}
+
 	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
 	g.logger.Debug("Debug info", "project", args.TargetPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
 	return result, nil

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -86,7 +87,14 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	resultList, listErr := i.IntegrationAction(AppConfig, listRequest)
-	if err := shared.WriteGenericResult(AppConfig, logger, resultList, "LIST"); err != nil {
+
+	metaDataFileName := fmt.Sprintf("LIST_%s", strings.ToUpper(i.PluginName))
+	if config.IsCI(AppConfig) {
+		startTime := time.Now().UTC().Format(time.RFC3339)
+		metaDataFileName = fmt.Sprintf("LIST_%s_%v", strings.ToUpper(i.PluginName), startTime)
+	}
+
+	if err := shared.WriteGenericResult(AppConfig, logger, resultList, metaDataFileName); err != nil {
 		logger.Error("failed to write result", "error", err)
 		return err
 	}

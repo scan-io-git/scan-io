@@ -27,6 +27,20 @@ gitlab_plugin:
   token: ""              # Gitlab access token for authentication. Default: none. Can be overridden with the environment variable SCANIO_GITLAB_TOKEN.
   ssh_key_password: ""   # Password for the SSH key used in Gitlab operations. Default: none. Can be overridden with the environment variable SCANIO_GITLAB_SSH_KEY_PASSWORD.
 
+## Trufflehog3 plugin config
+trufflehog3_plugin:
+  write_default_trufflehog_config_if_missing: true  # If set to true, a default .trufflehog3.yml configuration file will be created in the target directory if it does not already exist.
+  force_overwrite_trufflehog_config: false          # If set to true, the existing .trufflehog3.yml file will be overwritten with the default configuration, even if it already exists.
+  exclude_paths: # A list of paths to be excluded from the Trufflehog3 scan. These paths will be added to the exclusion section of the .trufflehog3.yml configuration.
+    - "vendor"
+    - "node_modules"
+    - "go.mod"
+    - "go.sum"
+    - "package.json"
+    - "package-lock.json"
+    - "Pipfile.lock"
+    - "composer.lock"
+
 ## CodeQL plugin config
 codeql_plugin:
   db_language: ""           # CodeQL language for building a DB. Default: none. Can be overridden with the environment variable SCANIO_CODEQL_DB_LANGUAGE.
@@ -49,7 +63,9 @@ http_client:
   proxy:
     host: "127.0.0.1"   # Proxy server address. Default: none. Can include scheme; defaults to http:// if unspecified.
     port: 8080          # Proxy server port. Default: none.
-
+  custom_headers:                          # Custom headers to be added to each HTTP request.
+    Authorization: "Bearer ${TOKEN}"      # Example custom header 1 with its corresponding value.
+  
 ## GitClient config
 git_client:
   depth: 0              # Default: 0. Full gclone is 0 (usefull if you need to search secrets in git history).

@@ -9,7 +9,7 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
-// Client represents a Resty a wrapper for the Resty client.
+// Client represents a wrapper for the Resty client.
 type Client struct {
 	RestyClient *resty.Client
 }
@@ -71,10 +71,16 @@ func New(logger hclog.Logger, cfg *config.Config) (*Client, error) {
 		client.SetProxy(restyConfig.Proxy)
 	}
 
+	// Apply custom headers if they are defined in the configuration
+	if len(cfg.HTTPClient.CustomHeaders) > 0 {
+		for key, value := range cfg.HTTPClient.CustomHeaders {
+			client.SetHeader(key, value)
+		}
+	}
 	return &Client{RestyClient: client}, nil
 }
 
-// applyHTTPClientConfig applies the HttpClient configuration or uses default values.
+// applyHTTPClientConfig applies the HTTPClient configuration or uses default values.
 func applyHTTPClientConfig(httpConfig *config.HTTPClient) config.RestyHTTPClientConfig {
 	defaultCfg := config.DefaultRestyConfig()
 	cfg := defaultCfg

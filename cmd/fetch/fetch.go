@@ -3,6 +3,7 @@ package fetch
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -111,7 +112,12 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 
 	fetchResult, fetchErr := f.FetchRepos(AppConfig, fetchReqList)
 
-	if err := shared.WriteGenericResult(AppConfig, logger, fetchResult, "FETCH"); err != nil {
+	metaDataFileName := fmt.Sprintf("FETCH_%s", strings.ToUpper(f.PluginName))
+	if config.IsCI(AppConfig) {
+		startTime := time.Now().UTC().Format(time.RFC3339)
+		metaDataFileName = fmt.Sprintf("FETCH_%s_%v", strings.ToUpper(f.PluginName), startTime)
+	}
+	if err := shared.WriteGenericResult(AppConfig, logger, fetchResult, metaDataFileName); err != nil {
 		logger.Error("failed to write result", "error", err)
 		return err
 	}
