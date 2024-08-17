@@ -110,7 +110,7 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	// TODO: fix temporary code
-	resultData, err := json.MarshalIndent(repositories, "", "    ")
+	resultData, err := json.MarshalIndent(resultList, "", "    ")
 	if err != nil {
 		return fmt.Errorf("error marshaling the result data: %w", err)
 	}

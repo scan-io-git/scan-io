@@ -49,25 +49,17 @@ func ReadReposFile2(inputFile string) ([]shared.RepositoryParams, error) {
 		return result, err
 	}
 
-	// TODO: temporary fix
 	if len(wholeFile.Launches) > 0 {
-		if repos, ok := wholeFile.Launches[0].Result.([]interface{}); ok {
-			for _, repo := range repos {
-				repoBytes, err := json.Marshal(repo)
-				if err != nil {
-					return nil, fmt.Errorf("failed to marshal repo: %w", err)
-				}
-				var repoParam shared.RepositoryParams
-				err = json.Unmarshal(repoBytes, &repoParam)
-				if err != nil {
-					return nil, fmt.Errorf("failed to unmarshal repo: %w", err)
-				}
-				result = append(result, repoParam)
-			}
-			return result, nil
+		resultBytes, err := json.Marshal(wholeFile.Launches[0].Result)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal result: %w", err)
 		}
-	}
 
+		if err := json.Unmarshal(resultBytes, &result); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal result into RepositoryParams slice: %w", err)
+		}
+		return result, nil
+	}
 	return nil, fmt.Errorf("unexpected type for result: %T", wholeFile.Launches[0].Result)
 }
 
