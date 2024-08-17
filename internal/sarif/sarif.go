@@ -288,7 +288,7 @@ func (r Report) EnrichResultsLevelProperty() {
 	}
 }
 
-func (r Report) EnrichResultsURIProperty() {
+func (r Report) EnrichResultsLocationURIProperty() {
 	for _, result := range r.Runs[0].Results {
 		// if result location length is at least 1
 		if len(result.Locations) > 0 {
@@ -321,6 +321,7 @@ func (r Report) EnrichResultsProperties() {
 	r.EnrichResultsTitleProperty()
 	r.EnrichResultsCodeFlowProperty()
 	r.EnrichResultsLevelProperty()
+	r.EnrichResultsLocationURIProperty()
 }
 
 // SortResultsByLevel function sorts sarif results by level
