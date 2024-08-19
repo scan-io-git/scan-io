@@ -115,7 +115,7 @@ COPY VERSION /scanio/VERSION
 COPY config.yml /scanio/config.yml
 
 # Write to config.yml customized values
-RUN echo "scanio:" >> /scanio/config.yml && \
+RUN echo "\n\nscanio:" >> /scanio/config.yml && \
     echo "  home_folder: /scanio" >> /scanio/config.yml && \
     echo "  plugins_folder: /scanio/plugins" >> /scanio/config.yml
 
