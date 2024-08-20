@@ -237,6 +237,7 @@ func (g *VCSBitbucket) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (boo
 
 // fetchPR handles fetching pull request changes.
 func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
+	var newCloneURL string
 	g.logger.Info("handling PR changes fetching")
 
 	domain, err := utils.GetDomain(args.CloneURL)
@@ -277,6 +278,27 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		return "", err
 	}
 
+	mainRepo := prData.FromReference.Repository
+	if len(mainRepo.Links.Clone) > 0 && mainRepo.Links.Clone[0].Href != "" {
+		newCloneURL = mainRepo.Links.Clone[0].Href
+		g.logger.Info("Using main repository clone URL from API response", "CloneURL", newCloneURL)
+	} else {
+		// If the main repository doesn't have a valid clone URL, check the origin repository
+		originRepo := mainRepo.Origin
+		if originRepo != nil && len(originRepo.Links.Clone) > 0 && originRepo.Links.Clone[0].Href != "" {
+			newCloneURL = originRepo.Links.Clone[0].Href
+			g.logger.Info("Using origin repository clone URL from API response", "CloneURL", newCloneURL)
+		}
+	}
+
+	g.logger.Debug("PR Data", prData)
+
+	if newCloneURL != "" {
+		args.CloneURL = newCloneURL
+	} else {
+		g.logger.Warn("No valid clone URL found in either the main or origin repository")
+	}
+
 	g.logger.Debug("starting to fetch PR code")
 
 	pluginConfigMap, err := shared.StructToMap(g.globalConfig.BitbucketPlugin)
@@ -291,7 +313,7 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		return "", err
 	}
 
-	// TODO: Fix a strange bug when it fetches only pr changes without all other files in case of PR fetch
+	// TODO: Fix a strange bug when it fetches only PR changes without all other files in case of PR fetch
 	_, err = clientGit.CloneRepository(args, "master")
 	if err != nil {
 		g.logger.Error("failed to clone repository", "error", err)

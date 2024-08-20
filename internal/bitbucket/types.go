@@ -30,19 +30,20 @@ type Error struct {
 
 // Repository represents a repository in Bitbucket, including its project container and metadata.
 type Repository struct {
-	Slug          string   `json:"slug"`
-	ID            int      `json:"id"`
-	Name          string   `json:"name"`
-	Description   string   `json:"description"`
-	HierarchyID   string   `json:"hierarchyId"`
-	ScmID         string   `json:"scmId"`
-	State         string   `json:"state"`
-	StatusMessage string   `json:"statusMessage"`
-	Forkable      bool     `json:"forkable,omitempty"`
-	Project       *Project `json:"project,omitempty"`
-	Public        bool     `json:"public"`
-	Archived      bool     `json:"archived,omitempty"`
-	Links         Links    `json:"links"`
+	Slug          string      `json:"slug"`
+	ID            int         `json:"id"`
+	Name          string      `json:"name"`
+	Description   string      `json:"description"`
+	HierarchyID   string      `json:"hierarchyId"`
+	ScmID         string      `json:"scmId"`
+	State         string      `json:"state"`
+	StatusMessage string      `json:"statusMessage"`
+	Forkable      bool        `json:"forkable,omitempty"`
+	Project       *Project    `json:"project,omitempty"`
+	Public        bool        `json:"public"`
+	Archived      bool        `json:"archived,omitempty"`
+	Links         Links       `json:"links"`
+	Origin        *Repository `json:"origin,omitempty"`
 }
 
 // Project represents a project within Bitbucket, providing a container for repositories.
