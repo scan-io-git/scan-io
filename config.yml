@@ -2,7 +2,7 @@
 
 ## Logger config
 logger:
-  level: info 
-  disable_time: true 
-  json_format: false 
-  include_location: false 
+  level: info
+  disable_time: true
+  json_format: false
+  include_location: false
