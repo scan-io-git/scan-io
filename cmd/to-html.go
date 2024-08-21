@@ -9,11 +9,13 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/internal/git"
-	scaniosarif "github.com/scan-io-git/scan-io/internal/sarif"
-	scaniotemplate "github.com/scan-io-git/scan-io/internal/template"
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 	"github.com/scan-io-git/scan-io/pkg/shared/vcsurl"
+
+	scaniosarif "github.com/scan-io-git/scan-io/internal/sarif"
+	scaniotemplate "github.com/scan-io-git/scan-io/internal/template"
 )
 
 type ToHTMLOptions struct {
@@ -81,17 +83,26 @@ var toHtmlCmd = &cobra.Command{
 
 		severityInfo := sarifReport.CollectSeverityInfo()
 
+		metadataSourceFolder := allToHTMLOptions.SourceFolder
+		if config.IsCI(AppConfig) {
+			metadataSourceFolder = ""
+		}
+
 		metadata := &ReportMetadata{
 			RepositoryMetadata: *repositoryMetadata,
 			ToolMetadata:       *toolMetadata,
 			Title:              allToHTMLOptions.Title,
 			Time:               time.Now().UTC(),
-			SourceFolder:       allToHTMLOptions.SourceFolder,
+			SourceFolder:       metadataSourceFolder,
 			SeverityInfo:       severityInfo,
 		}
 		logger.Debug("metadata", "metadata", *metadata)
 
 		// parse html template and generate report file with metadata
+		if allToHTMLOptions.TempatesPath == "" {
+			allToHTMLOptions.TempatesPath = filepath.Join(config.GetScanioHome(AppConfig), "templates/tohtml/")
+		}
+
 		templateFile, err := files.ExpandPath(filepath.Join(allToHTMLOptions.TempatesPath, "report.html"))
 		if err != nil {
 			return err
@@ -128,7 +139,7 @@ var toHtmlCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(toHtmlCmd)
 
-	toHtmlCmd.Flags().StringVarP(&allToHTMLOptions.TempatesPath, "templates-path", "t", "./templates/tohtml", "path to folder with templates")
+	toHtmlCmd.Flags().StringVarP(&allToHTMLOptions.TempatesPath, "templates-path", "t", "", "path to folder with templates")
 	toHtmlCmd.Flags().StringVar(&allToHTMLOptions.Title, "title", "Scanio Report", "title for generated html file")
 	toHtmlCmd.Flags().StringVarP(&allToHTMLOptions.Input, "input", "i", "", "input file with sarif report")
 	toHtmlCmd.Flags().StringVarP(&allToHTMLOptions.OutputFile, "output", "o", "scanio-report.html", "outoput file")
