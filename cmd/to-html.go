@@ -83,12 +83,17 @@ var toHtmlCmd = &cobra.Command{
 
 		severityInfo := sarifReport.CollectSeverityInfo()
 
+		metadataSourceFolder := allToHTMLOptions.SourceFolder
+		if config.IsCI(AppConfig) {
+			metadataSourceFolder = ""
+		}
+
 		metadata := &ReportMetadata{
 			RepositoryMetadata: *repositoryMetadata,
 			ToolMetadata:       *toolMetadata,
 			Title:              allToHTMLOptions.Title,
 			Time:               time.Now().UTC(),
-			SourceFolder:       allToHTMLOptions.SourceFolder,
+			SourceFolder:       metadataSourceFolder,
 			SeverityInfo:       severityInfo,
 		}
 		logger.Debug("metadata", "metadata", *metadata)
