@@ -125,7 +125,6 @@ func LoadConfig(configPath string) (*Config, error) {
 	return config, nil
 }
 
-// TODO: Add env variable to redefine a path to the config
 // searchDefaultConfig searches for a config file in default paths.
 func (c *Config) searchDefaultConfig() error {
 	defaultPaths := []string{

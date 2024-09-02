@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -12,6 +11,7 @@ import (
 	"github.com/scan-io-git/scan-io/cmd/list"
 	"github.com/scan-io-git/scan-io/cmd/version"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 // Global variables for configuration and the command.
@@ -41,14 +41,14 @@ func Execute() {
 func initConfig() {
 	var err error
 	AppConfig, err = config.LoadConfig(cfgFile)
+	logger := logger.NewLogger(AppConfig, "core")
 	if err != nil {
-		// TODO: Use a global logger
-		fmt.Printf("Failed to load config file: %v\n", err)
-		fmt.Println("Using default empty configuration")
+		logger.Warn("Failed to load config file", "error", err)
+		logger.Warn("Using default empty configuration")
 	}
 
 	if err := config.ValidateConfig(AppConfig); err != nil {
-		fmt.Printf("Error validating config: %v\n", err)
+		logger.Error("Error validating config", "error", err)
 		os.Exit(1)
 	}
 
@@ -68,5 +68,5 @@ func init() {
 	rootCmd.AddCommand(analyse.AnalyseCmd)
 	rootCmd.AddCommand(integrationvcs.IntegrationVCSCmd)
 	rootCmd.AddCommand(version.NewVersionCmd())
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is .config.yml)")
+	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file")
 }
