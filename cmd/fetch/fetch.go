@@ -20,17 +20,22 @@ type RunOptionsFetch struct {
 	AuthType      string
 	SSHKey        string
 	Branch        string
+	OutputPath    string
 	RmListExts    []string
 	Threads       int
 }
 
 // Global variables for configuration and command arguments
 // TODO: add PR example for github
+// output example
 var (
 	AppConfig         *config.Config
 	fetchOptions      RunOptionsFetch
 	exampleFetchUsage = `  # Fetching using SSH agent authentication, specifying a branch and URL pointing to a specific repository
   scanio fetch --vcs github --auth-type ssh-agent -b develop https://github.com/scan-io-git/scan-io
+
+  # Fetching using SSH agent authentication, specifying an output folder and URL pointing to a specific repository
+  scanio fetch --vcs github --auth-type ssh-agent -o /path/to/repo_folder/ https://github.com/scan-io-git/scan-io
 
   # Fetching using SSH agent authentication, specifying a branch and SSH URL pointing to a specific repository
   scanio fetch --vcs github --auth-type ssh-agent -b develop ssh://git@github.com:scan-io-git/scan-io.git
@@ -54,12 +59,15 @@ var (
   scanio fetch --vcs github --auth-type ssh-agent -b main -j 5 https://github.com/
 
   # Fetching from an input file using SSH agent authentication with multiple concurrent threads
-  scanio fetch --vcs github --input-file /path/to/list_output.file --auth-type ssh-agent -j 5`
+  scanio fetch --vcs github --input-file /path/to/list_output.file --auth-type ssh-agent -j 5
+  
+  # Fetching using SSH agent authentication, specifying a branch and URL pointing to the whole VCS, with multiple concurrent jobs (not implemented)
+  scanio fetch --vcs github --auth-type ssh-agent -b main -j 5 https://github.com/`
 )
 
 // FetchCmd represents the command for fetch command.
 var FetchCmd = &cobra.Command{
-	Use:                   "fetch --vcs/p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [--rm-ext LIST_OF_EXTENTIONS][-j THREADS_NUMBER, default=1] {--input-file/-i PATH | [-b BRANCH/HASH] URL}",
+	Use:                   "fetch --vcs/p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [--output/-o PATH] [--rm-ext LIST_OF_EXTENTIONS][-j THREADS_NUMBER, default=1] {--input-file/-i PATH | [-b BRANCH/HASH] URL}",
 	SilenceUsage:          true,
 	DisableFlagsInUseLine: true,
 	Example:               exampleFetchUsage,
@@ -93,6 +101,7 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 		fetchOptions.AuthType,
 		fetchOptions.SSHKey,
 		fetchOptions.Branch,
+		fetchOptions.OutputPath,
 		fetchOptions.RmListExts,
 		fetchOptions.Threads,
 		logger,
@@ -146,12 +155,12 @@ List of avaliable vcs plugins:
 }
 
 func init() {
-	//TODO: add output
 	FetchCmd.Flags().StringVarP(&fetchOptions.VCSPluginName, "vcs", "p", "", "Name of the VCS plugin to use (e.g., bitbucket, gitlab, github).")
 	FetchCmd.Flags().StringVarP(&fetchOptions.InputFile, "input-file", "i", "", "Path to a file in Scanio format containing a list of repositories to fetch. Use the list command to prepare this file.")
 	FetchCmd.Flags().StringVarP(&fetchOptions.AuthType, "auth-type", "a", "", "Type of authentication (e.g., http, ssh-agent, ssh-key).")
 	FetchCmd.Flags().StringVarP(&fetchOptions.SSHKey, "ssh-key", "k", "", "Path to an SSH key.")
 	FetchCmd.Flags().StringVarP(&fetchOptions.Branch, "branch", "b", "", "Specific branch to fetch (default: main or master).")
+	FetchCmd.Flags().StringVarP(&fetchOptions.OutputPath, "output", "o", "", "Path to the output directory where the cmd results will be saved.")
 	FetchCmd.Flags().StringSliceVar(&fetchOptions.RmListExts, "rm-ext", []string{"csv", "png", "ipynb", "txt", "md", "mp4", "zip", "gif", "gz", "jpg", "jpeg", "cache", "tar", "svg", "bin", "lock", "exe"}, "Comma-separated list of file extensions to remove automatically after fetching.")
 	FetchCmd.Flags().IntVarP(&fetchOptions.Threads, "threads", "j", 1, "Number of concurrent threads to use.")
 	FetchCmd.Flags().BoolP("help", "h", false, "Show help for the fetch command.")

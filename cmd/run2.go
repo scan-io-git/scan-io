@@ -61,6 +61,7 @@ func run2fetchRepos(repos []shared.RepositoryParams) error {
 		allRun2Options.AuthType,
 		allRun2Options.SSHKey,
 		allRun2Options.Branch,
+		"",
 		strings.Split(allRun2Options.RmExts, ","),
 		allRun2Options.Jobs,
 		logger,

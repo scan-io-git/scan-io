@@ -25,18 +25,20 @@ type Fetcher struct {
 	AuthType       string       // Authentication type (e.g., "http", "ssh")
 	SshKey         string       // Path to the SSH key
 	Branch         string       // Branch to fetch
+	OutputPath     string       // Output path for fetching
 	RmListExts     []string     // List of extensions to remove after fetching
 	ConcurrentJobs int          // Number of concurrent jobs to run
 	logger         hclog.Logger // Logger for logging messages and errors
 }
 
 // New creates a new Fetcher instance with the provided configuration.
-func New(pluginName, authType, sshKey, branch string, rmListExts []string, jobs int, logger hclog.Logger) *Fetcher {
+func New(pluginName, authType, sshKey, branch, outputPath string, rmListExts []string, jobs int, logger hclog.Logger) *Fetcher {
 	return &Fetcher{
 		PluginName:     pluginName,
 		AuthType:       authType,
 		SshKey:         sshKey,
 		Branch:         branch,
+		OutputPath:     outputPath, // TODO: fix the PR fetch behavior. It ignores output the path now
 		RmListExts:     rmListExts,
 		ConcurrentJobs: jobs,
 		logger:         logger,
@@ -59,8 +61,14 @@ func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.Repository
 		if f.PluginName == "bitbucket" && strings.HasPrefix(repo.Namespace, "~") {
 			repo.Namespace = strings.TrimPrefix(repo.Namespace, "~") // in the case of user repos we should put results into the same folder for ssh and http links
 		}
-		targetFolder := config.GetRepositoryPath(cfg, domain, filepath.Join(repo.Namespace, repo.Repository))
 
+		targetFolder := config.GetRepositoryPath(cfg, domain, filepath.Join(repo.Namespace, repo.Repository))
+		if f.OutputPath != "" {
+			targetFolder = f.OutputPath
+
+		}
+
+		f.logger.Debug("Final destination determined", "outputPath", targetFolder)
 		fetchReqList = append(fetchReqList, f.createFetchRequest(repo, cloneURL, targetFolder, fetchMode))
 	}
 	return fetchReqList, nil
