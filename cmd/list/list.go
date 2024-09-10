@@ -11,6 +11,7 @@ import (
 	"github.com/scan-io-git/scan-io/internal/vcsintegrator"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
@@ -58,7 +59,7 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 
 	if err := validateListArgs(&listOptions, args); err != nil {
 		logger.Error("invalid list arguments", "error", err)
-		return err
+		return errors.NewCommandError(listOptions, nil, fmt.Errorf("invalid list arguments: %w", err), 1)
 	}
 
 	listOptions.Action = vcsintegrator.VCSListing
@@ -73,7 +74,7 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 	repoParams, err := prepareListTarget(&listOptions, args, mode)
 	if err != nil {
 		logger.Error("failed to prepare fetch targets", "error", err)
-		return err
+		return errors.NewCommandError(listOptions, nil, fmt.Errorf("failed to prepare fetch targets: %w", err), 1)
 	}
 
 	if repoParams.Repository != "" {
@@ -83,7 +84,7 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 	listRequest, err := i.PrepIntegrationRequest(AppConfig, &listOptions, repoParams)
 	if err != nil {
 		logger.Error("failed to prepare integration list request", "error", err)
-		return err
+		return errors.NewCommandError(listOptions, nil, fmt.Errorf("failed to prepare integration list request: %w", err), 1)
 	}
 
 	resultList, listErr := i.IntegrationAction(AppConfig, listRequest)
@@ -96,12 +97,11 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 
 	if err := shared.WriteGenericResult(AppConfig, logger, resultList, metaDataFileName); err != nil {
 		logger.Error("failed to write result", "error", err)
-		return err
 	}
 
 	if listErr != nil {
 		logger.Error("list command failed", "error", listErr)
-		return listErr
+		return errors.NewCommandErrorWithResult(resultList, fmt.Errorf("list command failed: %w", listErr), 2)
 	}
 
 	repositories, ok := resultList.Launches[0].Result.([]shared.RepositoryParams)
@@ -119,10 +119,13 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	logger.Info("list command completed successfully")
 	logger.Info("results saved to file", "path", listOptions.OutputPath)
 	logger.Debug("list result", "result", resultList)
 	logger.Info("amount of fetched repositories is", "number", len(repositories))
-	logger.Info("list command completed successfully")
+	if config.IsCI(AppConfig) {
+		shared.PrintResultAsJSON(logger, resultList)
+	}
 	return nil
 }
 

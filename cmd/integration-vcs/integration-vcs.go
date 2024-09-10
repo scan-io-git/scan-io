@@ -122,7 +122,7 @@ func runIntegrationVCSCommand(cmd *cobra.Command, args []string) error {
 
 	if integrationVCSErr != nil {
 		logger.Error("integration-vcs command failed", "error", integrationVCSErr)
-		return errors.NewCommandErrorWithResult(resultIntegrationVCS, fmt.Errorf("fetch command failed: %w", integrationVCSErr), 2)
+		return errors.NewCommandErrorWithResult(resultIntegrationVCS, fmt.Errorf("integration-vcs command failed: %w", integrationVCSErr), 2)
 	}
 
 	logger.Info("integration-vcs command completed successfully")
