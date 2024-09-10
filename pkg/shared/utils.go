@@ -79,3 +79,13 @@ func HasFlags(flags *pflag.FlagSet) bool {
 	})
 	return hasFlags
 }
+
+// PrintResultAsJSON serializes the result as JSON and prints it.
+func PrintResultAsJSON(logger hclog.Logger, result interface{}) {
+	resultJSON, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		logger.Error("error serializing JSON result", "error", err)
+		return
+	}
+	fmt.Println(string(resultJSON))
+}

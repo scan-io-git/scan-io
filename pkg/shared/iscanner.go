@@ -16,16 +16,16 @@ type Scanner interface {
 
 // ScannerScanRequest represents a single scan request.
 type ScannerScanRequest struct {
-	TargetPath     string   // Path to the target to scan
-	ResultsPath    string   // Path to save the results of the scan
-	ConfigPath     string   // Path to the configuration file for the scanner
-	ReportFormat   string   // Format of the report to generate (e.g., JSON, Sarif)
-	AdditionalArgs []string // Additional arguments for the scanner
+	TargetPath     string   `json:"target_path"`     // Path to the target to scan
+	ResultsPath    string   `json:"results_path"`    // Path to save the results of the scan
+	ConfigPath     string   `json:"config_path"`     // Path to the configuration file for the scanner
+	ReportFormat   string   `json:"report_path"`     // Format of the report to generate (e.g., JSON, Sarif)
+	AdditionalArgs []string `json:"additional_args"` // Additional arguments for the scanner
 }
 
 // ScannerScanResponse represents the response from a scan plugin.
 type ScannerScanResponse struct {
-	ResultsPath string // Path to the saved results of the scan
+	ResultsPath string `json:"results_path"` // Path to the saved results of the scan
 }
 
 // ScannerRPCClient implements the Scanner interface for RPC clients.

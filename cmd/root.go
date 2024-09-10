@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/cmd/analyse"
@@ -10,17 +12,21 @@ import (
 	"github.com/scan-io-git/scan-io/cmd/integration-vcs"
 	"github.com/scan-io-git/scan-io/cmd/list"
 	"github.com/scan-io-git/scan-io/cmd/version"
+	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 // Global variables for configuration and the command.
 var (
 	AppConfig *config.Config
+	Logger    hclog.Logger
 	cfgFile   string
 	rootCmd   = &cobra.Command{
 		Use:                   "scanio [command]",
 		SilenceUsage:          true,
+		SilenceErrors:         true,
 		DisableFlagsInUseLine: true,
 		Short:                 "Comprehensive tool orchestration for security checks",
 		Long: `Scanio is an orchestrator that consolidates various security scanning capabilities, including static code analysis, secret detection, dependency analysis, etc.
@@ -33,6 +39,13 @@ var (
 func Execute() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	if err := rootCmd.Execute(); err != nil {
+		fmt.Printf("Error: %v\n", err.Error())
+		if commandErr, ok := err.(*errors.CommandError); ok {
+			if config.IsCI(AppConfig) {
+				shared.PrintResultAsJSON(Logger, commandErr.Result)
+			}
+			os.Exit(commandErr.ExitCode)
+		}
 		os.Exit(1)
 	}
 }
@@ -41,14 +54,14 @@ func Execute() {
 func initConfig() {
 	var err error
 	AppConfig, err = config.LoadConfig(cfgFile)
-	logger := logger.NewLogger(AppConfig, "core")
+	Logger = logger.NewLogger(AppConfig, "core")
 	if err != nil {
-		logger.Warn("Failed to load config file", "error", err)
-		logger.Warn("Using default empty configuration")
+		Logger.Warn("Failed to load config file", "error", err)
+		Logger.Warn("Using default empty configuration")
 	}
 
 	if err := config.ValidateConfig(AppConfig); err != nil {
-		logger.Error("Error validating config", "error", err)
+		Logger.Error("Error validating config", "error", err)
 		os.Exit(1)
 	}
 

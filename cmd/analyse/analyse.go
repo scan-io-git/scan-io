@@ -10,18 +10,19 @@ import (
 	"github.com/scan-io-git/scan-io/internal/scanner"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 // RunOptionsAnalyse holds the arguments for the analyse command.
 type RunOptionsAnalyse struct {
-	Scanner        string
-	InputFile      string
-	ReportFormat   string
-	ScannerConfig  string
-	AdditionalArgs []string
-	OutputPath     string
-	Threads        int
+	Scanner        string   `json:"scanner,omitempty"`
+	InputFile      string   `json:"input_file,omitempty"`
+	ReportFormat   string   `json:"report_format,omitempty"`
+	ScannerConfig  string   `json:"scanner_config,omitempty"`
+	AdditionalArgs []string `json:"additional_args,omitempty"`
+	OutputPath     string   `json:"output_path,omitempty"`
+	Threads        int      `json:"threads"`
 }
 
 // Global variables for configuration and command arguments
@@ -77,7 +78,7 @@ func runAnalyseCommand(cmd *cobra.Command, args []string) error {
 
 	if err := validateAnalyseArgs(&analyseOptions, args, argsLenAtDash); err != nil {
 		logger.Error("invalid analyse arguments", "error", err)
-		return err
+		return errors.NewCommandError(analyseOptions, nil, fmt.Errorf("invalid analyse arguments: %w", err), 1)
 	}
 
 	mode := determineMode(args, argsLenAtDash)
@@ -94,13 +95,13 @@ func runAnalyseCommand(cmd *cobra.Command, args []string) error {
 	reposInf, targetPath, err := prepareScanTargets(&analyseOptions, args, mode)
 	if err != nil {
 		logger.Error("failed to prepare scan targets", "error", err)
-		return err
+		return errors.NewCommandError(analyseOptions, nil, fmt.Errorf("failed to prepare scan targets: %w", err), 1)
 	}
 
 	analyseArgs, err := s.PrepareScanArgs(AppConfig, reposInf, targetPath, analyseOptions.OutputPath)
 	if err != nil {
 		logger.Error("failed to prepare scan arguments", "error", err)
-		return err
+		return errors.NewCommandError(analyseOptions, nil, fmt.Errorf("failed to prepare scan arguments: %w", err), 1)
 	}
 
 	analyseResult, scanErr := s.ScanRepos(AppConfig, analyseArgs)
@@ -114,15 +115,16 @@ func runAnalyseCommand(cmd *cobra.Command, args []string) error {
 
 	if err := shared.WriteGenericResult(AppConfig, logger, analyseResult, metaDataFileName); err != nil {
 		logger.Error("failed to write result", "error", err)
-		return err
 	}
 
 	if scanErr != nil {
-		logger.Error("analyse command failed", "error", scanErr)
-		return scanErr
+		return errors.NewCommandErrorWithResult(analyseResult, fmt.Errorf("analyse command failed: %w", scanErr), 2)
 	}
 
 	logger.Info("analyse command completed successfully")
+	if config.IsCI(AppConfig) {
+		shared.PrintResultAsJSON(logger, analyseResult)
+	}
 	return nil
 }
 
@@ -135,7 +137,7 @@ func generateLongDescription(cfg *config.Config) string {
 	}
 	return fmt.Sprintf(`Provides a top-level interface with orchestration for running a specified scanner.
 
-List of avaliable scanner plugins:
+List of available scanner plugins:
   %s`, strings.Join(plugins, "\n  "))
 }
 
