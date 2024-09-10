@@ -10,19 +10,20 @@ import (
 	"github.com/scan-io-git/scan-io/internal/fetcher"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 // RunOptionsFetch holds the arguments for the fetch command.
 type RunOptionsFetch struct {
-	VCSPluginName string
-	InputFile     string
-	AuthType      string
-	SSHKey        string
-	Branch        string
-	OutputPath    string
-	RmListExts    []string
-	Threads       int
+	VCSPluginName string   `json:"vcs_plugin_name,omitempty"`
+	InputFile     string   `json:"input_file,omitempty"`
+	AuthType      string   `json:"auth_type,omitempty"`
+	SSHKey        string   `json:"ssh_key,omitempty"`
+	Branch        string   `json:"branch,omitempty"`
+	OutputPath    string   `json:"output_path,omitempty"`
+	RmListExts    []string `json:"rm_list_exts"`
+	Threads       int      `json:"threads"`
 }
 
 // Global variables for configuration and command arguments
@@ -91,7 +92,7 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 
 	if err := validateFetchArgs(&fetchOptions, args); err != nil {
 		logger.Error("invalid fetch arguments", "error", err)
-		return err
+		return errors.NewCommandError(fetchOptions, nil, fmt.Errorf("invalid fetch arguments: %w", err), 1)
 	}
 
 	mode := determineMode(args)
@@ -110,13 +111,13 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 	reposParams, err := prepareFetchTargets(&fetchOptions, args, mode)
 	if err != nil {
 		logger.Error("failed to prepare fetch targets", "error", err)
-		return err
+		return errors.NewCommandError(fetchOptions, nil, fmt.Errorf("failed to prepare fetch targets: %w", err), 1)
 	}
 
 	fetchReqList, err := f.PrepFetchReqList(AppConfig, reposParams)
 	if err != nil {
-		logger.Error("failed to prepare fetch targets", "error", err)
-		return err
+		logger.Error("failed to prepare fetch arguments", "error", err)
+		return errors.NewCommandError(fetchOptions, nil, fmt.Errorf("failed to prepare fetch arguments: %w", err), 1)
 	}
 
 	fetchResult, fetchErr := f.FetchRepos(AppConfig, fetchReqList)
@@ -128,16 +129,18 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 	}
 	if err := shared.WriteGenericResult(AppConfig, logger, fetchResult, metaDataFileName); err != nil {
 		logger.Error("failed to write result", "error", err)
-		return err
 	}
 
 	if fetchErr != nil {
 		logger.Error("fetch command failed", "error", fetchErr)
-		return fetchErr
+		return errors.NewCommandErrorWithResult(fetchResult, fmt.Errorf("fetch command failed: %w", fetchErr), 2)
 	}
 
-	logger.Debug("fetch result", "result", fetchResult)
 	logger.Info("fetch command completed successfully")
+	logger.Debug("fetch result", "result", fetchResult)
+	if config.IsCI(AppConfig) {
+		shared.PrintResultAsJSON(logger, fetchResult)
+	}
 	return nil
 }
 

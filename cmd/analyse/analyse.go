@@ -122,6 +122,7 @@ func runAnalyseCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	logger.Info("analyse command completed successfully")
+	logger.Debug("analyse result", "result", analyseResult)
 	if config.IsCI(AppConfig) {
 		shared.PrintResultAsJSON(logger, analyseResult)
 	}

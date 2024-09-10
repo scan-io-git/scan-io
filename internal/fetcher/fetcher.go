@@ -116,7 +116,7 @@ func (f *Fetcher) fetchRepo(cfg *config.Config, fetchArgs shared.VCSFetchRequest
 		result, err = vcsPlugin.Fetch(fetchArgs)
 		if err != nil {
 			f.logger.Error("VCS plugin fetch failed", "fetchArgs", fetchArgs, "error", err)
-			return fmt.Errorf("VCS plugin fetch failed. Fetch arguments: %v. Error: %w", fetchArgs, err)
+			return fmt.Errorf("VCS plugin fetch failed. Error: %w", err)
 		}
 
 		files.FindByExtAndRemove(fetchArgs.TargetFolder, f.RmListExts)
