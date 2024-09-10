@@ -116,7 +116,7 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 
 	fetchReqList, err := f.PrepFetchReqList(AppConfig, reposParams)
 	if err != nil {
-		logger.Error("failed to prepare fetch arguments", "error", err)
+		logger.Error("failed to prepare fetch requests", "error", err)
 		return errors.NewCommandError(fetchOptions, nil, fmt.Errorf("failed to prepare fetch arguments: %w", err), 1)
 	}
 
@@ -153,7 +153,7 @@ func generateLongDescription(cfg *config.Config) string {
 	}
 	return fmt.Sprintf(`Fetches repository code using the specified VCS plugin with consistency support.
 
-List of avaliable vcs plugins:
+List of available vcs plugins:
   %s`, strings.Join(plugins, "\n  "))
 }
 

@@ -26,20 +26,20 @@ type VCSIntegrator struct {
 
 // RunOptionsIntegrationVCS holds the arguments for VCS integration actions.
 type RunOptionsIntegrationVCS struct {
-	VCSPluginName string
-	Domain        string
-	Namespace     string
-	Repository    string
-	PullRequestID string
-	Action        string
-	Login         string
-	Language      string
-	OutputPath    string
-	Role          string
-	Status        string
-	Comment       string
-	CommentFile   string
-	AttachFiles   []string
+	VCSPluginName string   `json:"vcs_plugin_name,omitempty"`
+	Domain        string   `json:"domain,omitempty"`
+	Namespace     string   `json:"namespace,omitempty"`
+	Repository    string   `json:"repository,omitempty"`
+	PullRequestID string   `json:"pull_request_id,omitempty"`
+	Action        string   `json:"action,omitempty"`
+	Login         string   `json:"login,omitempty"`
+	Language      string   `json:"language,omitempty"`
+	OutputPath    string   `json:"output_path,omitempty"`
+	Role          string   `json:"role,omitempty"`
+	Status        string   `json:"status,omitempty"`
+	Comment       string   `json:"comment,omitempty"`
+	CommentFile   string   `json:"comment_file,omitempty"`
+	AttachFiles   []string `json:"attach_files,omitempty"`
 }
 
 // New creates a new VCSIntegrator instance with the provided configuration.
@@ -204,7 +204,7 @@ func (i *VCSIntegrator) IntegrationAction(cfg *config.Config, actionRequest inte
 		if err != nil {
 			result.Launches = append(result.Launches, shared.GenericResult{Args: actionRequest, Result: actionResult, Status: "FAILED", Message: err.Error()})
 			i.logger.Error("VCS plugin integration failed", "action", i.Action, "actionArgs", actionRequest, "error", err)
-			return fmt.Errorf("VCS plugin integration failed. Action arguments: %v. Error: %w", actionRequest, err)
+			return fmt.Errorf("VCS plugin integration failed. Error: %w", err)
 		}
 		result.Launches = append(result.Launches, shared.GenericResult{Args: actionRequest, Result: actionResult, Status: "OK", Message: ""})
 		return nil

@@ -100,7 +100,7 @@ func runAnalyseCommand(cmd *cobra.Command, args []string) error {
 
 	analyseArgs, err := s.PrepareScanArgs(AppConfig, reposInf, targetPath, analyseOptions.OutputPath)
 	if err != nil {
-		logger.Error("failed to prepare scan arguments", "error", err)
+		logger.Error("failed to prepare scan requests", "error", err)
 		return errors.NewCommandError(analyseOptions, nil, fmt.Errorf("failed to prepare scan arguments: %w", err), 1)
 	}
 
