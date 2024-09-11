@@ -56,12 +56,12 @@ func initConfig() {
 	AppConfig, err = config.LoadConfig(cfgFile)
 	Logger = logger.NewLogger(AppConfig, "core")
 	if err != nil {
-		Logger.Warn("Failed to load config file", "error", err)
-		Logger.Warn("Using default empty configuration")
+		Logger.Warn("failed to load config file", "error", err)
+		Logger.Warn("using default empty configuration")
 	}
 
 	if err := config.ValidateConfig(AppConfig); err != nil {
-		Logger.Error("Error validating config", "error", err)
+		Logger.Error("failed to validate Scanio config", "error", err)
 		os.Exit(1)
 	}
 
