@@ -7,6 +7,7 @@ import (
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 var (
@@ -45,7 +46,11 @@ func NewVersionCmd() *cobra.Command {
 				PluginDetails: shared.GetPluginVersions(config.GetScanioPluginsHome(AppConfig), ""),
 			}
 
-			printVersionInfo(&version)
+			if config.IsCI(AppConfig) {
+				shared.PrintResultAsJSON(logger.NewLogger(AppConfig, "core"), version)
+			} else {
+				printVersionInfo(&version)
+			}
 		},
 	}
 }
