@@ -6,16 +6,17 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/internal/dojo"
+	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 var DOJO_TOKEN = os.Getenv("SCANIO_DEFECTDOJO_TOKEN")
 
 type UploadOptions struct {
-	URL         string
-	InputFile   string
-	ProductName string
-	ScanType    string
+	URL         string `json:"url,omitempty"`
+	InputFile   string `json:"input_file,omitempty"`
+	ProductName string `json:"product_name,omitempty"`
+	ScanType    string `json:"scan_type,omitempty"`
 }
 
 var allUploadOptions UploadOptions
@@ -43,34 +44,33 @@ Create engagement and import results from file.`,
 
 		exists, err := dojoClient.IsAnySLAConfiguration()
 		if err != nil {
-			return err
+			return errors.NewCommandError(allUploadOptions, nil, err, 1)
 		}
 
 		if !exists {
 			if _, err := dojoClient.CreateSLAConfiguration(dojo.GetDefaultSLAConfigurationParams()); err != nil {
-				return err
+				return errors.NewCommandError(allUploadOptions, nil, err, 1)
 			}
 		}
 
 		productType, err := dojoClient.GetOrCreateProductType(dojo.ProductTypeScanioRepo)
 		if err != nil {
-			return err
+			return errors.NewCommandError(allUploadOptions, nil, err, 1)
 		}
 
 		product, err := dojoClient.GetOrCreateProduct(allUploadOptions.ProductName, *productType)
 		if err != nil {
-			return err
+			return errors.NewCommandError(allUploadOptions, nil, err, 1)
 		}
 
 		engagement, err := dojoClient.CreateEngagement(*product)
 		if err != nil {
-			return err
+			return errors.NewCommandError(allUploadOptions, nil, err, 1)
 		}
 
 		if err = dojoClient.ImportScanResult(*engagement, allUploadOptions.InputFile, allUploadOptions.ScanType); err != nil {
-			return err
+			return errors.NewCommandError(allUploadOptions, nil, err, 1)
 		}
-
 		return nil
 	},
 }

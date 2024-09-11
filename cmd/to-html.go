@@ -10,6 +10,7 @@ import (
 
 	"github.com/scan-io-git/scan-io/internal/git"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 	"github.com/scan-io-git/scan-io/pkg/shared/vcsurl"
@@ -19,11 +20,11 @@ import (
 )
 
 type ToHTMLOptions struct {
-	TempatesPath string
-	Title        string
-	OutputFile   string
-	Input        string
-	SourceFolder string
+	TempatesPath string `json:"tempates_path,omitempty"`
+	Title        string `json:"title,omitempty"`
+	OutputFile   string `json:"output_file,omitempty"`
+	Input        string `json:"input,omitempty"`
+	SourceFolder string `json:"source_folder,omitempty"`
 }
 
 var allToHTMLOptions ToHTMLOptions
@@ -60,7 +61,7 @@ var toHtmlCmd = &cobra.Command{
 		// read sarif report from file
 		sarifReport, err := scaniosarif.ReadReport(allToHTMLOptions.Input, logger, allToHTMLOptions.SourceFolder)
 		if err != nil {
-			return err
+			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
 
 		// enrich sarif report with additional properties and remove duplicates from dataflow results
@@ -77,7 +78,7 @@ var toHtmlCmd = &cobra.Command{
 
 		toolMetadata, err := sarifReport.ExtractToolNameAndVersion()
 		if err != nil {
-			return err
+			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
 		logger.Debug("toolMetadata", "Name", toolMetadata.Name, "Version", toolMetadata.Version)
 
@@ -105,12 +106,12 @@ var toHtmlCmd = &cobra.Command{
 
 		templateFile, err := files.ExpandPath(filepath.Join(allToHTMLOptions.TempatesPath, "report.html"))
 		if err != nil {
-			return err
+			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
 
 		tmpl, err := scaniotemplate.NewTemplate(templateFile, scaniotemplate.WithFuncs(template.FuncMap{"gitURLtoWebURL": gitURLtoWebURL}))
 		if err != nil {
-			return err
+			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
 
 		data := struct {
@@ -123,15 +124,14 @@ var toHtmlCmd = &cobra.Command{
 
 		file, err := os.Create(allToHTMLOptions.OutputFile)
 		if err != nil {
-			return err
+			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
 		defer file.Close()
 
 		err = tmpl.Execute(file, data)
 		if err != nil {
-			return err
+			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
-
 		return nil
 	},
 }
