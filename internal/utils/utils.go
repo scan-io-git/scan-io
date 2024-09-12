@@ -90,7 +90,6 @@ func GetDomain(repositoryURL string) (string, error) {
 }
 
 func GetPath(repositoryURL string) (string, error) {
-
 	if strings.HasPrefix(repositoryURL, "git@") && strings.HasSuffix(repositoryURL, ".git") {
 		url := strings.TrimPrefix(repositoryURL, "git@")
 		url = strings.TrimSuffix(url, ".git")

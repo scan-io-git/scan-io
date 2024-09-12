@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/cmd/analyse"
@@ -11,16 +12,21 @@ import (
 	"github.com/scan-io-git/scan-io/cmd/integration-vcs"
 	"github.com/scan-io-git/scan-io/cmd/list"
 	"github.com/scan-io-git/scan-io/cmd/version"
+	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/errors"
+	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 // Global variables for configuration and the command.
 var (
 	AppConfig *config.Config
+	Logger    hclog.Logger
 	cfgFile   string
 	rootCmd   = &cobra.Command{
 		Use:                   "scanio [command]",
 		SilenceUsage:          true,
+		SilenceErrors:         true,
 		DisableFlagsInUseLine: true,
 		Short:                 "Comprehensive tool orchestration for security checks",
 		Long: `Scanio is an orchestrator that consolidates various security scanning capabilities, including static code analysis, secret detection, dependency analysis, etc.
@@ -33,6 +39,13 @@ var (
 func Execute() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	if err := rootCmd.Execute(); err != nil {
+		fmt.Printf("Error: %v\n", err.Error())
+		if commandErr, ok := err.(*errors.CommandError); ok {
+			if config.IsCI(AppConfig) {
+				shared.PrintResultAsJSON(Logger, commandErr.Result)
+			}
+			os.Exit(commandErr.ExitCode)
+		}
 		os.Exit(1)
 	}
 }
@@ -41,14 +54,14 @@ func Execute() {
 func initConfig() {
 	var err error
 	AppConfig, err = config.LoadConfig(cfgFile)
+	Logger = logger.NewLogger(AppConfig, "core")
 	if err != nil {
-		// TODO: Use a global logger
-		fmt.Printf("Failed to load config file: %v\n", err)
-		fmt.Println("Using default empty configuration")
+		Logger.Warn("failed to load config file", "error", err)
+		Logger.Warn("using default empty configuration")
 	}
 
 	if err := config.ValidateConfig(AppConfig); err != nil {
-		fmt.Printf("Error validating config: %v\n", err)
+		Logger.Error("failed to validate Scanio config", "error", err)
 		os.Exit(1)
 	}
 
@@ -68,5 +81,5 @@ func init() {
 	rootCmd.AddCommand(analyse.AnalyseCmd)
 	rootCmd.AddCommand(integrationvcs.IntegrationVCSCmd)
 	rootCmd.AddCommand(version.NewVersionCmd())
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is .config.yml)")
+	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file")
 }

@@ -9,17 +9,19 @@ import (
 
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/spf13/cobra"
+
+	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 )
 
 type RunOptionsReportPatch struct {
-	Input                string
-	Output               string
-	WhenRule             string
-	WhenTextContains     []string
-	WhenTextNotContains  []string
-	WhenLocationContains []string
-	SetSeverity          string
-	Delete               bool
+	Input                string   `json:"input,omitempty"`
+	Output               string   `json:"output,omitempty"`
+	WhenRule             string   `json:"when_rule,omitempty"`
+	WhenTextContains     []string `json:"when_text_contains,omitempty"`
+	WhenTextNotContains  []string `json:"when_text_not_contains,omitempty"`
+	WhenLocationContains []string `json:"when_location_contains,omitempty"`
+	SetSeverity          string   `json:"set_severity,omitempty"`
+	Delete               bool     `json:"delete,omitempty"`
 }
 
 var allArgumentsReportPatch RunOptionsReportPatch
@@ -228,7 +230,8 @@ var reportPatchCmd = &cobra.Command{
 
 		jsonFile, err := os.Open(allArgumentsReportPatch.Input)
 		if err != nil {
-			return err
+			return errors.NewCommandError(allArgumentsReportPatch, nil, err, 1)
+
 		}
 		defer jsonFile.Close()
 
@@ -238,7 +241,7 @@ var reportPatchCmd = &cobra.Command{
 
 		report, err := copyReport(&originalSarifReport)
 		if err != nil {
-			return err
+			return errors.NewCommandError(allArgumentsReportPatch, nil, err, 1)
 		}
 
 		conditions := buildConditions()
@@ -252,7 +255,6 @@ var reportPatchCmd = &cobra.Command{
 			data, _ := json.MarshalIndent(report, "", "  ")
 			_ = os.WriteFile(allArgumentsReportPatch.Output, data, 0644)
 		}
-
 		return nil
 	},
 }

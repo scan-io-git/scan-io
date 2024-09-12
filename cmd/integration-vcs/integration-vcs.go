@@ -10,6 +10,7 @@ import (
 	"github.com/scan-io-git/scan-io/internal/vcsintegrator"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
@@ -82,7 +83,7 @@ func runIntegrationVCSCommand(cmd *cobra.Command, args []string) error {
 
 	if err := validateIntegrationVCSArgs(&integrationVCSOptions, args); err != nil {
 		logger.Error("invalid integration VCS arguments", "error", err)
-		return err
+		return errors.NewCommandError(integrationVCSOptions, nil, fmt.Errorf("invalid integration VCS arguments: %w", err), 1)
 	}
 
 	mode := determineMode(args)
@@ -94,13 +95,13 @@ func runIntegrationVCSCommand(cmd *cobra.Command, args []string) error {
 	repoParams, err := prepareIntegrationVCSTarget(&integrationVCSOptions, args, mode)
 	if err != nil {
 		logger.Error("failed to prepare integration VCS targets", "error", err)
-		return err
+		return errors.NewCommandError(integrationVCSOptions, nil, fmt.Errorf("failed to prepare integration VCS targets: %w", err), 1)
 	}
 
 	integrationVCSRequest, err := i.PrepIntegrationRequest(AppConfig, &integrationVCSOptions, repoParams)
 	if err != nil {
 		logger.Error("failed to prepare integration VCS request", "error", err)
-		return err
+		return errors.NewCommandError(integrationVCSOptions, nil, fmt.Errorf("failed to prepare integration VCS request: %w", err), 1)
 	}
 
 	resultIntegrationVCS, integrationVCSErr := i.IntegrationAction(AppConfig, integrationVCSRequest)
@@ -117,16 +118,18 @@ func runIntegrationVCSCommand(cmd *cobra.Command, args []string) error {
 
 	if err := shared.WriteGenericResult(AppConfig, logger, resultIntegrationVCS, metaDataFileName); err != nil {
 		logger.Error("failed to write result", "error", err)
-		return err
 	}
 
 	if integrationVCSErr != nil {
 		logger.Error("integration-vcs command failed", "error", integrationVCSErr)
-		return integrationVCSErr
+		return errors.NewCommandErrorWithResult(resultIntegrationVCS, fmt.Errorf("integration-vcs command failed: %w", integrationVCSErr), 2)
 	}
 
-	logger.Debug("integration-vcs result", "result", resultIntegrationVCS)
 	logger.Info("integration-vcs command completed successfully")
+	logger.Debug("integration-vcs result", "result", resultIntegrationVCS)
+	if config.IsCI(AppConfig) {
+		shared.PrintResultAsJSON(logger, resultIntegrationVCS)
+	}
 	return nil
 }
 

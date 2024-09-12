@@ -109,6 +109,9 @@ type GitClient struct {
 // If configPath is empty, it searches for a config file in default paths.
 func LoadConfig(configPath string) (*Config, error) {
 	config := &Config{}
+	if envPath := os.Getenv("SCANIO_CONFIG_PATH"); envPath != "" {
+		configPath = envPath
+	}
 
 	if configPath != "" {
 		if err := config.loadConfig(configPath); err != nil {
@@ -122,7 +125,6 @@ func LoadConfig(configPath string) (*Config, error) {
 	return config, nil
 }
 
-// TODO: Add env variable to redefine a path to the config
 // searchDefaultConfig searches for a config file in default paths.
 func (c *Config) searchDefaultConfig() error {
 	defaultPaths := []string{

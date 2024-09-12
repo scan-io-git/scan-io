@@ -162,6 +162,7 @@ func HandleScannerConfig(logger hclog.Logger, excludePaths []string, targetFolde
 			return err
 		}
 
+		// TODO: add checks of duplications - add only new exlusions
 		newExclusion := Exclude{
 			Message: "Custom Scanio config exclusions",
 			Paths:   excludePaths,

@@ -2,9 +2,12 @@ package fetch
 
 import (
 	"fmt"
+	"golang.org/x/crypto/ssh"
 	"net/url"
+	"os"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/files"
 )
 
 const (
@@ -32,9 +35,41 @@ func validateFetchArgs(options *RunOptionsFetch, args []string) error {
 		return fmt.Errorf("unknown auth-type: %v", options.AuthType)
 	}
 
-	// TODO: add SSHKey verification
 	if options.AuthType == AuthTypeSSHKey && options.SSHKey == "" {
 		return fmt.Errorf("you must specify ssh-key with auth-type 'ssh-key'")
+	}
+
+	if options.AuthType == AuthTypeSSHKey && options.SSHKey != "" {
+		expandedPath, err := files.ExpandPath(options.SSHKey)
+		if err != nil {
+			return fmt.Errorf("failed to expand path '%s': %w", options.SSHKey, err)
+		}
+
+		if err := files.ValidatePath(expandedPath); err != nil {
+			return fmt.Errorf("failed to validate path '%s': %w", expandedPath, err)
+		}
+
+		keyData, err := os.ReadFile(expandedPath)
+		if err != nil {
+			return fmt.Errorf("failed to read SSH key file: %w", err)
+		}
+
+		_, err = ssh.ParsePrivateKey(keyData)
+		if err == nil {
+			return nil
+		}
+
+		if _, ok := err.(*ssh.PassphraseMissingError); !ok {
+			return fmt.Errorf("invalid SSH key format: %w", err)
+		}
+
+		// TODO: the check takes pass only from the global config and ignores env variables for plugins
+		// should be fixed with moving to Viper
+		// _, err = ssh.ParsePrivateKeyWithPassphrase(keyData, pass)
+		// if err != nil {
+		// 	return fmt.Errorf("invalid SSH key format or incorrect passphrase: %w", err)
+		// }
+		return nil
 	}
 
 	if len(args) == 0 && options.InputFile == "" {

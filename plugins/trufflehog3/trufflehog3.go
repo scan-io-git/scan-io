@@ -113,7 +113,6 @@ func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) (shared.Scanne
 	}
 
 	originalFormat, reportFormat, needsConversion := g.CheckReportFormat(&args)
-	g.logger.Debug("Formats", "originalFormat", originalFormat, "reportFormat", reportFormat, "needsConversion", needsConversion, "ResultsPath", args.ResultsPath)
 	if reportFormat != "" {
 		args.ResultsPath = strings.TrimSuffix(args.ResultsPath, filepath.Ext(args.ResultsPath)) + "." + reportFormat
 	}
