@@ -223,7 +223,7 @@ func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse,
 			return result, err
 		}
 
-		path, err := clientGit.CloneRepository(&args, "main")
+		path, err := clientGit.CloneRepository(&args)
 		if err != nil {
 			g.logger.Error("failed to clone repository", "error", err)
 			return result, err
