@@ -7,13 +7,13 @@ import (
 	"io"
 	"os"
 
-	gitconfig "github.com/go-git/go-git/v5/config"
-
 	"github.com/gitsight/go-vcsurl"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/hashicorp/go-hclog"
+
+	gitconfig "github.com/go-git/go-git/v5/config"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"

@@ -237,7 +237,6 @@ func (g *VCSBitbucket) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (boo
 
 // fetchPR handles fetching pull request changes.
 func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
-	var newCloneURL string
 	g.logger.Info("handling PR changes fetching")
 
 	domain, err := utils.GetDomain(args.CloneURL)
@@ -277,26 +276,13 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		g.logger.Error("failed to retrieve PR changes", "PRID", prID, "error", err)
 		return "", err
 	}
-
-	mainRepo := prData.FromReference.Repository
-	if len(mainRepo.Links.Clone) > 0 && mainRepo.Links.Clone[0].Href != "" {
-		newCloneURL = mainRepo.Links.Clone[0].Href
-		g.logger.Info("Using main repository clone URL from API response", "CloneURL", newCloneURL)
-	} else {
-		// If the main repository doesn't have a valid clone URL, check the origin repository
-		originRepo := mainRepo.Origin
-		if originRepo != nil && len(originRepo.Links.Clone) > 0 && originRepo.Links.Clone[0].Href != "" {
-			newCloneURL = originRepo.Links.Clone[0].Href
-			g.logger.Info("Using origin repository clone URL from API response", "CloneURL", newCloneURL)
-		}
-	}
-
 	g.logger.Debug("PR Data", prData)
 
+	newCloneURL := findCloneURL(prData, g.logger)
 	if newCloneURL != "" {
 		args.CloneURL = newCloneURL
 	} else {
-		g.logger.Warn("No valid clone URL found in either the main or origin repository")
+		g.logger.Warn("no valid clone URL found in both FromReference and ToReference repositories")
 	}
 
 	g.logger.Debug("starting to fetch PR code")
@@ -342,6 +328,44 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 
 	g.logger.Info("files for PR scan are copied", "folder", baseDestPath)
 	return baseDestPath, nil
+}
+
+// findCloneURL searches for a valid clone URL, first in the fromRef, then in the toRef.
+func findCloneURL(prData *bitbucket.PullRequest, logger hclog.Logger) string {
+	var checkCloneURL func(repo bitbucket.Repository) (string, bool)
+	checkCloneURL = func(repo bitbucket.Repository) (string, bool) {
+		// Check if the main repository has a valid clone URL
+		if len(repo.Links.Clone) > 0 && repo.Links.Clone[0].Href != "" {
+			logger.Debug("found repository clone URL from API response")
+			return repo.Links.Clone[0].Href, true
+		}
+
+		// Recursively check nested origins, if they exist
+		if repo.Origin != nil {
+			logger.Debug("searching origin clone URL from API response")
+			return checkCloneURL(*repo.Origin)
+		}
+
+		// No valid clone URL found in this repository or its origins
+		return "", false
+	}
+
+	// Check the FromReference.Repository (main repository)
+	mainRepo := prData.FromReference.Repository
+	if cloneURL, found := checkCloneURL(mainRepo); found {
+		logger.Info("found URL from the FromReference API response", "CloneURL", cloneURL)
+		return cloneURL
+	}
+
+	// If not found, check the ToReference.Repository
+	toRepo := prData.ToReference.Repository
+	if cloneURL, found := checkCloneURL(toRepo); found {
+		logger.Info("using clone URL from the ToReference API response", "CloneURL", cloneURL)
+		return cloneURL
+	}
+
+	// If no clone URL is found in either, return an error
+	return ""
 }
 
 // Fetch retrieves code based on the provided VCSFetchRequest.
