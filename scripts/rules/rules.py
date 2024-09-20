@@ -159,14 +159,14 @@ def print_warnings_and_overwrites(overwritten_files, missing_files, verbose):
     if overwritten_files:
         print(f"\n{Fore.YELLOW}Total overwritten files: {len(overwritten_files)}{Style.RESET_ALL}")
         if verbose >= 1:
-            print(f"\n{Fore.YELLOW}The following files were overwritten during the bundling process:{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}The following files were overwritten during the bundling process:{Style.RESET_ALL}")
             for overwrite in overwritten_files:
                 print(f"{Fore.YELLOW}  - {overwrite}{Style.RESET_ALL}")
     
     if missing_files:
         print(f"\n{Fore.RED}Total missing files: {len(missing_files)}{Style.RESET_ALL}")
         if verbose >= 1:
-            print(f"\n{Fore.RED}The following files were not found during the bundling process:{Style.RESET_ALL}")
+            print(f"{Fore.RED}The following files were not found during the bundling process:{Style.RESET_ALL}")
             for warning in missing_files:
                 print(f"{Fore.RED}  - {warning}{Style.RESET_ALL}")
 
