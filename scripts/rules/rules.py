@@ -92,7 +92,7 @@ def clean_rules_directory(rules_dir, force_clean=False):
         return
 
     # Ask user for confirmation to delete remaining files
-    print(f"{Fore.RED}rules directory '{rules_dir}' is not empty: {files_in_dir}{Style.RESET_ALL}")
+    print(f"{Fore.RED}Rules directory '{rules_dir}' is not empty: {files_in_dir}{Style.RESET_ALL}")
     confirm = input(f"{Fore.YELLOW}Do you want to delete all files in '{rules_dir}' (except .gitignore and .DS_Store)? [y/N]: {Style.RESET_ALL}").strip().lower()
 
     if confirm == 'y':
