@@ -47,7 +47,7 @@ copy-rules: ## Copy the custom rule set to the cloned Scanio repository
 .PHONY: build-rules
 build-rules: ## Build rules in the cloned Scanio repository
 	@echo "Building rule sets in $(SCANIO_REPO_DIR)..."
-	@cd $(SCANIO_REPO_DIR) && make build-rules FORCE=true || { echo "Failed to build rules"; exit 1; }
+	@cd $(SCANIO_REPO_DIR) && make build-rules USE_VENV=true FORCE=true || { echo "Failed to build rules"; exit 1; }
 
 # Build Docker image
 .PHONY: build-docker
