@@ -12,10 +12,10 @@ This Python script automates the process of building rule sets for the Scanio Or
 
 ## Requirements
 - Python 3.x
-- `colorama` for colored terminal output.
-- `tqdm` for progress bars.
 - `pyyaml` for YAML parsing.
 - `gitpython` for repository cloning.
+- `colorama` for colored terminal output.
+- `tqdm` for progress bars.
 
 You can install the dependencies using pip3:
 ```bash

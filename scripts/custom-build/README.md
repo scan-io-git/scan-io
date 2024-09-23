@@ -6,6 +6,7 @@ This `Makefile` supports custom deployments of Scanio, including cases where use
 Ensure that the following dependencies are available on your system before running the commands:
 - `git`
 - `docker`
+- `jq`
 - Python3 (for building the custom rule sets)
 
 ## Custom Deployment Workflow
