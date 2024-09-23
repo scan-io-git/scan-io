@@ -36,12 +36,27 @@ clone-scanio-repo: ## Clone the Scanio repository
 	fi
 	@git clone $(SCANIO_REPO) $(SCANIO_REPO_DIR) || { echo "Failed to clone $(SCANIO_REPO)"; exit 1; }
 
+
+# Copy custom config to cloned Scanio repo
+.PHONY: copy-config
+copy-config: ## Copy the custom config file to the cloned Scanio repository
+	@if [ -f "$(SCANIO_CONFIG)" ]; then \
+		echo "Copying config file from $(SCANIO_CONFIG) to $(CLONED_CONFIG_PATH)..."; \
+		cp $(SCANIO_CONFIG) $(CLONED_CONFIG_PATH) || { echo "Failed to copy $(SCANIO_CONFIG)"; exit 1; }; \
+	else \
+		echo "Config file $(SCANIO_CONFIG) not found! Skipping..."; \
+	fi
+
 # Copy custom rule set to cloned Scanio repo
 .PHONY: copy-rules
 copy-rules: ## Copy the custom rule set to the cloned Scanio repository
-	@echo "Copying custom rule set from $(RULES_CONFIG) to $(CLONED_RULES_PATH)..."
-	@mkdir -p $(dir $(CLONED_RULES_PATH))
-	@cp $(RULES_CONFIG) $(CLONED_RULES_PATH) || { echo "Failed to copy $(RULES_CONFIG)"; exit 1; }
+	@if [ -f "$(RULES_CONFIG)" ]; then \
+		echo "Copying custom rule set from $(RULES_CONFIG) to $(CLONED_RULES_PATH)..."; \
+		mkdir -p $(dir $(CLONED_RULES_PATH)); \
+		cp $(RULES_CONFIG) $(CLONED_RULES_PATH) || { echo "Failed to copy $(RULES_CONFIG)"; exit 1; }; \
+	else \
+		echo "Custom rule set $(RULES_CONFIG) not found! Skipping..."; \
+	fi
 
 # Build rules
 .PHONY: build-rules
@@ -69,5 +84,5 @@ clean: ## Clean the cloned repository and generated files
 
 # Build process to call all steps in sequence
 .PHONY: build
-build: clone-scanio-repo copy-rules build-rules build-docker push-docker  ## Run full orchestrator process to build, package, and push
+build: clone-scanio-repo copy-config copy-rules build-rules build-docker push-docker  ## Run full orchestrator process to build, package, and push
 	@echo "Custom Scanio build process complete!"

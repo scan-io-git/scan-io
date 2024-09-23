@@ -65,8 +65,8 @@ setup-python-env: ## Set up Python virtual environment and install dependencies
 	@if [ ! -d $(VENV_DIR) ]; then \
 		python3 -m venv $(VENV_DIR); \
 	fi
-	@$(VENV_DIR)/bin/pip install --upgrade pip || exit 1
-	@$(VENV_DIR)/bin/pip install -r $(REQUIREMENTS_FILE) || exit 1
+	@$(VENV_DIR)/bin/pip install --upgrade pip || { echo "Failed to upgrade pip. Exiting."; exit 1; }
+	@$(VENV_DIR)/bin/pip install -r $(REQUIREMENTS_FILE) || { echo "Failed to install dependencies from requirements.txt. Exiting."; exit 1; }
 	@echo "Python virtual environment setup complete."
 
 .PHONY: build-rules
