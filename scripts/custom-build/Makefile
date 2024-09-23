@@ -67,7 +67,7 @@ clean: ## Clean the cloned repository and generated files
 	@echo "Cleaning up..."
 	@rm -rf $(SCANIO_REPO_DIR)
 
-# Orchestrator process to call all steps in sequence
+# Build process to call all steps in sequence
 .PHONY: build
 build: clone-scanio-repo copy-rules build-rules build-docker push-docker  ## Run full orchestrator process to build, package, and push
 	@echo "Custom Scanio build process complete!"
