@@ -1,6 +1,6 @@
 # Custom Scanio Deployment
 
-This `Makefile` supports custom deployments of Scanio, including cases where users have their own versions of Scanio, plugins, and custom rule sets. The deployment process includes cloning the Scanio repository, applying custom rules, building rules, creating Docker images, and pushing them to a registry.
+This `Makefile` supports custom deployments of Scanio, including cases where users have their own versions of Scanio, plugins, and custom rule sets. The deployment process includes cloning the Scanio repository, applying custom rules, building rules, creating Docker images, and pushing them to a registry. The Makefile can be used in various environments, including as part of an internal CI/CD pipeline, local development, or version-controlled repositories.
 
 ## Prerequisites
 Ensure that the following dependencies are available on your system before running the commands:
