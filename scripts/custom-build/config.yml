@@ -1,0 +1,25 @@
+# Scanio Custom Build Config
+ 
+## Logger Config
+logger:
+  level: debug               # Logging level. Default: info. Can be overridden with SCANIO_LOG_LEVEL.
+  disable_time: true         # Whether to disable time in logs. Default: true.
+  json_format: false         # Whether to format logs in JSON. Default: false.
+  include_location: false    # Whether to include file and line number in logs. Default: false.
+
+trufflehog3_plugin:
+  write_default_trufflehog_config_if_missing: true    # If set to true, a default .trufflehog3.yml configuration file will be created in the target directory if it does not already exist.
+  force_overwrite_trufflehog_config: false            # If set to true, the existing .trufflehog3.yml file will be overwritten with the default configuration, even if it already exists.
+  exclude_paths:                                      # A list of paths to be excluded from the Trufflehog3 scan. These paths will be added to the exclusion section of the .trufflehog3.yml configuration.
+    - "vendor"
+    - "node_modules"
+    - "go.mod"
+    - "go.sum"
+    - "package.json"
+    - "package-lock.json"
+    - "Pipfile.lock"
+    - "composer.lock"
+
+## GitClient Config
+git_client:
+  timeout: 30m    # The maximum duration for the Git request before timing it out.

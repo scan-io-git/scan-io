@@ -83,21 +83,21 @@ RUN export TRUFFLEHOG_VER="$(curl -s -qI https://github.com/trufflesecurity/truf
     mv trufflehog /usr/local/bin 
 
 # Install Kubectl
-RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/${TARGETOS}/${TARGETARCH}/kubectl" && \
-    curl -LO "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/${TARGETOS}/${TARGETARCH}/kubectl.sha256" && \
-    (echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c ) && \
-    rm -rf kubectl.sha256 && \
-    chmod +x ./kubectl && \
-    mv kubectl /usr/local/bin
+# RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/${TARGETOS}/${TARGETARCH}/kubectl" && \
+#     curl -LO "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/${TARGETOS}/${TARGETARCH}/kubectl.sha256" && \
+#     (echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c ) && \
+#     rm -rf kubectl.sha256 && \
+#     chmod +x ./kubectl && \
+#     mv kubectl /usr/local/bin
 
 # Install Helm
-RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
-    chmod 700 get_helm.sh && \
-    ./get_helm.sh && \
-    rm -rf get_helm.sh
+# RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
+#     chmod 700 get_helm.sh && \
+#     ./get_helm.sh && \
+#     rm -rf get_helm.sh
 
 # Set environment variables // move to config file
-ENV JOB_HELM_CHART_PATH=/scanio-helm/scanio-job
+# ENV JOB_HELM_CHART_PATH=/scanio-helm/scanio-job
 
 # Create necessary directories
 RUN mkdir -p /scanio /data
@@ -108,7 +108,7 @@ COPY --from=build-scanio /usr/bin/plugins/ /scanio/plugins/
 
 # Copy additional resources
 COPY rules /scanio/rules
-COPY helm /scanio/helm
+# COPY helm /scanio/helm
 COPY Dockerfile /scanio/Dockerfile
 COPY templates /scanio/templates
 COPY VERSION /scanio/VERSION

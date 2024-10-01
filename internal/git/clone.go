@@ -7,13 +7,13 @@ import (
 	"io"
 	"os"
 
-	gitconfig "github.com/go-git/go-git/v5/config"
-
 	"github.com/gitsight/go-vcsurl"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/hashicorp/go-hclog"
+
+	gitconfig "github.com/go-git/go-git/v5/config"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
@@ -21,25 +21,30 @@ import (
 	log "github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
-func (c *Client) CloneRepository(args *shared.VCSFetchRequest, defaultBranch string) (string, error) {
+func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 	targetFolder := args.TargetFolder
+	cloneURL := args.CloneURL
 
-	info, err := vcsurl.Parse(args.CloneURL)
+	info, err := vcsurl.Parse(cloneURL)
 	if err != nil {
-		c.logger.Error("failed to parse VCS URL", "VCSURL", args.CloneURL, "error", err)
+		c.logger.Error("failed to parse VCS URL", "VCSURL", cloneURL, "error", err)
 		return "", fmt.Errorf("failed to parse VCS URL: %w", err)
 	}
 
-	reference := determineBranch(args.Branch, defaultBranch)
+	reference, err := determineBranch(args.Branch, cloneURL, &c.auth)
+	if err != nil {
+		c.logger.Error("failed to determine branch", "error", err, "cloneURL", cloneURL)
+		return "", err
+	}
 	output := log.GetLoggerOutput(c.logger)
 
 	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	c.logger.Debug("starting repository fetch", "repository", info.Name, "branch", reference.Branch, "cloneURL", args.CloneURL, "targetFolder", targetFolder)
+	c.logger.Debug("starting repository fetch", "repository", info.Name, "branch", reference.Branch, "commit", reference.IsCommit, "cloneURL", cloneURL, "targetFolder", targetFolder)
 	repo, err := git.PlainCloneContext(ctx, targetFolder, false, &git.CloneOptions{
 		Auth:            c.auth,
-		URL:             args.CloneURL,
+		URL:             cloneURL,
 		ReferenceName:   reference.Branch,
 		Progress:        output,
 		Depth:           config.SetThen(c.globalConfig.GitClient.Depth, 0),
@@ -130,7 +135,7 @@ func updateRepository(ctx context.Context, repo *git.Repository, auth transport.
 
 // checkoutCommit checks out a specific commit in the repository.
 func checkoutCommit(repo *git.Repository, commitHash plumbing.Hash, logger hclog.Logger, targetFolder string) error {
-	logger.Debug("checking out commit", "commit", commitHash.String(), "targetFolder", targetFolder)
+	logger.Debug("checking out revision", "revision", commitHash.String(), "targetFolder", targetFolder)
 	w, err := repo.Worktree()
 	if err != nil {
 		logger.Error("error accessing worktree", "error", err, "targetFolder", targetFolder)

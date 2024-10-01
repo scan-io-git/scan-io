@@ -1,0 +1,13 @@
+tools:
+  semgrep: # name of scanner
+    rulesets:
+      default: # name of ruleset
+        - repo: https://github.com/semgrep/semgrep-rules.git # repo for cloning
+          branch: develop # branch for cloning
+          paths: # paths for copy to ruleset folder
+            - csharp/dotnet/security/use_weak_rng_for_keygeneration.yaml
+
+        - repo: https://github.com/trailofbits/semgrep-rules.git
+          branch: main 
+          paths:
+            - python/pickles-in-pytorch.yaml

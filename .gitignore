@@ -16,6 +16,7 @@
 
 .DS_Store
 .vscode
+.venv
 
 # Local .terraform directories
 **/.terraform/*

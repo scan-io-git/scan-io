@@ -10,7 +10,7 @@ import (
 
 // RepositoryParams holds the details of a repository.
 type RepositoryParams struct {
-	Domain        string `json:"vcs_url,omitempty"`
+	Domain        string `json:"domain,omitempty"`
 	Namespace     string `json:"namespace,omitempty"`
 	Repository    string `json:"repository,omitempty"`
 	PullRequestID string `json:"pull_request_id,omitempty"`
