@@ -225,8 +225,9 @@
 {{ $repo := .Metadata.RepositoryMetadata.RepositoryFullName }}
 {{ $branch := .Metadata.RepositoryMetadata.BranchName }}
 {{ $commit := .Metadata.RepositoryMetadata.CommitHash }}
-
-{{ $webURL := gitURLtoWebURL $repo }}
+{{ $branchURL := .Metadata.BranchURL }}
+{{ $commitURL := .Metadata.CommitURL }}
+{{ $webURL := .Metadata.WebURL }}
 
 <body>
   <!-- header goes here -->
@@ -265,8 +266,8 @@
         <p><b>Tool:</b> {{ .Metadata.ToolMetadata.Name }} {{if .Metadata.ToolMetadata.Version}}{{ .Metadata.ToolMetadata.Version }}{{end}}</p>
         {{if .Metadata.SourceFolder}}<p><b>Source:</b> {{ .Metadata.SourceFolder }}</p>{{end}}
         {{if $repo}}<p><b>Repository:</b> <a href="{{ $webURL }}">{{ $repo }}</a></p>{{end}}
-        {{if $branch}}<p><b>Branch:</b> {{if $webURL}}<a href="{{- $webURL -}}/tree/{{- $branch -}}">{{ $branch }}</a>{{else}}{{ $branch }}{{end}} </p>{{end}}
-        {{if $commit}}<p><b>Commit:</b> {{if $webURL}}<a href="{{- $webURL -}}/tree/{{- $commit -}}">{{ $commit }}</a>{{else}}{{ $commit }}{{end}} </p>{{end}}
+        {{if $branch}}<p><b>Branch:</b> {{if $branchURL}}<a href="{{- $branchURL -}}">{{ $branch }}</a>{{else}}{{ $branch }}{{end}} </p>{{end}}
+        {{if $commit}}<p><b>Commit:</b> {{if $commitURL}}<a href="{{- $commitURL -}}">{{ $commit }}</a>{{else}}{{ $commit }}{{end}} </p>{{end}}
         {{if .Metadata.RepositoryMetadata.Subfolder}}<p><b>Subfolder:</b> {{ .Metadata.RepositoryMetadata.Subfolder }} </p>{{end}}
       </div> 
     </div>

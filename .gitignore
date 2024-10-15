@@ -65,6 +65,5 @@ __debug_bin*
 # reports
 *.sarif
 *.json
-scanio-report.html
-snyk-to-html-report.html
-report.html
+*report.html
+*results.html

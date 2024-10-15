@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"html/template"
 	"os"
 	"path/filepath"
 	"time"
@@ -36,6 +35,9 @@ type ReportMetadata struct {
 	Time         time.Time
 	SourceFolder string
 	SeverityInfo map[string]int
+	WebURL       string
+	BranchURL    string
+	CommitURL    string
 }
 
 var execExampleToHTML = `  # Generate html report for semgrep sarif output
@@ -47,6 +49,14 @@ func gitURLtoWebURL(gitURL string) string {
 		return gitURL
 	}
 	return u.HTTPRepoLink
+}
+
+func buildWebURLToBranch(webURL, branch string) string {
+	return filepath.Join(webURL, "tree", branch)
+}
+
+func buildWebURLToCommit(webURL, commit string) string {
+	return filepath.Join(webURL, "tree", commit)
 }
 
 // toHtmlCmd represents the toHtml command
@@ -89,6 +99,8 @@ var toHtmlCmd = &cobra.Command{
 			metadataSourceFolder = ""
 		}
 
+		webURL := gitURLtoWebURL(*repositoryMetadata.RepositoryFullName)
+
 		metadata := &ReportMetadata{
 			RepositoryMetadata: *repositoryMetadata,
 			ToolMetadata:       *toolMetadata,
@@ -96,6 +108,9 @@ var toHtmlCmd = &cobra.Command{
 			Time:               time.Now().UTC(),
 			SourceFolder:       metadataSourceFolder,
 			SeverityInfo:       severityInfo,
+			WebURL:             webURL,
+			BranchURL:          buildWebURLToBranch(webURL, *repositoryMetadata.BranchName),
+			CommitURL:          buildWebURLToCommit(webURL, *repositoryMetadata.CommitHash),
 		}
 		logger.Debug("metadata", "metadata", *metadata)
 
@@ -109,7 +124,7 @@ var toHtmlCmd = &cobra.Command{
 			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
 
-		tmpl, err := scaniotemplate.NewTemplate(templateFile, scaniotemplate.WithFuncs(template.FuncMap{"gitURLtoWebURL": gitURLtoWebURL}))
+		tmpl, err := scaniotemplate.NewTemplate(templateFile)
 		if err != nil {
 			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
