@@ -325,15 +325,6 @@ func (r Report) EnrichResultsLocationURIProperty(locationWebURLCallback func(art
 	}
 }
 
-// EnrichResultsProperties function enriches sarif results properties with title, description, location and level values
-// for better html report representation
-func (r Report) EnrichResultsProperties(locationWebURLCallback func(artifactLocation *sarif.Location) string) {
-	r.EnrichResultsTitleProperty()
-	r.EnrichResultsCodeFlowProperty(locationWebURLCallback)
-	r.EnrichResultsLevelProperty()
-	r.EnrichResultsLocationURIProperty(locationWebURLCallback)
-}
-
 // SortResultsByLevel function sorts sarif results by level
 func (r Report) SortResultsByLevel() {
 

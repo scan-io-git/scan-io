@@ -45,6 +45,8 @@ type ReportMetadata struct {
 var execExampleToHTML = `  # Generate html report for semgrep sarif output
   scanio to-html --input /tmp/juice-shop/semgrep.sarif --output /tmp/juice-shop/semgrep.html --source /tmp/juice-shop`
 
+// generic function to convert git URL to web URL
+// will implement vcs specific logic here if needed
 func gitURLtoWebURL(gitURL string) string {
 	u, err := vcsurl.Parse(gitURL)
 	if err != nil {
@@ -53,17 +55,15 @@ func gitURLtoWebURL(gitURL string) string {
 	return u.HTTPRepoLink
 }
 
+// this function will implement vcs specific logic to generate web URL to branch
 func buildWebURLToBranch(webURL, branch string) string {
 	return filepath.Join(webURL, "tree", branch)
 }
 
+// this function will implement vcs specific logic to generate web URL to commit
 func buildWebURLToCommit(webURL, commit string) string {
 	return filepath.Join(webURL, "tree", commit)
 }
-
-// func locationWebURLCB() string {
-// 	return "test"
-// }
 
 // toHtmlCmd represents the toHtml command
 var toHtmlCmd = &cobra.Command{
@@ -106,7 +106,10 @@ var toHtmlCmd = &cobra.Command{
 		}
 
 		// enrich sarif report with additional properties and remove duplicates from dataflow results
-		sarifReport.EnrichResultsProperties(locationWebURLCallback)
+		sarifReport.EnrichResultsTitleProperty()
+		sarifReport.EnrichResultsCodeFlowProperty(locationWebURLCallback)
+		sarifReport.EnrichResultsLevelProperty()
+		sarifReport.EnrichResultsLocationURIProperty(locationWebURLCallback)
 		sarifReport.SortResultsByLevel()
 		sarifReport.RemoveDataflowDuplicates()
 
