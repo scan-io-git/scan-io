@@ -294,7 +294,7 @@
               {{ $location := index .Locations 0}}
               {{ $locationURI := index $location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
               {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
-              {{ $locationWebURL := index $location.PhysicalLocation.ArtifactLocation.Properties "WebURL"}}
+              {{ $locationWebURL := index $location.Properties "WebURL"}}
               <div class="issue-card__body__metadata__location">Location: <strong>{{if $locationWebURL}}<a href="{{- $locationWebURL -}}">{{$locationURI}} (line : {{$locationStartLine}})</a> {{else}} {{$locationURI}} (line : {{$locationStartLine}}){{end}}</strong></div>
             </div>
             <div class="issue-card__body__dataflows">
@@ -333,15 +333,18 @@
                         {{ $endLine := index .Location.PhysicalLocation.Region.Properties "EndLine" }}
                         {{ $startColumn := index .Location.PhysicalLocation.Region.Properties "StartColumn" }}
                         {{ $endColumn := index .Location.PhysicalLocation.Region.Properties "EndColumn" }}
+                        {{ $locationWebURL := index $location.Properties "WebURL"}}
                         {{/* */}}
 
                         <div class="issue-card__body__dataflows__codeline">
 
-                          {{if (and $webURL $commit)}}
-                            <span class="issue-card__body__dataflows__codeline__linecol"><a href="{{- $webURL -}}/blob/{{- $commit -}}/{{- $curUri -}}#L{{- $startLine -}}">{{$startLine}}:{{$startColumn}}</a></span>
+                          <span class="issue-card__body__dataflows__codeline__linecol">
+                          {{if $locationWebURL}}
+                            <a href="{{- $locationWebURL -}}">{{$startLine}}:{{$startColumn}}</a>
                           {{else}}
-                            <span class="issue-card__body__dataflows__codeline__linecol">{{$startLine}}:{{$startColumn}}</span>
+                            {{$startLine}}:{{$startColumn}}
                           {{end}}
+                          </span>
 
                           {{if $code}}
                           <div class="issue-card__body__dataflows__codeline__linecol__code">

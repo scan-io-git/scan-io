@@ -93,7 +93,7 @@ var toHtmlCmd = &cobra.Command{
 		// we need it because neither sarif nor git modules know anything about vcs web URL structures.
 		// so we should implement vcs scpecific logic here
 		// for beginning I started with generic/github implementation
-		locationWebURLCB := func(location *sarif.Location) string {
+		locationWebURLCallback := func(location *sarif.Location) string {
 			// verify that location.PhysicalLocation.ArtifactLocation.Properties["URI"] is not nil
 			if location.PhysicalLocation.ArtifactLocation.Properties["URI"] == nil {
 				return ""
@@ -106,7 +106,7 @@ var toHtmlCmd = &cobra.Command{
 		}
 
 		// enrich sarif report with additional properties and remove duplicates from dataflow results
-		sarifReport.EnrichResultsProperties(locationWebURLCB)
+		sarifReport.EnrichResultsProperties(locationWebURLCallback)
 		sarifReport.SortResultsByLevel()
 		sarifReport.RemoveDataflowDuplicates()
 

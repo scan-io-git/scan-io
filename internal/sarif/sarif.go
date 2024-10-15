@@ -229,7 +229,7 @@ func (r Report) readLineFromFile(loc *sarif.PhysicalLocation) (string, error) {
 }
 
 // EnrichResultsCodeFlowProperty function enriches code flow location properties with source code and URI values
-func (r Report) EnrichResultsCodeFlowProperty() {
+func (r Report) EnrichResultsCodeFlowProperty(locationWebURLCallback func(artifactLocation *sarif.Location) string) {
 
 	for _, result := range r.Runs[0].Results {
 
@@ -254,6 +254,11 @@ func (r Report) EnrichResultsCodeFlowProperty() {
 						r.logger.Debug("can't read source file", "err", err)
 						continue
 					}
+
+					if location.Location.Properties == nil {
+						location.Location.Properties = make(map[string]interface{})
+					}
+					location.Location.Properties["WebURL"] = locationWebURLCallback(location.Location)
 				}
 			}
 		}
@@ -288,7 +293,7 @@ func (r Report) EnrichResultsLevelProperty() {
 	}
 }
 
-func (r Report) EnrichResultsLocationURIProperty(locationWebURLCB func(artifactLocation *sarif.Location) string) {
+func (r Report) EnrichResultsLocationURIProperty(locationWebURLCallback func(artifactLocation *sarif.Location) string) {
 	for _, result := range r.Runs[0].Results {
 		// if result location length is at least 1
 		if len(result.Locations) > 0 {
@@ -311,7 +316,10 @@ func (r Report) EnrichResultsLocationURIProperty(locationWebURLCB func(artifactL
 					}
 				}
 
-				artifactLocation.Properties["WebURL"] = locationWebURLCB(location)
+				if location.Properties == nil {
+					location.Properties = make(map[string]interface{})
+				}
+				location.Properties["WebURL"] = locationWebURLCallback(location)
 			}
 		}
 	}
@@ -319,11 +327,11 @@ func (r Report) EnrichResultsLocationURIProperty(locationWebURLCB func(artifactL
 
 // EnrichResultsProperties function enriches sarif results properties with title, description, location and level values
 // for better html report representation
-func (r Report) EnrichResultsProperties(locationWebURLCB func(artifactLocation *sarif.Location) string) {
+func (r Report) EnrichResultsProperties(locationWebURLCallback func(artifactLocation *sarif.Location) string) {
 	r.EnrichResultsTitleProperty()
-	r.EnrichResultsCodeFlowProperty()
+	r.EnrichResultsCodeFlowProperty(locationWebURLCallback)
 	r.EnrichResultsLevelProperty()
-	r.EnrichResultsLocationURIProperty(locationWebURLCB)
+	r.EnrichResultsLocationURIProperty(locationWebURLCallback)
 }
 
 // SortResultsByLevel function sorts sarif results by level
