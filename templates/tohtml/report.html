@@ -294,7 +294,8 @@
               {{ $location := index .Locations 0}}
               {{ $locationURI := index $location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
               {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
-              <div class="issue-card__body__metadata__location">Location: <strong>{{if (and $webURL $commit)}}<a href="{{- $webURL -}}/blob/{{- $commit -}}/{{- $locationURI -}}#L{{- $locationStartLine -}}">{{$locationURI}} (line : {{$locationStartLine}})</a> {{else}} {{$locationURI}} (line : {{$locationStartLine}}){{end}}</strong></div>
+              {{ $locationWebURL := index $location.PhysicalLocation.ArtifactLocation.Properties "WebURL"}}
+              <div class="issue-card__body__metadata__location">Location: <strong>{{if $locationWebURL}}<a href="{{- $locationWebURL -}}">{{$locationURI}} (line : {{$locationStartLine}})</a> {{else}} {{$locationURI}} (line : {{$locationStartLine}}){{end}}</strong></div>
             </div>
             <div class="issue-card__body__dataflows">
               <header class="card__body__dataflows__header">

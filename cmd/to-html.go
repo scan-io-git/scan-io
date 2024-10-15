@@ -3,8 +3,10 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
+	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/internal/git"
@@ -59,6 +61,10 @@ func buildWebURLToCommit(webURL, commit string) string {
 	return filepath.Join(webURL, "tree", commit)
 }
 
+// func locationWebURLCB() string {
+// 	return "test"
+// }
+
 // toHtmlCmd represents the toHtml command
 var toHtmlCmd = &cobra.Command{
 	Use:     "to-html -i /path/to/input/report.sarif -o /path/to/output/report.html -s /path/to/source/folder",
@@ -74,17 +80,35 @@ var toHtmlCmd = &cobra.Command{
 			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
 
-		// enrich sarif report with additional properties and remove duplicates from dataflow results
-		sarifReport.EnrichResultsProperties()
-		sarifReport.SortResultsByLevel()
-		sarifReport.RemoveDataflowDuplicates()
-
 		// collect metadata for the report template
 		repositoryMetadata, err := git.CollectRepositoryMetadata(allToHTMLOptions.SourceFolder)
 		if err != nil {
 			logger.Debug("can't collect repository metadata", "err", err)
 		}
 		logger.Debug("repositoryMetadata", "BranchName", *repositoryMetadata.BranchName, "CommitHash", *repositoryMetadata.CommitHash, "RepositoryFullName", *repositoryMetadata.RepositoryFullName, "Subfolder", repositoryMetadata.Subfolder, "RepoRootFolder", repositoryMetadata.RepoRootFolder)
+
+		webURL := gitURLtoWebURL(*repositoryMetadata.RepositoryFullName)
+
+		// a callback function to generate web url for location
+		// we need it because neither sarif nor git modules know anything about vcs web URL structures.
+		// so we should implement vcs scpecific logic here
+		// for beginning I started with generic/github implementation
+		locationWebURLCB := func(location *sarif.Location) string {
+			// verify that location.PhysicalLocation.ArtifactLocation.Properties["URI"] is not nil
+			if location.PhysicalLocation.ArtifactLocation.Properties["URI"] == nil {
+				return ""
+			}
+			locationWebURL := filepath.Join(webURL, "blob", *repositoryMetadata.CommitHash, location.PhysicalLocation.ArtifactLocation.Properties["URI"].(string))
+			if location.PhysicalLocation.Region.StartLine != nil {
+				locationWebURL += "#L" + strconv.Itoa(*location.PhysicalLocation.Region.StartLine)
+			}
+			return locationWebURL
+		}
+
+		// enrich sarif report with additional properties and remove duplicates from dataflow results
+		sarifReport.EnrichResultsProperties(locationWebURLCB)
+		sarifReport.SortResultsByLevel()
+		sarifReport.RemoveDataflowDuplicates()
 
 		toolMetadata, err := sarifReport.ExtractToolNameAndVersion()
 		if err != nil {
@@ -98,8 +122,6 @@ var toHtmlCmd = &cobra.Command{
 		if config.IsCI(AppConfig) {
 			metadataSourceFolder = ""
 		}
-
-		webURL := gitURLtoWebURL(*repositoryMetadata.RepositoryFullName)
 
 		metadata := &ReportMetadata{
 			RepositoryMetadata: *repositoryMetadata,

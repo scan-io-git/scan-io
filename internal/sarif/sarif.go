@@ -288,7 +288,7 @@ func (r Report) EnrichResultsLevelProperty() {
 	}
 }
 
-func (r Report) EnrichResultsLocationURIProperty() {
+func (r Report) EnrichResultsLocationURIProperty(locationWebURLCB func(artifactLocation *sarif.Location) string) {
 	for _, result := range r.Runs[0].Results {
 		// if result location length is at least 1
 		if len(result.Locations) > 0 {
@@ -310,6 +310,8 @@ func (r Report) EnrichResultsLocationURIProperty() {
 						artifactLocation.Properties["URI"] = artifactLocation.Properties["URI"].(string)[1:]
 					}
 				}
+
+				artifactLocation.Properties["WebURL"] = locationWebURLCB(location)
 			}
 		}
 	}
@@ -317,11 +319,11 @@ func (r Report) EnrichResultsLocationURIProperty() {
 
 // EnrichResultsProperties function enriches sarif results properties with title, description, location and level values
 // for better html report representation
-func (r Report) EnrichResultsProperties() {
+func (r Report) EnrichResultsProperties(locationWebURLCB func(artifactLocation *sarif.Location) string) {
 	r.EnrichResultsTitleProperty()
 	r.EnrichResultsCodeFlowProperty()
 	r.EnrichResultsLevelProperty()
-	r.EnrichResultsLocationURIProperty()
+	r.EnrichResultsLocationURIProperty(locationWebURLCB)
 }
 
 // SortResultsByLevel function sorts sarif results by level
