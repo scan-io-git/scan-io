@@ -1,11 +1,12 @@
 package cmd
 
 import (
-	"html/template"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
+	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/internal/git"
@@ -36,17 +37,32 @@ type ReportMetadata struct {
 	Time         time.Time
 	SourceFolder string
 	SeverityInfo map[string]int
+	WebURL       string
+	BranchURL    string
+	CommitURL    string
 }
 
 var execExampleToHTML = `  # Generate html report for semgrep sarif output
   scanio to-html --input /tmp/juice-shop/semgrep.sarif --output /tmp/juice-shop/semgrep.html --source /tmp/juice-shop`
 
+// generic function to convert git URL to web URL
+// will implement vcs specific logic here if needed
 func gitURLtoWebURL(gitURL string) string {
 	u, err := vcsurl.Parse(gitURL)
 	if err != nil {
 		return gitURL
 	}
 	return u.HTTPRepoLink
+}
+
+// this function will implement vcs specific logic to generate web URL to branch
+func buildWebURLToBranch(webURL, branch string) string {
+	return filepath.Join(webURL, "tree", branch)
+}
+
+// this function will implement vcs specific logic to generate web URL to commit
+func buildWebURLToCommit(webURL, commit string) string {
+	return filepath.Join(webURL, "tree", commit)
 }
 
 // toHtmlCmd represents the toHtml command
@@ -64,17 +80,38 @@ var toHtmlCmd = &cobra.Command{
 			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
 
-		// enrich sarif report with additional properties and remove duplicates from dataflow results
-		sarifReport.EnrichResultsProperties()
-		sarifReport.SortResultsByLevel()
-		sarifReport.RemoveDataflowDuplicates()
-
 		// collect metadata for the report template
 		repositoryMetadata, err := git.CollectRepositoryMetadata(allToHTMLOptions.SourceFolder)
 		if err != nil {
 			logger.Debug("can't collect repository metadata", "err", err)
 		}
 		logger.Debug("repositoryMetadata", "BranchName", *repositoryMetadata.BranchName, "CommitHash", *repositoryMetadata.CommitHash, "RepositoryFullName", *repositoryMetadata.RepositoryFullName, "Subfolder", repositoryMetadata.Subfolder, "RepoRootFolder", repositoryMetadata.RepoRootFolder)
+
+		webURL := gitURLtoWebURL(*repositoryMetadata.RepositoryFullName)
+
+		// a callback function to generate web url for location
+		// we need it because neither sarif nor git modules know anything about vcs web URL structures.
+		// so we should implement vcs scpecific logic here
+		// for beginning I started with generic/github implementation
+		locationWebURLCallback := func(location *sarif.Location) string {
+			// verify that location.PhysicalLocation.ArtifactLocation.Properties["URI"] is not nil
+			if location.PhysicalLocation.ArtifactLocation.Properties["URI"] == nil {
+				return ""
+			}
+			locationWebURL := filepath.Join(webURL, "blob", *repositoryMetadata.CommitHash, location.PhysicalLocation.ArtifactLocation.Properties["URI"].(string))
+			if location.PhysicalLocation.Region.StartLine != nil {
+				locationWebURL += "#L" + strconv.Itoa(*location.PhysicalLocation.Region.StartLine)
+			}
+			return locationWebURL
+		}
+
+		// enrich sarif report with additional properties and remove duplicates from dataflow results
+		sarifReport.EnrichResultsTitleProperty()
+		sarifReport.EnrichResultsCodeFlowProperty(locationWebURLCallback)
+		sarifReport.EnrichResultsLevelProperty()
+		sarifReport.EnrichResultsLocationURIProperty(locationWebURLCallback)
+		sarifReport.SortResultsByLevel()
+		sarifReport.RemoveDataflowDuplicates()
 
 		toolMetadata, err := sarifReport.ExtractToolNameAndVersion()
 		if err != nil {
@@ -96,6 +133,9 @@ var toHtmlCmd = &cobra.Command{
 			Time:               time.Now().UTC(),
 			SourceFolder:       metadataSourceFolder,
 			SeverityInfo:       severityInfo,
+			WebURL:             webURL,
+			BranchURL:          buildWebURLToBranch(webURL, *repositoryMetadata.BranchName),
+			CommitURL:          buildWebURLToCommit(webURL, *repositoryMetadata.CommitHash),
 		}
 		logger.Debug("metadata", "metadata", *metadata)
 
@@ -109,7 +149,7 @@ var toHtmlCmd = &cobra.Command{
 			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
 
-		tmpl, err := scaniotemplate.NewTemplate(templateFile, scaniotemplate.WithFuncs(template.FuncMap{"gitURLtoWebURL": gitURLtoWebURL}))
+		tmpl, err := scaniotemplate.NewTemplate(templateFile)
 		if err != nil {
 			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
