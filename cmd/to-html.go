@@ -26,6 +26,7 @@ type ToHTMLOptions struct {
 	OutputFile   string `json:"output_file,omitempty"`
 	Input        string `json:"input,omitempty"`
 	SourceFolder string `json:"source_folder,omitempty"`
+	VCS          string `json:"vcs,omitempty"`
 }
 
 var allToHTMLOptions ToHTMLOptions
@@ -45,24 +46,45 @@ type ReportMetadata struct {
 var execExampleToHTML = `  # Generate html report for semgrep sarif output
   scanio to-html --input /tmp/juice-shop/semgrep.sarif --output /tmp/juice-shop/semgrep.html --source /tmp/juice-shop`
 
-// generic function to convert git URL to web URL
-// will implement vcs specific logic here if needed
-func gitURLtoWebURL(gitURL string) string {
-	u, err := vcsurl.Parse(gitURL)
-	if err != nil {
-		return gitURL
+// this function will implement vcs specific logic to generate web URL to branch or commit
+func buildWebURLToRef(url *vcsurl.VCSURL, refName string) string {
+	midder := "tree"
+	if url.VCSType == vcsurl.Bitbucket {
+		midder = "src"
 	}
-	return u.HTTPRepoLink
+	return filepath.Join(url.HTTPRepoLink, midder, refName)
 }
 
-// this function will implement vcs specific logic to generate web URL to branch
-func buildWebURLToBranch(webURL, branch string) string {
-	return filepath.Join(webURL, "tree", branch)
+// buildGenericLocationURL constructs webURL for a report location
+func buildGenericLocationURL(location *sarif.Location, url vcsurl.VCSURL, repoMetadata *git.RepositoryMetadata) string {
+	// verify that location.PhysicalLocation.ArtifactLocation.Properties["URI"] is not nil
+	if location.PhysicalLocation.ArtifactLocation.Properties["URI"] == nil {
+		return ""
+	}
+	locationWebURL := filepath.Join(url.HTTPRepoLink, "blob", *repoMetadata.CommitHash, location.PhysicalLocation.ArtifactLocation.Properties["URI"].(string))
+	if location.PhysicalLocation.Region.StartLine != nil {
+		locationWebURL += "#L" + strconv.Itoa(*location.PhysicalLocation.Region.StartLine)
+	}
+	if location.PhysicalLocation.Region.EndLine != nil && *location.PhysicalLocation.Region.EndLine != *location.PhysicalLocation.Region.StartLine {
+		locationWebURL += "-L" + strconv.Itoa(*location.PhysicalLocation.Region.EndLine)
+	}
+	return locationWebURL
 }
 
-// this function will implement vcs specific logic to generate web URL to commit
-func buildWebURLToCommit(webURL, commit string) string {
-	return filepath.Join(webURL, "tree", commit)
+// buildBitbucketLocationURL constructs webURL for a report location for bitbucket
+func buildBitbucketLocationURL(location *sarif.Location, url vcsurl.VCSURL, repoMetadata *git.RepositoryMetadata) string {
+	// verify that location.PhysicalLocation.ArtifactLocation.Properties["URI"] is not nil
+	if location.PhysicalLocation.ArtifactLocation.Properties["URI"] == nil {
+		return ""
+	}
+	locationWebURL := filepath.Join(url.HTTPRepoLink, "src", *repoMetadata.CommitHash, location.PhysicalLocation.ArtifactLocation.Properties["URI"].(string))
+	if location.PhysicalLocation.Region.StartLine != nil {
+		locationWebURL += "#lines-" + strconv.Itoa(*location.PhysicalLocation.Region.StartLine)
+	}
+	if location.PhysicalLocation.Region.EndLine != nil && *location.PhysicalLocation.Region.EndLine != *location.PhysicalLocation.Region.StartLine {
+		locationWebURL += ":" + strconv.Itoa(*location.PhysicalLocation.Region.EndLine)
+	}
+	return locationWebURL
 }
 
 // toHtmlCmd represents the toHtml command
@@ -87,22 +109,21 @@ var toHtmlCmd = &cobra.Command{
 		}
 		logger.Debug("repositoryMetadata", "BranchName", *repositoryMetadata.BranchName, "CommitHash", *repositoryMetadata.CommitHash, "RepositoryFullName", *repositoryMetadata.RepositoryFullName, "Subfolder", repositoryMetadata.Subfolder, "RepoRootFolder", repositoryMetadata.RepoRootFolder)
 
-		webURL := gitURLtoWebURL(*repositoryMetadata.RepositoryFullName)
+		vcsType := vcsurl.StringToVCSType(allToHTMLOptions.VCS)
+		url, err := vcsurl.ParseForVCSType(*repositoryMetadata.RepositoryFullName, vcsType)
+		if err != nil {
+			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
+		}
 
 		// a callback function to generate web url for location
 		// we need it because neither sarif nor git modules know anything about vcs web URL structures.
 		// so we should implement vcs scpecific logic here
 		// for beginning I started with generic/github implementation
 		locationWebURLCallback := func(location *sarif.Location) string {
-			// verify that location.PhysicalLocation.ArtifactLocation.Properties["URI"] is not nil
-			if location.PhysicalLocation.ArtifactLocation.Properties["URI"] == nil {
-				return ""
+			if vcsType == vcsurl.Bitbucket {
+				return buildBitbucketLocationURL(location, *url, repositoryMetadata)
 			}
-			locationWebURL := filepath.Join(webURL, "blob", *repositoryMetadata.CommitHash, location.PhysicalLocation.ArtifactLocation.Properties["URI"].(string))
-			if location.PhysicalLocation.Region.StartLine != nil {
-				locationWebURL += "#L" + strconv.Itoa(*location.PhysicalLocation.Region.StartLine)
-			}
-			return locationWebURL
+			return buildGenericLocationURL(location, *url, repositoryMetadata)
 		}
 
 		// enrich sarif report with additional properties and remove duplicates from dataflow results
@@ -133,9 +154,9 @@ var toHtmlCmd = &cobra.Command{
 			Time:               time.Now().UTC(),
 			SourceFolder:       metadataSourceFolder,
 			SeverityInfo:       severityInfo,
-			WebURL:             webURL,
-			BranchURL:          buildWebURLToBranch(webURL, *repositoryMetadata.BranchName),
-			CommitURL:          buildWebURLToCommit(webURL, *repositoryMetadata.CommitHash),
+			WebURL:             url.HTTPRepoLink,
+			BranchURL:          buildWebURLToRef(url, *repositoryMetadata.BranchName),
+			CommitURL:          buildWebURLToRef(url, *repositoryMetadata.CommitHash),
 		}
 		logger.Debug("metadata", "metadata", *metadata)
 
@@ -184,4 +205,5 @@ func init() {
 	toHtmlCmd.Flags().StringVarP(&allToHTMLOptions.Input, "input", "i", "", "input file with sarif report")
 	toHtmlCmd.Flags().StringVarP(&allToHTMLOptions.OutputFile, "output", "o", "scanio-report.html", "outoput file")
 	toHtmlCmd.Flags().StringVarP(&allToHTMLOptions.SourceFolder, "source", "s", "", "source folder")
+	toHtmlCmd.Flags().StringVar(&allToHTMLOptions.VCS, "vcs", "generic", "vcs type")
 }
