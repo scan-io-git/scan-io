@@ -73,16 +73,18 @@ func buildGenericLocationURL(location *sarif.Location, url vcsurl.VCSURL, repoMe
 
 // buildBitbucketLocationURL constructs webURL for a report location for bitbucket
 func buildBitbucketLocationURL(location *sarif.Location, url vcsurl.VCSURL, repoMetadata *git.RepositoryMetadata) string {
+	// url example: https://bitbucket.onprem.example/projects/<project_name>/repos/<repo_name>/browse/<path>/<vuln.file>?at=<commit_hash>#<line>
 	// verify that location.PhysicalLocation.ArtifactLocation.Properties["URI"] is not nil
 	if location.PhysicalLocation.ArtifactLocation.Properties["URI"] == nil {
 		return ""
 	}
-	locationWebURL := filepath.Join(url.HTTPRepoLink, "src", *repoMetadata.CommitHash, location.PhysicalLocation.ArtifactLocation.Properties["URI"].(string))
+	locationWebURL := filepath.Join(url.HTTPRepoLink, "browse", location.PhysicalLocation.ArtifactLocation.Properties["URI"].(string))
+	locationWebURL += "?at=" + *repoMetadata.CommitHash
 	if location.PhysicalLocation.Region.StartLine != nil {
-		locationWebURL += "#lines-" + strconv.Itoa(*location.PhysicalLocation.Region.StartLine)
+		locationWebURL += "#" + strconv.Itoa(*location.PhysicalLocation.Region.StartLine)
 	}
 	if location.PhysicalLocation.Region.EndLine != nil && *location.PhysicalLocation.Region.EndLine != *location.PhysicalLocation.Region.StartLine {
-		locationWebURL += ":" + strconv.Itoa(*location.PhysicalLocation.Region.EndLine)
+		locationWebURL += "-" + strconv.Itoa(*location.PhysicalLocation.Region.EndLine)
 	}
 	return locationWebURL
 }
