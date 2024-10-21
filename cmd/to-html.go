@@ -46,11 +46,18 @@ type ReportMetadata struct {
 var execExampleToHTML = `  # Generate html report for semgrep sarif output
   scanio to-html --input /tmp/juice-shop/semgrep.sarif --output /tmp/juice-shop/semgrep.html --source /tmp/juice-shop`
 
-// this function will implement vcs specific logic to generate web URL to branch or commit
-func buildWebURLToRef(url *vcsurl.VCSURL, refName string) string {
-	midder := "tree"
-	if url.VCSType == vcsurl.Bitbucket {
-		midder = "src"
+// this function will implement vcs specific logic to generate web URL to branch or commit + special case for onprem BB
+func buildWebURLToRef(url *vcsurl.VCSURL, refName, refType string) string {
+	var midder string
+	switch refType {
+	case "commit":
+		midder = "commits"
+	case "branch":
+		if url.VCSType == vcsurl.Bitbucket {
+			// Special case for Bitbucket branch
+			return filepath.Join(url.HTTPRepoLink, "browse?at=refs%2Fheads%2F"+refName)
+		}
+		midder = "tree"
 	}
 	return filepath.Join(url.HTTPRepoLink, midder, refName)
 }
@@ -157,8 +164,8 @@ var toHtmlCmd = &cobra.Command{
 			SourceFolder:       metadataSourceFolder,
 			SeverityInfo:       severityInfo,
 			WebURL:             url.HTTPRepoLink,
-			BranchURL:          buildWebURLToRef(url, *repositoryMetadata.BranchName),
-			CommitURL:          buildWebURLToRef(url, *repositoryMetadata.CommitHash),
+			BranchURL:          buildWebURLToRef(url, *repositoryMetadata.BranchName, "branch"),
+			CommitURL:          buildWebURLToRef(url, *repositoryMetadata.CommitHash, "commit"),
 		}
 		logger.Debug("metadata", "metadata", *metadata)
 
