@@ -9,16 +9,32 @@
   <title>{{ .Metadata.Title }}</title>
   <base target="_blank">
 
-  <!-- inline css goes here -->
   <style type="text/css">
+    :root {
+      --bg-color-light: #dad7cd;
+      --bg-color-dark: #0d1117;
+      --border-color-light: #1c2135;
+      --border-color-dark: #f0f0e8;
+      --sun-color: #fabc1c;
+      --moon-color: #fffdf2;
+      --day-bg-color: #0dbdf6;
+      --night-bg-color: #272a30;
+      --cloud-color: #fffdf2;
+      --star-color: #fffdf2;
+    }
 
     body {
-      font-family: system-ui, Helvetica, sans-serif;
+      font-family: 'Open Sans', system-ui, Helvetica, sans-serif;
       margin: 0;
       padding: 0;
       display: flex;
       flex-direction: column;
-      background-color: #F5F5F5;
+      transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out;
+    }
+
+    body.dark-mode {
+      background-color: var(--bg-color-dark);
+      color: #F1F1F1;
     }
 
     .main-body {
@@ -44,13 +60,18 @@
 
     .issue-card {
       left: 0;
-      /* position: absolute; */
       top: 10px;
-      padding: 16px 8px;
-      border-radius: 8px 8px 0px 0px;
+      padding: 24px 16px;
+      border-radius: 8px;
       border: 2px solid;
-      margin-bottom: 32px;
+      margin-bottom: 40px;
       background-color: #F3F3F3;
+    }
+
+
+    body.dark-mode .issue-card {
+      background-color: #151b23f2;
+      border-color: #8a939f;
     }
 
     .severity--error {
@@ -66,15 +87,15 @@
     }
 
     .severity-icon {
-      width: 32px; /* Width of the SVG image */
-      height: 32px; /* Height of the SVG image */
+      width: 32px; 
+      height: 32px; 
       display: inline-block;
       margin-right: 8px;
     }
 
     .severity-icon--small {
-      width: 24px; /* Width of the SVG image */
-      height: 24px; /* Height of the SVG image */
+      width: 24px; 
+      height: 24px; 
       display: inline-block;
       margin-right: 6px;
     }
@@ -100,21 +121,32 @@
     .issue-card__body__metadata {
       padding: 8px 8px;
       border: 2px solid #d3d3d9;
-      border-radius: 2px;
+      border-radius: 8px;
       margin-bottom: 8px;
       overflow: auto;
     }
 
+    body.dark-mode .issue-card__body__metadata {
+      border-color: #8a939f;
+      background-color: var(--bg-color-dark);
+    }
+
     .issue-card__body__dataflows__filename {
       padding:4px 8px;
-      border:1px solid #eee;
-      font-size:12px;
+      border:1px solid #d3d3d9;
+      border-radius: 8px;
+      font-size:14px;
+    }
+
+    body.dark-mode .issue-card__body__dataflows__filename {
+      border-color: #8a939f;
+      background-color: var(--bg-color-dark);
     }
 
     .issue-card__body__dataflows__codeline {
       padding:4px 8px;
       font-family: monospace;
-      font-size:12px;
+      font-size:14px;
       display: flex;
     }
 
@@ -129,18 +161,22 @@
     }
 
     .issue-card__body__metadata__location {
-      font-size: 12px;
+      font-size: 14px;
     }
 
     .issue-card__body__dataflow-id {
       display: inline-block;
-      width: 16px; /* Adjust as needed */
-      height: 16px; /* Make sure width and height are equal */
-      border: 2px solid #d3d3d9; /* Adjust border thickness and color as needed */
-      border-radius: 50%; /* This makes the border round */
-      text-align: center; /* Centers the text horizontally */
-      line-height: 16px; /* Adjust this to be equal to the height to center the text vertically */
-      font-size: 12px; /* Adjust text size as needed */
+      width: 16px; 
+      height: 16px; 
+      border: 2px solid #d3d3d9; 
+      border-radius: 50%;
+      text-align: center; 
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    body.dark-mode .issue-card__body__dataflow-id {
+      background-color: #8a939f;
     }
 
     .card__body__dataflows__header {
@@ -152,7 +188,7 @@
     }
 
     .selected-dataflow-id {
-      background-color:#6c249c;
+      background-color:#31bc81;
       color: #ffffff;
     }
 
@@ -169,18 +205,25 @@
       background-color: rgba(0,0,0,.1);
     }
 
+    body.dark-mode .dataflow-code-highlighted {
+      background-color: #386641
+    }
+
     .header-container {
-      background-color: #6c249c;
-      color: #eee;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #32bc81;
+      color: #000;
       padding: 8px;
     }
 
     .header-container__metadata {
+      background-color: rgba(0, 0, 0, 0.05);
+      padding: 12px;
+      border-radius: 4px;
       float: right;
       text-align: left;
-      font-size: 12px;
-      /* margin-right: 16px; */
-      /* margin-left: auto; */
+      font-size: 14px;
     }
 
     .header-container__metadata p {
@@ -188,11 +231,16 @@
     }
 
     .header-container__metadata p a {
-      color: #eee;
+      color: #334D82; 
     }
 
     .issue-card__body__metadata__location a, .issue-card__body__dataflows__codeline__linecol a {
-      color: #000;
+      color: #4a90e2; 
+    }
+
+    body.dark-mode .issue-card__body__metadata__location a, 
+    body.dark-mode .issue-card__body__dataflows__codeline__linecol a {
+      color: #4a90e2; 
     }
 
     .header-container__logo {
@@ -207,15 +255,127 @@
       margin: 0 auto;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
     }
 
     .header-container__issues-breakdown {
       /* margin: auto; */
-      font-size: 16px;
+      font-size: 14px;
+      background-color: rgba(0, 0, 0, 0.05);
+      padding: 12px;
+      border-radius: 4px;
+      float: right;
+      text-align: left;
     }
 
     .header-container__issues-breakdown__table__entry {
       display: flex;
+      align-items: center; 
+      gap: 8px; 
+      margin-bottom: 2px;
+    }
+
+    .theme-switcher-grid {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 100;
+      display: grid;
+      grid-template-columns: repeat(54, 1px);
+      grid-template-rows: repeat(24, 1px);
+      background-color: var(--day-bg-color);
+      border-radius: 49px;
+      border: 2px solid var(--border-color-light);
+      cursor: pointer;
+      transition: background-color 0.5s ease, border-color 0.5s ease;
+      padding: 0;
+      appearance: none;
+    }
+
+    .theme-switcher-grid.night-theme {
+      background-color: var(--night-bg-color);
+      border-color: var(--border-color-dark);
+    }
+
+    .sun {
+      background-color: var(--sun-color);
+      grid-column: 3 / 23;
+      grid-row: 3 / 23;
+      border-radius: 50%;
+      transition: grid-column 0.5s ease, background-color 0.5s ease;
+      height: 20px;
+    }
+
+    .theme-switcher-grid.night-theme .sun {
+      grid-column: 33 / 53;
+      background-color: var(--moon-color);
+    }
+
+    .moon-overlay {
+      position: absolute;
+      border-radius: 50%;
+      transition: left 0.5s ease, background-color 0.5s ease;
+      z-index: 1;
+      background-color: var(--day-bg-color);
+    }
+
+    .theme-switcher-grid.night-theme .moon-overlay {
+      display: block;
+      left: calc(28 / 54 * 100%);
+      top: calc(4 / 29 * 100%);
+      width: 18px;
+      height: 18px;
+      background-color: var(--night-bg-color);
+    }
+
+    .cloud-ball {
+      background-color: var(--cloud-color);
+      border-radius: 50%;
+      width: 9px;
+      height: 9px;
+      position: absolute;
+      transition: all 0.5s ease;
+      z-index: 2;
+    }
+
+    #ball1 { top: calc((8 / 24) * 100%); left: calc((12 / 54) * 100%); }
+    #ball2 { top: calc((8 / 24) * 100%); left: calc((17 / 54) * 100%); }
+    #ball3 { top: calc((8 / 24) * 100%); left: calc((22 / 54) * 100%); }
+    #ball4 { top: calc((6 / 24) * 100%); left: calc((17 / 54) * 100%); }
+
+    .theme-switcher-grid.night-theme #ball1 { top: calc((17 / 24) * 100%); left: calc((17 / 54) * 100%); width: 2px; height: 2px; }
+    .theme-switcher-grid.night-theme #ball2 { top: calc((4 / 24) * 100%); left: calc((23 / 54) * 100%); width: 2px; height: 2px; }
+    .theme-switcher-grid.night-theme #ball3 { top: calc((11 / 24) * 100%); left: calc((30 / 54) * 100%); width: 2px; height: 2px; }
+    .theme-switcher-grid.night-theme #ball4 { top: calc((6 / 24) * 100%); left: calc((35 / 54) * 100%); width: 2px; height: 2px; }
+
+    .star { 
+      background-color: var(--star-color); 
+      width: 1px; 
+      height: 1px; 
+      position: absolute; 
+      opacity: 0; 
+      transition: opacity 0.5s ease, top 0.5s ease, left 0.5s ease;
+    }
+    #star1 { top: calc((19 / 24) * 100%); left: calc((11 / 54) * 100%); }
+    #star2 { top: calc((5 / 24) * 100%); left: calc((10 / 54) * 100%); }
+    #star3 { top: calc((11 / 24) * 100%); left: calc((17 / 54) * 100%); }
+    #star4 { top: calc((18 / 24) * 100%); left: calc((25 / 54) * 100%); }
+
+    .theme-switcher-grid.night-theme #star1,
+    .theme-switcher-grid.night-theme #star2,
+    .theme-switcher-grid.night-theme #star3,
+    .theme-switcher-grid.night-theme #star4 {
+      opacity: 1;
+    }
+
+    button {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 100;
+      background-color: transparent;
+      border: none;
+      cursor: pointer;
     }
 
   </style>
@@ -230,7 +390,6 @@
 {{ $webURL := .Metadata.WebURL }}
 
 <body>
-  <!-- header goes here -->
   <header class="header-container">
     <div class="header-container-centering">
       <div class="header-container__logo">
@@ -244,7 +403,7 @@
       </div>
 
       <div class="header-container__issues-breakdown">
-        <div class="header-container__issues-breakdown__total">There are {{index .Metadata.SeverityInfo "total"}} issues</div>
+        <div class="header-container__issues-breakdown__total">There are {{index .Metadata.SeverityInfo "total"}} issues:</div>
         <div class="header-container__issues-breakdown__table">
           <div class="header-container__issues-breakdown__table__entry">
             <div class="severity-icon--small severity-icon--error"></div>
@@ -270,7 +429,40 @@
         {{if $commit}}<p><b>Latest Commit:</b> {{if $commitURL}}<a href="{{- $commitURL -}}">{{ $commit }}</a>{{else}}{{ $commit }}{{end}} </p>{{end}}
         {{if .Metadata.RepositoryMetadata.Subfolder}}<p><b>Subfolder:</b> {{ .Metadata.RepositoryMetadata.Subfolder }} </p>{{end}}
       </div> 
-    </div>
+      <button
+      class="theme-switcher-grid"
+      id="theme-switcher-grid"
+      aria-label="Switch theme"
+    >
+      <div class="sun" id="sun" aria-hidden="true"></div>
+      <div class="moon-overlay" id="moon-overlay" aria-hidden="true"></div>
+      <div
+        class="cloud-ball cloud-ball-left"
+        id="ball1"
+        aria-hidden="true"
+      ></div>
+      <div
+        class="cloud-ball cloud-ball-middle"
+        id="ball2"
+        aria-hidden="true"
+      ></div>
+      <div
+        class="cloud-ball cloud-ball-right"
+        id="ball3"
+        aria-hidden="true"
+      ></div>
+      <div
+        class="cloud-ball cloud-ball-top"
+        id="ball4"
+        aria-hidden="true"
+      ></div>
+      <div class="star" id="star1" aria-hidden="true"></div>
+      <div class="star" id="star2" aria-hidden="true"></div>
+      <div class="star" id="star3" aria-hidden="true"></div>
+      <div class="star" id="star4" aria-hidden="true"></div>
+    </button>
+  </div>
+    
   </header>
 
   <div class="main-container">
@@ -290,7 +482,7 @@
           </div>
           <div class="issue-card__body">
             <div class="issue-card__body__metadata severity--{{$level}}">
-              <p>{{index .Properties "Description"}}</p>
+              {{index .Properties "Description"}}<br><br>
               {{ $location := index .Locations 0}}
               {{ $locationURI := index $location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
               {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
@@ -378,6 +570,64 @@
   </div>
 
   <script>
+    function setTheme(mode) {
+      const themeSwitcher = document.getElementById("theme-switcher-grid");
+
+      if (mode === "dark") {
+        document.body.classList.add("dark-mode");
+        themeSwitcher.classList.add("night-theme");
+      } else {
+        document.body.classList.remove("dark-mode");
+        themeSwitcher.classList.remove("night-theme");
+      }
+    }
+
+    function getSystemThemePreference() {
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? "dark" : "light";
+    }
+
+    function getSavedTheme() {
+      return localStorage.getItem("theme");
+    }
+
+    function saveThemePreference(mode) {
+      localStorage.setItem("theme", mode);
+    }
+
+    function initializeTheme() {
+      const savedTheme = getSavedTheme();
+      const systemTheme = getSystemThemePreference();
+
+      if (savedTheme) {
+        setTheme(savedTheme);
+      } else {
+        setTheme(systemTheme);
+      }
+    }
+
+    document.getElementById("theme-switcher-grid").addEventListener("click", function () {
+      const isDarkMode = document.body.classList.contains("dark-mode");
+
+      if (isDarkMode) {
+        setTheme("light");
+        saveThemePreference("light");
+      } else {
+        setTheme("dark");
+        saveThemePreference("dark");
+      }
+    });
+
+    initializeTheme();
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+      const newSystemTheme = e.matches ? "dark" : "light";
+      const savedTheme = getSavedTheme();
+
+      if (!savedTheme) {
+        setTheme(newSystemTheme);
+      }
+    });
+
     var s = null;
 
     function updateSelectedDataflow(event, dataflowId) {
