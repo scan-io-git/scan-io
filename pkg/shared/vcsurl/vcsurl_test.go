@@ -186,13 +186,13 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 		},
 		{
 			name:  "Bitbucket HTTPS APIv1 repo URL with Username",
-			input: "https://bitbucket.org/users/scanio-bot/repos/scanio-test-repository/browse",
+			input: "https://bitbucket.org/users/scanio-bot/repos/scanio-test-repository/",
 			expected: VCSURL{
 				Namespace:     "scanio-bot",
 				Repository:    "scanio-test-repository",
-				HTTPRepoLink:  "https://bitbucket.org/users/scanio-bot/repos/scanio-test-repository/browse",
+				HTTPRepoLink:  "https://bitbucket.org/users/scanio-bot/repos/scanio-test-repository",
 				SSHRepoLink:   "ssh://git@bitbucket.org:7989/~scanio-bot/scanio-test-repository.git",
-				Raw:           "https://bitbucket.org/users/scanio-bot/repos/scanio-test-repository/browse",
+				Raw:           "https://bitbucket.org/users/scanio-bot/repos/scanio-test-repository/",
 				PullRequestId: "",
 				VCSType:       Bitbucket,
 			},
@@ -203,7 +203,7 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			expected: VCSURL{
 				Namespace:     "scanio-project",
 				Repository:    "scanio-test-repository",
-				HTTPRepoLink:  "https://bitbucket.org/scm/scanio-project/scanio-test-repository.git",
+				HTTPRepoLink:  "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository",
 				SSHRepoLink:   "ssh://git@bitbucket.org:7989/scanio-project/scanio-test-repository.git",
 				Raw:           "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository/pull-requests/1",
 				PullRequestId: "1",
@@ -216,7 +216,7 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			expected: VCSURL{
 				Namespace:     "scanio-project",
 				Repository:    "scanio-test-repository",
-				HTTPRepoLink:  "https://bitbucket.org/scm/scanio-project/scanio-test-repository.git",
+				HTTPRepoLink:  "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository",
 				SSHRepoLink:   "ssh://git@bitbucket.org:7989/scanio-project/scanio-test-repository.git",
 				Raw:           "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository/browse",
 				PullRequestId: "",
@@ -243,7 +243,7 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			expected: VCSURL{
 				Namespace:     "scanio-project",
 				Repository:    "scanio-test-repository",
-				HTTPRepoLink:  "https://bitbucket.org/scm/scanio-project/scanio-test-repository.git",
+				HTTPRepoLink:  "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository",
 				SSHRepoLink:   "ssh://git@bitbucket.org:7989/scanio-project/scanio-test-repository.git",
 				Raw:           "https://bitbucket.org/scm/scanio-project/scanio-test-repository.git",
 				PullRequestId: "",
@@ -269,7 +269,7 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			expected: VCSURL{
 				Namespace:     "scanio-project",
 				Repository:    "scanio-test-repository",
-				HTTPRepoLink:  "https://bitbucket.org/scm/scanio-project/scanio-test-repository.git",
+				HTTPRepoLink:  "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository",
 				SSHRepoLink:   "ssh://git@bitbucket.org:7989/scanio-project/scanio-test-repository.git",
 				Raw:           "ssh://git@bitbucket.org/scanio-project/scanio-test-repository.git",
 				PullRequestId: "",
@@ -282,7 +282,7 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			expected: VCSURL{
 				Namespace:     "scanio-project",
 				Repository:    "scanio-test-repository",
-				HTTPRepoLink:  "https://bitbucket.org/scm/scanio-project/scanio-test-repository.git",
+				HTTPRepoLink:  "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository",
 				SSHRepoLink:   "ssh://git@bitbucket.org:22/scanio-project/scanio-test-repository.git",
 				Raw:           "ssh://git@bitbucket.org:22/scanio-project/scanio-test-repository.git",
 				PullRequestId: "",

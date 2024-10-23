@@ -231,10 +231,10 @@ func parseBitbucket(u VCSURL) (*VCSURL, error) {
 // buildBitbucketURLs sets the HTTP and SSH URLs for repositories.
 func buildBitbucketURLs(u *VCSURL, usePort bool, port string, isUserRepo bool) {
 	if isUserRepo {
-		u.HTTPRepoLink = fmt.Sprintf("https://%s/users/%s/repos/%s/browse", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
+		u.HTTPRepoLink = fmt.Sprintf("https://%s/users/%s/repos/%s", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
 		u.SSHRepoLink = fmt.Sprintf("ssh://git@%s:7989/~%s/%s.git", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
 	} else {
-		u.HTTPRepoLink = fmt.Sprintf("https://%s/scm/%s/%s.git", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
+		u.HTTPRepoLink = fmt.Sprintf("https://%s/projects/%s/repos/%s", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
 		u.SSHRepoLink = fmt.Sprintf("ssh://git@%s:7989/%s/%s.git", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
 	}
 
