@@ -11,46 +11,37 @@
 
   <style type="text/css">
     :root {
-      --bg-color-light: #dad7cd;
+      --bg-color-light: #ffffff;
       --bg-color-dark: #0d1117;
+      --text-color-light: #1c2135;
+      --text-color-dark: #f0f0e8;
       --border-color-light: #1c2135;
       --border-color-dark: #f0f0e8;
+      --primary-color-light: #007bff;
+      --primary-color-dark: #31bc81;
+      --issue-card-border-color-light: #d3d3d9;
+      --issue-card-border-color-dark: #8a939f;
+      --issue-card-bg-color-light: #f3f3f3;
+      --issue-card-bg-color-dark: #151b23f2;
+    
+      --footer-bg-light: #f1f1f1;
+      --footer-bg-dark: #0d1117;
+      --footer-text-light: #1c2135;
+      --footer-text-dark: #f0f0e8;
+      --footer-link-light: #0d1117;
+      --footer-link-dark: #f1f1f1;
+      --footer-link-hover-light: #0056b3;
+      --footer-link-hover-dark: #4a90e2;
+      --footer-heading-light: #007bff;
+      --footer-heading-dark: #31bc81;
+      --footer-border-light: #8a939f;
+
       --sun-color: #fabc1c;
       --moon-color: #fffdf2;
       --day-bg-color: #0dbdf6;
       --night-bg-color: #272a30;
       --cloud-color: #fffdf2;
       --star-color: #fffdf2;
-      --footer-bg-light: #f1f1f1;
-      --footer-bg-dark: #0d1117;
-      --footer-text-light: #1c2135;
-      --footer-text-dark: #f0f0e8;
-      --footer-border-light: #1c2135;
-      --footer-border-dark: #1c2135;
-      --footer-link-light: #0d1117;
-      --footer-link-dark: #f1f1f1;;
-      --footer-link-hover-light: #0056b3;
-      --footer-link-hover-dark: #4a90e2;
-      --footer-heading-light: #007bff;
-      --footer-heading-dark: #31bc81;
-    }
-
-    body.light-mode {
-      --footer-bg: var(--footer-bg-light);
-      --footer-text: var(--footer-text-light);
-      --footer-border: var(--footer-border-light);
-      --footer-link: var(--footer-link-light);
-      --footer-link-hover: var(--footer-link-hover-light);
-      --footer-heading: var(--footer-heading-light);
-    }
-
-    body.dark-mode {
-      --footer-bg: var(--footer-bg-dark);
-      --footer-text: var(--footer-text-dark);
-      --footer-border: var(--footer-border-dark);
-      --footer-link: var(--footer-link-dark);
-      --footer-link-hover: var(--footer-link-hover-dark);
-      --footer-heading: var(--footer-heading-dark);
     }
 
     body {
@@ -60,11 +51,28 @@
       display: flex;
       flex-direction: column;
       transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out;
+      background-color: var(--bg-color-light);
+      --text-color: var(--text-color-light);
+      --border-color: var(--border-color-light);
+      --footer-bg: var(--footer-bg-light);
+      --footer-border: var(--footer-border-light);
+      --footer-text: var(--footer-text-light);
+      --footer-link: var(--footer-link-light);
+      --footer-link-hover: var(--footer-link-hover-light);
+      --footer-heading: var(--footer-heading-light);
+      --primary-color: var(--primary-color-light);
     }
 
     body.dark-mode {
       background-color: var(--bg-color-dark);
-      color: #F1F1F1;
+      color: var(--text-color-dark);
+      --border-color: var(--border-color-dark);
+      --footer-bg: var(--footer-bg-dark);
+      --footer-text: var(--footer-text-dark);
+      --footer-link: var(--footer-link-dark);
+      --footer-link-hover: var(--footer-link-hover-dark);
+      --footer-heading: var(--footer-heading-dark);
+      --primary-color: var(--primary-color-dark);
     }
 
     .main-body {
@@ -81,7 +89,7 @@
       border-radius: 8px;
       border: 2px solid;
       margin-bottom: 40px;
-      background-color: #F3F3F3;
+      background-color: var(--issue-card-bg-color-light);
     }
 
     .issue-card___header {
@@ -95,8 +103,8 @@
     }
 
     body.dark-mode .issue-card {
-      background-color: #151b23f2;
-      border-color: #8a939f;
+      background-color: var(--issue-card-bg-color-dark);
+      border-color: var(--issue-card-border-color-dark);
     }
 
     .severity--error {
@@ -145,27 +153,24 @@
 
     .issue-card__body__metadata {
       padding: 8px 8px;
-      border: 2px solid #d3d3d9;
+      border: 2px solid var(--issue-card-border-color-light);
       border-radius: 8px;
       margin-bottom: 8px;
       overflow: auto;
     }
 
-    body.dark-mode .issue-card__body__metadata {
-      border-color: #8a939f;
+    body.dark-mode .issue-card__body__metadata,
+    body.dark-mode .issue-card__body__dataflows__filename,
+    body.dark-mode .issue-card__body__dataflow-id {
+      border-color: var(--issue-card-border-color-dark);
       background-color: var(--bg-color-dark);
     }
 
     .issue-card__body__dataflows__filename {
       padding:4px 8px;
-      border:1px solid #d3d3d9;
+      border:1px solid var(--issue-card-border-color-light);
       border-radius: 8px;
       font-size:14px;
-    }
-
-    body.dark-mode .issue-card__body__dataflows__filename {
-      border-color: #8a939f;
-      background-color: var(--bg-color-dark);
     }
 
     .issue-card__body__dataflows__codeline {
@@ -193,15 +198,11 @@
       display: inline-block;
       width: 16px; 
       height: 16px; 
-      border: 2px solid #d3d3d9; 
+      border: 2px solid var(--issue-card-border-color-light); 
       border-radius: 50%;
       text-align: center; 
       line-height: 1.5;
       font-size: 14px;
-    }
-
-    body.dark-mode .issue-card__body__dataflow-id {
-      background-color: #8a939f;
     }
 
     .card__body__dataflows__header {
@@ -213,7 +214,7 @@
     }
 
     .selected-dataflow-id {
-      background-color:#31bc81;
+      background-color:var(--primary-color-dark);
       color: #ffffff;
     }
 
@@ -237,7 +238,7 @@
     .header-container {
       justify-content: space-between;
       align-items: center;
-      background-color: #32bc81;
+      background-color: var(--primary-color-dark);
       color: #000;
       padding: 8px;
     }
@@ -334,7 +335,7 @@
       background-color: var(--moon-color);
     }
 
-    .moon-overlay {
+    .moon-overlay, .cloud-ball, .star {
       position: absolute;
       border-radius: 50%;
       transition: left 0.5s ease, background-color 0.5s ease;
@@ -445,7 +446,6 @@
     .footer-bottom {
       text-align: center;
       padding-top: 10px;
-      color: #8a939f;
     }
 
     .footer-bottom a {
@@ -487,15 +487,15 @@
     }
 
     body.light-mode .scroll-up-button svg {
-      color: #007bff; 
+      color: var(--primary-color-light); 
     }
 
     body.dark-mode .scroll-up-button svg {
-      color: #31bc81; 
+      color: var(--primary-color-dark); 
     }
 
     .scroll-up-button:hover {
-      transform: translateY(-3px);
+      transform: translateY(-5px);
     }
 
     .scroll-up-button:active {
@@ -505,14 +505,15 @@
     .scroll-up-button.show {
       visibility: visible; 
       opacity: 1; 
+      transform: translateY(0);
     }
 
     .scroll-up-button.hide {
       visibility: hidden; 
       opacity: 0; 
       pointer-events: none;
+      transform: translateY(10px);
     }
-
   </style>
 
 </head>
@@ -709,6 +710,24 @@
       const scrollUpButton = document.getElementById("scrollUpButton");
       const thresholdPercentage = 0.2; 
 
+      let debounceTimer;
+  
+      window.addEventListener("scroll", function () {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(handleScroll, 100); 
+      });
+
+      function handleScroll() {
+        const scrollHeight = document.documentElement.scrollHeight;
+        const scrollRatio = window.scrollY / scrollHeight;
+      
+        if (scrollRatio > thresholdPercentage) {
+          scrollUpButton.classList.add("show");
+        } else {
+          scrollUpButton.classList.remove("show");
+        }
+      }
+
       window.addEventListener("scroll", function () {
         const scrollHeight = document.documentElement.scrollHeight;
         const scrollRatio = window.scrollY / scrollHeight;
@@ -727,18 +746,14 @@
         });
       });
 
+      const body = document.body;
       const themeSwitcher = document.getElementById("theme-switcher-grid");
 
       function setTheme(mode) {
-        if (mode === "dark") {
-          document.body.classList.add("dark-mode");
-          document.body.classList.remove("light-mode");
-          themeSwitcher.classList.add("dark-mode");
-        } else {
-          document.body.classList.add("light-mode");
-          document.body.classList.remove("dark-mode");
-          themeSwitcher.classList.remove("dark-mode");
-        }
+        const isDarkMode = mode === "dark";
+        body.classList.toggle("dark-mode", isDarkMode);
+        body.classList.toggle("light-mode", !isDarkMode);
+        themeSwitcher.classList.toggle("dark-mode", isDarkMode);
       }
 
       function getSystemThemePreference() {
@@ -754,14 +769,8 @@
       }
 
       function initializeTheme() {
-        const savedTheme = getSavedTheme();
-        const systemTheme = getSystemThemePreference();
-
-        if (savedTheme) {
-          setTheme(savedTheme);
-        } else {
-          setTheme(systemTheme);
-        }
+        const savedTheme = getSavedTheme() || getSystemThemePreference();
+        setTheme(savedTheme);
       }
 
       themeSwitcher.addEventListener("click", function () {
@@ -790,8 +799,6 @@
       // Dataflow update logic (if necessary, based on your previous requirements)
       var s = null;
       function updateSelectedDataflow(event, dataflowId) {
-        console.log(event);
-        s = event;
         const selectedElement = event.target.closest('header').querySelector('.selected-dataflow-id');
         if (selectedElement) {
           selectedElement.classList.remove('selected-dataflow-id');
@@ -803,7 +810,7 @@
         if (currentDataflowElement) {
           currentDataflowElement.classList.remove('selected-dataflow');
         }
-        const selectedDataflowElement = dataflowContainer.querySelector('.issue-card__body__dataflow--' + dataflowId);
+        const selectedDataflowElement = dataflowContainer.querySelector(`.issue-card__body__dataflow--${dataflowId}`);
         if (selectedDataflowElement) {
           selectedDataflowElement.classList.add('selected-dataflow');
         }
