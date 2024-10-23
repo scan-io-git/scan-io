@@ -391,16 +391,6 @@
       opacity: 1;
     }
 
-    button {
-      position: fixed;
-      top: 16px;
-      right: 16px;
-      z-index: 100;
-      background-color: transparent;
-      border: none;
-      cursor: pointer;
-    }
-
     .fancy-footer {
       background-color: var(--footer-bg);
       color: var(--footer-text);
@@ -471,6 +461,58 @@
       font-size: 14px;
       margin: 0;
     }
+
+    .scroll-up-button {
+      position: fixed;
+      bottom: 20px; 
+      right: 30px;  
+      width: 40px;
+      height: 40px;
+      border: none;
+      visibility: hidden;
+      opacity: 0; 
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: visibility 0.5s ease, opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+      z-index: 1000;
+      background-color: transparent; 
+    }
+
+    .scroll-up-button svg {
+      width: 100%;
+      height: 100%;
+      fill: currentColor;
+      transition: fill 0.3s ease;
+    }
+
+    body.light-mode .scroll-up-button svg {
+      color: #007bff; 
+    }
+
+    body.dark-mode .scroll-up-button svg {
+      color: #31bc81; 
+    }
+
+    .scroll-up-button:hover {
+      transform: translateY(-3px);
+    }
+
+    .scroll-up-button:active {
+      transform: translateY(0);
+    }
+
+    .scroll-up-button.show {
+      visibility: visible; 
+      opacity: 1; 
+    }
+
+    .scroll-up-button.hide {
+      visibility: hidden; 
+      opacity: 0; 
+      pointer-events: none;
+    }
+
   </style>
 
 </head>
@@ -663,89 +705,117 @@
   </div>
 
   <script>
-    function setTheme(mode) {
+    document.addEventListener("DOMContentLoaded", function () {
+      const scrollUpButton = document.getElementById("scrollUpButton");
+      const thresholdPercentage = 0.2; 
+
+      window.addEventListener("scroll", function () {
+        const scrollHeight = document.documentElement.scrollHeight;
+        const scrollRatio = window.scrollY / scrollHeight;
+
+        if (scrollRatio > thresholdPercentage) {
+          scrollUpButton.classList.add("show");
+        } else {
+          scrollUpButton.classList.remove("show");
+        }
+      });
+
+      scrollUpButton.addEventListener("click", function () {
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth"
+        });
+      });
+
       const themeSwitcher = document.getElementById("theme-switcher-grid");
 
-      if (mode === "dark") {
-        document.body.classList.add("dark-mode");
-        themeSwitcher.classList.add("dark-mode");
-        document.body.classList.remove("light-mode");
-      } else {
-        document.body.classList.add("light-mode");
-        document.body.classList.remove("dark-mode");
-        themeSwitcher.classList.remove("dark-mode");
+      function setTheme(mode) {
+        if (mode === "dark") {
+          document.body.classList.add("dark-mode");
+          document.body.classList.remove("light-mode");
+          themeSwitcher.classList.add("dark-mode");
+        } else {
+          document.body.classList.add("light-mode");
+          document.body.classList.remove("dark-mode");
+          themeSwitcher.classList.remove("dark-mode");
+        }
       }
-    }
 
-    function getSystemThemePreference() {
-      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? "dark" : "light";
-    }
-
-    function getSavedTheme() {
-      return localStorage.getItem("theme");
-    }
-
-    function saveThemePreference(mode) {
-      localStorage.setItem("theme", mode);
-    }
-
-    function initializeTheme() {
-      const savedTheme = getSavedTheme();
-      const systemTheme = getSystemThemePreference();
-
-      if (savedTheme) {
-        setTheme(savedTheme);
-      } else {
-        setTheme(systemTheme);
+      function getSystemThemePreference() {
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? "dark" : "light";
       }
-    }
 
-    document.getElementById("theme-switcher-grid").addEventListener("click", function () {
-      const isDarkMode = document.body.classList.contains("dark-mode");
+      function getSavedTheme() {
+        return localStorage.getItem("theme");
+      }
 
-      if (isDarkMode) {
-        setTheme("light");
-        saveThemePreference("light");
-      } else {
-        setTheme("dark");
-        saveThemePreference("dark");
+      function saveThemePreference(mode) {
+        localStorage.setItem("theme", mode);
+      }
+
+      function initializeTheme() {
+        const savedTheme = getSavedTheme();
+        const systemTheme = getSystemThemePreference();
+
+        if (savedTheme) {
+          setTheme(savedTheme);
+        } else {
+          setTheme(systemTheme);
+        }
+      }
+
+      themeSwitcher.addEventListener("click", function () {
+        const isDarkMode = document.body.classList.contains("dark-mode");
+
+        if (isDarkMode) {
+          setTheme("light");
+          saveThemePreference("light");
+        } else {
+          setTheme("dark");
+          saveThemePreference("dark");
+        }
+      });
+
+      initializeTheme();
+
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+        const newSystemTheme = e.matches ? "dark" : "light";
+        const savedTheme = getSavedTheme();
+
+        if (!savedTheme) {
+          setTheme(newSystemTheme);
+        }
+      });
+
+      // Dataflow update logic (if necessary, based on your previous requirements)
+      var s = null;
+      function updateSelectedDataflow(event, dataflowId) {
+        console.log(event);
+        s = event;
+        const selectedElement = event.target.closest('header').querySelector('.selected-dataflow-id');
+        if (selectedElement) {
+          selectedElement.classList.remove('selected-dataflow-id');
+        }
+        event.target.classList.add('selected-dataflow-id');
+
+        const dataflowContainer = event.target.closest('.issue-card__body__dataflows');
+        const currentDataflowElement = dataflowContainer.querySelector('.selected-dataflow');
+        if (currentDataflowElement) {
+          currentDataflowElement.classList.remove('selected-dataflow');
+        }
+        const selectedDataflowElement = dataflowContainer.querySelector('.issue-card__body__dataflow--' + dataflowId);
+        if (selectedDataflowElement) {
+          selectedDataflowElement.classList.add('selected-dataflow');
+        }
       }
     });
-
-    initializeTheme();
-
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-      const newSystemTheme = e.matches ? "dark" : "light";
-      const savedTheme = getSavedTheme();
-
-      if (!savedTheme) {
-        setTheme(newSystemTheme);
-      }
-    });
-
-    var s = null;
-
-    function updateSelectedDataflow(event, dataflowId) {
-      console.log(event);
-      s = event;
-      const selectedElement = event.target.closest('header').querySelector('.selected-dataflow-id');
-      if (selectedElement) {
-        selectedElement.classList.remove('selected-dataflow-id');
-      }
-      event.target.classList.add('selected-dataflow-id');
-
-      // find closest div with class 'issue-card__body__dataflows'
-      const dataflowContainer = event.target.closest('.issue-card__body__dataflows');
-      const currentDataflowElement = dataflowContainer.querySelector('.selected-dataflow')
-      if (currentDataflowElement) {
-        currentDataflowElement.classList.remove('selected-dataflow');
-      }
-      const selectedDataflowElement = dataflowContainer.querySelector('.issue-card__body__dataflow--' + dataflowId);
-      if (selectedDataflowElement) {
-        selectedDataflowElement.classList.add('selected-dataflow');
-      }
-    }
   </script>
+<button id="scrollUpButton" class="scroll-up-button" aria-label="Scroll to top">
+  <!-- svg source https://uxwing.com/line-angle-up-icon/ -->
+  <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 122.88 66.91" style="enable-background:new 0 0 122.88 66.91" xml:space="preserve">
+    <g><path d="M11.68,64.96c-2.72,2.65-7.08,2.59-9.73-0.14c-2.65-2.72-2.59-7.08,0.13-9.73L56.87,1.97l4.8,4.93l-4.81-4.95 c2.74-2.65,7.1-2.58,9.76,0.15c0.08,0.08,0.15,0.16,0.23,0.24L120.8,55.1c2.72,2.65,2.78,7.01,0.13,9.73 c-2.65,2.72-7,2.78-9.73,0.14L61.65,16.5L11.68,64.96L11.68,64.96z"/></g>
+  </svg>
+</button>
 </body>
 <footer class="fancy-footer">
   <div class="footer-container">
