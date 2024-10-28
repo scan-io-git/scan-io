@@ -14,11 +14,11 @@ func (g *ScannerTrufflehog3) CheckReportFormat(args *shared.ScannerScanRequest) 
 	if originalFormat != "" {
 		switch originalFormat {
 		case "sarif":
-			g.logger.Warn("SARIF report format requested. Default scanner JSON report will be converted.")
+			g.logger.Warn("SARIF report format requested. Default scanner JSON report will be converted")
 			reportFormat = "json"
 			needsConversion = true
 		case "markdown":
-			g.logger.Warn("Human-readable markdown report format requested. Default scanner JSON report will be converted.")
+			g.logger.Warn("Human-readable markdown report format requested. Default scanner JSON report will be converted")
 			reportFormat = "json"
 			needsConversion = true
 		default:
