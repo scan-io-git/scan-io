@@ -44,7 +44,13 @@ type ReportMetadata struct {
 }
 
 var execExampleToHTML = `  # Generate html report for semgrep sarif output
-  scanio to-html --input /tmp/juice-shop/semgrep.sarif --output /tmp/juice-shop/semgrep.html --source /tmp/juice-shop`
+  scanio to-html --input /tmp/juice-shop/semgrep.sarif --output /tmp/juice-shop/semgrep.html --source /tmp/juice-shop
+
+  # Generate html report for semgrep sarif output, use bitbucket specific hyperlink URL builder
+  scanio to-html --input /tmp/juice-shop/semgrep.sarif --output /tmp/juice-shop/semgrep.html --source /tmp/juice-shop --vcs bitbucket
+
+  # Use custom templates path for html report generation
+  scanio to-html -i /tmp/juice-shop/semgrep_results.sarif -o /tmp/juice-shop/semgrep_results.html -s /tmp/juice-shop/ -t ./templates/tohtml`
 
 // this function will implement vcs specific logic to generate web URL to branch or commit + special case for onprem BB
 func buildWebURLToRef(url *vcsurl.VCSURL, refName, refType string) string {
@@ -114,14 +120,19 @@ var toHtmlCmd = &cobra.Command{
 		// collect metadata for the report template
 		repositoryMetadata, err := git.CollectRepositoryMetadata(allToHTMLOptions.SourceFolder)
 		if err != nil {
-			logger.Debug("can't collect repository metadata", "err", err)
+			logger.Warn("can't collect repository metadata", "reason", err)
+		} else {
+			logger.Debug("repositoryMetadata", "BranchName", *repositoryMetadata.BranchName, "CommitHash", *repositoryMetadata.CommitHash, "RepositoryFullName", *repositoryMetadata.RepositoryFullName, "Subfolder", repositoryMetadata.Subfolder, "RepoRootFolder", repositoryMetadata.RepoRootFolder)
 		}
-		logger.Debug("repositoryMetadata", "BranchName", *repositoryMetadata.BranchName, "CommitHash", *repositoryMetadata.CommitHash, "RepositoryFullName", *repositoryMetadata.RepositoryFullName, "Subfolder", repositoryMetadata.Subfolder, "RepoRootFolder", repositoryMetadata.RepoRootFolder)
 
-		vcsType := vcsurl.StringToVCSType(allToHTMLOptions.VCS)
-		url, err := vcsurl.ParseForVCSType(*repositoryMetadata.RepositoryFullName, vcsType)
-		if err != nil {
-			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
+		var url *vcsurl.VCSURL
+		vcsType := vcsurl.GenericVCS
+		if repositoryMetadata.RepositoryFullName != nil {
+			vcsType := vcsurl.StringToVCSType(allToHTMLOptions.VCS)
+			url, err = vcsurl.ParseForVCSType(*repositoryMetadata.RepositoryFullName, vcsType)
+			if err != nil {
+				return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
+			}
 		}
 
 		// a callback function to generate web url for location
@@ -129,6 +140,9 @@ var toHtmlCmd = &cobra.Command{
 		// so we should implement vcs scpecific logic here
 		// for beginning I started with generic/github implementation
 		locationWebURLCallback := func(location *sarif.Location) string {
+			if url == nil {
+				return ""
+			}
 			if vcsType == vcsurl.Bitbucket {
 				return buildBitbucketLocationURL(location, *url, repositoryMetadata)
 			}
@@ -163,10 +177,17 @@ var toHtmlCmd = &cobra.Command{
 			Time:               time.Now().UTC(),
 			SourceFolder:       metadataSourceFolder,
 			SeverityInfo:       severityInfo,
-			WebURL:             url.HTTPRepoLink,
-			BranchURL:          buildWebURLToRef(url, *repositoryMetadata.BranchName, "branch"),
-			CommitURL:          buildWebURLToRef(url, *repositoryMetadata.CommitHash, "commit"),
 		}
+		if url != nil {
+			metadata.WebURL = url.HTTPRepoLink
+		}
+		if repositoryMetadata.BranchName != nil {
+			metadata.BranchURL = buildWebURLToRef(url, *repositoryMetadata.BranchName, "branch")
+		}
+		if repositoryMetadata.CommitHash != nil {
+			metadata.CommitURL = buildWebURLToRef(url, *repositoryMetadata.CommitHash, "commit")
+		}
+
 		logger.Debug("metadata", "metadata", *metadata)
 
 		// parse html template and generate report file with metadata
@@ -202,6 +223,9 @@ var toHtmlCmd = &cobra.Command{
 		if err != nil {
 			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
+
+		logger.Info("html report saved to file", "path", allToHTMLOptions.OutputFile)
+
 		return nil
 	},
 }
