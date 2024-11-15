@@ -145,8 +145,8 @@ func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) (shared.Scanne
 		g.logger.Info("Report conversion finished", "newFormat", originalFormat, "convertedPath", result.ResultsPath)
 	}
 
-	g.logger.Info("Result is saved to", "path to a result file", args.ResultsPath)
-	g.logger.Debug("Debug info", "project", args.TargetPath, "config", args.ConfigPath, "resultsFile", args.ResultsPath, "cmd", cmd.Args)
+	g.logger.Info("Result is saved to", "path to a result file", result.ResultsPath)
+	g.logger.Debug("Debug info", "project", args.TargetPath, "config", args.ConfigPath, "resultsFile", result.ResultsPath, "cmd", cmd.Args)
 	return result, nil
 }
 

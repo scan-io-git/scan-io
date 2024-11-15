@@ -156,9 +156,9 @@ func JsonToSarifReport(filePath string) (string, error) {
 	}
 	defer func() { _ = file.Close() }()
 	if err := reportSarif.PrettyWrite(file); err != nil {
-		return filePath, err
+		return outputFilePath, err
 	}
-	return filePath, nil
+	return outputFilePath, nil
 }
 
 func toSarifErrorLevel(severity string) string {
