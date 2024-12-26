@@ -3,7 +3,6 @@ package vcsurl
 import (
 	"fmt"
 	"net/url"
-	"path"
 	"regexp"
 	"strings"
 )
@@ -152,7 +151,6 @@ func ParseForVCSType(raw string, vcsType VCSType) (*VCSURL, error) {
 
 // handleGenericVCS processes generic VCS URLs to extract repository information
 func handleGenericVCS(u VCSURL) (*VCSURL, error) {
-
 	pathDirs := GetPathDirs(u.ParsedURL.Path)
 
 	// Case of working with the whole VCS
@@ -167,8 +165,12 @@ func handleGenericVCS(u VCSURL) (*VCSURL, error) {
 	}
 
 	// Case of working with the certain repo
-	u.Namespace = path.Join(pathDirs[0 : len(pathDirs)-1]...)
-	u.Repository = pathDirs[len(pathDirs)-1]
+	u.Namespace = pathDirs[0]
+	u.Repository = pathDirs[1]
+	// https://github.com/scan-io-git/scanio-test/pull/1
+	if len(pathDirs) > 3 && pathDirs[2] == "pull" {
+		u.PullRequestId = pathDirs[3]
+	}
 	u.HTTPRepoLink = fmt.Sprintf("https://%s/%s/%s", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
 	u.SSHRepoLink = fmt.Sprintf("ssh://git@%s/%s/%s.git", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
 	return &u, nil
