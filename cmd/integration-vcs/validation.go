@@ -60,9 +60,6 @@ func validateIntegrationVCSArgs(options *vcsintegrator.RunOptionsIntegrationVCS,
 		if err := validateCommonArgs(options, args); err != nil {
 			return err
 		}
-		if options.Login == "" {
-			return fmt.Errorf("the 'login' flag must be specified")
-		}
 		if options.Status == "" {
 			return fmt.Errorf("the 'status' flag must be specified")
 		}

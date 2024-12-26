@@ -2,6 +2,7 @@ package httpclient
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/hashicorp/go-hclog"
@@ -12,6 +13,12 @@ import (
 // Client represents a wrapper for the Resty client.
 type Client struct {
 	RestyClient *resty.Client
+}
+
+// CustomRoundTripper adds custom headers to every request and delegates to the base transport.
+type CustomRoundTripper struct {
+	BaseTransport http.RoundTripper
+	Headers       map[string]string
 }
 
 // HclogAdapter adapts an hclog.Logger to be compatible with the resty log.Logger interface.
@@ -100,4 +107,12 @@ func applyHTTPClientConfig(httpConfig *config.HTTPClient) config.RestyHTTPClient
 	}
 
 	return cfg
+}
+
+// RoundTrip executes a single HTTP transaction and adds custom headers.
+func (rt *CustomRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	for key, value := range rt.Headers {
+		req.Header.Set(key, value)
+	}
+	return rt.BaseTransport.RoundTrip(req)
 }

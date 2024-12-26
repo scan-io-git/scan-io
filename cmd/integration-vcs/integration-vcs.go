@@ -27,16 +27,16 @@ var (
   scanio integration-vcs --vcs github --action checkPR https://github.com/scan-io-git/scan-io/pull/1
 
   # Add a user to the PR
-  scanio integration-vcs --vcs github --action addRoleToPR --domain github.com --namespace scan-io-git --repository scan-io --pull-request-id 1 --login scanio-bot --role REVIEWER
+  scanio integration-vcs --vcs github --action addRoleToPR --domain github.com --namespace scan-io-git --repository scan-io --pull-request-id 1 --role REVIEWER
 
   # Add a user to the PR using URL
-  scanio integration-vcs --vcs github --action addRoleToPR --login scanio-bot --role REVIEWER https://github.com/scan-io-git/scan-io/pull/1
+  scanio integration-vcs --vcs github --action addRoleToPR --role REVIEWER https://github.com/scan-io-git/scan-io/pull/1
 
   # Change the status of the PR
-  scanio integration-vcs --vcs github --action setStatusOfPR --domain github.com --namespace scan-io-git --repository scan-io --pull-request-id 1 --login scanio-bot --status UNAPPROVED
+  scanio integration-vcs --vcs github --action setStatusOfPR --domain github.com --namespace scan-io-git --repository scan-io --pull-request-id 1 --status UNAPPROVED
 
   # Change the status of the PR using URL
-  scanio integration-vcs --vcs github --action setStatusOfPR --login scanio-bot --status UNAPPROVED https://github.com/scan-io-git/scan-io/pull/1
+  scanio integration-vcs --vcs github --action setStatusOfPR --status UNAPPROVED https://github.com/scan-io-git/scan-io/pull/1
 
   # Leave a comment on the PR with text directly
   scanio integration-vcs --vcs github --action addComment --domain github.com --namespace scan-io-git --repository scan-io --pull-request-id 1 --comment "Hello username"

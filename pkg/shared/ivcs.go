@@ -83,8 +83,9 @@ type VCSAddRoleToPRRequest struct {
 // VCSSetStatusOfPRRequest represents a request to set the status of a PR.
 type VCSSetStatusOfPRRequest struct {
 	VCSRequestBase
-	Login  string `json:"login"`
-	Status string `json:"status"`
+	Login   string `json:"login"`
+	Status  string `json:"status"`
+	Comment string `json:"comment"`
 }
 
 // VCSAddCommentToPRRequest represents a request to add a comment to a PR.

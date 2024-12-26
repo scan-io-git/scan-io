@@ -102,6 +102,7 @@ func (g *VCSBitbucket) listRepositoriesForAllProjects(client *bitbucket.Client) 
 // ListRepos handles listing repositories based on the provided VCSListReposRequest.
 func (g *VCSBitbucket) ListRepositories(args shared.VCSListRepositoriesRequest) ([]shared.RepositoryParams, error) {
 	g.logger.Debug("starting execution of list repositories function", "args", args)
+
 	if err := g.validateList(&args); err != nil {
 		g.logger.Error("validation failed for listing repositories operation", "error", err)
 		return nil, err
@@ -262,13 +263,15 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		return "", err
 	}
 
-	// TODO: decide set or not explicit branch from user
-	args.Branch = prData.FromReference.ID
-	pathDirs := vcsurl.GetPathDirs(u.Path)
-	if pathDirs[0] == "users" {
-		args.Branch = prData.FromReference.LatestCommit
-		g.logger.Warn("found merging from user personal repository", "fromRefLink", fromRefLink)
-		g.logger.Warn("changes will be taken from the default branch and latest commit", "latest_commit", prData.FromReference.LatestCommit)
+	if len(args.Branch) == 0 {
+		args.Branch = prData.FromReference.ID
+
+		pathDirs := vcsurl.GetPathDirs(u.Path)
+		if pathDirs[0] == "users" {
+			args.Branch = prData.FromReference.LatestCommit
+			g.logger.Warn("found merging from user personal repository", "fromRefLink", fromRefLink)
+			g.logger.Warn("changes will be taken from the default branch and latest commit", "latest_commit", prData.FromReference.LatestCommit)
+		}
 	}
 
 	changes, err := prData.GetChanges()
