@@ -46,7 +46,7 @@ func (g *VCSGithub) setGlobalConfig(globalConfig *config.Config) {
 	g.globalConfig = globalConfig
 }
 
-// initializeBitbucketClient creates and initializes a new Github client.
+// initializeGithubClient creates and initializes a new Github client.
 func (g *VCSGithub) initializeGithubClient() (*github.Client, error) {
 	var client *github.Client
 

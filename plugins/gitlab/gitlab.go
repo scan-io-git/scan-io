@@ -5,10 +5,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/xanzy/go-gitlab"
-	// "github.com/google/go-github/v47/github"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
+	"gitlab.com/gitlab-org/api/client-go"
 
 	"github.com/scan-io-git/scan-io/internal/git"
 	"github.com/scan-io-git/scan-io/pkg/shared"
@@ -45,6 +44,41 @@ func (g *VCSGitlab) setGlobalConfig(globalConfig *config.Config) {
 func getGitlabClient(vcsBaseURL string) (*gitlab.Client, error) {
 	baseURL := fmt.Sprintf("https://%s/api/v4", vcsBaseURL)
 	return gitlab.NewClient(os.Getenv("GITLAB_TOKEN"), gitlab.WithBaseURL(baseURL))
+}
+
+// initializeGitlabClient creates and initializes a new Gitlab client.
+func (g *VCSGitlab) initializeGitlabClient() (*gitlab.Client, error) {
+	var client *gitlab.Client
+
+	restyClient, err := httpclient.New(g.logger, g.globalConfig)
+	if err != nil {
+		g.logger.Error("failed to initialize HTTP client", "error", err)
+		return nil, err
+	}
+	httpClient := restyClient.RestyClient.GetClient()
+
+	// Support custom headers for Resty
+	transport := &httpclient.CustomRoundTripper{
+		BaseTransport: httpClient.Transport,
+		Headers:       g.globalConfig.HTTPClient.CustomHeaders,
+	}
+	httpClient.Transport = transport
+
+	if g.globalConfig.GithubPlugin.Token == "" {
+		client = github.NewClient(httpClient)
+	} else {
+		ts := oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: g.globalConfig.GithubPlugin.Token},
+		)
+		oauthTransport := &oauth2.Transport{
+			Source: ts,
+			Base:   httpClient.Transport,
+		}
+		httpClient.Transport = oauthTransport
+		client = github.NewClient(httpClient)
+	}
+
+	return client, nil
 }
 
 func (g VCSGitlab) getGitlabGroups(gitlabClient *gitlab.Client, searchNamespace string) ([]int, error) {
