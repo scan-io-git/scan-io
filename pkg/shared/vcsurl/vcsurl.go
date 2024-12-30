@@ -3,6 +3,7 @@ package vcsurl
 import (
 	"fmt"
 	"net/url"
+	"path"
 	"regexp"
 	"strings"
 )
@@ -109,7 +110,6 @@ func Parse(raw string) (*VCSURL, error) {
 
 // ParseForVCSType parses a VCS URL and returns a VCSURL struct for a specific VCS Type
 func ParseForVCSType(raw string, vcsType VCSType) (*VCSURL, error) {
-
 	var vcsURL VCSURL
 	vcsURL.Raw = raw
 
@@ -142,14 +142,18 @@ func ParseForVCSType(raw string, vcsType VCSType) (*VCSURL, error) {
 	vcsURL.VCSType = effectiveVCSType
 
 	// handle the URL based on the VCS type
-	if effectiveVCSType == Bitbucket {
+	switch effectiveVCSType {
+	case Bitbucket:
 		return parseBitbucket(vcsURL)
-	} else {
+	case Github:
+		return parseGithub(vcsURL)
+	case Gitlab:
+		return handleGenericVCS(vcsURL)
+	default:
 		return handleGenericVCS(vcsURL)
 	}
 }
 
-// handleGenericVCS processes generic VCS URLs to extract repository information
 func handleGenericVCS(u VCSURL) (*VCSURL, error) {
 	pathDirs := GetPathDirs(u.ParsedURL.Path)
 
@@ -165,15 +169,73 @@ func handleGenericVCS(u VCSURL) (*VCSURL, error) {
 	}
 
 	// Case of working with the certain repo
-	u.Namespace = pathDirs[0]
-	u.Repository = pathDirs[1]
-	// https://github.com/scan-io-git/scanio-test/pull/1
-	if len(pathDirs) > 3 && pathDirs[2] == "pull" {
-		u.PullRequestId = pathDirs[3]
-	}
+	u.Namespace = path.Join(pathDirs[0 : len(pathDirs)-1]...)
+	u.Repository = pathDirs[len(pathDirs)-1]
 	u.HTTPRepoLink = fmt.Sprintf("https://%s/%s/%s", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
 	u.SSHRepoLink = fmt.Sprintf("ssh://git@%s/%s/%s.git", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
 	return &u, nil
+}
+
+// // parseGitlab processes Gitlab URLs to extract repository information.
+// func parseGitlab(u VCSURL) (*VCSURL, error) {
+// 	pathDirs := GetPathDirs(u.ParsedURL.Path)
+
+// 	switch {
+// 	// Case of working with the whole VCS - https://github.com/
+// 	case len(pathDirs) == 0:
+// 		return &u, nil
+// 	// Case for working with a whole project - https://github.com/<project_name>
+// 	case len(pathDirs) == 1:
+// 		u.Namespace = pathDirs[0]
+// 		buildGenericURLs(&u)
+// 		return &u, nil
+// 	// PR fetching case - https://github.com/<project_name>/<repo_name>/pull/<id>
+// 	case len(pathDirs) > 3 && pathDirs[2] == "pull":
+// 		u.Namespace = pathDirs[0]
+// 		u.Repository = pathDirs[1]
+// 		u.PullRequestId = pathDirs[3]
+// 		buildGenericURLs(&u)
+// 		return &u, nil
+// 	// Case for working with a specific repo - https://github.com/<project_name>/<repo_name>
+// 	case len(pathDirs) > 1:
+// 		u.Namespace = pathDirs[0]
+// 		u.Repository = pathDirs[1]
+// 		buildGenericURLs(&u)
+// 		return &u, nil
+// 	default:
+// 		return &u, fmt.Errorf("invalid Github URL: %s", u.Raw)
+// 	}
+// }
+
+// parseGithub processes Github URLs to extract repository information.
+func parseGithub(u VCSURL) (*VCSURL, error) {
+	pathDirs := GetPathDirs(u.ParsedURL.Path)
+
+	switch {
+	// Case of working with the whole VCS - https://github.com/
+	case len(pathDirs) == 0:
+		return &u, nil
+	// Case for working with a whole project - https://github.com/<project_name>
+	case len(pathDirs) == 1:
+		u.Namespace = pathDirs[0]
+		buildGenericURLs(&u)
+		return &u, nil
+	// PR fetching case - https://github.com/<project_name>/<repo_name>/pull/<id>
+	case len(pathDirs) > 3 && pathDirs[2] == "pull":
+		u.Namespace = pathDirs[0]
+		u.Repository = pathDirs[1]
+		u.PullRequestId = pathDirs[3]
+		buildGenericURLs(&u)
+		return &u, nil
+	// Case for working with a specific repo - https://github.com/<project_name>/<repo_name>
+	case len(pathDirs) > 1:
+		u.Namespace = pathDirs[0]
+		u.Repository = pathDirs[1]
+		buildGenericURLs(&u)
+		return &u, nil
+	default:
+		return &u, fmt.Errorf("invalid Github URL: %s", u.Raw)
+	}
 }
 
 // parseBitbucket processes Bitbucket URLs to extract repository information. The case is for a Bitbucket APIv1/Onprem URL format
@@ -181,44 +243,43 @@ func parseBitbucket(u VCSURL) (*VCSURL, error) {
 	pathDirs := GetPathDirs(u.ParsedURL.Path)
 
 	switch {
+	// Case for fetching the whole VCS - https://bitbucket.com/
 	case len(pathDirs) == 0:
-		// Case for fetching the whole VCS - https://bitbucket.com/
 		return &u, nil
+	// Case for working with a whole project from a Web UI URL format - https://bitbucket.com/projects/<project_name>
 	case len(pathDirs) == 2 && pathDirs[0] == "projects" && u.Protocol() == HTTP:
-		// Case for working with a whole project from a Web UI URL format - https://bitbucket.com/projects/<project_name>
 		u.Namespace = pathDirs[1]
 		return &u, nil
+	// Case for working with user repositories - https://bitbucket.com/users/<username>/repos/<repo_name>/browse
 	case len(pathDirs) > 3 && pathDirs[0] == "users" && pathDirs[2] == "repos" && u.Protocol() == HTTP:
-		// Case for working with user repositories - https://bitbucket.com/users/<username>/repos/<repo_name>/browse
 		u.Namespace = pathDirs[1]
 		u.Repository = pathDirs[3]
 		buildBitbucketURLs(&u, false, "", true)
 		return &u, nil
+	// PR fetching case - the type doesn't exist in SCM URLs - https://bitbucket.com/projects/<project_name>/repos/<repo_name>/pull-requests/<id>
 	case len(pathDirs) > 4 && pathDirs[0] == "projects" && pathDirs[4] == "pull-requests" && u.Protocol() == HTTP:
-		// PR fetching case - the type doesn't exist in SCM URLs - https://bitbucket.com/projects/<project_name>/repos/<repo_name>/pull-requests/<id>
 		u.Namespace = pathDirs[1]
 		u.Repository = pathDirs[3]
 		u.PullRequestId = pathDirs[5]
 		buildBitbucketURLs(&u, false, "", false)
 		return &u, nil
+	// Case for working with a specific repo from a Web UI URL format - https://bitbucket.com/projects/<project_name>/repos/<repo_name>/browse
 	case len(pathDirs) > 3 && pathDirs[0] == "projects" && pathDirs[2] == "repos" && u.Protocol() == HTTP:
-		// Case for working with a specific repo from a Web UI URL format - https://bitbucket.com/projects/<project_name>/repos/<repo_name>/browse
 		u.Namespace = pathDirs[1]
 		u.Repository = pathDirs[3]
 		buildBitbucketURLs(&u, false, "", false)
 		return &u, nil
+	// Case for SCM path - https://bitbucket.com/scm/<project_name>/
 	case len(pathDirs) >= 2 && u.Protocol() == HTTP && pathDirs[0] == "scm":
-		// Case for SCM path - https://bitbucket.com/scm/<project_name>/
 		u.Namespace = pathDirs[1]
 		if len(pathDirs) > 2 {
-			// https://bitbucket.com/scm/<project_name>/<repo_name>.git
-			u.Repository = pathDirs[len(pathDirs)-1]
+			u.Repository = pathDirs[len(pathDirs)-1] // https://bitbucket.com/scm/<project_name>/<repo_name>.git
 			buildBitbucketURLs(&u, false, "", false)
 		}
 		return &u, nil
+	// Case for SSH path - ssh://git@bitbucket.com:7989/<project_name>/<repo_name>.git
+	// and ssh://git@git.bitbucket.com:7989/~<username>/<repo_name>.git
 	case u.Protocol() == SSH:
-		// Case for SSH path - ssh://git@bitbucket.com:7989/<project_name>/<repo_name>.git
-		// and ssh://git@git.bitbucket.com:7989/~<username>/<repo_name>.git
 		u.Namespace = pathDirs[0]
 		if len(pathDirs) > 1 {
 			u.Repository = pathDirs[len(pathDirs)-1]
@@ -228,6 +289,12 @@ func parseBitbucket(u VCSURL) (*VCSURL, error) {
 	default:
 		return &u, fmt.Errorf("invalid Bitbucket URL: %s", u.Raw)
 	}
+}
+
+// buildGenericURLs sets the HTTP and SSH URLs for repositories.
+func buildGenericURLs(u *VCSURL) {
+	u.HTTPRepoLink = fmt.Sprintf("https://%s/%s/%s", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
+	u.SSHRepoLink = fmt.Sprintf("ssh://git@%s/%s/%s.git", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
 }
 
 // buildBitbucketURLs sets the HTTP and SSH URLs for repositories.
