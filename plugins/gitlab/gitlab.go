@@ -423,7 +423,7 @@ func (g *VCSGitlab) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		return "", fmt.Errorf("failed to retrieve MR: %w", err)
 	}
 
-	if len(args.Branch) == 0 {
+	if args.Branch == "" {
 		args.Branch = mrData.SourceBranch
 		if mrData.SourceProjectID != mrData.TargetProjectID {
 			args.Branch = mrData.SHA
