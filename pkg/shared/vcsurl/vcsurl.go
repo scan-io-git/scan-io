@@ -148,7 +148,7 @@ func ParseForVCSType(raw string, vcsType VCSType) (*VCSURL, error) {
 	case Github:
 		return parseGithub(vcsURL)
 	case Gitlab:
-		return handleGenericVCS(vcsURL)
+		return parseGitlab(vcsURL)
 	default:
 		return handleGenericVCS(vcsURL)
 	}
@@ -176,36 +176,46 @@ func handleGenericVCS(u VCSURL) (*VCSURL, error) {
 	return &u, nil
 }
 
-// // parseGitlab processes Gitlab URLs to extract repository information.
-// func parseGitlab(u VCSURL) (*VCSURL, error) {
-// 	pathDirs := GetPathDirs(u.ParsedURL.Path)
+// parseGitlab processes Gitlab URLs to extract repository information.
+func parseGitlab(u VCSURL) (*VCSURL, error) {
+	pathDirs := GetPathDirs(u.ParsedURL.Path)
 
-// 	switch {
-// 	// Case of working with the whole VCS - https://github.com/
-// 	case len(pathDirs) == 0:
-// 		return &u, nil
-// 	// Case for working with a whole project - https://github.com/<project_name>
-// 	case len(pathDirs) == 1:
-// 		u.Namespace = pathDirs[0]
-// 		buildGenericURLs(&u)
-// 		return &u, nil
-// 	// PR fetching case - https://github.com/<project_name>/<repo_name>/pull/<id>
-// 	case len(pathDirs) > 3 && pathDirs[2] == "pull":
-// 		u.Namespace = pathDirs[0]
-// 		u.Repository = pathDirs[1]
-// 		u.PullRequestId = pathDirs[3]
-// 		buildGenericURLs(&u)
-// 		return &u, nil
-// 	// Case for working with a specific repo - https://github.com/<project_name>/<repo_name>
-// 	case len(pathDirs) > 1:
-// 		u.Namespace = pathDirs[0]
-// 		u.Repository = pathDirs[1]
-// 		buildGenericURLs(&u)
-// 		return &u, nil
-// 	default:
-// 		return &u, fmt.Errorf("invalid Github URL: %s", u.Raw)
-// 	}
-// }
+	// Search for "merge_requests" in pathDirs (excluding the first three segments)
+	mergeRequestIndex := -1
+	for i := 3; i < len(pathDirs); i++ {
+		if pathDirs[i] == "merge_requests" {
+			mergeRequestIndex = i
+			break
+		}
+	}
+
+	switch {
+	// Case of working with the whole VCS - https://gitlab.com/
+	case len(pathDirs) == 0:
+		return &u, nil
+	// Case for working with a root group - https://gitlab.com/<group_name>
+	case len(pathDirs) == 1:
+		u.Namespace = pathDirs[0]
+		buildGenericURLs(&u)
+		return &u, nil
+	// MR fetching case - https://gitlab.com/<group_name>/../<project_name>/-/merge_requests/<id>
+	case mergeRequestIndex > 2 && mergeRequestIndex+1 < len(pathDirs) && pathDirs[mergeRequestIndex-1] == "-":
+		u.Namespace = path.Join(pathDirs[:mergeRequestIndex-2]...)
+		u.Repository = pathDirs[mergeRequestIndex-2]
+		u.PullRequestId = pathDirs[mergeRequestIndex+1]
+		buildGenericURLs(&u)
+		return &u, nil
+	// Case for working with a specific repository - https://gitlab.com/<group>/<subgroup>/.../<project>
+	// Assumes the last segment is the repository name.
+	case len(pathDirs) > 3: // TODO: add '-/tree/main' search and verification
+		u.Namespace = path.Join(pathDirs[:len(pathDirs)-1]...)
+		u.Repository = pathDirs[len(pathDirs)-1]
+		buildGenericURLs(&u)
+		return &u, nil
+	default:
+		return &u, fmt.Errorf("invalid Gitlab URL: %s", u.Raw)
+	}
+}
 
 // parseGithub processes Github URLs to extract repository information.
 func parseGithub(u VCSURL) (*VCSURL, error) {
