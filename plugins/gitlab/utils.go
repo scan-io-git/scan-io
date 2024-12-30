@@ -35,7 +35,7 @@ func toRepositoryParams(repos []*gitlab.Project) []shared.RepositoryParams {
 
 		repoParams = append(repoParams, shared.RepositoryParams{
 			Domain:     "",
-			Namespace:  repo.Namespace.Path,
+			Namespace:  repo.Namespace.FullPath,
 			Repository: repo.Path,
 			HTTPLink:   repo.HTTPURLToRepo,
 			SSHLink:    repo.SSHURLToRepo,

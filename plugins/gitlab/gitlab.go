@@ -103,17 +103,49 @@ func isLanguagePresent(languages *gitlab.ProjectLanguages, language string) bool
 	return false
 }
 
-// listRepositoriesForProject fetches repositories for a given project.
-func (g *VCSGitlab) listRepositoriesForProject(client *gitlab.Client, projectKey, language string) ([]shared.RepositoryParams, error) {
-	g.logger.Debug("listing repositories for project", "projectKey", projectKey, "language", language)
+// listProjectsForGroup fetches repositories for a given group and supports searching in subgorups
+func (g *VCSGitlab) listProjectsForGroup(client *gitlab.Client, groupKey, language string) ([]shared.RepositoryParams, error) {
+	g.logger.Debug("listing projects for group", "groupKey", groupKey, "language", language)
 
-	// TODO: expand for a personal user namespace
-	allProjects, err := fetchPaginated(func(opts *gitlab.ListOptions) ([]*gitlab.Project, *gitlab.Response, error) {
-		return client.Groups.ListGroupProjects(projectKey, &gitlab.ListGroupProjectsOptions{ListOptions: *opts})
-	})
-	if err != nil {
-		g.logger.Error("failed to retrieve projects for group", "group", projectKey, "error", err)
-		return nil, err
+	var allProjects []*gitlab.Project
+	var collectProjects func(groupKey string) error
+
+	collectProjects = func(groupKey string) error {
+		// Fetch all projects for the current group
+		projects, err := fetchPaginated(func(opts *gitlab.ListOptions) ([]*gitlab.Project, *gitlab.Response, error) {
+			return client.Groups.ListGroupProjects(groupKey, &gitlab.ListGroupProjectsOptions{ListOptions: *opts})
+		})
+		if err != nil {
+			g.logger.Error("failed to retrieve projects for group", "group", groupKey, "error", err)
+			return err
+		}
+		allProjects = append(allProjects, projects...)
+
+		subgroups, err := fetchPaginated(func(opts *gitlab.ListOptions) ([]*gitlab.Group, *gitlab.Response, error) {
+			return client.Groups.ListSubGroups(groupKey, &gitlab.ListSubGroupsOptions{ListOptions: *opts})
+		})
+		if err != nil {
+			g.logger.Error("failed to retrieve subgroups for group", "group", groupKey, "error", err)
+			return err
+		}
+
+		// Recursively process each subgroup
+		for _, subgroup := range subgroups {
+			if subgroup == nil {
+				continue
+			}
+			err := collectProjects(subgroup.FullPath)
+			if err != nil {
+				g.logger.Warn("failed to collect projects for subgroup, continuing", "subgroup", subgroup.FullPath, "error", err)
+			}
+		}
+
+		return nil
+	}
+
+	// Start collecting projects and subgroups from the top-level group
+	if err := collectProjects(groupKey); err != nil {
+		return nil, fmt.Errorf("failed to retrieve projects for group and subgroups: %w", err)
 	}
 
 	var filteredProjects []*gitlab.Project
@@ -137,9 +169,9 @@ func (g *VCSGitlab) listRepositoriesForProject(client *gitlab.Client, projectKey
 	return toRepositoryParams(filteredProjects), nil
 }
 
-// listRepositoriesForAllProjects fetches repositories for all groups.
-func (g *VCSGitlab) listRepositoriesForAllProjects(client *gitlab.Client, language string) ([]shared.RepositoryParams, error) {
-	g.logger.Debug("listing repositories for all groups", "language", language)
+// listProjectsForAllGroups fetches projects for all groups.
+func (g *VCSGitlab) listProjectsForAllGroups(client *gitlab.Client, language string) ([]shared.RepositoryParams, error) {
+	g.logger.Debug("listing projects for all groups", "language", language)
 	allGroups, err := fetchPaginated(func(opts *gitlab.ListOptions) ([]*gitlab.Group, *gitlab.Response, error) {
 		return client.Groups.ListGroups(&gitlab.ListGroupsOptions{
 			ListOptions:  *opts,
@@ -159,24 +191,24 @@ func (g *VCSGitlab) listRepositoriesForAllProjects(client *gitlab.Client, langua
 			g.logger.Warn("skipping group with missing name")
 			continue
 		}
-		g.logger.Debug("fetching repositories for group", "group", group.FullPath)
-		repos, err := g.listRepositoriesForProject(client, group.FullPath, language)
+		g.logger.Debug("fetching projects for group", "group", group.FullPath)
+		repos, err := g.listProjectsForGroup(client, group.FullPath, language)
 		if err != nil {
-			g.logger.Error("failed to list repositories for group", "group", group.FullPath, "error", err)
+			g.logger.Error("failed to list projects for group", "group", group.FullPath, "error", err)
 			continue
 		}
 		allRepositories = append(allRepositories, repos...)
 	}
 
 	if len(allRepositories) == 0 {
-		return nil, fmt.Errorf("no repositories found for groups or the current user")
+		return nil, fmt.Errorf("no projects found for groups or the current user")
 	}
 	return allRepositories, nil
 }
 
 // ListRepos handles listing repositories based on the provided VCSListReposRequest.
 func (g *VCSGitlab) ListRepositories(args shared.VCSListRepositoriesRequest) ([]shared.RepositoryParams, error) {
-	g.logger.Debug("starting repository listing", "args", args)
+	g.logger.Debug("starting projects listing", "args", args)
 
 	if err := g.validateList(&args); err != nil {
 		g.logger.Error("validation failed", "error", err)
@@ -190,9 +222,9 @@ func (g *VCSGitlab) ListRepositories(args shared.VCSListRepositoriesRequest) ([]
 	}
 
 	if len(args.RepoParam.Namespace) > 0 {
-		return g.listRepositoriesForProject(client, args.RepoParam.Namespace, args.Language)
+		return g.listProjectsForGroup(client, args.RepoParam.Namespace, args.Language)
 	}
-	return g.listRepositoriesForAllProjects(client, args.Language)
+	return g.listProjectsForAllGroups(client, args.Language)
 }
 
 // RetrievePRInformation handles retrieving PR information based on the provided VCSRetrievePRInformationRequest.
