@@ -12,6 +12,14 @@ func (g *VCSGitlab) validateCommonCredentials() error {
 	return validation.ValidateCommonCredentials(g.globalConfig.GitlabPlugin.Username, g.globalConfig.GitlabPlugin.Token)
 }
 
+// validateCommonCredentials checks for the presence of common credentials.
+func (g *VCSGitlab) validateAPICommonCredentials() error {
+	if len(g.globalConfig.GitlabPlugin.Token) == 0 {
+		g.logger.Warn("No token provided. Anonymous Git access will be used. API rate limits may apply.")
+	}
+	return nil
+}
+
 // validateFetch checks the necessary fields in VCSFetchRequest and returns errors if they are not set.
 func (g *VCSGitlab) validateFetch(args *shared.VCSFetchRequest) error {
 	if err := validation.ValidateFetchArgs(args); err != nil {
@@ -36,7 +44,7 @@ func (g *VCSGitlab) validateList(args *shared.VCSListRepositoriesRequest) error 
 	if err := validation.ValidateListArgs(args); err != nil {
 		return err
 	}
-	return g.validateCommonCredentials()
+	return g.validateAPICommonCredentials()
 }
 
 // validateRetrievePRInformation checks the necessary fields in VCSRetrievePRInformationRequest and returns errors if they are not set.
@@ -44,21 +52,21 @@ func (g *VCSGitlab) validateRetrievePRInformation(args *shared.VCSRetrievePRInfo
 	if err := validation.ValidateRetrievePRInformationArgs(args); err != nil {
 		return err
 	}
-	return g.validateCommonCredentials()
+	return g.validateAPICommonCredentials()
 }
 
 // validateAddRoleToPR checks the necessary fields in VCSAddRoleToPRRequest and returns errors if they are not set.
 func (g *VCSGitlab) validateAddRoleToPR(args *shared.VCSAddRoleToPRRequest) error {
-	roles := []string{"ASSIGNEE", "REVIEWER"}
+	roles := []string{"assignee", "reviewer"}
 	if err := validation.ValidateAddRoleToPRArgs(args, roles); err != nil {
 		return err
 	}
-	return g.validateCommonCredentials()
+	return g.validateAPICommonCredentials()
 }
 
 // validateSetStatusOfPR checks the necessary fields in VCSSetStatusOfPRRequest and returns errors if they are not set.
 func (g *VCSGitlab) validateSetStatusOfPR(args *shared.VCSSetStatusOfPRRequest) error {
-	statuses := []string{}
+	statuses := []string{"approve", "unapprove"}
 	requiredFields := map[string]string{
 		"status": args.Status,
 	}
@@ -66,8 +74,7 @@ func (g *VCSGitlab) validateSetStatusOfPR(args *shared.VCSSetStatusOfPRRequest) 
 	if err := validation.ValidateSetStatusOfPRArgs(args, requiredFields, statuses); err != nil {
 		return err
 	}
-
-	return g.validateCommonCredentials()
+	return g.validateAPICommonCredentials()
 }
 
 // validateAddCommentToPR checks the necessary fields in VCSAddCommentToPRRequest and returns errors if they are not set.
@@ -75,5 +82,5 @@ func (g *VCSGitlab) validateAddCommentToPR(args *shared.VCSAddCommentToPRRequest
 	if err := validation.ValidateAddCommentToPRArgs(args); err != nil {
 		return err
 	}
-	return g.validateCommonCredentials()
+	return g.validateAPICommonCredentials()
 }

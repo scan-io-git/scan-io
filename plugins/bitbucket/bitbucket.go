@@ -145,7 +145,7 @@ func (g *VCSBitbucket) RetrievePRInformation(args shared.VCSRetrievePRInformatio
 
 // AddRoleToPR handles adding a specified role to a PR based on the provided VCSAddRoleToPRRequest.
 func (g *VCSBitbucket) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error) {
-	g.logger.Debug("starting to add a reviewer to a PR", "args", args)
+	g.logger.Debug("starting to add a user to a PR", "args", args)
 
 	if err := g.validateAddRoleToPR(&args); err != nil {
 		g.logger.Error("validation failed for adding a user to PR operation", "error", err)
@@ -165,11 +165,11 @@ func (g *VCSBitbucket) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, err
 	}
 
 	if _, err := prData.AddRole(args.Role, args.Login); err != nil {
-		g.logger.Error("failed to add role to PR", "error", err)
+		g.logger.Error("failed to add role to PR", "login", args.Login, "role", args.Role, "error", err)
 		return false, err
 	}
 
-	g.logger.Info("user successfully added to the PR", "user", args.Login, "role", args.Role)
+	g.logger.Info("user successfully added to the PR", "login", args.Login, "role", args.Role)
 	return true, nil
 }
 
@@ -201,7 +201,7 @@ func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool,
 		return false, err
 	}
 
-	g.logger.Info("PR successfully moved to status", "status", args.Status, "PR_ID", prID, "last_commit", prData.Author.LastReviewedCommit)
+	g.logger.Info("PR successfully moved to status", "status", args.Status, "PRID", prID, "last_commit", prData.Author.LastReviewedCommit)
 	return true, nil
 }
 

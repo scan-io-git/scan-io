@@ -34,8 +34,8 @@ type PRParams struct {
 
 // User holds the details of a user.
 type User struct {
-	DisplayName string `json:"display_name"`
-	Email       string `json:"email"`
+	UserName string `json:"user_name"`
+	Email    string `json:"email"`
 }
 
 // Reference holds the details of a reference in a repository.

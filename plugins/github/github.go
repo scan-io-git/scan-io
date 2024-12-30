@@ -106,7 +106,7 @@ func (g *VCSGithub) listRepositoriesForAllProjects(client *github.Client) ([]sha
 	// Fetch repositories for each organization
 	for _, org := range orgs {
 		if org.Login == nil {
-			g.logger.Warn("skipping organization with missing login")
+			g.logger.Warn("skipping organization with missing name")
 			continue
 		}
 
@@ -186,7 +186,7 @@ func (g *VCSGithub) RetrievePRInformation(args shared.VCSRetrievePRInformationRe
 
 // AddRoleToPR handles adding a specified role to a PR based on the provided VCSAddRoleToPRRequest.
 func (g *VCSGithub) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error) {
-	g.logger.Debug("starting to add a reviewer to a PR", "args", args)
+	g.logger.Debug("starting to add a user to a PR", "args", args)
 
 	if err := g.validateAddRoleToPR(&args); err != nil {
 		g.logger.Error("validation failed for adding a user to PR operation", "error", err)
@@ -207,7 +207,7 @@ func (g *VCSGithub) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error)
 	case "assignee":
 		assignees := []string{args.Login}
 		if _, _, err := client.Issues.AddAssignees(context.Background(), args.RepoParam.Namespace, args.RepoParam.Repository, prID, assignees); err != nil {
-			g.logger.Error("failed to add assignee to PR", "error", err)
+			g.logger.Error("failed to add assignee to PR", "login", args.Login, "role", args.Role, "error", err)
 			return false, fmt.Errorf("failed to add assignee to PR: %w", err)
 		}
 
@@ -226,7 +226,7 @@ func (g *VCSGithub) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error)
 		return false, fmt.Errorf("unsupported role: %s", args.Role)
 	}
 
-	g.logger.Info("user successfully added to the PR", "user", args.Login, "role", args.Role)
+	g.logger.Info("user successfully added to the PR", "login", args.Login, "role", args.Role)
 	return true, nil
 }
 
@@ -261,7 +261,7 @@ func (g *VCSGithub) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, er
 		return false, fmt.Errorf("failed to set the status of the PR: %w", err)
 	}
 
-	g.logger.Info("PR successfully moved to status", "status", args.Status, "PR_ID", prID, "last_commit", prData.Head.GetSHA())
+	g.logger.Info("PR successfully moved to status", "status", args.Status, "PRID", prID, "last_commit", prData.Head.GetSHA())
 	return true, nil
 }
 
