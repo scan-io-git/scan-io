@@ -404,9 +404,10 @@ func (g *VCSGitlab) buildCommentWithAttachments(client *gitlab.Client, projectID
 	var attachmentsText strings.Builder
 
 	if len(filePaths) > 0 {
-		attachmentsText.WriteString("\n**Report(s):**")
+		attachmentsText.WriteString("\n\n**Report(s):**")
 		for _, path := range filePaths {
-			if _, err := files.GetValidatedFileName(path); err != nil {
+			fileName, err := files.GetValidatedFileName(path)
+			if err != nil {
 				g.logger.Error("failed to validate file path, skipping file", "file", path, "error", err)
 				continue
 			}
@@ -418,7 +419,7 @@ func (g *VCSGitlab) buildCommentWithAttachments(client *gitlab.Client, projectID
 				continue
 			}
 
-			uploadedFile, _, err := client.ProjectMarkdownUploads.UploadProjectMarkdown(projectID, file)
+			uploadedFile, _, err := client.Projects.UploadFile(projectID, file, fileName, nil)
 			file.Close()
 			if err != nil {
 				g.logger.Error("failed to upload file, skipping file", "file", path, "error", err)

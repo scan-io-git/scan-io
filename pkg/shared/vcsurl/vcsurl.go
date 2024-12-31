@@ -207,7 +207,7 @@ func parseGitlab(u VCSURL) (*VCSURL, error) {
 		return &u, nil
 	// Case for working with a specific repository - https://gitlab.com/<group>/<subgroup>/.../<project>
 	// Assumes the last segment is the repository name.
-	case len(pathDirs) > 3: // TODO: add '-/tree/main' search and verification
+	case len(pathDirs) >= 2: // TODO: add '-/tree/main' search and verification
 		u.Namespace = path.Join(pathDirs[:len(pathDirs)-1]...)
 		u.Repository = pathDirs[len(pathDirs)-1]
 		buildGenericURLs(&u)
