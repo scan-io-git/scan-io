@@ -77,7 +77,7 @@ func (g *VCSGitlab) initializeGitlabClient(vcsBaseURL string) (*gitlab.Client, e
 // Helper function to handle paginated API calls.
 func fetchPaginated[T any](fetchFunc func(*gitlab.ListOptions) ([]T, *gitlab.Response, error)) ([]T, error) {
 	var results []T
-	options := &gitlab.ListOptions{Page: 1, PerPage: 100}
+	options := &gitlab.ListOptions{Page: 1, PerPage: 30}
 
 	for {
 		items, resp, err := fetchFunc(options)
