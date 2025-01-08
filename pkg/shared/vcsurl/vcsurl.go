@@ -314,18 +314,22 @@ func buildGenericURLs(u *VCSURL) {
 
 // buildBitbucketURLs sets the HTTP and SSH URLs for repositories.
 func buildBitbucketURLs(u *VCSURL, usePort bool, port string, isUserRepo bool) {
+	namespace := u.Namespace
+	if strings.Contains(u.Namespace, "users/") {
+		namespace = strings.TrimPrefix(u.Namespace, "users/")
+	}
 	if isUserRepo {
-		u.HTTPRepoLink = fmt.Sprintf("https://%s/users/%s/repos/%s", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
-		u.SSHRepoLink = fmt.Sprintf("ssh://git@%s:7989/~%s/%s.git", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
+		u.HTTPRepoLink = fmt.Sprintf("https://%s/users/%s/repos/%s", u.ParsedURL.Hostname(), namespace, u.Repository)
+		u.SSHRepoLink = fmt.Sprintf("ssh://git@%s:7989/~%s/%s.git", u.ParsedURL.Hostname(), namespace, u.Repository)
 	} else {
-		u.HTTPRepoLink = fmt.Sprintf("https://%s/projects/%s/repos/%s", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
-		u.SSHRepoLink = fmt.Sprintf("ssh://git@%s:7989/%s/%s.git", u.ParsedURL.Hostname(), u.Namespace, u.Repository)
+		u.HTTPRepoLink = fmt.Sprintf("https://%s/projects/%s/repos/%s", u.ParsedURL.Hostname(), namespace, u.Repository)
+		u.SSHRepoLink = fmt.Sprintf("ssh://git@%s:7989/%s/%s.git", u.ParsedURL.Hostname(), namespace, u.Repository)
 	}
 
 	if usePort {
-		u.SSHRepoLink = fmt.Sprintf("ssh://git@%s:%s/%s/%s.git", u.ParsedURL.Hostname(), port, u.Namespace, u.Repository)
+		u.SSHRepoLink = fmt.Sprintf("ssh://git@%s:%s/%s/%s.git", u.ParsedURL.Hostname(), port, namespace, u.Repository)
 		if isUserRepo {
-			u.SSHRepoLink = fmt.Sprintf("ssh://git@%s:%s/~%s/%s.git", u.ParsedURL.Hostname(), port, u.Namespace, u.Repository)
+			u.SSHRepoLink = fmt.Sprintf("ssh://git@%s:%s/~%s/%s.git", u.ParsedURL.Hostname(), port, namespace, u.Repository)
 		}
 	}
 }
