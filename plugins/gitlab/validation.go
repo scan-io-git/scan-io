@@ -12,7 +12,7 @@ func (g *VCSGitlab) validateCommonCredentials() error {
 	return validation.ValidateCommonCredentials(g.globalConfig.GitlabPlugin.Username, g.globalConfig.GitlabPlugin.Token)
 }
 
-// validateCommonCredentials checks for the presence of common credentials.
+// validateAPICommonCredentials checks for the presence of common credentials for APU.
 func (g *VCSGitlab) validateAPICommonCredentials() error {
 	if len(g.globalConfig.GitlabPlugin.Token) == 0 {
 		g.logger.Warn("No token provided. Anonymous Git access will be used. API rate limits may apply.")

@@ -12,7 +12,7 @@ func (g *VCSGithub) validateCommonCredentials() error {
 	return validation.ValidateCommonCredentials(g.globalConfig.GithubPlugin.Username, g.globalConfig.GithubPlugin.Token)
 }
 
-// validateCommonCredentials checks for the presence of common credentials.
+// validateAPICommonCredentials checks for the presence of common credentials for APU.
 func (g *VCSGithub) validateAPICommonCredentials() error {
 	if len(g.globalConfig.GithubPlugin.Token) == 0 {
 		g.logger.Warn("No token provided. Anonymous Git access will be used. API rate limits may apply.")
