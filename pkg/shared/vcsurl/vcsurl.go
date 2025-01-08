@@ -260,9 +260,14 @@ func parseBitbucket(u VCSURL) (*VCSURL, error) {
 	case len(pathDirs) == 2 && pathDirs[0] == "projects" && u.Protocol() == HTTP:
 		u.Namespace = pathDirs[1]
 		return &u, nil
+	// Case for working with user project - https://bitbucket.com/users/<username>
+	case len(pathDirs) == 2 && pathDirs[0] == "users" && u.Protocol() == HTTP:
+		u.Namespace = strings.Join([]string{pathDirs[0], pathDirs[1]}, "/")
+		buildBitbucketURLs(&u, false, "", true)
+		return &u, nil
 	// Case for working with user repositories - https://bitbucket.com/users/<username>/repos/<repo_name>/browse
 	case len(pathDirs) > 3 && pathDirs[0] == "users" && pathDirs[2] == "repos" && u.Protocol() == HTTP:
-		u.Namespace = pathDirs[1]
+		u.Namespace = strings.Join([]string{pathDirs[0], pathDirs[1]}, "/")
 		u.Repository = pathDirs[3]
 		buildBitbucketURLs(&u, false, "", true)
 		return &u, nil

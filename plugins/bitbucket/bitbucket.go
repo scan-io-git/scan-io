@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
@@ -61,13 +62,23 @@ func (g *VCSBitbucket) initializeBitbucketClient(domain string) (*bitbucket.Clie
 	return client, nil
 }
 
-// listRepositoriesForProject fetches repositories for a given project.
+// listRepositoriesForProject fetches repositories for a given project or user.
 func (g *VCSBitbucket) listRepositoriesForProject(client *bitbucket.Client, projectKey string) ([]shared.RepositoryParams, error) {
-	repositories, err := client.Repositories.List(projectKey)
-	if err != nil {
-		g.logger.Error("failed to retrieve repositories for the project", "project", projectKey, "error", err)
-		return nil, err
+	var repositories *[]bitbucket.Repository
+	var err error
+
+	switch {
+	case strings.HasPrefix(projectKey, "users/"):
+		repositories, err = client.Repositories.ListUserRepos(strings.TrimPrefix(projectKey, "users/"))
+	default:
+		repositories, err = client.Repositories.List(projectKey)
 	}
+
+	if err != nil {
+		g.logger.Error("failed to retrieve repositories", "projectKey", projectKey, "error", err)
+		return nil, fmt.Errorf("failed to retrieve repositories for %q: %w", projectKey, err)
+	}
+
 	return toRepositoryParams(repositories), nil
 }
 
