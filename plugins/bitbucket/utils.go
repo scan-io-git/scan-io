@@ -11,6 +11,7 @@ func toRepositoryParams(repos *[]bitbucket.Repository) []shared.RepositoryParams
 	for _, repo := range *repos {
 		httpLink, sshLink := bitbucket.ExtractCloneLinks(repo.Links.Clone)
 		repoParams = append(repoParams, shared.RepositoryParams{
+			Domain:     "",
 			Namespace:  repo.Project.Key,
 			Repository: repo.Name,
 			HTTPLink:   httpLink,
@@ -32,7 +33,7 @@ func convertToPRParams(pr *bitbucket.PullRequest) shared.PRParams {
 		Title:       pr.Title,
 		Description: pr.Description,
 		State:       pr.State,
-		Author:      shared.User{DisplayName: pr.Author.User.DisplayName, Email: pr.Author.User.EmailAddress},
+		Author:      shared.User{UserName: pr.Author.User.DisplayName, Email: pr.Author.User.EmailAddress},
 		SelfLink:    selfLink,
 		Source: shared.Reference{
 			ID:           pr.FromReference.ID,

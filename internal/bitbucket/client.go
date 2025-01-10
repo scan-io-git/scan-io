@@ -30,6 +30,7 @@ type Client struct {
 // RepositoriesService defines the interface for repository-related operations.
 type RepositoriesService interface {
 	List(project string) (*[]Repository, error)
+	ListUserRepos(username string) (*[]Repository, error)
 }
 
 // ProjectsService defines the interface for project-related operations.

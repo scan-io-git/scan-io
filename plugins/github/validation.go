@@ -12,6 +12,14 @@ func (g *VCSGithub) validateCommonCredentials() error {
 	return validation.ValidateCommonCredentials(g.globalConfig.GithubPlugin.Username, g.globalConfig.GithubPlugin.Token)
 }
 
+// validateAPICommonCredentials checks for the presence of common credentials for APU.
+func (g *VCSGithub) validateAPICommonCredentials() error {
+	if len(g.globalConfig.GithubPlugin.Token) == 0 {
+		g.logger.Warn("No token provided. Anonymous Git access will be used. API rate limits may apply.")
+	}
+	return nil
+}
+
 // validateFetch checks the necessary fields in VCSFetchRequest and returns errors if they are not set.
 func (g *VCSGithub) validateFetch(args *shared.VCSFetchRequest) error {
 	if err := validation.ValidateFetchArgs(args); err != nil {
@@ -36,7 +44,7 @@ func (g *VCSGithub) validateList(args *shared.VCSListRepositoriesRequest) error 
 	if err := validation.ValidateListArgs(args); err != nil {
 		return err
 	}
-	return g.validateCommonCredentials()
+	return g.validateAPICommonCredentials()
 }
 
 // validateRetrievePRInformation checks the necessary fields in VCSRetrievePRInformationRequest and returns errors if they are not set.
@@ -44,23 +52,30 @@ func (g *VCSGithub) validateRetrievePRInformation(args *shared.VCSRetrievePRInfo
 	if err := validation.ValidateRetrievePRInformationArgs(args); err != nil {
 		return err
 	}
-	return g.validateCommonCredentials()
+	return g.validateAPICommonCredentials()
 }
 
 // validateAddRoleToPR checks the necessary fields in VCSAddRoleToPRRequest and returns errors if they are not set.
 func (g *VCSGithub) validateAddRoleToPR(args *shared.VCSAddRoleToPRRequest) error {
-	if err := validation.ValidateAddRoleToPRArgs(args); err != nil {
+	roles := []string{"assignee", "reviewer"}
+	if err := validation.ValidateAddRoleToPRArgs(args, roles); err != nil {
 		return err
 	}
-	return g.validateCommonCredentials()
+	return g.validateAPICommonCredentials()
 }
 
 // validateSetStatusOfPR checks the necessary fields in VCSSetStatusOfPRRequest and returns errors if they are not set.
 func (g *VCSGithub) validateSetStatusOfPR(args *shared.VCSSetStatusOfPRRequest) error {
-	if err := validation.ValidateSetStatusOfPRArgs(args); err != nil {
+	statuses := []string{"approve", "request_changes"}
+	requiredFields := map[string]string{
+		"status":  args.Status,
+		"comment": args.Comment,
+	}
+
+	if err := validation.ValidateSetStatusOfPRArgs(args, requiredFields, statuses); err != nil {
 		return err
 	}
-	return g.validateCommonCredentials()
+	return g.validateAPICommonCredentials()
 }
 
 // validateAddCommentToPR checks the necessary fields in VCSAddCommentToPRRequest and returns errors if they are not set.
@@ -68,5 +83,9 @@ func (g *VCSGithub) validateAddCommentToPR(args *shared.VCSAddCommentToPRRequest
 	if err := validation.ValidateAddCommentToPRArgs(args); err != nil {
 		return err
 	}
-	return g.validateCommonCredentials()
+
+	if len(args.FilePaths) != 0 {
+		g.logger.Warn("uploading files is not supported for github plugin. Uploading will be skipped!")
+	}
+	return g.validateAPICommonCredentials()
 }

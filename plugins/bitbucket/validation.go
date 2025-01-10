@@ -49,7 +49,8 @@ func (g *VCSBitbucket) validateRetrievePRInformation(args *shared.VCSRetrievePRI
 
 // validateAddRoleToPR checks the necessary fields in VCSAddRoleToPRRequest and returns errors if they are not set.
 func (g *VCSBitbucket) validateAddRoleToPR(args *shared.VCSAddRoleToPRRequest) error {
-	if err := validation.ValidateAddRoleToPRArgs(args); err != nil {
+	roles := []string{"reviewer"}
+	if err := validation.ValidateAddRoleToPRArgs(args, roles); err != nil {
 		return err
 	}
 	return g.validateCommonCredentials()
@@ -57,9 +58,16 @@ func (g *VCSBitbucket) validateAddRoleToPR(args *shared.VCSAddRoleToPRRequest) e
 
 // validateSetStatusOfPR checks the necessary fields in VCSSetStatusOfPRRequest and returns errors if they are not set.
 func (g *VCSBitbucket) validateSetStatusOfPR(args *shared.VCSSetStatusOfPRRequest) error {
-	if err := validation.ValidateSetStatusOfPRArgs(args); err != nil {
+	statuses := []string{"unapproved", "need_work", "approved"}
+	requiredFields := map[string]string{
+		"login":  args.Login,
+		"status": args.Status,
+	}
+
+	if err := validation.ValidateSetStatusOfPRArgs(args, requiredFields, statuses); err != nil {
 		return err
 	}
+
 	return g.validateCommonCredentials()
 }
 

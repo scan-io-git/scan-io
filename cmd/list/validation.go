@@ -25,7 +25,6 @@ func validateListArgs(options *vcsintegrator.RunOptionsIntegrationVCS, args []st
 		if err != nil {
 			return fmt.Errorf("provided URL is not valid: %w", err)
 		}
-		return nil
 	} else if options.Domain == "" {
 		return fmt.Errorf("the 'domain' flag must be specified")
 	}

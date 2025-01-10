@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
@@ -61,13 +62,23 @@ func (g *VCSBitbucket) initializeBitbucketClient(domain string) (*bitbucket.Clie
 	return client, nil
 }
 
-// listRepositoriesForProject fetches repositories for a given project.
+// listRepositoriesForProject fetches repositories for a given project or user.
 func (g *VCSBitbucket) listRepositoriesForProject(client *bitbucket.Client, projectKey string) ([]shared.RepositoryParams, error) {
-	repositories, err := client.Repositories.List(projectKey)
-	if err != nil {
-		g.logger.Error("failed to retrieve repositories for the project", "project", projectKey, "error", err)
-		return nil, err
+	var repositories *[]bitbucket.Repository
+	var err error
+
+	switch {
+	case strings.HasPrefix(projectKey, "users/"):
+		repositories, err = client.Repositories.ListUserRepos(strings.TrimPrefix(projectKey, "users/"))
+	default:
+		repositories, err = client.Repositories.List(projectKey)
 	}
+
+	if err != nil {
+		g.logger.Error("failed to retrieve repositories", "projectKey", projectKey, "error", err)
+		return nil, fmt.Errorf("failed to retrieve repositories for %q: %w", projectKey, err)
+	}
+
 	return toRepositoryParams(repositories), nil
 }
 
@@ -102,6 +113,7 @@ func (g *VCSBitbucket) listRepositoriesForAllProjects(client *bitbucket.Client) 
 // ListRepos handles listing repositories based on the provided VCSListReposRequest.
 func (g *VCSBitbucket) ListRepositories(args shared.VCSListRepositoriesRequest) ([]shared.RepositoryParams, error) {
 	g.logger.Debug("starting execution of list repositories function", "args", args)
+
 	if err := g.validateList(&args); err != nil {
 		g.logger.Error("validation failed for listing repositories operation", "error", err)
 		return nil, err
@@ -144,7 +156,7 @@ func (g *VCSBitbucket) RetrievePRInformation(args shared.VCSRetrievePRInformatio
 
 // AddRoleToPR handles adding a specified role to a PR based on the provided VCSAddRoleToPRRequest.
 func (g *VCSBitbucket) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error) {
-	g.logger.Debug("starting to add a reviewer to a PR", "args", args)
+	g.logger.Debug("starting to add a user to a PR", "args", args)
 
 	if err := g.validateAddRoleToPR(&args); err != nil {
 		g.logger.Error("validation failed for adding a user to PR operation", "error", err)
@@ -164,11 +176,11 @@ func (g *VCSBitbucket) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, err
 	}
 
 	if _, err := prData.AddRole(args.Role, args.Login); err != nil {
-		g.logger.Error("failed to add role to PR", "error", err)
+		g.logger.Error("failed to add role to PR", "login", args.Login, "role", args.Role, "error", err)
 		return false, err
 	}
 
-	g.logger.Info("user successfully added to the PR", "user", args.Login, "role", args.Role)
+	g.logger.Info("user successfully added to the PR", "login", args.Login, "role", args.Role)
 	return true, nil
 }
 
@@ -200,7 +212,7 @@ func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool,
 		return false, err
 	}
 
-	g.logger.Info("PR successfully moved to status", "status", args.Status, "PR_ID", prID, "last_commit", prData.Author.LastReviewedCommit)
+	g.logger.Info("PR successfully moved to status", "status", args.Status, "PRID", prID, "last_commit", prData.Author.LastReviewedCommit)
 	return true, nil
 }
 
@@ -262,13 +274,15 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		return "", err
 	}
 
-	// TODO: decide set or not explicit branch from user
-	args.Branch = prData.FromReference.ID
-	pathDirs := vcsurl.GetPathDirs(u.Path)
-	if pathDirs[0] == "users" {
-		args.Branch = prData.FromReference.LatestCommit
-		g.logger.Warn("found merging from user personal repository", "fromRefLink", fromRefLink)
-		g.logger.Warn("changes will be taken from the default branch and latest commit", "latest_commit", prData.FromReference.LatestCommit)
+	if len(args.Branch) == 0 {
+		args.Branch = prData.FromReference.ID
+
+		pathDirs := vcsurl.GetPathDirs(u.Path)
+		if pathDirs[0] == "users" {
+			args.Branch = prData.FromReference.LatestCommit
+			g.logger.Warn("found merging from user personal repository", "fromRefLink", fromRefLink)
+			g.logger.Warn("changes will be taken from the default branch and latest commit", "latest_commit", prData.FromReference.LatestCommit)
+		}
 	}
 
 	changes, err := prData.GetChanges()

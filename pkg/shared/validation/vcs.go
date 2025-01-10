@@ -2,6 +2,7 @@ package validation
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
 )
@@ -68,7 +69,7 @@ func ValidateRetrievePRInformationArgs(args *shared.VCSRetrievePRInformationRequ
 }
 
 // ValidateAddRoleToPRArgs checks the necessary fields in VCSAddRoleToPRRequest and returns errors if they are not set.
-func ValidateAddRoleToPRArgs(args *shared.VCSAddRoleToPRRequest) error {
+func ValidateAddRoleToPRArgs(args *shared.VCSAddRoleToPRRequest, roles []string) error {
 	if err := ValidateBaseArgs(&args.VCSRequestBase); err != nil {
 		return err
 	}
@@ -83,24 +84,38 @@ func ValidateAddRoleToPRArgs(args *shared.VCSAddRoleToPRRequest) error {
 			return fmt.Errorf("%s is required", field)
 		}
 	}
+
+	validRoles := make(map[string]struct{})
+	for _, role := range roles {
+		validRoles[role] = struct{}{}
+	}
+
+	if _, exists := validRoles[strings.ToLower(args.Role)]; !exists {
+		return fmt.Errorf("%q is not a supported role. Supported roles: %s", args.Role, strings.Join(roles, ", "))
+	}
+
 	return nil
 }
 
 // ValidateSetStatusOfPRArgs checks the necessary fields in VCSSetStatusOfPRRequest and returns errors if they are not set.
-func ValidateSetStatusOfPRArgs(args *shared.VCSSetStatusOfPRRequest) error {
+func ValidateSetStatusOfPRArgs(args *shared.VCSSetStatusOfPRRequest, requiredFields map[string]string, statuses []string) error {
 	if err := ValidateBaseArgs(&args.VCSRequestBase); err != nil {
 		return err
-	}
-
-	requiredFields := map[string]string{
-		"login":  args.Login,
-		"status": args.Status,
 	}
 
 	for field, value := range requiredFields {
 		if value == "" {
 			return fmt.Errorf("%s is required", field)
 		}
+	}
+
+	validStatuses := make(map[string]struct{})
+	for _, status := range statuses {
+		validStatuses[status] = struct{}{}
+	}
+
+	if _, exists := validStatuses[strings.ToLower(args.Status)]; !exists {
+		return fmt.Errorf("%q is not a supported role. Supported roles: %s", args.Status, strings.Join(statuses, ", "))
 	}
 
 	return nil

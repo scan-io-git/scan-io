@@ -5,7 +5,7 @@
 # Important: As of now, Semgrep does not support ARM architectures - see https://github.com/returntocorp/semgrep/issues/2252 for details!
 
 # Stage 1: Build Scanio core and plugins
-FROM golang:1.19.8-alpine3.17 AS build-scanio
+FROM golang:1.23.4-alpine3.21 AS build-scanio
 
 WORKDIR /usr/src/scanio
 
