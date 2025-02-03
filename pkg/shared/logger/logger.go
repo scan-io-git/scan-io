@@ -17,7 +17,6 @@ func NewLogger(cfg *config.Config, name string) hclog.Logger {
 		DisableTime:     config.GetBoolValue(cfg, "Logger.DisableTime", true),
 		JSONFormat:      config.GetBoolValue(cfg, "Logger.JSONFormat", false),
 		IncludeLocation: config.GetBoolValue(cfg, "Logger.IncludeLocation", false),
-		Output:          os.Stdout,
 		Level:           logLevel,
 	})
 	return logger
