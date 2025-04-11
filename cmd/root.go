@@ -39,10 +39,11 @@ var (
 func Execute() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Printf("Error: %v\n", err.Error())
 		if commandErr, ok := err.(*errors.CommandError); ok {
 			if config.IsCI(AppConfig) {
 				shared.PrintResultAsJSON(Logger, commandErr.Result)
+			} else {
+				fmt.Printf("Error: %v\n", err.Error())
 			}
 			os.Exit(commandErr.ExitCode)
 		}
