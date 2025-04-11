@@ -163,11 +163,8 @@ func (pr *PullRequest) SetStatus(status, login string) (*PullRequest, error) {
 		return nil, fmt.Errorf("error setting status: %w", err)
 	}
 
-	if response.StatusCode() == http.StatusConflict {
-		return nil, fmt.Errorf("the pull request is already merged")
-	}
-	if response.StatusCode() == http.StatusBadRequest {
-		return nil, fmt.Errorf("conflict error: User %s is an author of the pull request", login)
+	if response.StatusCode() < 200 || response.StatusCode() >= 300 {
+		return nil, fmt.Errorf("failed to set status of pull request, status: %d, body: %s", response.StatusCode(), response.String())
 	}
 
 	var result PullRequest
@@ -200,7 +197,7 @@ func (pr *PullRequest) AddRole(role, login string) (*UserData, error) {
 	}
 
 	if response.StatusCode() == http.StatusConflict {
-		return nil, fmt.Errorf("conflict error: User %s is an author of the pull request", login)
+		return nil, fmt.Errorf("conflict error. status: %d, body: %s", response.StatusCode(), response.String())
 	}
 
 	if response.StatusCode() < 200 || response.StatusCode() >= 300 {
