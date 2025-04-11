@@ -13,6 +13,7 @@ type RepositoryParams struct {
 	Domain        string `json:"domain,omitempty"`
 	Namespace     string `json:"namespace,omitempty"`
 	Repository    string `json:"repository,omitempty"`
+	Branch        string `json:"branch,omitempty"`
 	PullRequestID string `json:"pull_request_id,omitempty"`
 	HTTPLink      string `json:"http_link,omitempty"`
 	SSHLink       string `json:"ssh_link,omitempty"`
