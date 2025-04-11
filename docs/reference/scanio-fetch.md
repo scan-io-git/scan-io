@@ -1,151 +1,152 @@
-# Scanio Fetch Command
-The main command's function is fetching code and consistency supporting (in a case when somebody deleted local files or files were corrupted - it works only if a .git folder wasn't deleted or corrupted). <br><br>
+# Fetch Command
+The `fetch` command retrieves the source code of repositories from a specified version control system (VCS) while ensuring consistency. If local files are deleted or corrupted, the command can restore them, provided the .git folder remains intact and uncorrupted.
 
-At the moment plugins fetch only the master/main branch.
+This command supports operations at different levels, including individual repositories and pull requests. Fetch operations are designed with consistency checks and optional concurrent job support.
 
-## Args of the Command
-- "vcs" is the plugin name of the VCS used. Eg. bitbucket, gitlab, github, etc.
-- "input-file" or "i" is a file in scanio format with list of repositories to fetch. The list command could prepare this file.
-- "auth-type" is a type for an authentication - "http", "ssh-agent" or "ssh-key".
-- "ssh-key" is a path to an SSH key.
-- "threads" or "j" is a number of concurrent goroutines. The default is 1. 
-- "branch" or "b" is a specific branch for fetching. You can use it manual URL mode. A default value is main or master.
-- "rm-ext" is a list of extensions that will be removed automatically after checkout. The default is  `csv,png,ipynb,txt,md,mp4,zip,gif,gz,jpg,jpeg,cache,tar,svg,bin,lock,exe`.<br><br>
+| VCS Platform       | Supported  |
+|--------------------|------------|
+| GitHub             |     ✅     |
+| GitLab             |     ✅     |
+| Bitbucket          |     ✅     |
 
-Instead of using **input-file** flag you could use a specific **URL** that points to a particular namespace from your VCS (check the [link](#fetching-only-one-repo-manually-by-using-url)).
+## Table of Contents
 
-## Authentification Types Scenarios 
-Plugins support three types of authentification:
-- Using SSH keys as is.
-- Using an SSH agent.
-- Using an HHTP authentification.<br><br>
+- [Supported Actions](#supported-actions)
+- [Supported Authentication Types](#supported-authentication-types)
+- [Syntax](#syntax)
+- [Options](#options)
+- [Core Validation](#core-validation)
+- [Usage Examples](#usage-examples)
+- [Command Output Format](#command-output-format)
 
-|Authentification type|Bitbucket|Gitlab|Github|
-|----|-----|---|---|
-|SSH keys|Supported|Supported for passwordless keys|Supported for passwordless keys|
-|SSH agent|Supported|Supported|Supported|
-|HTTP|Supported|Supported only anonymous access|Supported only anonymous access|
+## Supported Actions
+| Action                                        | Supported Platforms          |
+|-----------------------------------------------|------------------------------|
+| Fetch a specific repository                   | GitHub, GitLab, Bitbucket    |
+| Fetch a specific pull request                 | GitHub, GitLab, Bitbucket    |
+| Fetch repositories in bulk from an input file | GitHub, GitLab, Bitbucket    |
 
+## Supported Authentication Types
+| Authentication Type                         | Supported Platforms          |
+|---------------------------------------------|------------------------------|
+| SSH key                                     | GitHub, GitLab, Bitbucket    |
+| SSH agent                                   | GitHub, GitLab, Bitbucket    |
+| HTTP                                        | GitHub, GitLab, Bitbucket    |
 
-### SSH Keys
-This method is using an SSH key from a disk.
-
-#### Bitbucket 
-For Bitbucket API v1 you need to use a few environment variables:
-* SCANIO_BITBUCKET_SSH_KEY_PASSOWRD - your password for ssh. The default is an empty value!
-
-#### Github
-At the moment the plugin is working without any variables from an environment.
-
-#### Gitlab
-At the moment the plugin is working without any variables from an environment.
-
-### SSH agent
-This method is using an SSH key from a local ssh-agent.
-
-#### Bitbucket
-You should add your key to a local ssh-agent. <br>
-```ssh-add /path/yourkey.private```
-
-#### Github
-You should add your key to a local ssh-agent. <br>
-```ssh-add /path/yourkey.private```
-
-#### Gitlab
-You should add your key to a local ssh-agent. <br>
-```ssh-add /path/yourkey.private```
-
-### HTTP
-This method is using the same token as for a list command and your username. 
-
-#### Bitbucket
-For Bitbucket API v1 you need to use a few environment variables:
-* SCANIO_BITBUCKET_USERNAME - your username in BitBucket. **Mandatory**!
-* SCANIO_BITBUCKET_TOKEN - your Bitbucket token. **Mandatory**!
-  * It may be a plain text password or a personal access token from \<your_bb_domain\>/plugins/servlet/access-tokens/manage.
-
-#### Github
-At the moment the plugin is working without any variables from an environment.
-
-#### Gitlab
-At the moment the plugin is working without any variables from an environment.
-
-## Using Scenarios 
-When developing, we aimed at the fact that the program will be used primarily for automation purposes but you still able to use it manually from CLI.<br>
-
-The command saves results into a home directory - ```~/.scanio/projects/+<VCSURL>+<Namespace>+<repo_name>```.<br>
-You can redifine a home directory by using **SCANIO_HOME** environment variable.
-
-### Fetching from Input File
-The command uses an output format of a List command for fetching required repositories.
-
-#### Bitbucket
-* Fetching from an input file using an ssh-key authentification.<br>
-```scanio fetch --vcs bitbucket --vcs-url example.com --input-file /Users/root/.scanio/output.file --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1```
-* Fetching from an input file using an ssh-agent authentification.<br>
-```scanio fetch --vcs bitbucket --vcs-url example.com --input-file /Users/root/.scanio/output.file --auth-type ssh-agent -j 1```
-* Fetching from an input file with an HTTP authentification.<br>
-```scanio fetch --vcs bitbucket --vcs-url example.com --input-file /Users/root/.scanio/output.file --auth-typ http -j 1```
-
-#### Github
-* Fetching from an input file using an ssh-key authentification.<br>
-```scanio fetch --vcs github --vcs-url example.com --input-file /Users/root/.scanio/output.file --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1```
-* Fetching from an input file using an ssh-agent authentification.<br>
-```scanio fetch --vcs github --vcs-url example.com --input-file /Users/root/.scanio/output.file --auth-type ssh-agent -j 1```
-* Fetching from an input file with an HTTP authentification.<br>
-```scanio fetch --vcs github --vcs-url example.com --input-file /Users/root/.scanio/output.file --auth-typ http -j 1```
-
-#### Gitlab
-* Fetching from an input file using an ssh-key authentification.<br>
-```scanio fetch --vcs gitlab --vcs-url example.com --input-file /Users/root/.scanio/output.file --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1```
-* Fetching from input file with using an ssh-agent authentification.<br>
-```scanio fetch --vcs gitlab --vcs-url example.com --input-file /Users/root/.scanio/output.file --auth-type ssh-agent -j 1```
-* Fetching from input file with an HTTP authentification.<br>
-```scanio fetch --vcs gitlab --vcs-url example.com --input-file /Users/root/.scanio/output.file --auth-typ http -j 1```
-
-### Fetching only one repo manually by using URL
-The command uses a link that is pointing to a particular repository for fetching.
-
-#### Bitbucket
-* Fetching using an ssh-key authentification and url that points to a specific repository.<br>
-```scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 https://example.com/projects/scanio_project/repos/scanio/browse```
-
-In this manual mode you can set a custom branch.<br>
-```scanio fetch --vcs bitbucket --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 -j 1 -b develop https://example.com/projects/scanio_project/repos/scanio/browse```
-
-You can find additional information about URL formats [here](../plugins/bitbucket/README.md#supported-url-formats)
-
-#### Github
-*Not Supported*
-
-#### Gitlab
-*Not Supported*
-
-## Possible Errors
-### Bitbucket
-#### ```ssh: handshake failed: knownhosts: key mismatch```
-If you find the error check your .ssh/config. If you do use not a default 22 port for fetching and .ssh/config rules for this host, you have to determine a port too:
+## Syntax
+```bash
+scanio fetch --vcs/-p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [--output/-o PATH] [--rm-ext LIST_OF_EXTENSIONS] [-j THREADS_NUMBER, default=1] {--input-file/-i PATH | [-b BRANCH/HASH] URL}
 ```
-Host git.example.com
-   Hostname git.example.com
-   Port 7989 
-   IdentityFile ~/.ssh/id_ed25519
-``` 
-Or just not use .ssh/config and the port will be identified automatically. 
 
-#### ```ssh: handshake failed: ssh: unable to authenticate, attempted methods [none publickey], no supported methods remain```
-The algorithm is the same - determine a port in .ssh/config for your host or don't use .ssh/config rules.
+### Options
+| Option           | Type    | Required    | Default Value                                                | Description                                                                 |
+|-------------------|---------|-------------|--------------------------------------------------------------|-----------------------------------------------------------------------------|
+| `--auth-type`, `-a` | string  | Yes         | `none`                                                       | Type of authentication to use (e.g., `http`, `ssh-agent`, `ssh-key`).        |
+| `--branch`, `-b` | string  | Conditional | `main` or `master`                                           | The specific branch or commit hash to fetch.                                |
+| `--help`, `-h`   | flag    | No          | `false`                                                      | Displays help for the `fetch` command.                                      |
+| `--input-file`, `-i` | string | Conditional | `none`                                                       | Path to a file in [Scanio list command](cmd-list.md#command-output-format) format containing repositories to fetch.            |
+| `--output`, `-o` | string  | No          | `{home_folder}/projects/<VCS_domain>/  <namespace_name>/<repository_name>`                                        | Path to save the fetched repository code.                                   |
+| `--rm-ext`       | strings | No          | `[csv,png,ipynb,txt,md,mp4,zip,gif,  gz,jpg,jpeg,cache,tar,svg,bin,lock,exe]` | Comma-separated list of file extensions to remove after fetching.           |
+| `--ssh-key`, `-k` | string  | Conditional | `none`                                                       | Path to the SSH key to use (if `auth-type` is `ssh-key`).                    |
+| `--threads`, `-j`| int     | No          | `1`                                                          | Number of concurrent threads to use for parallel fetching.                   |
+| `--vcs`, `-p`    | string  | Yes         | `none`                                                       | Specifies the VCS plugin to use (e.g., `bitbucket`, `gitlab`, `github`).     |
 
-#### ```Error on Clone occurred: err="reference not found"``` 
-It means that a branch in a remote repo doesn't exits. 
-Try to fix the name of the branch or project.
+**Using List Command Output as Input**<br>
+The `fetch` command integrates seamlessly with the list command, allowing users to input a file generated by the `list` command for bulk repository fetching. The `--input-file (-i)` flag accepts files in the format outlined in the [List Command Output Format](cmd-list.md#command-output-format).
 
-#### ```Error on Clone occurred: err="remote repository is empty"``` 
-It means that a default branch in a remote repo (master/main) is empty.
-Try to fix the name of the branch or project.
+> [!NOTE]  
+> The feature is particularly useful for bulk repository fetching, enabling users to fetch multiple repositories in a single operation efficiently.
 
-#### Github
-*TODO*
+```bash
+scanio fetch --vcs github --input-file /path/to/list_output.file --auth-type ssh-agent -j 5
+```
 
-#### Gitlab
-*TODO*
+**Using URLs**<br>
+The `fetch` command supports the use of URLs to specify repositories or pull requests. These URLs must point directly to repositories, and their format may vary depending on the VCS plugin being used.
+
+For detailed examples of supported URL formats per platform, refer to the plugin-specific examples.
+
+### Core Validation
+The `fetch` command includes several validation layers to ensure robust execution and accurate results:
+- **Flag Requirements**: Ensures all required flags and parameters, as defined in the [Options](#options) table, are provided.
+- **VCS Plugin Availability**: Validates the `--vcs/-p` flag against available plugins in the `plugins` directory. Only plugins with the type `vcs` are considered valid.
+- **Authentication Validation**: Ensures the specified `--auth-type` is valid. If `ssh-key` is selected, the presence of a valid `--ssh-key` path and key is required.
+- **Input Validation**: Confirms that either an `--input-file` or a valid URL is provided. Both cannot be omitted simultaneously.
+- **URL Parsing and Verification**: If a URL is provided, it is parsed using the internal [vcsurl dependency](../../pkg/shared/vcsurl/vcsurl.go). The core ensures the URL's validity and that it aligns with the expected structure for supported VCS platforms.
+
+## Usage Examples
+The following examples demonstrate how to use the `fetch` command for different plugins. Each example covers specific use cases, such as fetching repositories, pull requests, using authentication methods, and managing parallel jobs.
+
+Refer to plugin-specific documentation for detailed examples and additional requirements of the command usage:
+- [GitHub Plugin - Command Fetch](plugin-github.md#command-fetch)
+- [GitLab Plugin - Command Fetch](plugin-gitlab.md#command-fetch)
+- [Bitbucket Plugin - Command Fetch](plugin-bitbucket.md#command-fetch)
+
+## Command Output Format
+The `fetch` command generates a JSON file as output, capturing detailed information about the execution process, arguments, and results.
+
+```json
+{
+  "launches": [
+    {
+      "args": {
+        "clone_url": "<clone_url>",
+        "branch": "<branch_name/commit_hash>",
+        "auth_type": "<auth_type>",
+        "ssh_key": "<path_to_ssh_key>",
+        "target_folder": "<path_to_folder_for_code>",
+        "mode": "<fetch_mode>",
+        "repo_param": {
+          "domain": "<domain_name>",
+          "namespace": "<namespace_name>",
+          "repository": "<repository_name>",
+          "pull_request_id": "<pr_id>",
+          "http_link": "<http_link>",
+          "ssh_link": "<ssh_link>"
+        }
+      },
+      "result": {
+        "path": "<path_to_folder_with_saved_code>"
+      },
+      "status": "<status>",
+      "message": "<error_message>"
+    }
+  ]
+}
+```
+
+### Key Fields
+| Field       | Description                                                                   |
+|-------------|-------------------------------------------------------------------------------|
+| `args`      | Dictionary containing the arguments used to execute the command.              |
+| `result`    | List of dictionaries representing the actual command results.                 |
+| `status`    | String indicating the final status of the command (e.g., `OK`, `FAILED`).     |
+| `message`   | String containing error messages or `stderr` output if the status is not `OK`.|
+
+### Fields in the `args` Object
+
+| Field       | Description                                                                 |
+|-------------|-----------------------------------------------------------------------------|
+| `clone_url`| The URL used to clone the repository.                                        |
+| `branch`| Specifies the branch name or commit hash to fetch.                              |
+| `auth_type`| Specifies the authentication method used.                                    |
+| `ssh_key`| Path to the SSH key file if auth_type is ssh-key.                              |
+| `target_folder`| Path to the folder where the repository code will be saved.              |
+| `mode`| The fetch mode (`basic` or `fetchPR`).                                            |
+| `repo_param`| Contains repository-specific parameters, including domain and namespace.    |
+
+### Fields in the `repo_param` Object
+
+| Field       | Description                                                                 |
+|-------------|-----------------------------------------------------------------------------|
+| `domain`    | The domain name of the VCS (e.g., github.com).                              |
+| `namespace` | The namespace, project, or organization name in the VCS.                    |
+| `repository`| The name of the repository in the VCS.                                      |
+| `pull_request_id`| The ID of the pull request (if fetching a PR).                         |
+| `http_link` | The `https://` URL used for fetching the repository from the VCS.           |
+| `ssh_link`  | The `ssh://` URL used for fetching the repository from the VCS.             |
+
+### Fields in the `result` List
+| Field       | Description                                                                 |
+|-------------|-----------------------------------------------------------------------------|
+| `path`      | Path to the folder where the fetched code is saved.                         |
