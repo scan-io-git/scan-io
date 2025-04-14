@@ -56,6 +56,6 @@ docker run -it -v $(pwd):/data scanio/scanio analyse --scanner semgrep /data
 ```
 
 ## Documentation
-Explore Scanio's comprehensive [documentation](/docs/readme.md), structured using the Diátaxis framework.  
+Explore Scanio's comprehensive [documentation](docs/README.md), structured using the Diátaxis framework.  
 
 The documentation covers everything you need to know, including tutorials, how-to guides, conceptual explanations, and technical references, to help you use and extend Scanio effectively.

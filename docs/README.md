@@ -1,5 +1,3 @@
-diataxis root 
-
 # Scanio Documentation
 
 Welcome to the Scanio documentation, your complete guide to using, extending, and understanding Scanio. This documentation is structured using the Diátaxis framework to ensure clarity and accessibility for all users, whether you're just getting started or looking for advanced configurations.
@@ -30,9 +28,10 @@ Comprehensive technical details. Examples of articles in this section include:
 - Configuration of the Tool: how to configure the code and plugins. 
 
 ## Getting Help
+<TODO: revise>
 If you encounter issues or have questions, consider the following resources:
-- FAQs: Check our Frequently Asked Questions section for quick answers. <TODO: do we need that>.
-- Issue Tracker: Report bugs or suggest features on our GitHub Issues page <TODO: add how to create an issue>.
+- FAQs: Check our Frequently Asked Questions section for quick answers.
+- Issue Tracker: Report bugs or suggest features on our GitHub Issues page 
 
 ## Contribution
 <TODO: write contributors guide>
