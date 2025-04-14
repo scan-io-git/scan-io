@@ -3,7 +3,6 @@
 The Bitbucket plugin provides comprehensive support for interacting with Bitbucket version control systems. It offers a range of functionalities designed to streamline repository management and enhance CI/CD workflows, with a strong focus on security-related processes.
 
 ## Table of Contents
-
 - [Supported Versions of API](#supported-versions-of-api)
 - [Supported Actions](#supported-actions)
 - [Supported Authentication Types](#supported-authentication-types)
@@ -22,7 +21,6 @@ The Bitbucket plugin provides comprehensive support for interacting with Bitbuck
 
 
 ## Supported Versions of API
-
 | API Version               | Supported | Note                                                                            |
 |---------------------------|-----------|---------------------------------------------------------------------------------|
 | APIv1                     |     ✅    |  This version is still used for on-premises Bitbucket installations. However, it was permanently removed from the Bitbucket Cloud REST API on April 29, 2019. [Learn more](https://support.atlassian.com/bitbucket-cloud/docs/use-bitbucket-rest-api-version-1/).|

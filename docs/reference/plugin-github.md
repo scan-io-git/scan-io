@@ -18,7 +18,6 @@ The GitHub plugin provides comprehensive support for interacting with GitHub ver
      - [Validation](#validation-1)
      - [Supported URL Types](#supported-url-types-1)
      - [Actions](#actions-1)
-- [Known Issues and Fixes](#known-issues-and-fixes)
 
 
 ## Supported Versions of API

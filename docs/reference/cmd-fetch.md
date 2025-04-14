@@ -78,9 +78,9 @@ The `fetch` command includes several validation layers to ensure robust executio
 The following examples demonstrate how to use the `fetch` command for different plugins. Each example covers specific use cases, such as fetching repositories, pull requests, using authentication methods, and managing parallel jobs.
 
 Refer to plugin-specific documentation for detailed examples and additional requirements of the command usage:
-- [GitHub Plugin - Command Fetch](plugin-github.md#command-fetch)
-- [GitLab Plugin - Command Fetch](plugin-gitlab.md#command-fetch)
-- [Bitbucket Plugin - Command Fetch](plugin-bitbucket.md#command-fetch)
+- [GitHub Plugin: Command Fetch](plugin-github.md#command-fetch)
+- [GitLab Plugin: Command Fetch](plugin-gitlab.md#command-fetch)
+- [Bitbucket Plugin: Command Fetch](plugin-bitbucket.md#command-fetch)
 
 ## Command Output Format
 The `fetch` command generates a JSON file as output, capturing detailed information about the execution process, arguments, and results.

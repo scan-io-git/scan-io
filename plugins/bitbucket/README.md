@@ -1,7 +1,8 @@
 # Bitbucket Plugin
-The plugin implements work with functions various function. 
-You may find information about the plugin in references are related to commands:
-- [Command List: Bitbucket Plugin](../../docs/reference/cmd-list.md#bitbucket-plugin)
-- [Command Fetch: Bitbucket Plugin](../../docs/reference/cmd-fetch.md#bitbucket-plugin)
+The Bitbucket plugin provides comprehensive support for interacting with Bitbucket version control systems. It offers a range of functionalities designed to streamline repository management and enhance CI/CD workflows, with a strong focus on security-related processes.
+
+You may find information regardign the plugin in references are related to commands:
+- [Command List: Bitbucket Plugin](/docs/reference/cmd-list.md#bitbucket-plugin)
+- [Command Fetch: Bitbucket Plugin](/docs/reference/cmd-fetch.md#bitbucket-plugin)
 
 
