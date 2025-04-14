@@ -23,9 +23,6 @@ In this documentation, we use the following conventions for placeholders:
     - [HTTP Client Configuration](#http-client-configuration)
     - [Supported Common Directives by Plugins](#supported-common-directives-by-plugins)
   - [Plugin-Specific Configurations](#plugin-specific-configurations)
-    - [GitHub Plugin](#github-plugin)
-    - [GitLab Plugin](#gitlab-plugin)
-    - [Bitbucket Plugin](#bitbucket-plugin)
     - [Trufflehog3 Plugin](#trufflehog3-plugin)
     - [CodeQL Plugin](#codeql-plugin)
 - [Modes](#modes)
@@ -172,62 +169,10 @@ Not all plugins support or require shared configuration directives. For instance
 | Trufflehog3  | ❌                        | ❌                           |
 
 ### Plugin-Specific Configurations
-#### GitHub Plugin
-##### Configuration File
-The GitHub plugin enables Scanio to interact with GitHub repositories for various tasks such as listing projects, cloning code, and managing pull requests. This plugin uses the `github_plugin` directive, which supports the following settings.
-
-| Directive          | Default Value | Description                                                                                              |
-|---------------------|---------------|----------------------------------------------------------------------------------------------------------|
-| `username`         | `none`          | GitHub username for authentication. Optional, except when using HTTP for code fetching.                 |
-| `token`            | `none`          | GitHub access token for authentication.                                                                |
-| `ssh_key_password` | `none`          | Password for the SSH key used in GitHub operations (e.g., fetch command with `auth-type=ssh-key`).      |
-
-##### Environment variables
-The GitHub plugin supports the following environment variables, which can override configuration file settings.
-
-| Environment Variable            | Maps to Directive      | Description                                                                                              |
-|----------------------------------|------------------------|----------------------------------------------------------------------------------------------------------|
-| `SCANIO_GITHUB_USERNAME`        | `username`             | GitHub username for authentication. Overrides the `username` directive.                                 |
-| `SCANIO_GITHUB_TOKEN`           | `token`                | GitHub access token for authentication. Overrides the `token` directive.                                |
-| `SCANIO_GITHUB_SSH_KEY_PASSWORD`| `ssh_key_password`     | Password for the SSH key used in GitHub operations. Overrides the `ssh_key_password` directive.         |
-
-#### GitLab Plugin
-##### Configuration File
-The GitLab plugin enables Scanio to interact with GitLab repositories for tasks such as listing projects, cloning repositories, and managing merge requests. This plugin uses the `gitlab_plugin` directive, which supports the following settings.
-
-| Directive          | Default Value | Description                                                                                              |
-|---------------------|---------------|----------------------------------------------------------------------------------------------------------|
-| `username`         | `none`          | GitLab username for authentication. Optional, except when using HTTP for code fetching.                 |
-| `token`            | `none`          | GitLab access token for authentication.                                                                |
-| `ssh_key_password` | `none`          | Password for the SSH key used in GitLab operations (e.g., fetch command with `auth-type=ssh-key`).      |
-
-##### Environment variables
-The GitLab plugin supports the following environment variables, which can override configuration file settings.
-
-| Environment Variable            | Maps to Directive      | Description                                                                                              |
-|----------------------------------|------------------------|----------------------------------------------------------------------------------------------------------|
-| `SCANIO_GITLAB_USERNAME`        | `username`             | GitLab username for authentication. Overrides the `username` directive.                                 |
-| `SCANIO_GITLAB_TOKEN`           | `token`                | GitLab access token for authentication. Overrides the `token` directive.                                |
-| `SCANIO_GITLAB_SSH_KEY_PASSWORD`| `ssh_key_password`     | Password for the SSH key used in GitLab operations. Overrides the `ssh_key_password` directive.         |
-
-#### Bitbucket Plugin
-##### Configuration File
-The Bitbucket plugin enables Scanio to interact with Bitbucket repositories for operations such as listing repositories, cloning code, and managing pull requests. This plugin uses the `bitbucket_plugin` directive, which supports the following settings.
-
-| Directive          | Default Value | Description                                                                                              |
-|---------------------|---------------|----------------------------------------------------------------------------------------------------------|
-| `username`         | `none`          | Bitbucket username for authentication. **Mandatory** for all Bitbucket operations.                      |
-| `token`            | `none`          | Bitbucket access token for authentication.                                                              |
-| `ssh_key_password` | `none`          | Password for the SSH key used in Bitbucket operations (e.g., fetch command with `auth-type=ssh-key`).   |
-
-##### Environment variables
-The Bitbucket plugin supports the following environment variables, which can override configuration file settings.
-
-| Environment Variable            | Maps to Directive      | Description                                                                                              |
-|----------------------------------|------------------------|----------------------------------------------------------------------------------------------------------|
-| `SCANIO_BITBUCKET_USERNAME`     | `username`             | Bitbucket username for authentication. Overrides the `username` directive.                              |
-| `SCANIO_BITBUCKET_TOKEN`        | `token`                | Bitbucket access token for authentication. Overrides the `token` directive.     |
-| `SCANIO_BITBUCKET_SSH_KEY_PASSWORD`| `ssh_key_password`  | Password for the SSH key used in Bitbucket operations. Overrides the `ssh_key_password` directive.      |
+Refer to plugin-specific documentation for detailed examples:
+- [GitHub Plugin: Configuration References](plugin-github.md#configuration-references)
+- [GitLab Plugin: Configuration References](plugin-gitlab.md#configuration-references)
+- [Bitbucket Plugin: Configuration References](plugin-bitbucket.md#configuration-references)
 
 #### Trufflehog3 Plugin
 ##### Configuration File
@@ -296,7 +241,7 @@ The Semgrep Plugin uses different default rule sets based on the mode:
 - User Mode: Default rule set is `p/default`.
 - CI Mode: Default rule set is `p/ci`.
 
-#### Template Naming
+#### Report Naming
 - User Mode: Templates follow the structure `scanio-report-<plugin_name>.<report_ext>`.
 - CI Mode: Templates include a timestamp for uniqueness: `scanio-report-<current_time.RFC3339>-<plugin_name>.<report_ext>`.
 
