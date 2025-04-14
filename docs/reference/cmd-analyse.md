@@ -1,7 +1,7 @@
 # Analyse Command
-The `analyse` command provides a top-level interface for orchestrating the execution of various security scanners. It allows users to analyze source code, dependencies, and other project files by leveraging supported scanning tools. 
+The `analyse` command provides an orchestration layer for running scanners within Scanio. It enables users to execute specific security scanners against codebase or repositories with customizable configuration, output formats, and parallel execution.
 
-orcehstarting, jobs, reports conversion, list input file 
+This command supports running a scanner against a specific folder or in bulk using the output of the `list` command.
 
 | Supported Scanners                                         | Description                                                     |
 |------------------------------------------------------------|-----------------------------------------------------------------|
@@ -11,14 +11,19 @@ orcehstarting, jobs, reports conversion, list input file
 | [Trufflehog](https://github.com/trufflesecurity/trufflehog)| Secrets detection scanner for sensitive data exposure.          |
 | [Trufflehog3](https://github.com/feeltheajf/trufflehog3)   | Secrets detection scanner for sensitive data exposure.          |
 
-
 ## Table of Contents
-
+- [Supported Actions](#supported-actions)
 - [Syntax](#syntax)
 - [Options](#options)
-- [Core Validation](#core-validation)
 - [Usage Examples](#usage-examples)
+- [Additional Scanner Arguments](#additional-scanner-arguments)
 - [Command Output Format](#command-output-format)
+
+## Supported Actions
+| Action                                      | Description                       |
+|---------------------------------------------|-----------------------------------|
+| Run scanner against a specific directory    | Analyse a single local project    |
+| Run scanner against multiple repositories   | Use `list` command output         |
 
 ## Syntax
 ```bash
@@ -46,59 +51,81 @@ The `analyse` command integrates seamlessly with the list command, allowing user
 scanio analyse --scanner semgrep --input-file /path/to/list_output.file -j 2
 ```
 
-
 **Using List Command Output as Input**<br>
 Also you are able to add additional arguments to a command. If you want to execute scanner with custom arguments, you could use two dashes (--) to separate additional flags/arguments:<br>
 ```scanio analyse --scanner semgrep --input-file /Users/root/.scanio/output.file --format sarif -j 1 -- --verbose --severity INFO```
 
+**Additional Scanner Argument**<br>
+You can add extra arguments directly to the scanner call by using two dashes (`--`). These additional arguments will be passed directly to the underlying scanner without being processed by Scanio itself.
+
+This is useful for passing scanner-specific flags, filters, or configuration values.
+
+```bash
+scanio analyse --scanner semgrep --input-file /path/to/list_output.file --format sarif -j 1 -- --verbose --severity INFO
+```
+
+### Core Validation
+The `fetch` command includes several validation layers to ensure robust execution and accurate results:
+- **Flag Requirements**: Ensures all required flags and parameters, as defined in the [Options](#options) table, are provided.
+- **VCS Plugin Availability**: Validates the `--scanner/-p` flag against available plugins in the `plugins` directory. Only plugins with the type `scanner` are considered valid.
+- **Configuration File Check**: Verifies the presence of a valid scanner configuration if the --config flag is used.
+- **Input Validation**: Confirms that either an `--input-file` or a path is provided. Both cannot be omitted simultaneously.
+
+## Usage Examples
+The following examples demonstrate how to use the `analyse` command for different plugins. Each example covers specific use cases, such as scaning singe or brach code folders, using convertion for custom report formats, and managing parallel jobs.
+
+Refer to plugin-specific documentation for detailed examples and additional requirements of the command usage:
+- [Semgrep Plugin](plugin-semgrep.md)
+- [Thrufflehog Plugin]()
+- [CodeQL Plugin]()
+- [Bandit Plugin]()
+- [Thrufflehog3 Plugin]()
+
+### Output Structure
+```json
+{
+    "launches": [
+        {
+            "args": {
+                "target_path": "<path_to_folder_with_code>",
+                "results_path": "<path_to_report_file>",
+                "config_path": "<path_to_config_file/folder>",
+                "report_path": "<report_format>",
+                "additional_args": [
+                    "<additional_arg>"
+                ]
+            },
+            "result": {
+                "results_path": "<path_to_report_file>"
+            },
+            "status": "<status>",
+            "message": "<error_message>"
+        }
+    ]
+}
+```
+
+### Key Fields
+| Field       | Description                                                                   |
+|-------------|-------------------------------------------------------------------------------|
+| `launches`  | List of scanner executions performed during the run.                          |
+| `args`      | Dictionary containing the arguments used to execute the command.              |
+| `result`    | List of dictionaries representing the actual command results.                 |
+| `status`    | String indicating the final status of the command (e.g., `OK`, `FAILED`).     |
+| `message`   | String containing error messages or `stderr` output if the status is not `OK`.|
 
 
+### Fields in the `args` Object
 
-Core Validation
-The analyse command incorporates several layers of validation to ensure proper execution:
+| Field              | Description                                                   |
+|--------------------|---------------------------------------------------------------|
+| `args`             | Arguments used to execute the scanner.                        |
+| `target_path`      | Path to the codebase scanned.                                 |
+| `config_path`      | Path to the scanner configuration used.                       |
+| `report_path`      | Output format of the report (e.g., JSON, SARIF).              |
+| `additional_args`  | Any extra arguments passed to the scanner.                    |
 
-Scanner Availability: Ensures the scanner specified in the --scanner flag is installed and accessible.
-Input Validation: Confirms that either a valid --input-file or a direct PATH is provided.
-Configuration File Check: Verifies the presence of a valid scanner configuration if the --config flag is used.
-Concurrency Handling: Ensures thread count does not exceed
-
-
-
-
-
-## Using Scenarios 
-When developing, we aimed at the fact that the program will be used primarily for automation purposes but you still able to use it manually from CLI.
-
-### Analysing from an Input File
-The command uses an output format of a List command for analysing required repositories.<br>
-
-If you use an **input file** argument the command will save results into a home directory - ```~/.scanio/results/+<VCSURL>+<Namespace>+<repo_name>/<scanner_name>.<report_format>```.<br>
-You can redifine a home directory by using **SCANIO_HOME** environment variable.
-
-#### Semgrep
-* Analysing using semgrep with an input file argument.<br>
-```scanio analyse --scanner semgrep --input-file /Users/root/.scanio/output.file --format sarif -j 2```
-* Analysing using semgrep with a specific path .<br>
-```scanio analyse --scanner semgrep --format sarif -j 1 /tmp/my_project```
-* Analysing using semgrep with an input file and custom rules.<br>
-```scanio analyse --scanner semgrep --config /Users/root/scan-io-semgrep-rules --input-file /Users/root/.scanio/output.file --format sarif -j 2```
-* Analysing using semgrep with an input file and additional arguments.<br>
-```scanio analyse --scanner semgrep --input-file /Users/root/.scanio/output.file --format sarif -- --verbose --severity INFO```
-
-#### Bandit
-* Analysing from an input file.<br>
-```scanio analyse --scanner bandit --input-file /Users/root/.scanio/output.file```
-
-### Analysing only one repository manually by path
-The command uses a path that is pointing to a particular folder for analysing.<br>
-
-If you use a specific **path** argument the command will save results into the same directory:<br>
-* ```scanio analyse --scanner <scanner_name> --format sarif /tmp/my_project```
-> Result path - ```/tmp/my_project/<scanner_name>.<report_format>```
-
-#### Semgrep
-```scanio analyse --scanner semgrep --format sarif /tmp/my_project```
-
-#### Bandit
-*TODO*
-
+### Fields in the `result` List
+| Field              | Description                                                                 |
+|--------------------|-----------------------------------------------------------------------------|
+| `results_path`     | Path to the generated report file.                                          |
