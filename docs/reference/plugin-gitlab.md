@@ -231,16 +231,24 @@ The GitHub plugin includes additional validation to ensure correct operation:
 Points to a specific repository.
 Example:
 ```
-https://gitlab.com/testing_scanio/testing_scanio/ 
-https://gitlab.com/testing_scanio/testingsubgroup/subrouplevel2/projectlevel2/
+https://gitlab.com/testing_scanio/testing_scanio/  # HTTP type
+https://gitlab.com/testing_scanio/testingsubgroup/subrouplevel2/projectlevel2/  # HTTP type
+https://gitlab.com/testing_scanio/testing_scanio.git # HTTP type with .git
+git@gitlab.com:testing_scanio/testing_scanio.git  # git@ type
+```
+
+**URL with Specified Branch** <br>
+Points to a specific repository with branch.
+```
+https://gitlab.com/testing_scanio/testing_scanio/-/tree/test/feature  # HTTP type
 ```
 
 **Pull Request URL** <br>
 Points to a specific pull request.
 Example:
 ```
-https://gitlab.com/testing_scanio/testing_scanio/-/merge_requests/1
-https://gitlab.com/testing_scanio/testingsubgroup/subrouplevel2/projectlevel2/-/merge_requests/1
+https://gitlab.com/testing_scanio/testing_scanio/-/merge_requests/1  # HTTP type
+https://gitlab.com/testing_scanio/testingsubgroup/subrouplevel2/projectlevel2/-/merge_requests/1  # HTTP type
 ```
 
 #### Actions
@@ -253,13 +261,17 @@ The following examples demonstrate usage for various authentication methods:
 
 ```bash
 # SSH Agent
-scanio fetch --vcs gitlab --auth-type ssh-agent https://gitlab.com/testing_scanio/testing_scanio/ 
+scanio fetch --vcs gitlab --auth-type ssh-agent https://gitlab.com/testing_scanio/testing_scanio/ # HTTP URL
+scanio fetch --vcs gitlab --auth-type ssh-agent git@gitlab.com:testing_scanio/testing_scanio.git # SSH URL
+
 
 # SSH Key 
-scanio fetch --vcs gitlab --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 https://gitlab.com/testing_scanio/testing_scanio/  
+scanio fetch --vcs gitlab --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 https://gitlab.com/testing_scanio/testing_scanio/ # HTTP URL
+scanio fetch --vcs gitlab --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 git@gitlab.com:testing_scanio/testing_scanio.git # SSH URL
 
 # HTTP
-scanio fetch --vcs gitlab --auth-type http https://gitlab.com/testing_scanio/testing_scanio/
+scanio fetch --vcs gitlab --auth-type http https://gitlab.com/testing_scanio/testing_scanio/ # HTTP URL
+scanio fetch --vcs gitlab --auth-type http git@gitlab.com:testing_scanio/testing_scanio.git # SSH URL
 ```
 
 For the following examples, we will use SSH-agent authentication, but all commands support all authentication types.
@@ -268,10 +280,13 @@ Fetching a specific repository also supports specifying branches or commit hashe
 
 ```bash
 # Branch
-scanio fetch --vcs gitlab --auth-type ssh-agent -b develop https://gitlab.com/testing_scanio/testing_scanio/ 
+scanio fetch --vcs gitlab --auth-type ssh-agent -b develop https://gitlab.com/testing_scanio/testing_scanio/ # HTTP URL
+scanio fetch --vcs gitlab --auth-type ssh-agent -b develop git@gitlab.com:testing_scanio/testing_scanio.git # SSH URL
+scanio fetch --vcs gitlab --auth-type ssh-agent https://gitlab.com/testing_scanio/testing_scanio/-/tree/test/feature  # Args derived from HTTP URL 
 
 # Commit hash
-scanio fetch --vcs gitlab --auth-type ssh-agent -b c0c9e9af80666d80e564881a5bdfa661c60e053e https://gitlab.com/testing_scanio/testing_scanio/ 
+scanio fetch --vcs gitlab --auth-type ssh-agent -b c0c9e9af80666d80e564881a5bdfa661c60e053e https://gitlab.com/testing_scanio/testing_scanio/ # HTTP URL
+scanio fetch --vcs gitlab --auth-type ssh-agent -b c0c9e9af80666d80e564881a5bdfa661c60e053e git@gitlab.com:testing_scanio/testing_scanio.git # SSH URL
 ```
 
 **Fetch a Specific Pull Request** <br>

@@ -214,15 +214,22 @@ The GitHub plugin supports multiple URL types for the `fetch` command:
 Points to a specific repository.
 Example:
 ```
-https://github.com/scan-io-git/scan-io # http type
-git@github.com:scan-io-git/scan-io.git # ssh type
+https://github.com/scan-io-git/scan-io # HTTP type
+https://github.com/scan-io-git/scan-io.git # HTTP type with .git
+git@github.com:scan-io-git/scan-io.git # SSH type
+```
+
+**URL with Specified Branch** <br>
+Points to a specific repository with branch.
+```
+https://github.com/scan-io-git/scan-io/tree/scanio_bot/test/feature  # HTTP type
 ```
 
 **Pull Request URL** <br>
 Points to a specific pull request.
 Example:
 ```
-https://github.com/scan-io-git/scan-io/pull/1 # http type
+https://github.com/scan-io-git/scan-io/pull/1 # HTTP type
 ```
 
 #### Actions
@@ -236,16 +243,16 @@ The following examples demonstrate usage for various authentication methods:
 
 ```bash
 # SSH Agent
-scanio fetch --vcs github --auth-type ssh-agent https://github.com/scan-io-git/scan-io # HTTP link
-scanio fetch --vcs github --auth-type ssh-agent git@github.com:scan-io-git/scan-io.git # SSH link
+scanio fetch --vcs github --auth-type ssh-agent https://github.com/scan-io-git/scan-io # HTTP URL
+scanio fetch --vcs github --auth-type ssh-agent git@github.com:scan-io-git/scan-io.git # SSH URL
 
 # SSH Key 
-scanio fetch --vcs github --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 https://github.com/scan-io-git/scan-io # HTTP link
-scanio fetch --vcs github --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 git@github.com:scan-io-git/scan-io.git # SSH link
+scanio fetch --vcs github --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 https://github.com/scan-io-git/scan-io # HTTP URL
+scanio fetch --vcs github --auth-type ssh-key --ssh-key /Users/root/.ssh/id_ed25519 git@github.com:scan-io-git/scan-io.git # SSH URL
 
 # HTTP
-scanio fetch --vcs github --auth-type http https://github.com/scan-io-git/scan-io # HTTP link
-scanio fetch --vcs github --auth-type http git@github.com:scan-io-git/scan-io.git # SSH link
+scanio fetch --vcs github --auth-type http https://github.com/scan-io-git/scan-io # HTTP URL
+scanio fetch --vcs github --auth-type http git@github.com:scan-io-git/scan-io.git # SSH URL
 ```
 
 For the following examples, we will use SSH-agent authentication, but all commands support all authentication types.
@@ -254,12 +261,13 @@ Fetching a specific repository also supports specifying branches or commit hashe
 
 ```bash
 ## Branch
-scanio fetch --vcs github --auth-type ssh-agent -b develop https://github.com/scan-io-git/scan-io # HTTP link
-scanio fetch --vcs github --auth-type ssh-agent -b develop git@github.com:scan-io-git/scan-io.git # SSH link
+scanio fetch --vcs github --auth-type ssh-agent -b develop https://github.com/scan-io-git/scan-io # HTTP URL
+scanio fetch --vcs github --auth-type ssh-agent -b develop git@github.com:scan-io-git/scan-io.git # SSH URL
+scanio fetch --vcs github --auth-type ssh-agent https://github.com/scan-io-git/scan-io/tree/scanio_bot/test/feature # Args derived from HTTP URL 
 
 ## Commit Hash
-scanio fetch --vcs github --auth-type ssh-agent -b c0c9e9af80666d80e564881a5bdfa661c60e053e https://github.com/scan-io-git/scan-io # HTTP link
-scanio fetch --vcs github --auth-type ssh-agent -b c0c9e9af80666d80e564881a5bdfa661c60e053e git@github.com:scan-io-git/scan-io.git # SSH link
+scanio fetch --vcs github --auth-type ssh-agent -b c0c9e9af80666d80e564881a5bdfa661c60e053e https://github.com/scan-io-git/scan-io # HTTP URL
+scanio fetch --vcs github --auth-type ssh-agent -b c0c9e9af80666d80e564881a5bdfa661c60e053e git@github.com:scan-io-git/scan-io.git # SSH URL
 ```
 
 **Fetch a Specific Pull Request** <br>

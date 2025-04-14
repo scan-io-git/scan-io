@@ -239,6 +239,13 @@ Example:
 https://bitbucket.com/projects/SCANIO/repos/scan-io/browse # APIv1 HTTP URL
 https://bitbucket.com/scm/SCANIO/scan-io.git # APIv1 HTTP-SCM URL
 ssh://git@bitbucket.com:7989/SCANIO/scan-io.git # APIv1 SSH URL
+https://bitbucket.com/users/scanio-bot/repos/scan-io/ # APIv1 HTTP URL User Repository
+```
+
+**URL with Specified Branch** <br>
+Points to a specific repository with branch.
+```
+https://bitbucket.com/projects/SCANIO/repos/scan-io/browse?at=refs%2Fheads%2Ftest%2Ffeature # APIv1 HTTP URL
 ```
 
 **Pull Request URL** <br>
@@ -283,6 +290,7 @@ Fetching a specific repository supports specifying branches and particular commi
 scanio fetch --vcs bitbucket --auth-type ssh-agent -b develop https://bitbucket.com/projects/SCANIO/repos/scan-io/browse # APIv1 HTTP URL
 scanio fetch --vcs bitbucket --auth-type ssh-agent -b develop https://bitbucket.com/scm/SCANIO/scan-io.git # APIv1 HTTP-SCM URL
 scanio fetch --vcs bitbucket --auth-type ssh-agent -b develop ssh://git@bitbucket.com:7989/SCANIO/scan-io.git # APIv1 SSH URL
+scanio fetch --vcs bitbucket --auth-type ssh-agent  https://bitbucket.com/projects/SCANIO/repos/scan-io/browse?at=refs%2Fheads%2Ftest%2Ffeature # Args derived from APIv1 HTTP URL
 
 ## Commit Hash
 scanio fetch --vcs bitbucket --auth-type ssh-agent -b c0c9e9af80666d80e564881a5bdfa661c60e053e https://bitbucket.com/projects/SCANIO/repos/scan-io/browse # APIv1 HTTP URL
