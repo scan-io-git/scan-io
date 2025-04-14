@@ -1,5 +1,3 @@
-Root README
-
 <div align="center">
   <br>
   <h1>Scanio ⥀</h1>
