@@ -76,10 +76,10 @@ The following examples demonstrate how to use the `analyse` command for differen
 
 Refer to plugin-specific documentation for detailed examples and additional requirements of the command usage:
 - [Semgrep Plugin](plugin-semgrep.md)
-- [Thrufflehog Plugin]()
+- [Trufflehog Plugin]()
 - [CodeQL Plugin]()
 - [Bandit Plugin]()
-- [Thrufflehog3 Plugin]()
+- [Trufflehog3 Plugin]()
 
 ### Output Structure
 ```json
