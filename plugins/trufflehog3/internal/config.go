@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -33,6 +34,7 @@ type Exclude struct {
 }
 
 // DefaultConfig returns the default configuration for Trufflehog3.
+// TODO: move fetching default from a file
 func DefaultConfig() Config {
 	return Config{
 		Exclude: []*Exclude{
@@ -77,6 +79,17 @@ func DefaultConfig() Config {
 	}
 }
 
+func attemptLoadOrWriteDefault(logger hclog.Logger, configFilePath string) error {
+	_, err := LoadConfig(configFilePath)
+	if errors.Is(err, ErrDecodeFailure) {
+		logger.Warn("Using default config due to error decoding .trufflehog3.yml", "err", err)
+		if err := ForceOverwriteTrufflehogConfig(configFilePath, DefaultConfig()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // LoadConfig loads the YAML configuration from the specified file.
 func LoadConfig(path string) (Config, error) {
 	file, err := os.Open(path)
@@ -88,7 +101,7 @@ func LoadConfig(path string) (Config, error) {
 	var config Config
 	decoder := yaml.NewDecoder(file)
 	if err := decoder.Decode(&config); err != nil {
-		return Config{}, fmt.Errorf("failed to decode .trufflehog3.yml file: %w", err)
+		return Config{}, WrapDecodeFailure(err)
 	}
 	return config, nil
 }
@@ -150,6 +163,11 @@ func HandleScannerConfig(logger hclog.Logger, excludePaths []string, targetFolde
 	if forceOverwrite {
 		logger.Warn("Overwriting .trufflehog3.yml config file with default settings.")
 		if err := ForceOverwriteTrufflehogConfig(configFilePath, DefaultConfig()); err != nil {
+			return err
+		}
+	} else {
+		err := attemptLoadOrWriteDefault(logger, configFilePath)
+		if err != nil {
 			return err
 		}
 	}
