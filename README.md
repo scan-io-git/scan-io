@@ -22,15 +22,15 @@ Extensible and Flexible: Designed for security applications but easily extends t
 ## Usage Scenarios
 Each of these scenarios can be supported by specialized rule sets crafted for specific purposes or tailored to individual projects.
 
-**Ad hoc Scanning**
+**Ad hoc Scanning**<br>
 Ideal for security teams and developers looking to perform spot checks or analyze specific pieces of code manually during:
 - Scan code during development.
 - Perform security audits.
 
-**Automated Background Scanning**
+**Automated Background Scanning**<br>
 Identify vulnerabilities and secrets in the codebase as a periodic process.
 
-**CI/CD Pipeline Scanning**
+**CI/CD Pipeline Scanning**<br>
 Automatically scan new code changes during branch merges.
 
 ## Getting Started
