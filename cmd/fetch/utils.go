@@ -36,10 +36,12 @@ func prepareFetchTargets(options *RunOptionsFetch, args []string, mode string) (
 			Domain:        url.ParsedURL.Hostname(),
 			Namespace:     url.Namespace,
 			Repository:    url.Repository,
+			Branch:        url.Branch,
 			PullRequestID: url.PullRequestId,
 			HTTPLink:      url.HTTPRepoLink,
 			SSHLink:       url.SSHRepoLink,
 		}
+
 		if err != nil {
 			return reposInfo, fmt.Errorf("failed to extract data from provided URL '%s': %w", targetURL, err)
 		}

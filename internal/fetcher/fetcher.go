@@ -51,18 +51,27 @@ func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.Repository
 
 	for _, repo := range repos {
 		cloneURL := f.getCloneURL(repo)
-		domain, err := utils.GetDomain(cloneURL)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get domain for URL %s: %w", cloneURL, err)
+		if repo.Domain == "" {
+			domain, err := utils.GetDomain(cloneURL)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get domain for URL %s: %w", cloneURL, err)
+			}
+			repo.Domain = domain
 		}
 
-		repo.Domain = domain
+		if repo.Branch != "" && f.Branch != "" {
+			repo.Branch = f.Branch
+			f.logger.Warn("Conflicting branch values: using branch from arguments instead of URL", "args_branch", f.Branch, "url_branch", repo.Branch)
+		} else if repo.Branch == "" {
+			repo.Branch = f.Branch
+		}
+
 		fetchMode := getFetchMode(repo)
 		if f.PluginName == "bitbucket" && strings.HasPrefix(repo.Namespace, "~") {
 			repo.Namespace = strings.TrimPrefix(repo.Namespace, "~") // in the case of user repos we should put results into the same folder for ssh and http links
 		}
 
-		targetFolder := config.GetRepositoryPath(cfg, domain, filepath.Join(repo.Namespace, repo.Repository))
+		targetFolder := config.GetRepositoryPath(cfg, repo.Domain, filepath.Join(repo.Namespace, repo.Repository))
 		if f.OutputPath != "" {
 			targetFolder = f.OutputPath
 
@@ -94,7 +103,7 @@ func getFetchMode(repo shared.RepositoryParams) string {
 func (f *Fetcher) createFetchRequest(repo shared.RepositoryParams, cloneURL, targetFolder, fetchMode string) shared.VCSFetchRequest {
 	return shared.VCSFetchRequest{
 		CloneURL:     cloneURL,
-		Branch:       f.Branch,
+		Branch:       repo.Branch,
 		AuthType:     f.AuthType,
 		SSHKey:       f.SshKey,
 		TargetFolder: targetFolder,

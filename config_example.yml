@@ -31,7 +31,7 @@ gitlab_plugin:
 trufflehog3_plugin:
   write_default_trufflehog_config_if_missing: true  # If set to true, a default .trufflehog3.yml configuration file will be created in the target directory if it does not already exist.
   force_overwrite_trufflehog_config: false          # If set to true, the existing .trufflehog3.yml file will be overwritten with the default configuration, even if it already exists.
-  exclude_paths: # A list of paths to be excluded from the Trufflehog3 scan. These paths will be added to the exclusion section of the .trufflehog3.yml configuration.
+  exclude_paths: # A list of paths to be excluded from the Trufflehog3 scan. These paths will be added to the exclusion section of the .trufflehog3.yml configuration. Default: none
     - "vendor"
     - "node_modules"
     - "go.mod"
@@ -70,4 +70,4 @@ http_client:
 git_client:
   depth: 0              # Default: 0. Full gclone is 0 (usefull if you need to search secrets in git history).
   insecure_tls: false   # Turning off verification of TLS certificates. Default: false.
-  timeout: 0            # The maximum duration for the Git request before timing it out. Default: 0.
+  timeout: 10m            # The maximum duration for the Git request before timing it out. Default: 10m.

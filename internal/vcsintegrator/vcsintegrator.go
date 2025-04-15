@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	VCSListing       = "listing"
+	VCSListing       = "list"
 	VCSCheckPR       = "checkPR"
 	VCSCommentPR     = "addComment"
 	VCSAddRoleToPR   = "addRoleToPR"

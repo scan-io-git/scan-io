@@ -67,14 +67,15 @@ func isValidScheme(scheme string) bool {
 
 // VCSURL represents a parsed VCS URL
 type VCSURL struct {
+	VCSType       VCSType
 	Namespace     string
 	Repository    string
+	Branch        string
+	PullRequestId string
 	HTTPRepoLink  string
 	SSHRepoLink   string
-	Raw           string
-	PullRequestId string
-	VCSType       VCSType
 	ParsedURL     *url.URL
+	Raw           string
 	// Protocol      Protocol
 	// FullName   string
 	// Committish string
@@ -181,10 +182,13 @@ func parseGitlab(u VCSURL) (*VCSURL, error) {
 	pathDirs := GetPathDirs(u.ParsedURL.Path)
 
 	// Search for "merge_requests" in pathDirs (excluding the first three segments)
-	mergeRequestIndex := -1
+	mergeRequestIndex, branchIndex := -1, -1
 	for i := 3; i < len(pathDirs); i++ {
 		if pathDirs[i] == "merge_requests" {
 			mergeRequestIndex = i
+			break
+		} else if pathDirs[i] == "tree" {
+			branchIndex = i
 			break
 		}
 	}
@@ -196,20 +200,25 @@ func parseGitlab(u VCSURL) (*VCSURL, error) {
 	// Case for working with a root group - https://gitlab.com/<group_name>
 	case len(pathDirs) == 1:
 		u.Namespace = pathDirs[0]
-		buildGenericURLs(&u)
-		return &u, nil
-	// MR fetching case - https://gitlab.com/<group_name>/../<project_name>/-/merge_requests/<id>
-	case mergeRequestIndex > 2 && mergeRequestIndex+1 < len(pathDirs) && pathDirs[mergeRequestIndex-1] == "-":
-		u.Namespace = path.Join(pathDirs[:mergeRequestIndex-2]...)
-		u.Repository = pathDirs[mergeRequestIndex-2]
-		u.PullRequestId = pathDirs[mergeRequestIndex+1]
-		buildGenericURLs(&u)
 		return &u, nil
 	// Case for working with a specific repository - https://gitlab.com/<group>/<subgroup>/.../<project>
 	// Assumes the last segment is the repository name.
 	case len(pathDirs) >= 2: // TODO: add '-/tree/main' search and verification
-		u.Namespace = path.Join(pathDirs[:len(pathDirs)-1]...)
-		u.Repository = pathDirs[len(pathDirs)-1]
+		if mergeRequestIndex > 2 && mergeRequestIndex+1 < len(pathDirs) && pathDirs[mergeRequestIndex-1] == "-" {
+			// MR fetching case - https://gitlab.com/<group_name>/../<project_name>/-/merge_requests/<id>
+			u.Namespace = path.Join(pathDirs[:mergeRequestIndex-2]...)
+			u.Repository = pathDirs[mergeRequestIndex-2]
+			u.PullRequestId = pathDirs[mergeRequestIndex+1]
+		} else if branchIndex > 2 && pathDirs[branchIndex-1] == "-" {
+			// Repo + Branch fetching case - https://gitlab.com/<group_name>/<project_name>/-/tree/<branch_name>
+			u.Namespace = path.Join(pathDirs[:branchIndex-2]...)
+			u.Repository = pathDirs[branchIndex-2]
+			u.Branch = strings.Join(pathDirs[branchIndex+1:], "/")
+		} else {
+			u.Namespace = path.Join(pathDirs[:len(pathDirs)-1]...)
+			u.Repository = pathDirs[len(pathDirs)-1]
+		}
+
 		buildGenericURLs(&u)
 		return &u, nil
 	default:
@@ -228,16 +237,20 @@ func parseGithub(u VCSURL) (*VCSURL, error) {
 	// Case for working with a whole project - https://github.com/<project_name>
 	case len(pathDirs) == 1:
 		u.Namespace = pathDirs[0]
-		buildGenericURLs(&u)
 		return &u, nil
 	// PR fetching case - https://github.com/<project_name>/<repo_name>/pull/<id>
-	case len(pathDirs) > 3 && pathDirs[2] == "pull":
+	// Case for working with a specific repo with a branch https://github.com/<project_name>/<repo_name>/tree/<branch_name>
+	case len(pathDirs) > 3:
 		u.Namespace = pathDirs[0]
 		u.Repository = pathDirs[1]
-		u.PullRequestId = pathDirs[3]
+		if pathDirs[2] == "pull" {
+			u.PullRequestId = pathDirs[3]
+		} else if pathDirs[2] == "tree" {
+			u.Branch = strings.Join(pathDirs[3:], "/")
+		}
 		buildGenericURLs(&u)
 		return &u, nil
-	// Case for working with a specific repo - https://github.com/<project_name>/<repo_name>
+	// Case for working with a specific repo - https://github.com/<project_name>/<repo_name>/
 	case len(pathDirs) > 1:
 		u.Namespace = pathDirs[0]
 		u.Repository = pathDirs[1]
@@ -251,6 +264,7 @@ func parseGithub(u VCSURL) (*VCSURL, error) {
 // parseBitbucket processes Bitbucket URLs to extract repository information. The case is for a Bitbucket APIv1/Onprem URL format
 func parseBitbucket(u VCSURL) (*VCSURL, error) {
 	pathDirs := GetPathDirs(u.ParsedURL.Path)
+	queryParams := u.ParsedURL.Query()
 
 	switch {
 	// Case for fetching the whole VCS - https://bitbucket.com/
@@ -265,10 +279,13 @@ func parseBitbucket(u VCSURL) (*VCSURL, error) {
 		u.Namespace = strings.Join([]string{pathDirs[0], pathDirs[1]}, "/")
 		buildBitbucketURLs(&u, false, "", true)
 		return &u, nil
-	// Case for working with user repositories - https://bitbucket.com/users/<username>/repos/<repo_name>/browse
+	// Case for working with user repositories - https://bitbucket.com/users/<username>/repos/<repo_name>/browse?at=refs%2Fheads%2F<branch_name>
 	case len(pathDirs) > 3 && pathDirs[0] == "users" && pathDirs[2] == "repos" && u.Protocol() == HTTP:
 		u.Namespace = strings.Join([]string{pathDirs[0], pathDirs[1]}, "/")
 		u.Repository = pathDirs[3]
+		if refParam, exists := queryParams["at"]; exists && len(refParam) > 0 {
+			u.Branch = refParam[0]
+		}
 		buildBitbucketURLs(&u, false, "", true)
 		return &u, nil
 	// PR fetching case - the type doesn't exist in SCM URLs - https://bitbucket.com/projects/<project_name>/repos/<repo_name>/pull-requests/<id>
@@ -278,10 +295,13 @@ func parseBitbucket(u VCSURL) (*VCSURL, error) {
 		u.PullRequestId = pathDirs[5]
 		buildBitbucketURLs(&u, false, "", false)
 		return &u, nil
-	// Case for working with a specific repo from a Web UI URL format - https://bitbucket.com/projects/<project_name>/repos/<repo_name>/browse
+	// Case for working with a specific repo from a Web UI URL format - https://bitbucket.com/projects/<project_name>/repos/<repo_name>/browse?at=refs%2Fheads%2F<branch_name>
 	case len(pathDirs) > 3 && pathDirs[0] == "projects" && pathDirs[2] == "repos" && u.Protocol() == HTTP:
 		u.Namespace = pathDirs[1]
 		u.Repository = pathDirs[3]
+		if refParam, exists := queryParams["at"]; exists && len(refParam) > 0 {
+			u.Branch = refParam[0]
+		}
 		buildBitbucketURLs(&u, false, "", false)
 		return &u, nil
 	// Case for SCM path - https://bitbucket.com/scm/<project_name>/

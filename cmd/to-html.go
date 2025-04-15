@@ -128,7 +128,7 @@ var toHtmlCmd = &cobra.Command{
 		var url *vcsurl.VCSURL
 		vcsType := vcsurl.GenericVCS
 		if repositoryMetadata.RepositoryFullName != nil {
-			vcsType := vcsurl.StringToVCSType(allToHTMLOptions.VCS)
+			vcsType = vcsurl.StringToVCSType(allToHTMLOptions.VCS)
 			url, err = vcsurl.ParseForVCSType(*repositoryMetadata.RepositoryFullName, vcsType)
 			if err != nil {
 				return errors.NewCommandError(allToHTMLOptions, nil, err, 1)

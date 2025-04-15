@@ -93,7 +93,7 @@ docker run --rm \
 scanio fetch --vcs bitbucket --auth-type ssh-agent -j 1 https://example.com/projects/SCANIO/repos/scanio/browse
 ```
 
-> Replace ```john.doe``` with your Bitbucket username, ```https://example.com/projects/SCANIO/repos/scanio/browse``` with the URL of the repository you want to fetch and `/~/development/:/data` with path of the repository to scan. If you use SSH key authentication, make sure to copy your private key to the container or use an SSH agent authentification.
+> Replace ```john.doe``` with your Bitbucket username, ```https://example.com/projects/SCANIO/repos/scanio/browse``` with the URL of the repository you want to fetch and `/~/development/:/data` with path of the repository to scan. If you use SSH key authentication, make sure to copy your private key to the container or use an SSH agent authentication.
 
 ### Analyzing a Particular Repository
 To analyze a particular repository, use the following commands:<br><br>
@@ -130,7 +130,7 @@ docker run --rm \
 
 This command sets the necessary environment variables and mounts the appropriate directories for working with Scanio. Additionally, it starts an interactive bash shell inside the container, which allows you to run commands and interact with the container's file system.
 
-> Replace ```john.doe``` with your Bitbucket username and `/~/development/:/data` with path of the repository to scan. If you use SSH key authentication, make sure to copy your private key to the container or use an SSH agent authentification.
+> Replace ```john.doe``` with your Bitbucket username and `/~/development/:/data` with path of the repository to scan. If you use SSH key authentication, make sure to copy your private key to the container or use an SSH agent authentication.
 
 ## Working on a Remote k8s Cluster
 *In progress...*

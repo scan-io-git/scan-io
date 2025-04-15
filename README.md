@@ -1,84 +1,61 @@
-# Scanio
-Scanio is an application that acts as an orchestrator over plugins. The application is made up of two main parts - the core and plugins.<br>
-The core handles the plugins and controls the entire life cycle of the plugins, while the plugins themselves implement work with a variety of functions, other applications, and scanners.<br><br>
-
-## Scenarios for Using Scanio
-There are several different scenarios in which you might use Scanio, which are sorted by the environment in which they're used.
-
-### Manual Scanning Process for AppSec Teams and Developers
-This scenario involves performing on-demand scanning, which is a common use case for the application. It allows you to manually control any arguments for the scanner that you need, including implementation review scanning, developing custom rules and scanning, scans initiated by developers to self-check, and more.<br><br>
-
-If you're interested in using Scanio for manual scanning, check out the "[Quick Start for a Manual Scanning Process](docs/quick%20start%20for%20a%20manual%20scanning%20process.md)" page!
-
-### Iterative Scanning Process
-The main idea behind this approach is to enable constant scanning of a project. This could include regular, iterative scans, or scans with specific rules (such as PCI-DSS code) depending on your requirements.<br><br>
-
-Some of the environments used for this approach include:
-- k8s cron jobs.
-- VMs/personal devices with ample resources.
-
+<div align="center">
+  <br>
+  <h1>Scanio ⥀</h1>
+  <strong>All-in-One Multitool for Enhanced Security</strong>
+</div>
 <br>
 
-*Quick Start Guid is in progress...*
+## What is Scanio?
 
-### Merge Request Scanning Process
-The primary objective of this approach is to integrate the orchestrator with CI/CD pipelines and trigger scans automatically after certain actions in your Version Control System (VCS).<br><br>
+Scanio simplifies security scanning for organizations by combining multiple open-source and enterprise-grade scanners into a single, customizable solution. Designed for teams with limited budgets, it enables teams to secure code efficiently and cost-effectively. By unifying interfaces and eliminating the need to develop tools and approaches for security processes from scratch, Scanio helps improve code quality, supports compliance efforts, and strengthens applications against vulnerabilities.
 
-Some of the environments used for this approach include:
-- Tools like Jenkins
-- Native VCS CI systems like GitLab CI.
+## Key Features
+- Unified Interface: Use multiple scanners (e.g., Semgrep, Bandit, Trufflehog, CodeQL) with consistent commands and flags, reducing the learning curve for security teams and developers.
+- Scalability: Adaptable for small teams or large enterprises, providing flexibility for diverse security scanning needs.
+- Containerized Deployment: Prepackaged with dependencies, plugins, and rule sets for quick and hassle-free setup.
+- Compliance Simplified: Streamlines security processes across development stages, reducing effort and investment.
+- Comprehensive Integration Support: Scanio seamlessly handles tasks such as code cloning, managing pull requests, and uploading scan results across VCS platforms like GitHub, GitLab, and Bitbucket.
+- Infrastructure Ready: Configure and deploy Scanio with ease, using custom rules, configurations, and plugins.
+Extensible and Flexible: Designed for security applications but easily extends to QA and DevOps via its plugin-based architecture.
+- Advanced SARIF Integration: SARIF report patching to meet specific requirements for enhanced usability and Transform SARIF data into accessible HTML reports with interactive elements like code snippets and links.
 
-<br>
+## Usage Scenarios
+Each of these scenarios can be supported by specialized rule sets crafted for specific purposes or tailored to individual projects.
 
-*Quick Start Guid is in progress...*
+**Ad hoc Scanning**<br>
+Ideal for security teams and developers looking to perform spot checks or analyze specific pieces of code manually during:
+- Scan code during development.
+- Perform security audits.
 
-## Installation
-### Docker Building from Source Code
-To build from the source code using Docker, use the following command:
+**Automated Background Scanning**<br>
+Identify vulnerabilities and secrets in the codebase as a periodic process.
+
+**CI/CD Pipeline Scanning**<br>
+Automatically scan new code changes during branch merges.
+
+## Getting Started
+### Installation
+1) Installation with Docker:
 ```
-make docker
+docker pull scanio/scanio:latest
 ```
-  
-Alternatively, you can use the following command to build a Docker image:
-```
-docker build -t scanio .
-```
-  
-Multi arch build:
-```
-docker buildx create --name scaniobuilder
-docker buildx use scaniobuilder
-docker buildx build --platform linux/amd64,linux/arm64 -t scanio --push .
-```
-#### Custom Rules
-If you would like use in the image custom rules for scanners, place the rules to a ```/rules``` folder. 
-You will find your rules in the container in a ```/scanio-rules``` folder.
 
-### Building the CLI from Source Code
-To build the CLI from the source code, use the following command:
+2) Build and run from source:
 ```
-make build
+git clone https://github.com/scan-io-git/scan-io
+cd scan-io
+make build docker
 ```
-In this case you will need to install all dependencies before using the application. <br>
-"Please note that the list of dependencies you will need may vary depending on the plugins you intend to use. We recommend checking the installation instructions for [each plugin](/README.md#plugins) to determine its specific requirements.
 
-## Articles to Read
-Here are some articles that provide more information about using the Scanio application.
+### Quick Start
+Run your first scan:
+```
+git clone https://github.com/juice-shop/juice-shop
+cd juice-shop
+docker run -it -v $(pwd):/data scanio/scanio analyse --scanner semgrep /data
+```
 
-### Commands 
-These articles cover the different commands available in the application:
-* [List](docs/scanio-list.md).
-* [Fetch](docs/scanio-fetch.md).
-* [Analyse](docs/scanio-analyse.md).
+## Documentation
+Explore Scanio's comprehensive [documentation](docs/README.md), structured using the Diátaxis framework.  
 
-### Plugins
-These articles cover the different plugins supported by the application. <br>
-
-VCSs plugins:
-* [Bitbucket](plugins/bitbucket/README.md).
-
-Scanners plugins:
-* [Bandit](plugins/bandit/README.md).
-* [Semgrep](plugins/semgrep/README.md).
-* [Trufflehog](plugins/trufflehog/README.md).
-* [Trufflehog3](plugins/trufflehog3/README.md).
+The documentation covers everything you need to know, including tutorials, how-to guides, conceptual explanations, and technical references, to help you use and extend Scanio effectively.

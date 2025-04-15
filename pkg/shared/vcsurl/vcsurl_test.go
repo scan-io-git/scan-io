@@ -24,76 +24,40 @@ func TestParseGitURL(t *testing.T) {
 		expected VCSURL
 	}{
 		{
-			name:  "GitHub git URL",
-			input: "git@github.com:juice-shop/juice-shop.git",
+			name:  "GitHub root of VCS URL",
+			input: "https://github.com/",
 			expected: VCSURL{
-				Namespace:     "juice-shop",
-				Repository:    "juice-shop",
-				HTTPRepoLink:  "https://github.com/juice-shop/juice-shop",
-				SSHRepoLink:   "ssh://git@github.com/juice-shop/juice-shop.git",
-				Raw:           "git@github.com:juice-shop/juice-shop.git",
+				Namespace:     "",
+				Repository:    "",
+				Branch:        "",
+				HTTPRepoLink:  "",
+				SSHRepoLink:   "",
+				Raw:           "https://github.com/",
 				PullRequestId: "",
 				VCSType:       Github,
 			},
 		},
 		{
-			name:  "Github HTTP URL",
-			input: "https://github.com/juice-shop/juice-shop.git",
-			expected: VCSURL{
-				Namespace:     "juice-shop",
-				Repository:    "juice-shop",
-				HTTPRepoLink:  "https://github.com/juice-shop/juice-shop",
-				SSHRepoLink:   "ssh://git@github.com/juice-shop/juice-shop.git",
-				Raw:           "https://github.com/juice-shop/juice-shop.git",
-				PullRequestId: "",
-				VCSType:       Github,
-			},
-		},
-		{
-			name:  "Github HTTP URL",
-			input: "https://github.com/juice-shop/juice-shop.git",
-			expected: VCSURL{
-				Namespace:     "juice-shop",
-				Repository:    "juice-shop",
-				HTTPRepoLink:  "https://github.com/juice-shop/juice-shop",
-				SSHRepoLink:   "ssh://git@github.com/juice-shop/juice-shop.git",
-				Raw:           "https://github.com/juice-shop/juice-shop.git",
-				PullRequestId: "",
-				VCSType:       Github,
-			},
-		},
-		{
-			name:  "GitHub SSH URL",
-			input: "ssh://git@github.com/scan-io-git/scan-io.git",
+			name:  "Github HTTPS org URL",
+			input: "https://github.com/scan-io-git/",
 			expected: VCSURL{
 				Namespace:     "scan-io-git",
-				Repository:    "scan-io",
-				HTTPRepoLink:  "https://github.com/scan-io-git/scan-io",
-				SSHRepoLink:   "ssh://git@github.com/scan-io-git/scan-io.git",
-				Raw:           "ssh://git@github.com/scan-io-git/scan-io.git",
+				Repository:    "",
+				Branch:        "",
+				HTTPRepoLink:  "",
+				SSHRepoLink:   "",
+				Raw:           "https://github.com/scan-io-git/",
 				PullRequestId: "",
 				VCSType:       Github,
 			},
 		},
 		{
-			name:  "Github HTTP URL 2",
-			input: "https://github.com/scan-io-git/scan-io/",
-			expected: VCSURL{
-				Namespace:     "scan-io-git",
-				Repository:    "scan-io",
-				HTTPRepoLink:  "https://github.com/scan-io-git/scan-io",
-				SSHRepoLink:   "ssh://git@github.com/scan-io-git/scan-io.git",
-				Raw:           "https://github.com/scan-io-git/scan-io/",
-				PullRequestId: "",
-				VCSType:       Github,
-			},
-		},
-		{
-			name:  "Github SSH URL 2",
+			name:  "Github git@ repo URL",
 			input: "git@github.com:scan-io-git/scan-io.git",
 			expected: VCSURL{
 				Namespace:     "scan-io-git",
 				Repository:    "scan-io",
+				Branch:        "",
 				HTTPRepoLink:  "https://github.com/scan-io-git/scan-io",
 				SSHRepoLink:   "ssh://git@github.com/scan-io-git/scan-io.git",
 				Raw:           "git@github.com:scan-io-git/scan-io.git",
@@ -102,40 +66,159 @@ func TestParseGitURL(t *testing.T) {
 			},
 		},
 		{
-			name:  "GitLab git URL",
-			input: "git@gitlab.com:scanio-demo/juice-shop.git",
+			name:  "Github HTTPS .git repo URL",
+			input: "https://github.com/scan-io-git/scan-io.git",
 			expected: VCSURL{
-				Namespace:     "scanio-demo",
-				Repository:    "juice-shop",
-				HTTPRepoLink:  "https://gitlab.com/scanio-demo/juice-shop",
-				SSHRepoLink:   "ssh://git@gitlab.com/scanio-demo/juice-shop.git",
-				Raw:           "git@gitlab.com:scanio-demo/juice-shop.git",
+				Namespace:     "scan-io-git",
+				Repository:    "scan-io",
+				Branch:        "",
+				HTTPRepoLink:  "https://github.com/scan-io-git/scan-io",
+				SSHRepoLink:   "ssh://git@github.com/scan-io-git/scan-io.git",
+				Raw:           "https://github.com/scan-io-git/scan-io.git",
+				PullRequestId: "",
+				VCSType:       Github,
+			},
+		},
+		{
+			name:  "GitHub SSH repo URL",
+			input: "ssh://git@github.com/scan-io-git/scan-io.git",
+			expected: VCSURL{
+				Namespace:     "scan-io-git",
+				Repository:    "scan-io",
+				Branch:        "",
+				HTTPRepoLink:  "https://github.com/scan-io-git/scan-io",
+				SSHRepoLink:   "ssh://git@github.com/scan-io-git/scan-io.git",
+				Raw:           "ssh://git@github.com/scan-io-git/scan-io.git",
+				PullRequestId: "",
+				VCSType:       Github,
+			},
+		},
+		{
+			name:  "Github HTTPS repo URL",
+			input: "https://github.com/scan-io-git/scan-io/",
+			expected: VCSURL{
+				Namespace:     "scan-io-git",
+				Repository:    "scan-io",
+				Branch:        "",
+				HTTPRepoLink:  "https://github.com/scan-io-git/scan-io",
+				SSHRepoLink:   "ssh://git@github.com/scan-io-git/scan-io.git",
+				Raw:           "https://github.com/scan-io-git/scan-io/",
+				PullRequestId: "",
+				VCSType:       Github,
+			},
+		},
+		{
+			name:  "Github HTTPS repo URL with Branch",
+			input: "https://github.com/scan-io-git/scan-io/tree/scanio_bot/test/feature",
+			expected: VCSURL{
+				Namespace:     "scan-io-git",
+				Repository:    "scan-io",
+				Branch:        "scanio_bot/test/feature",
+				HTTPRepoLink:  "https://github.com/scan-io-git/scan-io",
+				SSHRepoLink:   "ssh://git@github.com/scan-io-git/scan-io.git",
+				Raw:           "https://github.com/scan-io-git/scan-io/tree/scanio_bot/test/feature",
+				PullRequestId: "",
+				VCSType:       Github,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := Parse(tc.input)
+			assert.NoError(t, err, "Parse should not return an error")
+
+			validateParse(t, &tc.expected, got)
+		})
+	}
+}
+
+func TestParseGitLabURL(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected VCSURL
+	}{
+		{
+			name:  "Gitlab root of VCS URL",
+			input: "https://gitlab.com/",
+			expected: VCSURL{
+				Namespace:     "",
+				Repository:    "",
+				Branch:        "",
+				HTTPRepoLink:  "",
+				SSHRepoLink:   "",
+				Raw:           "https://gitlab.com/",
 				PullRequestId: "",
 				VCSType:       Gitlab,
 			},
 		},
 		{
-			name:  "GitLab HTTPS URL",
-			input: "https://gitlab.com/juice-shop/juice-shop.git",
+			name:  "Gitlab HTTPS org URL",
+			input: "https://gitlab.com/testing_scanio/",
 			expected: VCSURL{
-				Namespace:     "juice-shop",
-				Repository:    "juice-shop",
-				HTTPRepoLink:  "https://gitlab.com/juice-shop/juice-shop",
-				SSHRepoLink:   "ssh://git@gitlab.com/juice-shop/juice-shop.git",
-				Raw:           "https://gitlab.com/juice-shop/juice-shop.git",
+				Namespace:     "testing_scanio",
+				Repository:    "",
+				Branch:        "",
+				HTTPRepoLink:  "",
+				SSHRepoLink:   "",
+				Raw:           "https://gitlab.com/testing_scanio/",
 				PullRequestId: "",
 				VCSType:       Gitlab,
 			},
 		},
 		{
-			name:  "GitLab web URL",
-			input: "https://gitlab.com/scanio-demo/juice-shop",
+			name:  "Gitlab git@ repo URL",
+			input: "git@gitlab.com:testing_scanio/testing_scanio.git",
 			expected: VCSURL{
-				Namespace:     "scanio-demo",
-				Repository:    "juice-shop",
-				HTTPRepoLink:  "https://gitlab.com/scanio-demo/juice-shop",
-				SSHRepoLink:   "ssh://git@gitlab.com/scanio-demo/juice-shop.git",
-				Raw:           "https://gitlab.com/scanio-demo/juice-shop",
+				Namespace:     "testing_scanio",
+				Repository:    "testing_scanio",
+				Branch:        "",
+				HTTPRepoLink:  "https://gitlab.com/testing_scanio/testing_scanio",
+				SSHRepoLink:   "ssh://git@gitlab.com/testing_scanio/testing_scanio.git",
+				Raw:           "git@gitlab.com:testing_scanio/testing_scanio.git",
+				PullRequestId: "",
+				VCSType:       Gitlab,
+			},
+		},
+		{
+			name:  "Gitlab HTTPS .git repo URL",
+			input: "https://gitlab.com/testing_scanio/testing_scanio.git",
+			expected: VCSURL{
+				Namespace:     "testing_scanio",
+				Repository:    "testing_scanio",
+				Branch:        "",
+				HTTPRepoLink:  "https://gitlab.com/testing_scanio/testing_scanio",
+				SSHRepoLink:   "ssh://git@gitlab.com/testing_scanio/testing_scanio.git",
+				Raw:           "https://gitlab.com/testing_scanio/testing_scanio.git",
+				PullRequestId: "",
+				VCSType:       Gitlab,
+			},
+		},
+		{
+			name:  "Gitlab HTTPS repo URL",
+			input: "https://gitlab.com/testing_scanio/testing_scanio",
+			expected: VCSURL{
+				Namespace:     "testing_scanio",
+				Repository:    "testing_scanio",
+				Branch:        "",
+				HTTPRepoLink:  "https://gitlab.com/testing_scanio/testing_scanio",
+				SSHRepoLink:   "ssh://git@gitlab.com/testing_scanio/testing_scanio.git",
+				Raw:           "https://gitlab.com/testing_scanio/testing_scanio",
+				PullRequestId: "",
+				VCSType:       Gitlab,
+			},
+		},
+		{
+			name:  "Gitlab HTTPS repo URL with Branch",
+			input: "https://gitlab.com/testing_scanio/testing_scanio/-/tree/test/feature",
+			expected: VCSURL{
+				Namespace:     "testing_scanio",
+				Repository:    "testing_scanio",
+				Branch:        "test/feature",
+				HTTPRepoLink:  "https://gitlab.com/testing_scanio/testing_scanio",
+				SSHRepoLink:   "ssh://git@gitlab.com/testing_scanio/testing_scanio.git",
+				Raw:           "https://gitlab.com/testing_scanio/testing_scanio/-/tree/test/feature",
 				PullRequestId: "",
 				VCSType:       Gitlab,
 			},
@@ -164,6 +247,7 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			expected: VCSURL{
 				Namespace:     "",
 				Repository:    "",
+				Branch:        "",
 				HTTPRepoLink:  "",
 				SSHRepoLink:   "",
 				Raw:           "https://bitbucket.org/",
@@ -172,12 +256,13 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			},
 		},
 		{
-			name:  "Bitbucket HTTPS APIv1 project URL", // fixed
+			name:  "Bitbucket HTTPS APIv1 project URL",
 			input: "https://bitbucket.org/projects/scanio-project",
 			expected: VCSURL{
 				Namespace:     "scanio-project",
 				Repository:    "",
-				HTTPRepoLink:  "", // delete u.raw
+				Branch:        "",
+				HTTPRepoLink:  "",
 				SSHRepoLink:   "",
 				Raw:           "https://bitbucket.org/projects/scanio-project",
 				PullRequestId: "",
@@ -190,9 +275,24 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			expected: VCSURL{
 				Namespace:     "users/scanio-bot",
 				Repository:    "scanio-test-repository",
+				Branch:        "",
 				HTTPRepoLink:  "https://bitbucket.org/users/scanio-bot/repos/scanio-test-repository",
 				SSHRepoLink:   "ssh://git@bitbucket.org:7989/~scanio-bot/scanio-test-repository.git",
 				Raw:           "https://bitbucket.org/users/scanio-bot/repos/scanio-test-repository/",
+				PullRequestId: "",
+				VCSType:       Bitbucket,
+			},
+		},
+		{
+			name:  "Bitbucket HTTPS APIv1 repo URL with Username and Branch",
+			input: "https://bitbucket.org/users/scanio-bot/repos/scanio-test-repository/?at=refs%2Fheads%2Ftest%2Ffeature",
+			expected: VCSURL{
+				Namespace:     "users/scanio-bot",
+				Repository:    "scanio-test-repository",
+				Branch:        "refs/heads/test/feature",
+				HTTPRepoLink:  "https://bitbucket.org/users/scanio-bot/repos/scanio-test-repository",
+				SSHRepoLink:   "ssh://git@bitbucket.org:7989/~scanio-bot/scanio-test-repository.git",
+				Raw:           "https://bitbucket.org/users/scanio-bot/repos/scanio-test-repository/?at=refs%2Fheads%2Ftest%2Ffeature",
 				PullRequestId: "",
 				VCSType:       Bitbucket,
 			},
@@ -203,6 +303,7 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			expected: VCSURL{
 				Namespace:     "scanio-project",
 				Repository:    "scanio-test-repository",
+				Branch:        "",
 				HTTPRepoLink:  "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository",
 				SSHRepoLink:   "ssh://git@bitbucket.org:7989/scanio-project/scanio-test-repository.git",
 				Raw:           "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository/pull-requests/1",
@@ -216,6 +317,7 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			expected: VCSURL{
 				Namespace:     "scanio-project",
 				Repository:    "scanio-test-repository",
+				Branch:        "",
 				HTTPRepoLink:  "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository",
 				SSHRepoLink:   "ssh://git@bitbucket.org:7989/scanio-project/scanio-test-repository.git",
 				Raw:           "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository/browse",
@@ -223,13 +325,27 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 				VCSType:       Bitbucket,
 			},
 		},
-
+		{
+			name:  "Bitbucket HTTPS APIv1 repo URL with Branch",
+			input: "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository/browse?at=refs%2Fheads%2Ftest%2Ffeature",
+			expected: VCSURL{
+				Namespace:     "scanio-project",
+				Repository:    "scanio-test-repository",
+				Branch:        "refs/heads/test/feature",
+				HTTPRepoLink:  "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository",
+				SSHRepoLink:   "ssh://git@bitbucket.org:7989/scanio-project/scanio-test-repository.git",
+				Raw:           "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository/browse?at=refs%2Fheads%2Ftest%2Ffeature",
+				PullRequestId: "",
+				VCSType:       Bitbucket,
+			},
+		},
 		{
 			name:  "Bitbucket HTTPS APIv1 scm project URL",
 			input: "https://bitbucket.org/scm/scanio-project",
 			expected: VCSURL{
 				Namespace:     "scanio-project",
 				Repository:    "",
+				Branch:        "",
 				HTTPRepoLink:  "",
 				SSHRepoLink:   "",
 				Raw:           "https://bitbucket.org/scm/scanio-project",
@@ -243,6 +359,7 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			expected: VCSURL{
 				Namespace:     "scanio-project",
 				Repository:    "scanio-test-repository",
+				Branch:        "",
 				HTTPRepoLink:  "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository",
 				SSHRepoLink:   "ssh://git@bitbucket.org:7989/scanio-project/scanio-test-repository.git",
 				Raw:           "https://bitbucket.org/scm/scanio-project/scanio-test-repository.git",
@@ -256,6 +373,7 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			expected: VCSURL{
 				Namespace:     "scanio-project",
 				Repository:    "",
+				Branch:        "",
 				HTTPRepoLink:  "",
 				SSHRepoLink:   "",
 				Raw:           "ssh://git@bitbucket.org/scanio-project/",
@@ -269,6 +387,7 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			expected: VCSURL{
 				Namespace:     "scanio-project",
 				Repository:    "scanio-test-repository",
+				Branch:        "",
 				HTTPRepoLink:  "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository",
 				SSHRepoLink:   "ssh://git@bitbucket.org:7989/scanio-project/scanio-test-repository.git",
 				Raw:           "ssh://git@bitbucket.org/scanio-project/scanio-test-repository.git",
@@ -282,6 +401,7 @@ func TestParseBitbucketAPIV1(t *testing.T) {
 			expected: VCSURL{
 				Namespace:     "scanio-project",
 				Repository:    "scanio-test-repository",
+				Branch:        "",
 				HTTPRepoLink:  "https://bitbucket.org/projects/scanio-project/repos/scanio-test-repository",
 				SSHRepoLink:   "ssh://git@bitbucket.org:22/scanio-project/scanio-test-repository.git",
 				Raw:           "ssh://git@bitbucket.org:22/scanio-project/scanio-test-repository.git",
@@ -313,6 +433,7 @@ func TestGenericVCSForBitbucket(t *testing.T) {
 			expected: VCSURL{
 				Namespace:     "scanio",
 				Repository:    "test-repository",
+				Branch:        "",
 				HTTPRepoLink:  "https://bitbucket.org/scanio/test-repository",
 				SSHRepoLink:   "ssh://git@bitbucket.org/scanio/test-repository.git",
 				Raw:           "git@bitbucket.org:scanio/test-repository.git",
@@ -326,6 +447,7 @@ func TestGenericVCSForBitbucket(t *testing.T) {
 			expected: VCSURL{
 				Namespace:     "scanio",
 				Repository:    "test-repository",
+				Branch:        "",
 				HTTPRepoLink:  "https://bitbucket.org/scanio/test-repository",
 				SSHRepoLink:   "ssh://git@bitbucket.org/scanio/test-repository.git",
 				Raw:           "https://japroc@bitbucket.org/scanio/test-repository.git",
