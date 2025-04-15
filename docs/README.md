@@ -1,9 +1,9 @@
 # Scanio Documentation
 
-Welcome to the Scanio documentation, your complete guide to using, extending, and understanding Scanio. This documentation is structured using the Diátaxis framework to ensure clarity and accessibility for all users, whether you're just getting started or looking for advanced configurations.
+Welcome to the Scanio documentation, the complete guide to using, extending, and understanding Scanio. This documentation is structured using the Diátaxis framework to ensure clarity and accessibility for all users, whether you're just getting started or looking for advanced configurations.
 
 ## Structure of the Documentation
-### [Tutorials](/docs/reference/README.md)
+### [Tutorials](/docs/tutorials/README.md)
 Step-by-step guides to help you achieve key goals. Examples of articles in this section include:
 <TODO: revise>
 - Getting Started with Scanio[](): Install and run your first scan.
@@ -15,25 +15,25 @@ Practical solutions for specific use cases. Examples of articles in this section
 - Integrating Scanio into CI/CD Pipelines: Add Scanio to your development workflows.
 - Advanced SARIF Integration: Customize and generate SARIF reports with HTML outputs.
 
-### [Explanations](/docs/explanations/README.md)
+<!-- ### [Explanations](/docs/explanations/README.md)
 Detailed insights into how and why Scanio works. Examples of articles in this section include:
 <TODO: revise>
 - How Scanio Works: Explore the architecture and interaction between components.
-- Understanding Rule Sets: Learn how to craft and use rule sets effectively.
+- Understanding Rule Sets: Learn how to craft and use rule sets effectively. -->
 
 ### [Reference](/docs/reference/README.md)
 Comprehensive technical details. Examples of articles in this section include:
-<TODO: revise>
 - Command-Line Options: Full reference for all commands and flags.
-- Configuration of the Tool: how to configure the code and plugins. 
+- [Configuration of the Tool](reference/configuration.md): how to configure the tool and plugins. 
+- Plugins Usage: Reference for all supported plugins with supported features and usage examples.
 
-## Getting Help
+<!-- ## Getting Help
 <TODO: revise>
 If you encounter issues or have questions, consider the following resources:
 - FAQs: Check our Frequently Asked Questions section for quick answers.
-- Issue Tracker: Report bugs or suggest features on our GitHub Issues page 
+- Issue Tracker: Report bugs or suggest features on our GitHub Issues page  -->
 
-## Contribution
+<!-- ## Contribution
 <TODO: write contributors guide>
-We welcome contributions to improve Scanio documentation. Please see our Contributing Guide for details on how to get involved.
+We welcome contributions to improve Scanio documentation. Please see our Contributing Guide for details on how to get involved. -->
 
