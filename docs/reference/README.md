@@ -4,7 +4,7 @@ This section provides detailed technical documentation for Scanio’s commands, 
 
 ## Articles
 ### Common
-- [Scanio Basics](scanio.md): High-level overview of Scanio’s architecture, features, and core concepts.
+<!-- - [Scanio Basics](scanio.md): High-level overview of Scanio’s architecture, features, and core concepts. -->
 - [Configuration](configuration.md): Detailed documentation of core and plugin configuration options.
 
 ### Commands
