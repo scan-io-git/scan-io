@@ -223,7 +223,7 @@ var execExampleReportPatch = `  # Overwrite severity for specific rule by rule i
 // reportPatchCmd represents the reportPatch command
 var reportPatchCmd = &cobra.Command{
 	Use:     "report-patch",
-	Short:   "This command allows to overwrite some data in sarif report. For example you can decrease severity for some falsy rules, or make some severity adjustments depending on fionding description, finding location and so on.",
+	Short:   "This command allows to overwrite some data in sarif report such as criticality or remove findings from the report.",
 	Example: execExampleReportPatch,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("reportPatch called")
