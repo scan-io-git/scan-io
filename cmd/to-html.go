@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -18,6 +19,11 @@ import (
 
 	scaniosarif "github.com/scan-io-git/scan-io/internal/sarif"
 	scaniotemplate "github.com/scan-io-git/scan-io/internal/template"
+)
+
+const (
+	defaultHtmlTemplateHome = "templates/tohtml/"
+	defaultHtmlTemplateName = "report.html"
 )
 
 type ToHTMLOptions struct {
@@ -192,15 +198,15 @@ var toHtmlCmd = &cobra.Command{
 
 		// parse html template and generate report file with metadata
 		if allToHTMLOptions.TempatesPath == "" {
-			allToHTMLOptions.TempatesPath = filepath.Join(config.GetScanioHome(AppConfig), "templates/tohtml/")
+			allToHTMLOptions.TempatesPath = filepath.Join(config.GetScanioHome(AppConfig), defaultHtmlTemplateHome)
 		}
 
-		templateFile, err := files.ExpandPath(filepath.Join(allToHTMLOptions.TempatesPath, "report.html"))
+		templateFullPath, _, err := files.DetermineFileFullPath(allToHTMLOptions.TempatesPath, defaultHtmlTemplateName)
 		if err != nil {
-			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
+			return errors.NewCommandError(allToHTMLOptions, nil, fmt.Errorf("failed to determine html template path for '%s': %w", allToHTMLOptions.TempatesPath, err), 1)
 		}
 
-		tmpl, err := scaniotemplate.NewTemplate(templateFile)
+		tmpl, err := scaniotemplate.NewTemplate(templateFullPath)
 		if err != nil {
 			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
