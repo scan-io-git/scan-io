@@ -30,6 +30,7 @@ Make sure that default SLAConfiguration exists, and create if it does not.
 Create new type of products in defectdojo: "SCANIO-REPO".
 Create product if it's not exists yet.
 Create engagement and import results from file.`,
+	Hidden: true,
 	Example: `  # Upload json results of semgrep:
   scanio upload -u https://defectdojo.example.com -p github.com/juice-shop/juice-shop -i ~/.scanio/results/github.com/juice-shop/juice-shop/semgrep-2023-05-13T11:09:04Z.json -t "Semgrep JSON Report"
   
