@@ -221,9 +221,14 @@ func DetermineFileFullPath(path, nameTemplate string) (string, string, error) {
 	// 	// return "", "", fmt.Errorf("the given path '%s' could not be accepted due to normalization result '%s'", original, path)
 	// }
 
+	path, err := ExpandPath(path)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to unwrap path '%s': %w", path, err)
+	}
+
 	fileInfo, err := os.Stat(path)
 	if err != nil && !os.IsNotExist(err) {
-		return "", "", fmt.Errorf("failed to stat path '%s': %w", path, err)
+		return "", "", fmt.Errorf("failed to unwrap path '%s': %w", path, err)
 	}
 
 	var fullPath, folder string
