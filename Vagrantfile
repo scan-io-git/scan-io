@@ -12,7 +12,8 @@ Vagrant.configure("2") do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://vagrantcloud.com/search.
-  config.vm.box = "hashicorp/bionic64"
+  config.vm.box = "ubuntu/jammy64"
+  config.vm.box_version = "20241002.0.0"
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
@@ -56,13 +57,15 @@ Vagrant.configure("2") do |config|
   # backing providers for Vagrant. These expose provider-specific options.
   # Example for VirtualBox:
   #
-  # config.vm.provider "virtualbox" do |vb|
-  #   # Display the VirtualBox GUI when booting the machine
-  #   vb.gui = true
-  #
-  #   # Customize the amount of memory on the VM:
-  #   vb.memory = "1024"
-  # end
+  config.vm.provider "virtualbox" do |vb|
+    # Display the VirtualBox GUI when booting the machine
+    # vb.gui = true
+  
+    # Customize the amount of memory on the VM:
+    vb.memory = "2048"
+
+    vb.cpus = 2  # 2 CPU cores
+  end
   #
   # View the documentation for the provider you are using for more
   # information on available options.
@@ -73,30 +76,33 @@ Vagrant.configure("2") do |config|
   # Enable provisioning with a shell script. Additional provisioners such as
   # Ansible, Chef, Docker, Puppet and Salt are also available. Please see the
   # documentation for more information about their specific syntax and use.
-  config.vm.provision "shell", env: {"GO_TARBALL_NAME" => "go1.22.2.linux-amd64.tar.gz", "TRUFFLEHOG_VER" => "3.79.0", "TARGETOS" => "linux", "TARGETARCH" => "amd64"}, inline: <<-SHELL
-    apt-get update && apt-get -y upgrade
+  config.vm.provision "shell", env: {"GO_TARBALL_NAME" => "go1.23.4.linux-amd64.tar.gz", "TRUFFLEHOG_VER" => "3.88.23", "TARGETOS" => "linux", "TARGETARCH" => "amd64"}, inline: <<-SHELL
+    apt-get update && \
+      apt-get -y upgrade && \
+      apt-get install -y jq
     # install golang
     curl -O https://storage.googleapis.com/golang/$GO_TARBALL_NAME
     rm -rf /usr/local/go && tar -C /usr/local -xzf $GO_TARBALL_NAME && rm $GO_TARBALL_NAME
-    touch /home/vagrant/.bash_profile
-    echo "export PATH=\$PATH:/usr/local/go/bin" >> /home/vagrant/.bash_profile
+    # touch /home/vagrant/.bash_profile
+    echo "\n# golang\nPATH=/usr/local/go/bin:\\$PATH\n" >> /home/vagrant/.profile
     # setup scanio core path
-    echo "export PATH=\$PATH:\$HOME/.local/bin" >> /home/vagrant/.bash_profile 
+    echo "\n# .local/bin\nPATH=/home/vagrant/.local/bin:\\$PATH\n" >> /home/vagrant/.profile 
     # install python
-    apt-get install -y python3.8
-    pip3 install --upgrade pip
-    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 20
-    # install semgrep
+    apt-get install -y python3.11 python3-pip
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 20
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.11 20
+    python3 -m pip install --upgrade pip
+    # # install semgrep
     python3 -m pip install semgrep
-    # install trufflehog
-    cd /tmp
+    # # install trufflehog
+    # cd /tmp
     export TRUFFLEHOG_ARCHIVE="trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz" && \
       export TRUFFLEHOG_SHA="$(curl -Ls https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/trufflehog_${TRUFFLEHOG_VER}_checksums.txt | grep ${TRUFFLEHOG_ARCHIVE} | awk '{print $1}')"  && \
       curl -LOs "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/${TRUFFLEHOG_ARCHIVE}" && \
       echo "${TRUFFLEHOG_SHA}  ${TRUFFLEHOG_ARCHIVE}" | sha256sum -c - && \
       tar -xzf ${TRUFFLEHOG_ARCHIVE} && \
       rm -rf ${TRUFFLEHOG_ARCHIVE} && \
-      mv trufflehog /usr/local/bin && \
+      mv trufflehog /home/vagrant/.local/bin && \
       trufflehog filesystem
   SHELL
 end
