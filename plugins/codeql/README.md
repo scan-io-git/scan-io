@@ -1,7 +1,7 @@
 # CodeQL Plugin
-The Trufflehog plugin provides integration with the [CodeQL scanner](https://docs.github.com/en/code-security/codeql-cli) within Scanio. It enables flexible execution of Trufflehog scans as part of CI/CD workflows or manual security audits.
+The CodeQL plugin provides integration with the [CodeQL scanner](https://docs.github.com/en/code-security/codeql-cli) within Scanio. It enables flexible execution of CodeQL scans as part of CI/CD workflows or manual security audits.
 
-This plugin supports analyzing single projects or multiple repositories (via input from the `list` command), allowing configuration customization and fine-tuning scan execution with Trufflehog-specific arguments.
+This plugin supports analyzing single projects or multiple repositories (via input from the `list` command), allowing configuration customization and fine-tuning scan execution with CodeQL-specific arguments.
 
 You may find information regarding the plugin on [CodeQL Plugin](/docs/reference/plugin-codeql.md) reference article.
 
