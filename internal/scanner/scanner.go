@@ -2,7 +2,6 @@ package scanner
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -101,25 +100,9 @@ func (s *Scanner) determineResultsFilePath(targetPath, outputPath, nameTemplate 
 
 // getOutputFilePath handles the output path, creating directories as necessary.
 func (s *Scanner) getOutputFilePath(path, nameTemplate string) (string, error) {
-	var resultsFile, resultsFolder string
-
-	fileInfo, err := os.Stat(path)
-	if err == nil && fileInfo.IsDir() {
-		// It's a directory
-		resultsFolder = path
-		resultsFile = filepath.Join(path, nameTemplate)
-	} else {
-		// It's a file or doesn't exist
-		ext := filepath.Ext(path)
-		if ext == "" {
-			// No extension, treat as directory
-			resultsFolder = path
-			resultsFile = filepath.Join(path, nameTemplate)
-		} else {
-			// Has extension, treat as file
-			resultsFolder = filepath.Dir(path)
-			resultsFile = path
-		}
+	resultsFile, resultsFolder, err := files.DetermineFileFullPath(path, nameTemplate)
+	if err != nil {
+		return "", fmt.Errorf("failed to determine output path for '%s': %w", path, err)
 	}
 
 	if err := files.CreateFolderIfNotExists(resultsFolder); err != nil {

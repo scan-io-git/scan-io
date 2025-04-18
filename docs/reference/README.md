@@ -4,7 +4,7 @@ This section provides detailed technical documentation for Scanio’s commands, 
 
 ## Articles
 ### Common
-- [Scanio Basics](scanio.md): High-level overview of Scanio’s architecture, features, and core concepts.
+<!-- - [Scanio Basics](scanio.md): High-level overview of Scanio’s architecture, features, and core concepts. -->
 - [Configuration](configuration.md): Detailed documentation of core and plugin configuration options.
 
 ### Commands
@@ -17,7 +17,7 @@ This section provides detailed technical documentation for Scanio’s commands, 
 - [GitHub Plugin](plugin-github.md): Plugin-specific usage instructions, authentication setup, supported actions, and URL formats for GitHub.
 - [GitLab Plugin](plugin-gitlab.md): Plugin-specific usage instructions, authentication setup, supported actions, and URL formats for GitLab.
 - [Semgrep Plugin](plugin-semgrep.md): Plugin-specific documentation for the Semgrep scanner plugin, configuration, arguments, and usage examples.
-- [Trufflehog Plugin](plugin-semgrep.md): Plugin-specific documentation for the Trufflehog scanner plugin, configuration, arguments, and usage examples.
-- [CodeQL Plugin](plugin-semgrep.md): Plugin-specific documentation for the CodeQL scanner plugin, configuration, arguments, and usage examples.
-- [Bandit Plugin](plugin-semgrep.md): Plugin-specific documentation for the Bandit scanner plugin, configuration, arguments, and usage examples.
-- [Trufflehog3 Plugin](plugin-semgrep.md): Plugin-specific documentation for the Trufflehog3 scanner plugin, configuration, arguments, and usage examples.
+- [Trufflehog Plugin](plugin-trufflehog.md): Plugin-specific documentation for the Trufflehog scanner plugin, configuration, arguments, and usage examples.
+- [CodeQL Plugin](plugin-codeql.md): Plugin-specific documentation for the CodeQL scanner plugin, configuration, arguments, and usage examples.
+- [Bandit Plugin](plugin-Bandit.md): Plugin-specific documentation for the Bandit scanner plugin, configuration, arguments, and usage examples.
+- [Trufflehog3 Plugin](plugin-trufflehog3.md): Plugin-specific documentation for the Trufflehog3 scanner plugin, configuration, arguments, and usage examples.

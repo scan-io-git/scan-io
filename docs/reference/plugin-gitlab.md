@@ -47,7 +47,6 @@ The GitLab plugin provides comprehensive support for interacting with GitLab ver
 | SSH agent             |     fetch     |     ✅     |
 | HTTP                  |  list, fetch  |     ✅     |
 
-
 ## Configuration Refernces
 ### Configuration File
 The GitLab plugin enables Scanio to interact with GitLab repositories for tasks such as listing projects, cloning repositories, and managing merge requests. This plugin uses the `gitlab_plugin` directive, which supports the following settings.

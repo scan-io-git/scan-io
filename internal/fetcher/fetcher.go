@@ -73,8 +73,11 @@ func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.Repository
 
 		targetFolder := config.GetRepositoryPath(cfg, repo.Domain, filepath.Join(repo.Namespace, repo.Repository))
 		if f.OutputPath != "" {
-			targetFolder = f.OutputPath
-
+			_, tFolder, err := files.DetermineFileFullPath(f.OutputPath, "")
+			if err != nil {
+				return fetchReqList, fmt.Errorf("failed to determine output path for '%s': %w", f.OutputPath, err)
+			}
+			targetFolder = tFolder
 		}
 
 		f.logger.Debug("Final destination determined", "outputPath", targetFolder)
