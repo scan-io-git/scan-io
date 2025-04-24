@@ -1,6 +1,6 @@
 # Semgrep Plugin
 
-The Semgrep plugin provides integration with the Semgrep scanner within Scanio. It enables flexible execution of Semgrep scans as part of CI/CD workflows or manual security audits.
+The Semgrep plugin provides integration with the [Semgrep scanner](https://semgrep.dev/) within Scanio. It enables flexible execution of Semgrep scans as part of CI/CD workflows or manual security audits.
 
 This plugin supports analyzing single projects or multiple repositories (via input from the `list` command), allowing configuration customization and fine-tuning scan execution with Semgrep-specific arguments.
 
@@ -9,6 +9,7 @@ This plugin supports analyzing single projects or multiple repositories (via inp
 - [Plugin Dependencies](#plugin-dependencies)
 - [Semgrep Scan Execution Logic](#semgrep-scan-execution-logic)
   - [How Scanio Builds the Semgrep Command](#how-scanio-builds-the-semgrep-command)
+    - [Additional Arguments](#additional-arguments)  
   - [Semgrep Configuration File](#semgrep-configuration-file)
   - [Report File Handling](#report-file-handling)
   - [Report File Formats](#report-file-formats)
@@ -30,19 +31,17 @@ This plugin supports analyzing single projects or multiple repositories (via inp
 | Output Formats (Soft Validation) | JSON, JUNIT-XML, SARIF, Text, Vim |
 
 ## Plugin Dependencies
-If you use Scanio with Docker (building locally or using a pre-built image), all required Semgrep dependencies are included
+If you use Scanio with Docker (building locally or using a pre-built image), all required Semgrep dependencies are included.
 
 However, if you build Scanio as a standalone binary (without Docker), you must install Semgrep separately on your system to use this plugin.
 
 Refer to the official [Semgrep Getting Started Guide](https://semgrep.dev/docs/getting-started/) for installation instructions.
 
 ## Semgrep Scan Execution Logic
-The Semgrep plugin utilizes the underlying semgrep scan command for performing scans. For detailed information about Semgrep's CLI capabilities, refer to the [official documentation](https://semgrep.dev/docs/for-developers/cli#semgrep-scan).
+The Semgrep plugin utilizes the underlying semgrep `scan` command for performing scans. For detailed information about Semgrep's CLI capabilities, refer to the [official documentation](https://semgrep.dev/docs/for-developers/cli#semgrep-scan).
 
 ### How Scanio Builds the Semgrep Command
 When running the analyse command with the Semgrep plugin, Scanio automatically translates the provided arguments into corresponding Semgrep CLI flags.
-
-The plugin utilise a specific underlying Semgrep command `scan` for mo details refer t o. All arguments added to the command 
 
 Running the following Scanio command:
 ```bash
@@ -56,13 +55,14 @@ semgrep scan --sarif -f /path/to/scanner-config --metrics=off --output /path/to/
 > [!NOTE]  
 > Scanio automatically appends `--metrics=off` when a custom configuration is provided to disable Semgrep telemetry.
 
+### Additional Arguments 
 Scanio allows users to pass any extra Semgrep arguments directly, all args after `--` will be added to the Semgrep command as is. These arguments will be inserted before the default Scanio-generated arguments, allowing users to override defaults if necessary.
 ```bash
 scanio analyse --scanner semgrep --format sarif --config /path/to/scanner-config --output /path/to/scanner_results /path/to/my_project -- --verbose --severity INFO
 ```
 
 This command will internally run:
-```
+```bash
 semgrep scan --verbose --severity INFO --sarif -f /path/to/scanner-config --metrics=off --output /path/to/scanner_results /path/to/my_project
 ```
 
@@ -84,7 +84,7 @@ scanio analyse --scanner semgrep --config p/ci /path/to/my_project
 ```
 
 **Default Configuration Behavior**<br>
-If no configuration is explicitly provided via the `--config` flag:
+If no configuration is explicitly provided via the `--config/c` flag:
 - `p/ci` rule set is used for CI pipelines (when CI mode is enabled).
 - `p/default` rule set is used in other cases (when User mode is enabled).
 
@@ -117,8 +117,8 @@ Depending on the mode, the report file name is generated differently:
 ### Report File Formats
 The Semgrep plugin performs a soft validation of the specified output format from `--format/f` flag.
 
-[!WARNING]
-If the provided format is not in the list of officially supported formats, the plugin logs a warning but proceeds with the scan using the given format. The plugin will proceed scanning with the provided format.
+> [!WARNING]
+> If the provided format is not in the list of officially supported formats, the plugin logs a warning but proceeds with the scan using the given format. The plugin will proceed scanning with the provided format.
 
 ## Validation
 The Semgrep plugin enforces the following validation rules:
@@ -168,17 +168,6 @@ scanio analyse --scanner semgrep --output /path/to/scanner_results /path/to/my_p
 scanio analyse --scanner semgrep --output /path/to/scanner_results/report.json /path/to/my_project  # Results saved to the specified file
 ```
 
-**Additional Arguments**<br>   
-Scanio allows users to pass extra Semgrep arguments directly. All arguments after `--` will be added to the Semgrep command as-is.
-
-```bash
-scanio analyse --scanner semgrep --format sarif --config /path/to/scanner-config --output /path/to/scanner_results /path/to/my_project -- --verbose --severity INFO
-```
-
-Example of analyzing with an input file and custom rules:
-```bash
-scanio analyse --scanner semgrep --config /Users/root/scan-io-semgrep-rules --input-file /Users/root/.scanio/output.file --format sarif -j 2
-```
 
 ## Known Issues and Fixes
 ### ```Semgrep does not support Linux ARM64"``` 

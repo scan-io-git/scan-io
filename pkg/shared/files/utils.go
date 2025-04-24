@@ -209,3 +209,39 @@ func WriteJsonFile(outputFile string, data []byte) error {
 
 	return nil
 }
+
+func DetermineFileFullPath(path, nameTemplate string) (string, string, error) {
+	// TODO: consider secure file usage
+	// original := path
+	// Path normalization
+	// path = filepath.Clean(path)
+
+	// Normalization check
+	// if path != original {
+	// 	// return "", "", fmt.Errorf("the given path '%s' could not be accepted due to normalization result '%s'", original, path)
+	// }
+
+	path, err := ExpandPath(path)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to unwrap path '%s': %w", path, err)
+	}
+
+	fileInfo, err := os.Stat(path)
+	if err != nil && !os.IsNotExist(err) {
+		return "", "", fmt.Errorf("failed to unwrap path '%s': %w", path, err)
+	}
+
+	var fullPath, folder string
+	// If file doesn't exist or no extension, treat as directory
+	if err == nil && fileInfo.IsDir() || (err != nil && filepath.Ext(path) == "") {
+		// It's a directory
+		folder = path
+		fullPath = filepath.Join(path, nameTemplate)
+	} else {
+		// Has extension, treat as file
+		folder = filepath.Dir(path)
+		fullPath = path
+	}
+
+	return fullPath, folder, nil
+}

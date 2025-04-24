@@ -34,10 +34,17 @@ Identify vulnerabilities and secrets in the codebase as a periodic process.
 Automatically scan new code changes during branch merges.
 
 ## Getting Started
+### Quick Start
+Run your first scan:
+```
+git clone https://github.com/juice-shop/juice-shop
+cd juice-shop
+docker run -it -v $(pwd):/data ghcr.io/scan-io-git/scan-io analyse --scanner semgrep /data
+```
 ### Installation
 1) Installation with Docker:
 ```
-docker pull scanio/scanio:latest
+docker pull ghcr.io/scan-io-git/scan-io   
 ```
 
 2) Build and run from source:
@@ -45,14 +52,6 @@ docker pull scanio/scanio:latest
 git clone https://github.com/scan-io-git/scan-io
 cd scan-io
 make build docker
-```
-
-### Quick Start
-Run your first scan:
-```
-git clone https://github.com/juice-shop/juice-shop
-cd juice-shop
-docker run -it -v $(pwd):/data scanio/scanio analyse --scanner semgrep /data
 ```
 
 ## Documentation
