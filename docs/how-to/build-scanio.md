@@ -73,7 +73,7 @@ The push refers to repository [my.registry.com/scanio/scanio]
 ## Option 2: Build Scanio Core and Plugins Binaries
 
 > [!NOTE]  
-> Unlike the Docker version, the Go binary does not include dependencies for plugins. You must install these dependencies manually as described in the plugin documentation.
+> Unlike the Docker version, the Go binary does not include dependencies for plugins. You must install these dependencies manually as described in the [plugin documentation](../reference/README.md#plugins).
 
 To build a core CLI and plugin at once, use:
 ```bash
@@ -138,7 +138,7 @@ make build-cli CORE_BINARY=/path/to//scanio
 ## Build Scanio Plugins Separately
 
 > [!NOTE]  
-> Unlike the Docker version, the Go binary does not include dependencies for plugins. You must install these dependencies manually as described in the plugin documentation.
+> Unlike the Docker version, the Go binary does not include dependencies for plugins. You must install these dependencies manually as described in the [plugin documentation](../reference/README.md#plugins).
 
 Plugins are built separately and saved into a structured plugin directory.
 

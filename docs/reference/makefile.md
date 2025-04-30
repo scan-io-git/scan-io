@@ -103,7 +103,7 @@ build-rules                    Build custom rule sets using Python script
 ### Build Scanio CLI Core and Plugins
 
 > [!NOTE]  
-> Unlike the Docker version, the Go binary does not include dependencies for plugins. You must install these dependencies manually as described in the plugin documentation.
+> Unlike the Docker version, the Go binary does not include dependencies for plugins. You must install these dependencies manually as described in the [plugin documentation](../reference/README.md#plugins).
 
 Build both the Scanio CLI core binary and plugins.
 
@@ -169,7 +169,7 @@ Scanio CLI core built successfully!
 #### Build Scanio Plugins
 
 > [!NOTE]  
-> Unlike the Docker version, the Go binary does not include dependencies for plugins. You must install these dependencies manually as described in the plugin documentation.
+> Unlike the Docker version, the Go binary does not include dependencies for plugins. You must install these dependencies manually as described in the [plugin documentation](../reference/README.md#plugins).
 
 Plugins are built and saved into a structured plugin directory:
 
