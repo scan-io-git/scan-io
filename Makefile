@@ -115,6 +115,11 @@ clean-python-env: ## Remove Python virtual environment
 	@echo "Cleaning Python virtual environment..."
 	rm -rf $(VENV_DIR)
 
+.PHONY: clean-cli
+clean-plugins: ## Clean CLI core binary
+	@echo "Cleaning CLI core binary - $(CORE_BINARY)"
+	@rm -rf $(CORE_BINARY)/*
+
 .PHONY: clean-plugins
 clean-plugins: ## Clean plugin directory
 	@echo "Cleaning plugin directory - $(PLUGINS_DIR)"
@@ -128,7 +133,7 @@ prepare-plugins: ## Prepare plugin directory
 	fi
 
 .PHONY: clean
-clean: clean-plugins clean-docker-images clean-python-env ## Clean all artifacts (plugins, Docker images, Python env)
+clean: clean-cli clean-plugins clean-docker-images clean-python-env ## Clean all artifacts (CLI core, plugins, Docker images, Python env)
 
 # Check for required dependencies
 .PHONY: check-go-dependency
