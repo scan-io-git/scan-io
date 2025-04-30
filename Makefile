@@ -32,7 +32,7 @@ help: ## Display available commands
 build: build-cli build-plugins ## Build Scanio core and plugins
 
 .PHONY: build-cli
-build-cli: check-go-dependency ## Build Scanio core
+build-cli: check-go-dependency ## Build Scanio core binary
 	@echo "Building Scanio core..."
 	go build -ldflags="-X 'github.com/scan-io-git/scan-io/cmd/version.CoreVersion=$(VERSION)' \
 	                   -X 'github.com/scan-io-git/scan-io/cmd/version.GolangVersion=$(GO_VERSION)' \
@@ -89,9 +89,9 @@ docker: check-docker-dependency ## Build local Docker image (no registry push)
 	@echo "Building local Docker image Scanio for personal use..."
 	docker build -t $(IMAGE_NAME) .
 
-# make docker-build VERSION=1.2 TARGETOS=linux TARGETARCH=amd64 REGISTRY=artifactory.example.com/security-tools/scanio
+# make docker-build VERSION=1.2 TARGET_OS=linux TARGET_ARCH=amd64 REGISTRY=artifactory.example.com/security-tools/scanio
 .PHONY: docker-build
-docker-build: check-docker-dependency ## Build Docker image for production
+docker-build: check-docker-dependency ## Build Docker image (tagged by version and latest)
 	@echo "Building Docker image for $(TARGET_OS)/$(TARGET_ARCH)..."
 	docker build --build-arg TARGETOS=$(TARGET_OS) --build-arg TARGETARCH=$(TARGET_ARCH) --platform=$(TARGET_OS)/$(TARGET_ARCH) \
 	-t $(IMAGE_TAG):$(VERSION) -t $(IMAGE_TAG):latest . || exit 1
@@ -106,7 +106,7 @@ docker-push: ## Push Docker image to registry
 	@echo "Docker images pushed to $(REGISTRY)."
 
 .PHONY: clean-docker-images
-clean-docker-images: ## Clean local Docker images
+clean-docker-images: ## Clean local Scanio Docker images
 	@echo "Removing Docker images..."
 	docker rmi -f $(IMAGE_NAME):$(VERSION) $(IMAGE_NAME):latest || true
 
@@ -115,22 +115,20 @@ clean-python-env: ## Remove Python virtual environment
 	@echo "Cleaning Python virtual environment..."
 	rm -rf $(VENV_DIR)
 
-.PHONY: helm-clean
-helm-clean: ## Uninstall all helm releases
-	helm ls --all --short | xargs -L1 helm delete
-
 .PHONY: clean-plugins
 clean-plugins: ## Clean plugin directory
+	@echo "Cleaning plugin directory - $(PLUGINS_DIR)"
 	@rm -rf $(PLUGINS_DIR)/*
 
 .PHONY: prepare-plugins
 prepare-plugins: ## Prepare plugin directory
+	@echo "Preparing plugin directory - $(PLUGINS_DIR)"
 	@if [ ! -d $(PLUGINS_DIR) ]; then \
 		mkdir -p $(PLUGINS_DIR); \
 	fi
 
 .PHONY: clean
-clean: clean-plugins clean-docker-images clean-python-env ## Clean all generated artifacts
+clean: clean-plugins clean-docker-images clean-python-env ## Clean all artifacts (plugins, Docker images, Python env)
 
 # Check for required dependencies
 .PHONY: check-go-dependency
