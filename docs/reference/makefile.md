@@ -153,7 +153,7 @@ The binary will be saved by default to:
 
 You can customize the target location by setting the `CORE_BINARY` variable:
 ```bash
-make build-cli CORE_BINARY=/desired/path/scanio
+make build-cli CORE_BINARY=/path/to/scanio
 ```
 
 **Sample output:**
@@ -189,7 +189,7 @@ By default, plugins are installed into:
 
 You can customize the plugin directory path by setting the `PLUGINS_DIR` variable:
 ```bash
-make build-plugins PLUGINS_DIR=/desired/plugin/path/
+make build-plugins PLUGINS_DIR=/path/to/plugin_folder/
 ```
 
 **Sample output:**
@@ -313,6 +313,8 @@ make build-rules
 > [!NOTE]  
 > For more information Refer to the guide How to Build Rule Sets (TODO) and Reference of Custom Script builder (TODO)
 
+Result will be save to `./rules` by default. 
+
 **Variables supported:**
 - `USE_VENV`
 - `VENV_DIR`
@@ -327,9 +329,10 @@ make build-rules
 todo
 ```
 
+
 ### Clean Build Artifacts
 
-To remove generated binaries, plugins, Docker images, and Python virtual environments:
+To remove generated CLI binary, plugins, Docker images, and Python virtual environments:
 
 ```bash
 make clean
@@ -337,6 +340,29 @@ make clean
 
 **Sample output:**
 ```bash
+Cleaning CLI core binary - ~/.local/bin/scanio
+Cleaning plugin directory - ~/.scanio/plugins
+Removing Docker images...
+docker rmi -f scanio:1.0.0 scanio:latest || true
+...
+Cleaning Python virtual environment...
+rm -rf .venv
+```
+
+### Clean CLI Core
+
+Remove CLI core binary:
+
+```bash
+make clean-cli
+```
+
+**Variables supported:**
+- `CORE_BINARY`
+
+**Sample output:**
+```bash
+Cleaning CLI core binary - ~/.local/bin/scanio
 Cleaning plugin directory - ~/.scanio/plugins
 Removing Docker images...
 docker rmi -f scanio:1.0.0 scanio:latest || true
