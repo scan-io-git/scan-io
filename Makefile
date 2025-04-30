@@ -116,9 +116,9 @@ clean-python-env: ## Remove Python virtual environment
 	rm -rf $(VENV_DIR)
 
 .PHONY: clean-cli
-clean-plugins: ## Clean CLI core binary
+clean-cli: ## Clean CLI core binary
 	@echo "Cleaning CLI core binary - $(CORE_BINARY)"
-	@rm -rf $(CORE_BINARY)/*
+	@rm -rf $(CORE_BINARY)
 
 .PHONY: clean-plugins
 clean-plugins: ## Clean plugin directory
