@@ -1,4 +1,4 @@
-# Makefile for building Scanio core, plugins, and managing Docker images
+# Makefile for building Scanio CLI core, plugins, and managing Docker images
 
 # Default variables
 VERSION := $(shell jq -r '.version' VERSION || echo "dev")
@@ -29,16 +29,16 @@ help: ## Display available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: build
-build: build-cli build-plugins ## Build Scanio core and plugins
+build: build-cli build-plugins ## Build Scanio CLI core and plugins
 
 .PHONY: build-cli
-build-cli: check-go-dependency ## Build Scanio core binary
-	@echo "Building Scanio core..."
+build-cli: check-go-dependency ## Build Scanio CLI core binary
+	@echo "Building Scanio CLI core..."
 	go build -ldflags="-X 'github.com/scan-io-git/scan-io/cmd/version.CoreVersion=$(VERSION)' \
 	                   -X 'github.com/scan-io-git/scan-io/cmd/version.GolangVersion=$(GO_VERSION)' \
 	                   -X 'github.com/scan-io-git/scan-io/cmd/version.BuildTime=$(BUILD_TIME)'" \
 	   -o $(CORE_BINARY) . || exit 1
-	@echo "Scanio core built successfully!"
+	@echo "Scanio CLI core built successfully!"
 
 # Build plugins
 .PHONY: build-plugins
