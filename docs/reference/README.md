@@ -21,3 +21,6 @@ This section provides detailed technical documentation for Scanio’s commands, 
 - [CodeQL Plugin](plugin-codeql.md): Plugin-specific documentation for the CodeQL scanner plugin, configuration, arguments, and usage examples.
 - [Bandit Plugin](plugin-Bandit.md): Plugin-specific documentation for the Bandit scanner plugin, configuration, arguments, and usage examples.
 - [Trufflehog3 Plugin](plugin-trufflehog3.md): Plugin-specific documentation for the Trufflehog3 scanner plugin, configuration, arguments, and usage examples.
+
+### Scripts
+- [Makefile](makefile.md): Provides details regarding automates building, cleaning, and managing artifacts locally for the Scanio CLI core binary, plugin binaries, Docker image and python environment for rule folder compile.
