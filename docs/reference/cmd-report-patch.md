@@ -6,7 +6,6 @@ There are tools, that do not provide enough flexibility to control different dat
 
 - [Syntax](#syntax)
 - [Options](#options)
-- [Core Validation](#core-validation)
 - [Usage Examples](#usage-examples)
 
 ## Syntax
