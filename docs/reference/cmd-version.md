@@ -92,7 +92,7 @@ Each plugin provides its own `VERSION` file located in the plugin directory. Thi
 The main `VERSION` file for the Scanio core is located in the root directory of the project. It defines the current version of the tool.
 ```json
 {
-  "version": "0.2.0",
+  "version": "0.3.0",
 }
 ```
 
