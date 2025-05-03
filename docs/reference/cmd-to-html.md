@@ -35,6 +35,9 @@ Convert sarif output to html report with code snippets. Add a source code folder
 scanio to-html -i /path/to/project/results.sarif -o /path/to/project/results.html -s /path/to/project
 ```
 
+**If no template path specified**  
+If template path is not specified, the tool will look for templates in home folder: `SCANIO_HOME/templates/tohtml`. `SCANIO_HOME` can be configured in an AppConfig with `scanio.home_folder` key.
+
 **Use custom template path**  
 Use a custom path to a template file, in case it is located in non standard location or you would like to use customized verion of html template. The target folder should contain only a template with filename `report.html`.
 ```bash
