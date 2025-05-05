@@ -28,7 +28,7 @@ RUN apk update && \
     jq
 
 # Build the core and plugins using the Makefile
-RUN echo "Building binaries and plugins for $TARGETOS/$TARGETARCH"
+RUN echo "Building binaries and plugins for '$TARGETOS/$TARGETARCH'"
 RUN make build CORE_BINARY=/usr/bin/scanio PLUGINS_DIR=/usr/bin/plugins
 
 # Stage 2: Prepare the runtime environment
@@ -44,9 +44,10 @@ FROM python:3.11-alpine3.17
 # Set target architecture for multi-arch builds
 ARG TARGETOS
 ARG TARGETARCH
-ARG PLUGINS="trufflehog3,semgrep,bandit,trufflehog"
+ARG TOOLS="semgrep,bandit,trufflehog"
 
-RUN echo "Building dependencies for $TARGETOS/$TARGETARCH"
+RUN echo "Building dependencies for '$TARGETOS/$TARGETARCH'"
+
 
 # Install dependencies
 RUN apk update && \
@@ -68,57 +69,34 @@ RUN apk add --no-cache --virtual .build-deps \
                 musl-dev
 
 # Install tools dependendencies depends on the ARG list: --build-arg TOOLS="semgrep,bandit"
+RUN echo "Install dependencies for '$TOOLS'"
 RUN set -euxo pipefail; \
-    for plugin in $(echo $PLUGINS | tr ',' ' '); do \
-      if [ "$plugin" = "trufflehog3" ]; then \
+    for tool in $(echo $TOOLS | tr ',' ' '); do \
+      if [ "$tool" = "trufflehog3" ]; then \
         # To resolve a problem with same dependencies trufflehog3 has to be installed first
         echo "Installing Trufflehog3 python dependencies..."; \
-        python3 -m pip install trufflehog3; \
-        # trufflehog3==3.0.10
-      elif [ "$plugin" = "semgrep" ]; then \
+        python3 -m pip install trufflehog3==3.0.10; \
+      elif [ "$tool" = "semgrep" ]; then \
         echo "Installing Semgrep python dependencies..."; \
-        python3 -m pip install semgrep; \
-        # semgrep==1.120.1
-      elif [ "$plugin" = "bandit" ]; then \
+        python3 -m pip install semgrep==1.120.1; \
+      elif [ "$tool" = "bandit" ]; then \
         echo "Installing Bandit python dependencies..."; \
-        python3 -m pip install bandit; \
-        # bandit==1.8.3
-      elif [ "$plugin" = "trufflehog" ]; then \
+        python3 -m pip install bandit==1.8.3; \
+      elif [ "$tool" = "trufflehog" ]; then \
         echo "Installing TruffleHog binary..."; \
-        # TRUFFLEHOG_VER="3.88.27"; \
-        TRUFFLEHOG_VER="$(curl -s -qI https://github.com/trufflesecurity/trufflehog/releases/latest | awk -F '/' '/^location/ {print  substr($NF, 1, length($NF)-1)}' | awk -F 'v' '{print $2}')"; \
+        TRUFFLEHOG_VER="3.88.27"; \
         TARFILE="trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz"; \
         CHECKSUMFILE="trufflehog_${TRUFFLEHOG_VER}_checksums.txt"; \
-        # TRUFFLEHOG_SHA="$(curl -Ls https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz.sha256)"; \
         curl -LOs "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/${CHECKSUMFILE}"; \
         curl -LOs "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz"; \
         grep "${TARFILE}" "${CHECKSUMFILE}" | sha256sum -c -; \
-        # echo "${TRUFFLEHOG_SHA}  trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz" | sha256sum -c -; \
         tar -xzf "${TARFILE}" && \
         rm -f "${TARFILE}" "${CHECKSUMFILE}" && \
-        # rm -rf trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz && \
         mv trufflehog /usr/local/bin/; \
       else \
-        echo "Unknown tool: $plugin"; \
+        echo "Unknown tool: '$tool'"; \
       fi; \
     done
-
-# Install Kubectl
-# RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/${TARGETOS}/${TARGETARCH}/kubectl" && \
-#     curl -LO "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/${TARGETOS}/${TARGETARCH}/kubectl.sha256" && \
-#     (echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c ) && \
-#     rm -rf kubectl.sha256 && \
-#     chmod +x ./kubectl && \
-#     mv kubectl /usr/local/bin
-
-# Install Helm
-# RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
-#     chmod 700 get_helm.sh && \
-#     ./get_helm.sh && \
-#     rm -rf get_helm.sh
-
-# Set environment variables // move to config file
-# ENV JOB_HELM_CHART_PATH=/scanio-helm/scanio-job
 
 # Create necessary directories
 RUN mkdir -p /scanio /data
