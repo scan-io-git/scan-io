@@ -44,6 +44,8 @@ FROM python:3.11-alpine3.17
 # Set target architecture for multi-arch builds
 ARG TARGETOS
 ARG TARGETARCH
+ARG PLUGINS="trufflehog3,semgrep,bandit,trufflehog"
+
 RUN echo "Building dependencies for $TARGETOS/$TARGETARCH"
 
 # Install dependencies
@@ -65,22 +67,41 @@ RUN apk add --no-cache --virtual .build-deps \
                 curl \
                 musl-dev
 
-# Install Python dependencies
-# To resolve a problem with same dependencies trufflehog3 has to be installed first
-RUN python3 -m pip install trufflehog3
-# Installing Semgrep 
-RUN python3 -m pip install semgrep
-# Installing Bandit 
-RUN python3 -m pip install bandit
-
-# Install Trufflehog Go
-RUN export TRUFFLEHOG_VER="$(curl -s -qI https://github.com/trufflesecurity/trufflehog/releases/latest | awk -F '/' '/^location/ {print  substr($NF, 1, length($NF)-1)}' | awk -F 'v' '{print $2}')" && \
-    export TRUFFLEHOG_SHA="$(curl -Ls https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/trufflehog_${TRUFFLEHOG_VER}_checksums.txt | grep trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz | awk '{print $1}')"  && \
-    curl -LOs "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz" && \
-    echo "${TRUFFLEHOG_SHA}  trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz" | sha256sum -c - && \
-    tar -xzf trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz && \
-    rm -rf trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz && \
-    mv trufflehog /usr/local/bin 
+# Install tools dependendencies depends on the ARG list: --build-arg TOOLS="semgrep,bandit"
+RUN set -euxo pipefail; \
+    for plugin in $(echo $PLUGINS | tr ',' ' '); do \
+      if [ "$plugin" = "trufflehog3" ]; then \
+        # To resolve a problem with same dependencies trufflehog3 has to be installed first
+        echo "Installing Trufflehog3 python dependencies..."; \
+        python3 -m pip install trufflehog3; \
+        # trufflehog3==3.0.10
+      elif [ "$plugin" = "semgrep" ]; then \
+        echo "Installing Semgrep python dependencies..."; \
+        python3 -m pip install semgrep; \
+        # semgrep==1.120.1
+      elif [ "$plugin" = "bandit" ]; then \
+        echo "Installing Bandit python dependencies..."; \
+        python3 -m pip install bandit; \
+        # bandit==1.8.3
+      elif [ "$plugin" = "trufflehog" ]; then \
+        echo "Installing TruffleHog binary..."; \
+        # TRUFFLEHOG_VER="3.88.27"; \
+        TRUFFLEHOG_VER="$(curl -s -qI https://github.com/trufflesecurity/trufflehog/releases/latest | awk -F '/' '/^location/ {print  substr($NF, 1, length($NF)-1)}' | awk -F 'v' '{print $2}')"; \
+        TARFILE="trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz"; \
+        CHECKSUMFILE="trufflehog_${TRUFFLEHOG_VER}_checksums.txt"; \
+        # TRUFFLEHOG_SHA="$(curl -Ls https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz.sha256)"; \
+        curl -LOs "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/${CHECKSUMFILE}"; \
+        curl -LOs "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz"; \
+        grep "${TARFILE}" "${CHECKSUMFILE}" | sha256sum -c -; \
+        # echo "${TRUFFLEHOG_SHA}  trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz" | sha256sum -c -; \
+        tar -xzf "${TARFILE}" && \
+        rm -f "${TARFILE}" "${CHECKSUMFILE}" && \
+        # rm -rf trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz && \
+        mv trufflehog /usr/local/bin/; \
+      else \
+        echo "Unknown tool: $plugin"; \
+      fi; \
+    done
 
 # Install Kubectl
 # RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/${TARGETOS}/${TARGETARCH}/kubectl" && \
