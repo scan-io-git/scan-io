@@ -16,7 +16,7 @@ help: ## Display this help message
 	@echo "Usage: make <target> [options]"
 	@echo "Options:"
 	@echo "  SCANIO_REPO      - URL of the Scanio repo (default: https://github.com/scan-io-git/scan-io.git)"
-	@echo "  RULES_CONFIG     - Path to the custom rule set (default: ./scanio_rules.yaml)"
+	@echo "  RULES_CONFIG     - Path to the custom rule set config (default: ./scanio_rules.yaml)"
 	@echo "  VERSION          - Docker image version (default: 1.0)"
 	@echo "  TARGET_OS        - Target OS (default: linux)"
 	@echo "  TARGET_ARCH      - Target architecture (default: amd64)"
