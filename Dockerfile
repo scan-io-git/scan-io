@@ -1,15 +1,13 @@
-# Optimize the image size by including only essential plugins and scanners specific to your processes.
-# Note: Semgrep is a large third-party dependency, approximately 400MB in size.
-
-# The Dockerfile facilitates multi-architecture builds. However, be cautious as trufflehog and helm currently only support linux/arm64 and linux/amd64 architectures. Always verify the compatibility of third-party versions before building.
+# The Dockerfile facilitates multi-architecture builds. However, be cautious as trufflehog currently only support linux/arm64 and linux/amd64 architectures. 
+# Always verify the compatibility of third-party versions before building.
 # Important: As of now, Semgrep does not support ARM architectures - see https://github.com/returntocorp/semgrep/issues/2252 for details!
 
-# Default Plugin list
+# Default Plugins' List
 # Dependencies will be installed if the docker file supports it, othervise ignored and only compile binaries of plugins
 ARG PLUGINS="github,gitlab,bitbucket,semgrep,bandit,trufflehog"
 
 # Stage 1: Build Scanio core and plugins
-FROM golang:1.23.4-alpine3.21 AS build-scanio
+FROM golang:1.24.2-alpine3.21 AS build-scanio
 
 WORKDIR /usr/src/scanio
 
@@ -37,7 +35,7 @@ RUN echo "Building binaries and plugins for '$TARGETOS/$TARGETARCH'"
 RUN make build PLUGINS=$PLUGINS CORE_BINARY=/usr/bin/scanio PLUGINS_DIR=/usr/bin/plugins
 
 # Stage 2: Prepare the runtime environment
-FROM python:3.11-alpine3.17
+FROM alpine:3.21.3 as runtime
 
 # RUN addgroup -g 101 scanio && \
 #     adduser -h /home/scanio -s /bin/bash --uid 1001 -G scanio -D scanio && \
@@ -52,55 +50,56 @@ ARG TARGETARCH
 ARG PLUGINS
 
 RUN echo "Building dependencies for '$TARGETOS/$TARGETARCH'"
-
-# Install dependencies
-RUN apk update && \
+RUN set -euxo pipefail && \
+    # Install dependencies
+    apk update && \
     apk upgrade && \
-    apk add --no-cache \
-        bash \
+    apk add --no-cache bash python3 py3-pip && \
+    apk add --no-cache --virtual .build-deps \
         jq \
         openssh \
-        libc6-compat 
-
-RUN apk add --no-cache --virtual .build-deps \
-                git \
-                gcc \
-                make \ 
-                openssl \
-                git \
-                ca-certificates \
-                curl \
-                musl-dev
-
-# Install tools dependendencies depends on the ARG list: --build-arg TOOLS="semgrep,bandit"
-RUN echo "Install dependencies for '$PLUGINS'"
-RUN set -euxo pipefail; \
+        libc6-compat \
+        git \
+        gcc \
+        openssl \
+        ca-certificates \
+        curl \
+        musl-dev && \
+    # Install tools dependendencies depends on the ARG list: --build-arg TOOLS="semgrep,bandit"
+    echo "Installing plugins: $PLUGINS" && \
     for plugin in $(echo $PLUGINS | tr ',' ' '); do \
-      if [ "$plugin" = "trufflehog3" ]; then \
-        # To resolve a problem with same dependencies trufflehog3 has to be installed first
-        echo "Installing Trufflehog3 python dependencies..."; \
-        python3 -m pip install trufflehog3==3.0.10; \
-      elif [ "$plugin" = "semgrep" ]; then \
-        echo "Installing Semgrep python dependencies..."; \
-        python3 -m pip install semgrep==1.120.1; \
-      elif [ "$plugin" = "bandit" ]; then \
-        echo "Installing Bandit python dependencies..."; \
-        python3 -m pip install bandit==1.8.3; \
-      elif [ "$plugin" = "trufflehog" ]; then \
-        echo "Installing TruffleHog binary..."; \
-        TRUFFLEHOG_VER="3.88.27"; \
-        TARFILE="trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz"; \
-        CHECKSUMFILE="trufflehog_${TRUFFLEHOG_VER}_checksums.txt"; \
-        curl -LOs "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/${CHECKSUMFILE}"; \
-        curl -LOs "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz"; \
-        grep "${TARFILE}" "${CHECKSUMFILE}" | sha256sum -c -; \
-        tar -xzf "${TARFILE}" && \
-        rm -f "${TARFILE}" "${CHECKSUMFILE}" && \
-        mv trufflehog /usr/local/bin/; \
-      else \
-        echo "No dependencies installed for plugin: '$plugin'"; \
-      fi; \
-    done
+      case "$plugin" in trufflehog3) \
+          # To resolve a problem with same dependencies trufflehog3 has to be installed first
+          echo "Installing Trufflehog3..."; \
+          python3 -m pip install --break-system-packages trufflehog3==3.0.10 ;; \
+        semgrep) \
+          echo "Installing Semgrep..."; \
+          python3 -m pip install --break-system-packages semgrep==1.120.1 ;; \
+        bandit) \
+          echo "Installing Bandit..."; \
+          python3 -m pip install --break-system-packages bandit==1.8.3 ;; \
+        trufflehog) \
+          echo "Installing TruffleHog binary..."; \
+          TRUFFLEHOG_VER="3.88.27"; \
+          TARFILE="trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz"; \
+          CHECKSUMFILE="trufflehog_${TRUFFLEHOG_VER}_checksums.txt"; \
+          curl -LOs "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/${CHECKSUMFILE}" && \
+          curl -LOs "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/${TARFILE}" && \
+          grep "${TARFILE}" "${CHECKSUMFILE}" | sha256sum -c - && \
+          tar -xzf "${TARFILE}" && \
+          rm -f "${TARFILE}" "${CHECKSUMFILE}" && \
+          mv trufflehog /usr/local/bin/ ;; \
+        *) \
+          echo "No dependencies installed for plugin: '$plugin'" ;; \
+      esac; \
+    done && \
+    # Reduce size of the container
+    apk del .build-deps && \
+    find /usr -name '*.o' -delete && \
+    find /usr -name '*.a' -delete && \
+    rm -rf /var/cache/apk/* && \
+    find /usr -name '__pycache__' -exec rm -rf {} + && \
+    rm -rf /root/.cache/pip
 
 # Create necessary directories
 RUN mkdir -p /scanio /data
@@ -111,8 +110,6 @@ COPY --from=build-scanio /usr/bin/plugins/ /scanio/plugins/
 
 # Copy additional resources
 COPY rules /scanio/rules
-# COPY helm /scanio/helm
-COPY Dockerfile /scanio/Dockerfile
 COPY templates /scanio/templates
 COPY VERSION /scanio/VERSION
 COPY config.yml /scanio/config.yml
