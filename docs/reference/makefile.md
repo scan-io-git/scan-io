@@ -1,8 +1,8 @@
 # Makefile
 
-This page describes the available targets and variables in the Scanio `Makefile`. 
+This page describes the available targets and variables in the Scanio [`Makefile`](../../Makefile). 
 
-The `Makefile` automates building, cleaning, and managing artifacts locally for:
+The [`Makefile`](../../Makefile) automates building, cleaning, and managing artifacts locally for:
 - Scanio CLI core binary
 - Plugin binaries
 - Docker image
@@ -44,6 +44,7 @@ Variables can be overridden by setting them via the command line.
 | `TARGET_OS`        | `linux`                                          | Target OS for Docker builds                                   |
 | `TARGET_ARCH`      | `amd64`                                          | Target architecture for Docker builds                         |
 | `PLATFORM`         | `linux/amd64`                                    | Platform specifier for Docker builds                          |
+| `PLUGINS`          | `github gitlab bitbucket semgrep bandit trufflehog` | List of plugins for build                                  |
 | `VERSION`          | Extracted from `VERSION` file (via `jq`)         | Core version information used in build metadata               |
 | `GO_VERSION`       | Output of `go version` command                   | Go version for embedding in build metadata                    |
 | `BUILD_TIME`       | Current UTC time (RFC3339 format)                | Timestamp embedded in builds                                  |
@@ -117,6 +118,7 @@ make build
 - `BUILD_TIME`
 - `CORE_BINARY`
 - `PLUGINS_DIR`
+- `PLUGINS`
 
 **Sample output:**
 ```bash
@@ -145,6 +147,7 @@ make build-cli
 - `GO_VERSION`
 - `BUILD_TIME`
 - `CORE_BINARY`
+- `PLUGINS`
 
 The binary will be saved by default to:
 ```
@@ -229,6 +232,7 @@ This command will build a local Docker image called `scanio:latest`.
 
 **Variables supported:**
 - `IMAGE_NAME`
+- `PLUGINS`
 
 **Sample output:**
 ```bash
@@ -252,6 +256,7 @@ make docker-build VERSION=1.2 REGISTRY=my.registry.com/scanio
 - `TARGET_OS`
 - `TARGET_ARCH`
 - `VERSION`
+- `PLUGINS`
 
 **Sample output:**
 ```bash

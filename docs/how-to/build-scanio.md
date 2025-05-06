@@ -45,7 +45,7 @@ docker build -t scanio .
 This command will build a local Docker image called `scanio:latest`.
 
 > [!TIP]
-> You can customize the image name by setting the `IMAGE_NAME` and `REGISTRY` variables.
+> You can customize the image name by setting the `IMAGE_NAME` and `REGISTRY` variables and which plugins to build by using `PLUGINS=github,semgrep`.
 
 If you need to specify a registry and a version:
 ```bash
@@ -110,6 +110,9 @@ Build Time: 2025-01-01T12:00:00Z
 
 In this scenario the CLI core binary is intalled into `~/.local/bin/scanio`, plugins are into `~/.scanio/plugins/`.
 
+> [!TIP]
+> You may specify which plugins you want to build by using `PLUGINS=github,semgrep`.
+
 ### Build Scanio Core CLI Separately 
 If you need to build the core CLI only, use:
 
@@ -132,7 +135,7 @@ The binary will be saved by default to:
 
 You can customize the target location by setting the `CORE_BINARY` variable:
 ```bash
-make build-cli CORE_BINARY=/path/to//scanio
+make build-cli CORE_BINARY=/path/to/scanio
 ```
 
 ## Build Scanio Plugins Separately
