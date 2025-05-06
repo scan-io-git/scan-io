@@ -4,6 +4,10 @@
 # The Dockerfile facilitates multi-architecture builds. However, be cautious as trufflehog and helm currently only support linux/arm64 and linux/amd64 architectures. Always verify the compatibility of third-party versions before building.
 # Important: As of now, Semgrep does not support ARM architectures - see https://github.com/returntocorp/semgrep/issues/2252 for details!
 
+# Default Plugin list
+# Dependencies will be installed if the docker file supports it, othervise ignored and only compile binaries of plugins
+ARG PLUGINS="github,gitlab,bitbucket,semgrep,bandit,trufflehog"
+
 # Stage 1: Build Scanio core and plugins
 FROM golang:1.23.4-alpine3.21 AS build-scanio
 
@@ -19,6 +23,7 @@ COPY . .
 # Set target architecture for multi-arch builds
 ARG TARGETOS
 ARG TARGETARCH
+ARG PLUGINS
 
 # Install make and other build dependencies
 RUN apk update && \
@@ -29,7 +34,7 @@ RUN apk update && \
 
 # Build the core and plugins using the Makefile
 RUN echo "Building binaries and plugins for '$TARGETOS/$TARGETARCH'"
-RUN make build CORE_BINARY=/usr/bin/scanio PLUGINS_DIR=/usr/bin/plugins
+RUN make build PLUGINS=$PLUGINS CORE_BINARY=/usr/bin/scanio PLUGINS_DIR=/usr/bin/plugins
 
 # Stage 2: Prepare the runtime environment
 FROM python:3.11-alpine3.17
@@ -44,10 +49,9 @@ FROM python:3.11-alpine3.17
 # Set target architecture for multi-arch builds
 ARG TARGETOS
 ARG TARGETARCH
-ARG TOOLS="semgrep,bandit,trufflehog"
+ARG PLUGINS
 
 RUN echo "Building dependencies for '$TARGETOS/$TARGETARCH'"
-
 
 # Install dependencies
 RUN apk update && \
@@ -69,20 +73,20 @@ RUN apk add --no-cache --virtual .build-deps \
                 musl-dev
 
 # Install tools dependendencies depends on the ARG list: --build-arg TOOLS="semgrep,bandit"
-RUN echo "Install dependencies for '$TOOLS'"
+RUN echo "Install dependencies for '$PLUGINS'"
 RUN set -euxo pipefail; \
-    for tool in $(echo $TOOLS | tr ',' ' '); do \
-      if [ "$tool" = "trufflehog3" ]; then \
+    for plugin in $(echo $PLUGINS | tr ',' ' '); do \
+      if [ "$plugin" = "trufflehog3" ]; then \
         # To resolve a problem with same dependencies trufflehog3 has to be installed first
         echo "Installing Trufflehog3 python dependencies..."; \
         python3 -m pip install trufflehog3==3.0.10; \
-      elif [ "$tool" = "semgrep" ]; then \
+      elif [ "$plugin" = "semgrep" ]; then \
         echo "Installing Semgrep python dependencies..."; \
         python3 -m pip install semgrep==1.120.1; \
-      elif [ "$tool" = "bandit" ]; then \
+      elif [ "$plugin" = "bandit" ]; then \
         echo "Installing Bandit python dependencies..."; \
         python3 -m pip install bandit==1.8.3; \
-      elif [ "$tool" = "trufflehog" ]; then \
+      elif [ "$plugin" = "trufflehog" ]; then \
         echo "Installing TruffleHog binary..."; \
         TRUFFLEHOG_VER="3.88.27"; \
         TARFILE="trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz"; \
@@ -94,7 +98,7 @@ RUN set -euxo pipefail; \
         rm -f "${TARFILE}" "${CHECKSUMFILE}" && \
         mv trufflehog /usr/local/bin/; \
       else \
-        echo "Unknown tool: '$tool'"; \
+        echo "No dependencies installed for plugin: '$plugin'"; \
       fi; \
     done
 

@@ -17,6 +17,7 @@ RULES_SCRIPT ?= scripts/rules/rules.py
 RULES_CONFIG ?= scripts/rules/scanio_rules.yaml
 RULES_DIR ?= ./rules
 USE_VENV ?= false
+PLUGINS ?= github gitlab bitbucket semgrep bandit trufflehog
 
 # Default image tag
 IMAGE_TAG := $(if $(REGISTRY),$(REGISTRY)/)$(IMAGE_NAME)
@@ -29,7 +30,8 @@ help: ## Display available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: build
-build: build-cli build-plugins ## Build Scanio CLI core and plugins
+build: build-cli ## Build Scanio CLI core and plugins
+	$(MAKE) build-plugins PLUGINS="$(PLUGINS)"
 
 .PHONY: build-cli
 build-cli: check-go-dependency ## Build Scanio CLI core binary
@@ -43,9 +45,13 @@ build-cli: check-go-dependency ## Build Scanio CLI core binary
 # Build plugins
 .PHONY: build-plugins
 build-plugins: check-go-dependency check-jq-dependency clean-plugins prepare-plugins ## Build Scanio plugins
-	@echo "Building Scanio plugins..."
-	@for dir in plugins/*/ ; do \
-	    plugin_name=$$(basename $$dir); \
+	@echo "Building Scanio plugins: $(PLUGINS)"
+	@plugins_list="$(PLUGINS)"; \
+	for plugin_name in $$(echo $$plugins_list | tr ',' ' '); do \
+		dir="plugins/$$plugin_name"; \
+	    if [ ! -d "$$dir" ]; then \
+	        echo "Plugin directory '$$dir' does not exist!" >&2; exit 1; \
+	    fi; \
 	    version=$$(jq -r '.version' $$dir/VERSION); \
 	    plugin_type=$$(jq -r '.plugin_type' $$dir/VERSION); \
 	    output_dir=$(PLUGINS_DIR)/$$plugin_name; \
@@ -87,14 +93,14 @@ build-rules: ## Build custom rule sets using Python script
 .PHONY: docker
 docker: check-docker-dependency ## Build local Docker image (no registry push)
 	@echo "Building local Docker image Scanio for personal use..."
-	docker build -t $(IMAGE_NAME) .
+	docker build --build-arg TOOLS="$(PLUGINS)" --build-arg TOOLS="$(PLUGINS)" -t $(IMAGE_NAME) .
 
 # make docker-build VERSION=1.2 TARGET_OS=linux TARGET_ARCH=amd64 REGISTRY=artifactory.example.com/security-tools/scanio
 .PHONY: docker-build
 docker-build: check-docker-dependency ## Build Docker image (tagged by version and latest)
 	@echo "Building Docker image for $(TARGET_OS)/$(TARGET_ARCH)..."
 	docker build --build-arg TARGETOS=$(TARGET_OS) --build-arg TARGETARCH=$(TARGET_ARCH) --platform=$(TARGET_OS)/$(TARGET_ARCH) \
-	-t $(IMAGE_TAG):$(VERSION) -t $(IMAGE_TAG):latest . || exit 1
+	--build-arg TOOLS="$(PLUGINS)" -t $(IMAGE_TAG):$(VERSION) -t $(IMAGE_TAG):latest . || exit 1
 	@echo "Docker image built successfully."
 
 # make docker-push REGISTRY=artifactory.example.com/security-tools/scanio VERSION=1.2
