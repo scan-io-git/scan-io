@@ -82,6 +82,10 @@ rules/
           └── [copied_files_here]
 ```
 
+For each tool, a `scanio_rules.yaml.back` file will be created in its corresponding rule set folder. In this example, it will be located at `rules/semgrep/default/`.
+
+Additionally, the provided `scanio_rules.yaml` configuration file will be added to the root `rules/` directory. This file illustrates how the current structure was built.
+
 ## Usage
 
 **Basic usage** with a YAML configuration:
