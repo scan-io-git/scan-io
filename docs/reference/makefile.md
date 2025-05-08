@@ -12,7 +12,7 @@ The [`Makefile`](../../Makefile) automates building, cleaning, and managing arti
 
 - [Variables](#variables)
 - [Targets and Descriptions](#targets-and-descriptions)
-- [Dependency Checks](#dependency-checks)
+- [Requirements](#requirements)
 - [Actions](#actions)
     - [Call Help](#call-help)
     - [Build Scanio CLI Core and Plugins](#build-scanio-cli-core-and-plugins)
@@ -74,7 +74,7 @@ Variables can be overridden by setting them via the command line.
 | `setup-python-env`     | Set up Python virtual environment and install dependencies |
 | `test`                 | Run Go tests                                               |
 
-## Dependency Checks
+## Requirements
 
 The Makefile includes automatic dependency validation:
 - **[Go](https://go.dev/doc/install)**: Required to build CLI and plugins
@@ -260,7 +260,6 @@ make docker-build VERSION=1.2 REGISTRY=my.registry.com/scanio
 
 **Sample output:**
 ```bash
-make docker-build VERSION=1.2 REGISTRY=my.registry.com/scanio
 Building Docker image for linux/amd64...
 docker build --build-arg TARGET_OS=linux --build-arg TARGET_ARCH=amd64 --platform=linux/amd64 \
         -t my.registry.com/scanio/scanio:1.2 -t my.registry.com/scanio/scanio:latest . || exit 1
@@ -302,7 +301,6 @@ make setup-python-env
 
 **Sample output:**
 ```bash
-make setup-python-env
 Setting up Python virtual environment in .venv...
 ...
 Python virtual environment setup complete.
@@ -405,7 +403,6 @@ make clean-docker-images
 
 **Sample output:**
 ```bash
-make clean-docker-images
 Removing Docker images...
 docker rmi -f scanio:1.0.0 scanio:latest || true
 Untagged: scanio:latest
@@ -425,7 +422,6 @@ make clean-python-env
 
 **Sample output:**
 ```bash
-make clean-python-env
 Cleaning Python virtual environment...
 rm -rf .venv
 ```
@@ -439,7 +435,6 @@ make test
 
 **Sample output:**
 ```bash
-make test
 go test -v ./... && echo "All tests passed"
 go: downloading github.com/stretchr/testify v1.10.0
 go: downloading github.com/pmezard/go-difflib v1.0.0
