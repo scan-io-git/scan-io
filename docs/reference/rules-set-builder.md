@@ -1,4 +1,4 @@
-# Rule Set Builder
+# Rules Set Builder
 
 This page describes a [rules.py](../../scripts/rules/README.md) Python script which automates the process of building rule sets for the Scanio Orchestrator based on a YAML configuration file. The script is designed to:
 - Parse a given YAML configuration (`scanio_rules.yaml`).

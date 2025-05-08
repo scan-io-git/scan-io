@@ -105,4 +105,4 @@ For advanced custom building, check:
 - [Reference: Makefile](../reference/makefile.md)
 
 For advanced rules, learn more about rule compilation:
-- [Reference: Rule Set Builder](../reference/rule-set-builder.md)
+- [Reference: Rule Set Builder](../reference/rules-set-builder.md)

@@ -6,5 +6,5 @@ This Python script automates the process of building rule sets for the Scanio Or
 - Copy specific files from the repositories into structured folders within a rules directory.
 - Supports interactive and non-interactive directory cleanup.
 
-For the more info, refer to [Rule Set Builder](../../docs/reference/rule-set-builder.md) reference.
+For the more info, refer to [Rule Set Builder](../../docs/reference/rules-set-builder.md) reference.
 
