@@ -24,3 +24,5 @@ This section provides detailed technical documentation for Scanio’s commands, 
 
 ### Scripts
 - [Makefile](makefile.md): Provides details regarding automates building, cleaning, and managing artifacts locally for the Scanio CLI core binary, plugin binaries, Docker image and python environment for rule folder compile.
+- [Makefile for Custom Build](makefile-custom-build.md): This page describes the available targets and variables in the [`Makefile`](../../scripts/custom-build/Makefile). This [`Makefile`](../../scripts/custom-build/Makefile) supports custom deployments of Scanio, including cases where users have their own versions of Scanio, plugins, and custom rule sets. 
+- [Rules Set Builder](rules-set-builder.md): This page describes a [rules.py](../../scripts/rules/README.md) Python script which automates the process of building rule sets for the Scanio Orchestrator based on a YAML configuration file.
