@@ -78,8 +78,8 @@ First, clone your custom build repository containing the files listed above or e
 To run a fully automated build, use the `make build` command. You can pass necessary arguments at runtime (see the full list under [Variables](#variables)).
 
 ```bash
-git clone my.internal.github.com/security/scanio-build
-cd scanio
+git clone https://my.internal.git/security/scanio-build
+cd scanio-build
 make build SCANIO_REPO=https://my.internal.github.com/security/scanio-code VERSION=1.0 REGISTRY=my.registry.com/scanio
 ```
 
@@ -114,7 +114,7 @@ Default destination: `./scan-io/scripts/rules/scanio_rules.yaml` (can be overrid
 
 This step compiles rule sets using the copied `scanio_rules.yaml` file. The [rules.py](../../scripts/rules/README.md) script reads the config, clones the specified rules from repositories, and places them into the `rules/` directory inside the cloned repository.
 
-All dependencies are installed in a temporary Python virtual environment that is removed after use. If the `rules/` directory already exists, it will be cleared beforehand.
+All dependencies are installed in a temporary Python virtual environment. If the `rules/` directory already exists, it will be cleared beforehand.
 
 -> `build-docker`
 
