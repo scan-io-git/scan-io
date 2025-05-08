@@ -6,5 +6,6 @@ This section contains practical guides to help you solve specific problems and i
 - [How to Get Scanio](get-scanio.md)
 - [How to Update Scanio](update-scanio.md)
 - [How to Build Scanio](build-scanio.md)
-- [How to Compile Rule Set](compile-rules-set.md)
+- [How to Build a Custom Installation of Scanio](build-custom-scanio.md)
+- [How to Compile Custom Rule Sets in Scanio](compile-rules-set.md)
 - [How to Troubleshoot](troubleshoot.md)

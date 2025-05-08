@@ -73,7 +73,7 @@ make build SCANIO_REPO=https://my.internal.git/security/scanio-custom-code VERSI
 ```
 
 This command performs:
-- Cloning Scanio source (cmd: `clone-scanio-repo`)
+- Cloning Scanio source from `SCANIO_REPO` (cmd: `clone-scanio-repo`). The arguments should refer to your internal version of Scanio or to the [official repository](https://github.com/scan-io-git/scan-io). 
 - Replacing config and rules (cmd: `copy-config`, `copy-rules`)
 - Compiling rule sets (cmd: `build-rules`)
 - Building a Docker image (cmd: `build-docker`)
