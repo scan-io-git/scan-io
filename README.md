@@ -31,26 +31,18 @@ Scanio simplifies security scanning for organizations by combining multiple open
 ## Usage Scenarios
 Each of these scenarios can be supported by specialized rule sets crafted for specific purposes or tailored to individual projects.
 
-**Ad hoc Scanning**<br>
+### Ad hoc Scanning
 Ideal for security teams and developers looking to perform spot checks or analyze specific pieces of code manually during:
 - Scan code during development.
 - Perform security audits.
 
-**Automated Background Scanning**<br>
+### Automated Background Scanning 
 Identify vulnerabilities and secrets in the codebase as a periodic process.
 
-**CI/CD Pipeline Scanning**<br>
+### CI/CD Pipeline Scanning
 Automatically scan new code changes during branch merges.
 
-
 ## Getting Started
-### Quick Start
-Run your first scan:
-```
-git clone https://github.com/juice-shop/juice-shop
-cd juice-shop
-docker run -it -v $(pwd):/data ghcr.io/scan-io-git/scan-io analyse --scanner semgrep /data
-```
 ### Installation
 1) Installation with Docker:
 ```
@@ -62,6 +54,14 @@ docker pull ghcr.io/scan-io-git/scan-io
 git clone https://github.com/scan-io-git/scan-io
 cd scan-io
 make build docker
+```
+
+### Quick Start
+Run your first scan:
+```
+git clone https://github.com/juice-shop/juice-shop
+cd juice-shop
+docker run -it -v $(pwd):/data ghcr.io/scan-io-git/scan-io analyse --scanner semgrep /data
 ```
 
 ## Documentation
