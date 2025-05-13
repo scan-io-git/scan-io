@@ -58,10 +58,3 @@ make build docker
 Explore Scanio's comprehensive [documentation](docs/README.md), structured using the Diátaxis framework.  
 
 The documentation covers everything you need to know, including tutorials, how-to guides, conceptual explanations, and technical references, to help you use and extend Scanio effectively.
-
-
-## Supported Integrations 
-
-- Semgrep Img,  add logos 
-
-https://github.com/trufflesecurity/trufflehog/blob/main/assets/scanning_logos.svg
