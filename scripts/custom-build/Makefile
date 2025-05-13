@@ -3,9 +3,10 @@
 # Default variables
 SCANIO_REPO ?= https://github.com/scan-io-git/scan-io.git
 SCANIO_REPO_DIR ?= ./scan-io
+IMAGE_NAME ?= scanio
 RULES_CONFIG ?= scanio_rules.yaml
 SCANIO_CONFIG ?= config.yml
-CLONED_CONFIG_PATH ?= $(SCANIO_REPO_DIR)/
+CLONED_CONFIG_PATH ?= $(SCANIO_REPO_DIR)/$(notdir $(SCANIO_CONFIG))
 CLONED_RULES_PATH ?= $(SCANIO_REPO_DIR)/scripts/rules/$(notdir $(RULES_CONFIG))
 VERSION ?= 1.0
 TARGET_OS ?= linux
@@ -19,10 +20,11 @@ help: ## Display this help message
 	@echo "Usage: make <target> [options]"
 	@echo "Options:"
 	@echo "  SCANIO_REPO      - URL of the Scanio repo (default: https://github.com/scan-io-git/scan-io.git)"
+	@echo "  IMAGE_NAME		  - Tag name of the image  (default: scanio)"
 	@echo "  SCANIO_REPO_DIR  - Directory for cloning the Scanio repository  (default: ./scan-io)"
 	@echo "  RULES_CONFIG     - Path to the custom rule set config (default: ./scanio_rules.yaml)"
 	@echo "  SCANIO_CONFIG     - Path to the custom Scanio core config (default: ./config.yml)"
-	@echo "  CLONED_CONFIG_PATH     - Destination path for Scanio core config file in the cloned repo (default: <SCANIO_REPO_DIR>/)"
+	@echo "  CLONED_CONFIG_PATH     - Destination path for Scanio core config file in the cloned repo (default: <SCANIO_REPO_DIR>/<SCANIO_CONFIG>)"
 	@echo "  CLONED_RULES_PATH     - Destination path for the rule set config file in the cloned repo (default: <SCANIO_REPO_DIR>/scripts/rules/<RULES_CONFIG>)"
 	@echo "  VERSION          - Docker image version (default: 1.0)"
 	@echo "  TARGET_OS        - Target OS (default: linux)"
@@ -32,7 +34,6 @@ help: ## Display this help message
 	@echo "  make build SCANIO_REPO=<repo_url> RULES_CONFIG=<rules_path> VERSION=<version> TARGET_OS=<os> TARGET_ARCH=<arch> REGISTRY=<registry>"
 	@echo "Targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
-
 
 # Clone the Scanio repository
 .PHONY: clone-scanio-repo
@@ -75,13 +76,13 @@ build-rules: ## Build rules in the cloned Scanio repository
 .PHONY: build-docker
 build-docker: ## Build Docker image in the cloned Scanio repo
 	@echo "[Custom Makefile] Building Docker image for $(TARGET_OS)/$(TARGET_ARCH)..."
-	@cd $(SCANIO_REPO_DIR) && make docker-build PLUGINS="$(PLUGINS)" VERSION=$(VERSION) TARGETOS=$(TARGET_OS) TARGETARCH=$(TARGET_ARCH) REGISTRY=$(REGISTRY) || { echo "Failed to build Docker image"; exit 1; }
+	@cd $(SCANIO_REPO_DIR) && make docker-build PLUGINS="$(PLUGINS)" TARGETOS=$(TARGET_OS) TARGETARCH=$(TARGET_ARCH) REGISTRY=$(REGISTRY) IMAGE_NAME=$(IMAGE_NAME) VERSION=$(VERSION) || { echo "Failed to build Docker image"; exit 1; }
 
 # Push Docker image to registry
 .PHONY: push-docker
 push-docker: ## Push Docker image to the registry
 	@echo "[Custom Makefile] Pushing Docker image to: $(REGISTRY)..."
-	@cd $(SCANIO_REPO_DIR) && make docker-push VERSION=$(VERSION) REGISTRY=$(REGISTRY) || { echo "Failed to push Docker image"; exit 1; }
+	@cd $(SCANIO_REPO_DIR) && make docker-push REGISTRY=$(REGISTRY) IMAGE_NAME=$(IMAGE_NAME) VERSION=$(VERSION) || { echo "Failed to push Docker image"; exit 1; }
 
 # Clean the repository and local files
 .PHONY: clean
