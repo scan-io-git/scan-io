@@ -28,7 +28,7 @@ Scanio simplifies security scanning for organizations by combining multiple open
 ## Supported Integrations 
 
 <div align="center">
-  <img src="assets/integrations.svg">
+  <img src="assets/Integrations.svg">
 </div>
 
 ## Usage Scenarios
