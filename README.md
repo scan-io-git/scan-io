@@ -1,15 +1,12 @@
-<div style="text-align: center;">
-  <div style="display: inline-flex; align-items: center; gap: 10px;">
-    <img alt="Scanio Logo" src="assets/scanio-logo-light.png" height="35" />
-    <h1 style="margin: 0; border-bottom: none;">Scanio</h1>
-  </div>
-
-  <hr style="width: 100%; max-width: 100%;" />
-
-  <div>
-    <strong>All-in-One Multitool for Enhanced Security</strong>
-  </div>
-</div>
+<p align="center">
+    <picture>
+      <img src="assets/text-logo-light.png" height="100" alt="Scanio logo"/>
+    </picture>
+  </a>
+</p>
+<h2 align="center">
+  All-in-One Multitool for Enhanced Security
+</h2>
 
 ## What is Scanio?
 
