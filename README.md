@@ -1,9 +1,15 @@
-<div align="center">
-  <br>
-  <h1>Scanio ⥀</h1>
-  <strong>All-in-One Multitool for Enhanced Security</strong>
+<div style="text-align: center;">
+  <div style="display: inline-flex; align-items: center; gap: 10px;">
+    <img alt="Scanio Logo" src="assets/scanio-logo-light.png" height="35" />
+    <h1 style="margin: 0; border-bottom: none;">Scanio</h1>
+  </div>
+
+  <hr style="width: 100%; max-width: 100%;" />
+
+  <div>
+    <strong>All-in-One Multitool for Enhanced Security</strong>
+  </div>
 </div>
-<br>
 
 ## What is Scanio?
 
@@ -19,6 +25,12 @@ Scanio simplifies security scanning for organizations by combining multiple open
 - Compliance Simplified: Streamlines security processes across development stages, reducing effort and investment.
 - Scalability: Adaptable for small teams or large enterprises, providing flexibility for diverse security scanning needs.
 
+## Supported Integrations 
+
+<div align="center">
+  <img src="assets/integrations.svg">
+</div>
+
 ## Usage Scenarios
 Each of these scenarios can be supported by specialized rule sets crafted for specific purposes or tailored to individual projects.
 
@@ -32,6 +44,7 @@ Identify vulnerabilities and secrets in the codebase as a periodic process.
 
 **CI/CD Pipeline Scanning**<br>
 Automatically scan new code changes during branch merges.
+
 
 ## Getting Started
 ### Quick Start
@@ -58,10 +71,3 @@ make build docker
 Explore Scanio's comprehensive [documentation](docs/README.md), structured using the Diátaxis framework.  
 
 The documentation covers everything you need to know, including tutorials, how-to guides, conceptual explanations, and technical references, to help you use and extend Scanio effectively.
-
-
-## Supported Integrations 
-
-- Semgrep Img,  add logos 
-
-https://github.com/trufflesecurity/trufflehog/blob/main/assets/scanning_logos.svg
