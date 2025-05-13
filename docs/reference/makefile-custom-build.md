@@ -33,9 +33,10 @@ Variables can be overridden by setting them via the command line.
 |-------------------|---------------------------------------------------|---------------------------------------------------------------|
 | `SCANIO_REPO`      | `https://github.com/scan-io-git/scan-io.git`     | URL of the Scanio Git repository                              |
 | `SCANIO_REPO_DIR`  | `./scan-io`                                      | Directory for cloning the Scanio repository                   |
+| `IMAGE_NAME`       | `scanio`                                         | Name of the Docker image                                      |
 | `RULES_CONFIG`     | `scanio_rules.yaml`                              | Path to the custom rule set config                            |
 | `SCANIO_CONFIG`     | `config.yaml`                                   | Path to the custom Scanio core config                         |
-| `CLONED_CONFIG_PATH`| `$(SCANIO_REPO_DIR)/`                           | Destination path for Scanio core config file in the cloned repo    |
+| `CLONED_CONFIG_PATH`| `$(SCANIO_REPO_DIR)/$(RULES_CONFIG)`            | Destination path for Scanio core config file in the cloned repo    |
 | `CLONED_RULES_PATH`| `$(SCANIO_REPO_DIR)/scripts/rules/$(RULES_CONFIG)` | Destination path for the rule set config file in the cloned repo |
 | `PLUGINS`          | `github gitlab bitbucket semgrep bandit trufflehog` | List of plugins for build                                  |
 | `VERSION`          | `1.0`                                            | Docker image version                                          |
@@ -257,6 +258,7 @@ make build-docker
 **Variables supported**
 - `VERSION`
 - `PLUGINS`
+- `IMAGE_NAME`
 - `TARGET_OS`
 - `TARGET_ARCH`
 - `REGISTRY`
@@ -265,7 +267,7 @@ make build-docker
 ```bash
 [Custom Makefile] Building Docker image for linux/amd64...
 Building Docker image for linux/amd64...
-docker build --build-arg TARGETOS=linux --build-arg TARGETARCH=amd64 --platform=linux/amd64 \
+docker build --build-arg TARGETOS=linux --build-arg TARGETARCH=amd64 --platform=linux/amd64 IMAGE_NAME=scanio REGISTRY=example.com/security \
 	-t scanio:1.0 -t scanio:latest . || exit 1
 [+] Building 34.8s (31/31) FINISHED   
  => [internal] ... 
@@ -276,12 +278,13 @@ docker build --build-arg TARGETOS=linux --build-arg TARGETARCH=amd64 --platform=
 Push the built image to the configured Docker registry.
 
 ```bash
-make push-docker REGISTRY=example.com/scanio
+make push-docker REGISTRY=example.com/security IMAGE_NAME=scanio
 ```
 
 **Variables supported**
 - `SCANIO_REPO_DIR`
 - `VERSION`
+- `IMAGE_NAME`
 - `REGISTRY`
 
 **Sample output:**
@@ -313,12 +316,13 @@ make clean
 This is the main orchestration entry point if you want to run the full pipeline.
 Clones the repo, copies config and rules, builds rule sets, builds and pushes the Docker image.
 ```bash
-make build REGISTRY=example.com/scanio
+make build REGISTRY=example.com/security IMAGE_NAME=scanio
 ```
 
 **Variables supported**
 - `SCANIO_REPO`
 - `SCANIO_REPO_DIR`
+- `IMAGE_NAME`
 - `SCANIO_CONFIG`
 - `RULES_CONFIG`
 - `CLONED_CONFIG_PATH`
