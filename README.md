@@ -11,13 +11,13 @@ Scanio simplifies security scanning for organizations by combining multiple open
 
 ## Key Features
 - Unified Interface: Use multiple scanners (e.g., Semgrep, Bandit, Trufflehog, CodeQL) with consistent commands and flags, reducing the learning curve for security teams and developers.
-- Scalability: Adaptable for small teams or large enterprises, providing flexibility for diverse security scanning needs.
 - Containerized Deployment: Prepackaged with dependencies, plugins, and rule sets for quick and hassle-free setup.
-- Compliance Simplified: Streamlines security processes across development stages, reducing effort and investment.
 - Comprehensive Integration Support: Scanio seamlessly handles tasks such as code cloning, managing pull requests, and uploading scan results across VCS platforms like GitHub, GitLab, and Bitbucket.
 - Infrastructure Ready: Configure and deploy Scanio with ease, using custom rules, configurations, and plugins.
-Extensible and Flexible: Designed for security applications but easily extends to QA and DevOps via its plugin-based architecture.
-- Advanced SARIF Integration: SARIF report patching to meet specific requirements for enhanced usability and Transform SARIF data into accessible HTML reports with interactive elements like code snippets and links.
+- Extensible and Flexible: Designed for security applications but easily extends to QA and DevOps via its plugin-based architecture.
+- Advanced SARIF Integration: SARIF report patching to meet specific requirements for enhanced usability and transform SARIF data into accessible HTML reports with interactive elements like code snippets and links.
+- Compliance Simplified: Streamlines security processes across development stages, reducing effort and investment.
+- Scalability: Adaptable for small teams or large enterprises, providing flexibility for diverse security scanning needs.
 
 ## Usage Scenarios
 Each of these scenarios can be supported by specialized rule sets crafted for specific purposes or tailored to individual projects.
@@ -58,3 +58,10 @@ make build docker
 Explore Scanio's comprehensive [documentation](docs/README.md), structured using the Diátaxis framework.  
 
 The documentation covers everything you need to know, including tutorials, how-to guides, conceptual explanations, and technical references, to help you use and extend Scanio effectively.
+
+
+## Supported Integrations 
+
+- Semgrep Img,  add logos 
+
+https://github.com/trufflesecurity/trufflehog/blob/main/assets/scanning_logos.svg
