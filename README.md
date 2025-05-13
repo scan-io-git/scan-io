@@ -1,12 +1,12 @@
-<p align="center">
+<p align="center" >
     <picture>
-      <img src="assets/text-logo-light.png" height="100" alt="Scanio logo"/>
+      <img src="assets/text-logo-light.png" height="100" alt="Scanio logo" />
     </picture>
   </a>
 </p>
-<h2 align="center">
+<h3 align="center" >
   All-in-One Multitool for Enhanced Security
-</h2>
+</h3>
 
 ## What is Scanio?
 
