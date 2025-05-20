@@ -1,9 +1,12 @@
-<div align="center">
-  <br>
-  <h1>Scanio ⥀</h1>
-  <strong>All-in-One Multitool for Enhanced Security</strong>
-</div>
-<br>
+<p align="center" >
+    <picture>
+      <img src="assets/text-logo-light.png" height="100" alt="Scanio logo" />
+    </picture>
+  </a>
+</p>
+<h3 align="center" >
+  All-in-One Multitool for Enhanced Security
+</h3>
 
 ## What is Scanio?
 
@@ -19,28 +22,27 @@ Scanio simplifies security scanning for organizations by combining multiple open
 - Compliance Simplified: Streamlines security processes across development stages, reducing effort and investment.
 - Scalability: Adaptable for small teams or large enterprises, providing flexibility for diverse security scanning needs.
 
+## Supported Integrations 
+
+<div align="center">
+  <img src="assets/Integrations.svg">
+</div>
+
 ## Usage Scenarios
 Each of these scenarios can be supported by specialized rule sets crafted for specific purposes or tailored to individual projects.
 
-**Ad hoc Scanning**<br>
+### Ad hoc Scanning
 Ideal for security teams and developers looking to perform spot checks or analyze specific pieces of code manually during:
 - Scan code during development.
 - Perform security audits.
 
-**Automated Background Scanning**<br>
+### Automated Background Scanning 
 Identify vulnerabilities and secrets in the codebase as a periodic process.
 
-**CI/CD Pipeline Scanning**<br>
+### CI/CD Pipeline Scanning
 Automatically scan new code changes during branch merges.
 
 ## Getting Started
-### Quick Start
-Run your first scan:
-```
-git clone https://github.com/juice-shop/juice-shop
-cd juice-shop
-docker run -it -v $(pwd):/data ghcr.io/scan-io-git/scan-io analyse --scanner semgrep /data
-```
 ### Installation
 1) Installation with Docker:
 ```
@@ -52,6 +54,14 @@ docker pull ghcr.io/scan-io-git/scan-io
 git clone https://github.com/scan-io-git/scan-io
 cd scan-io
 make build docker
+```
+
+### Quick Start
+Run your first scan:
+```
+git clone https://github.com/juice-shop/juice-shop
+cd juice-shop
+docker run -it -v $(pwd):/data ghcr.io/scan-io-git/scan-io analyse --scanner semgrep /data
 ```
 
 ## Documentation
