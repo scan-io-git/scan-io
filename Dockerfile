@@ -54,10 +54,9 @@ RUN set -euxo pipefail && \
     # Install dependencies
     apk update && \
     apk upgrade && \
-    apk add --no-cache bash python3 py3-pip && \
+    apk add --no-cache bash python3 py3-pip openssh && \
     apk add --no-cache --virtual .build-deps \
         jq \
-        openssh \
         libc6-compat \
         git \
         gcc \
