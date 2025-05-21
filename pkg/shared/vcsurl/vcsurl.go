@@ -289,7 +289,7 @@ func parseBitbucket(u VCSURL) (*VCSURL, error) {
 		buildBitbucketURLs(&u, false, "", true)
 		return &u, nil
 	// PR fetching case - the type doesn't exist in SCM URLs - https://bitbucket.com/projects/<project_name>/repos/<repo_name>/pull-requests/<id>
-	case len(pathDirs) > 4 && pathDirs[0] == "projects" && pathDirs[4] == "pull-requests" && u.Protocol() == HTTP:
+	case len(pathDirs) > 5 && pathDirs[0] == "projects" && pathDirs[4] == "pull-requests" && u.Protocol() == HTTP:
 		u.Namespace = pathDirs[1]
 		u.Repository = pathDirs[3]
 		u.PullRequestId = pathDirs[5]
