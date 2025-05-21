@@ -49,57 +49,63 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG PLUGINS
 
-RUN echo "Building dependencies for '$TARGETOS/$TARGETARCH'"
 RUN set -euxo pipefail && \
-    # Install dependencies
+    echo "Building dependencies for '$TARGETOS/$TARGETARCH'" && \
     apk update && \
     apk upgrade && \
-    apk add --no-cache bash python3 py3-pip && \
+    apk add --no-cache bash python3 py3-pip openssh && \
     apk add --no-cache --virtual .build-deps \
         jq \
-        openssh \
         libc6-compat \
-        git \
         gcc \
         openssl \
         ca-certificates \
         curl \
         musl-dev && \
-    # Install tools dependendencies depends on the ARG list: --build-arg TOOLS="semgrep,bandit"
+    PLUGIN_VENVS_DIR="/opt/venvs" && \
+    mkdir -p "$PLUGIN_VENVS_DIR" && \
     echo "Installing plugins: $PLUGINS" && \
-    for plugin in $(echo $PLUGINS | tr ',' ' '); do \
-      case "$plugin" in trufflehog3) \
-          # To resolve a problem with same dependencies trufflehog3 has to be installed first
-          echo "Installing Trufflehog3..."; \
-          python3 -m pip install --break-system-packages trufflehog3==3.0.10 ;; \
+    for plugin in $(echo "$PLUGINS" | tr ',' ' '); do \
+      case "$plugin" in \
         semgrep) \
           echo "Installing Semgrep..."; \
-          python3 -m pip install --break-system-packages semgrep==1.120.1 ;; \
+          python3 -m venv "$PLUGIN_VENVS_DIR/semgrep" && \
+          . "$PLUGIN_VENVS_DIR/semgrep/bin/activate" && \
+          pip install --no-cache-dir semgrep==1.120.1 ;; \
+        trufflehog3) \
+          echo "Installing Trufflehog3..."; \
+          apk add --no-cache git; \
+          python3 -m venv "$PLUGIN_VENVS_DIR/trufflehog3" && \
+          . "$PLUGIN_VENVS_DIR/trufflehog3/bin/activate" && \
+          pip install --no-cache-dir trufflehog3==3.0.10 ;; \
         bandit) \
           echo "Installing Bandit..."; \
-          python3 -m pip install --break-system-packages bandit==1.8.3 ;; \
+          python3 -m venv "$PLUGIN_VENVS_DIR/bandit" && \
+          . "$PLUGIN_VENVS_DIR/bandit/bin/activate" && \
+          pip install --no-cache-dir bandit==1.8.3 ;; \
         trufflehog) \
           echo "Installing TruffleHog binary..."; \
-          TRUFFLEHOG_VER="3.88.27"; \
-          TARFILE="trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz"; \
-          CHECKSUMFILE="trufflehog_${TRUFFLEHOG_VER}_checksums.txt"; \
+          TRUFFLEHOG_VER="3.88.27" && \
+          TARFILE="trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz" && \
+          CHECKSUMFILE="trufflehog_${TRUFFLEHOG_VER}_checksums.txt" && \
           curl -LOs "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/${CHECKSUMFILE}" && \
           curl -LOs "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/${TARFILE}" && \
           grep "${TARFILE}" "${CHECKSUMFILE}" | sha256sum -c - && \
           tar -xzf "${TARFILE}" && \
-          rm -f "${TARFILE}" "${CHECKSUMFILE}" && \
-          mv trufflehog /usr/local/bin/ ;; \
-        *) \
-          echo "No dependencies installed for plugin: '$plugin'" ;; \
+          mv trufflehog /usr/local/bin/ && \
+          rm -f "${TARFILE}" "${CHECKSUMFILE}" ;; \
+        *) echo "No dependencies installed for plugin: $plugin" ;; \
       esac; \
     done && \
-    # Reduce size of the container
     apk del .build-deps && \
     find /usr -name '*.o' -delete && \
     find /usr -name '*.a' -delete && \
     rm -rf /var/cache/apk/* && \
     find /usr -name '__pycache__' -exec rm -rf {} + && \
     rm -rf /root/.cache/pip
+
+# Set PATH for venv manually
+ENV PATH="/opt/venvs/semgrep/bin:/opt/venvs/trufflehog3/bin:/opt/venvs/bandit/bin:$PATH"
 
 # Create necessary directories
 RUN mkdir -p /scanio /data
