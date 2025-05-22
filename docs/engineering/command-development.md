@@ -105,25 +105,27 @@ func runYourCommand(cmd *cobra.Command, args []string) error {
         return errors.NewCommandError(yourCommandOptions, nil, fmt.Errorf("invalid arguments: %w", err), 1)
     }
 
-    // 4. Determine operation mode if needed
-    // The mode determines how the command should process its input:
-    // - ModeSingleURL: when a URL is provided as an argument
-    // - ModeInputFile: when using an input file specified by flags
-    mode := determineMode(args)
-
-    // 5. Implement the business logic of the command
+    // 4. Implement the business logic of the command
     // Try to existing modules like scanner, fetcher, and so on
     // Or implement the logic in a separate reusable module.
 
     // ...
+    // result := ...
+    // ...
     
-    // 6. Handle results
-    metaDataFileName := fmt.Sprintf("YOUR_COMMAND_%s", strings.ToUpper(handler.PluginName))
+    // 5. Handle results
+    // The naming convention for metadata file is usually COMMAND_NAME_PLUGIN_NAME_TIMESTAMP
+    metaDataFileName := fmt.Sprintf("YOUR_COMMAND")
     if config.IsCI(AppConfig) {
         startTime := time.Now().UTC().Format(time.RFC3339)
-        metaDataFileName = fmt.Sprintf("YOUR_COMMAND_%s_%v", strings.ToUpper(handler.PluginName), startTime)
+        metaDataFileName = fmt.Sprintf("YOUR_COMMAND_%v", startTime)
     }
 
+    // WriteGenericResult writes the command result to a JSON file in the results directory
+    // - Saves the result object as JSON in the configured results directory
+    // - Uses the metaDataFileName to name the output file
+    // - Logs any errors that occur during writing
+    // - Commonly used to store command execution results for later analysis
     if err := shared.WriteGenericResult(AppConfig, logger, result, metaDataFileName); err != nil {
         logger.Error("failed to write result", "error", err)
     }
@@ -133,7 +135,7 @@ func runYourCommand(cmd *cobra.Command, args []string) error {
         return errors.NewCommandErrorWithResult(result, fmt.Errorf("command failed: %w", err), 2)
     }
 
-    // 7. Log success and handle CI output
+    // 6. Log success and handle CI output
     logger.Info("command completed successfully")
     logger.Debug("command result", "result", result)
     if config.IsCI(AppConfig) {
@@ -156,3 +158,66 @@ func init() {
     YourCommand.Flags().BoolP("help", "h", false, "Show help for the command")
 }
 ```
+
+## 3. Error Handling
+
+Scan-io provides a consistent error handling mechanism through the `errors` package. This ensures uniform error reporting and proper exit codes across all commands.
+
+### 3.1. CommandError Structure
+
+The `CommandError` type encapsulates:
+- Exit code
+- Error message
+- Command result (if any)
+
+```go
+type CommandError struct {
+    ExitCode    int
+    CommonError string
+    Result      shared.GenericLaunchesResult
+}
+```
+
+### 3.2. Error Creation Functions
+
+Two main functions are provided for creating command errors:
+
+1. `NewCommandError` - For basic error cases:
+```go
+// For validation errors (exit code 1)
+return errors.NewCommandError(options, nil, fmt.Errorf("invalid arguments: %w", err), 1)
+```
+
+2. `NewCommandErrorWithResult` - When you have a pre-formed result:
+```go
+// When you have a partial result but the command failed
+return errors.NewCommandErrorWithResult(result, fmt.Errorf("command failed: %w", err), 2)
+```
+
+### 3.3. Error Handling Examples
+
+1. **Validation Errors (Exit Code 1)**
+   ```go
+   if err := validateArgs(&options, args); err != nil {
+       logger.Error("invalid arguments", "error", err)
+       return errors.NewCommandError(options, nil, fmt.Errorf("invalid arguments: %w", err), 1)
+   }
+   ```
+
+2. **Execution Errors with partial results(Exit Code 2)**
+   ```go
+   if err != nil {
+       logger.Error("command failed", "error", err)
+       return errors.NewCommandErrorWithResult(result, fmt.Errorf("command failed: %w", err), 2)
+   }
+   ```
+
+### 3.4. Error Handling in Main Command
+
+The root command (`cmd/root.go`) handles these errors appropriately:
+- Extracts the exit code
+- Prints the error message
+- In CI environments, prints the result as JSON
+- Exits with the appropriate code
+
+This ensures consistent error handling and reporting across all commands.
