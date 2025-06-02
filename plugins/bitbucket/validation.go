@@ -58,7 +58,7 @@ func (g *VCSBitbucket) validateAddRoleToPR(args *shared.VCSAddRoleToPRRequest) e
 
 // validateSetStatusOfPR checks the necessary fields in VCSSetStatusOfPRRequest and returns errors if they are not set.
 func (g *VCSBitbucket) validateSetStatusOfPR(args *shared.VCSSetStatusOfPRRequest) error {
-	statuses := []string{"unapproved", "need_work", "approved"}
+	statuses := []string{"unapproved", "needs_work", "approved"}
 	requiredFields := map[string]string{
 		"login":  args.Login,
 		"status": args.Status,
