@@ -41,11 +41,30 @@ func readSarifReport(inputPath string) (*sarif.Report, error) {
 	return &sarifReport, nil
 }
 
-func ReadReport(inputPath string, logger hclog.Logger, sourceFolder string) (*Report, error) {
+// remove all results with Suppressions property
+func removeSuppressedResults(report *sarif.Report) {
+	for _, run := range report.Runs {
+		var filteredResults []*sarif.Result
+
+		for _, result := range run.Results {
+			if len(result.Suppressions) == 0 {
+				filteredResults = append(filteredResults, result)
+			}
+		}
+
+		run.Results = filteredResults
+	}
+}
+
+func ReadReport(inputPath string, logger hclog.Logger, sourceFolder string, noSuppressions bool) (*Report, error) {
 
 	sarifReport, err := readSarifReport(inputPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if noSuppressions {
+		removeSuppressedResults(sarifReport)
 	}
 
 	// make an absolute path of source folder
@@ -232,7 +251,6 @@ func (r Report) readLineFromFile(loc *sarif.PhysicalLocation) (string, error) {
 func (r Report) EnrichResultsCodeFlowProperty(locationWebURLCallback func(artifactLocation *sarif.Location) string) {
 
 	for _, result := range r.Runs[0].Results {
-
 		if len(result.CodeFlows) == 0 && len(result.Locations) > 0 {
 			//add new code flow
 			codeFlow := sarif.NewCodeFlow()

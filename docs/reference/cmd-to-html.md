@@ -9,7 +9,7 @@ The `to-html` command converts sarif, standard sast output format, to a human-fr
 
 ## Syntax
 ```
-scanio to-html --input/-i PATH --output/-o PATH [--source/-s PATH] [--templates-path/-t PATH]
+scanio to-html --input/-i PATH --output/-o PATH [--source/-s PATH] [--templates-path/-t PATH] [--no-supressions]
 ```
 
 ### Options
@@ -19,6 +19,7 @@ scanio to-html --input/-i PATH --output/-o PATH [--source/-s PATH] [--templates-
 | `--output`, `-o` | string | Yes | `none` | Path to output file, html report
 | `--source`, `-s` | string | No | `none` | Path to source code folder |
 | `--templates-path`, `-t` | string | No | `none` | Path to templates folder |
+| `--no-supressions` | bool | No | `false` | Enable removing results with suppressions properties |
 
 ## Usage Examples
 The following examples demonstrate how to use the `to-html` command.
@@ -43,3 +44,13 @@ Use a custom path to a template file, in case it is located in non standard loca
 ```bash
 scanio to-html -i /path/to/project/results.sarif -o /path/to/project/results.html -t /path/to/templates/tohtml
 ```
+
+**Ignore Suppressed Findings**
+The suppressions property in a SARIF result indicates that the finding was intentionally ignored, either in the source code or through external configuration. 
+For example, Semgrep includes rules that were ignored using `// nosemgrep` in the SARIF results and marks them with a [suppressions property](https://docs.oasis-open.org/sarif/sarif/v2.0/csprd02/sarif-v2.0-csprd02.html#_Toc10127852). However, these are still listed as findings, which can be confusing compared to other output formats (e.g., JSON), where such suppressed issues are omitted entirely.
+
+If you want to exclude suppressed results from the HTML report, use the `--no-supressions` flag.
+```bash
+scanio to-html -i /tmp/juice-shop/semgrep_results.sarif -o /tmp/juice-shop/semgrep_results.html -s /tmp/juice-shop/ -t ./templates/tohtml --no-supressions
+```
+

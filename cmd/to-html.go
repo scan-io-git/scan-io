@@ -27,12 +27,13 @@ const (
 )
 
 type ToHTMLOptions struct {
-	TempatesPath string `json:"tempates_path,omitempty"`
-	Title        string `json:"title,omitempty"`
-	OutputFile   string `json:"output_file,omitempty"`
-	Input        string `json:"input,omitempty"`
-	SourceFolder string `json:"source_folder,omitempty"`
-	VCS          string `json:"vcs,omitempty"`
+	TempatesPath   string `json:"tempates_path,omitempty"`
+	Title          string `json:"title,omitempty"`
+	OutputFile     string `json:"output_file,omitempty"`
+	Input          string `json:"input,omitempty"`
+	SourceFolder   string `json:"source_folder,omitempty"`
+	VCS            string `json:"vcs,omitempty"`
+	NoSuppressions bool   `json:"nosuppressions,omitempty"`
 }
 
 var allToHTMLOptions ToHTMLOptions
@@ -56,7 +57,10 @@ var execExampleToHTML = `  # Generate html report for semgrep sarif output
   scanio to-html --input /tmp/juice-shop/semgrep.sarif --output /tmp/juice-shop/semgrep.html --source /tmp/juice-shop --vcs bitbucket
 
   # Use custom templates path for html report generation
-  scanio to-html -i /tmp/juice-shop/semgrep_results.sarif -o /tmp/juice-shop/semgrep_results.html -s /tmp/juice-shop/ -t ./templates/tohtml`
+  scanio to-html -i /tmp/juice-shop/semgrep_results.sarif -o /tmp/juice-shop/semgrep_results.html -s /tmp/juice-shop/ -t ./templates/tohtml
+ 
+  # Use no-supressions to skip results with supressions sarif property
+  scanio to-html -i /tmp/juice-shop/semgrep_results.sarif -o /tmp/juice-shop/semgrep_results.html -s /tmp/juice-shop/ -t ./templates/tohtml --no-supressions`
 
 // this function will implement vcs specific logic to generate web URL to branch or commit + special case for onprem BB
 func buildWebURLToRef(url *vcsurl.VCSURL, refName, refType string) string {
@@ -118,7 +122,7 @@ var toHtmlCmd = &cobra.Command{
 		logger.Info("to-html called")
 
 		// read sarif report from file
-		sarifReport, err := scaniosarif.ReadReport(allToHTMLOptions.Input, logger, allToHTMLOptions.SourceFolder)
+		sarifReport, err := scaniosarif.ReadReport(allToHTMLOptions.Input, logger, allToHTMLOptions.SourceFolder, allToHTMLOptions.NoSuppressions)
 		if err != nil {
 			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
@@ -239,10 +243,11 @@ var toHtmlCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(toHtmlCmd)
 
-	toHtmlCmd.Flags().StringVarP(&allToHTMLOptions.TempatesPath, "templates-path", "t", "", "path to folder with templates")
-	toHtmlCmd.Flags().StringVar(&allToHTMLOptions.Title, "title", "Scanio Report", "title for generated html file")
-	toHtmlCmd.Flags().StringVarP(&allToHTMLOptions.Input, "input", "i", "", "input file with sarif report")
+	toHtmlCmd.Flags().StringVarP(&allToHTMLOptions.TempatesPath, "templates-path", "t", "", "Path to folder with templates")
+	toHtmlCmd.Flags().StringVar(&allToHTMLOptions.Title, "title", "Scanio Report", "Title for generated html file")
+	toHtmlCmd.Flags().StringVarP(&allToHTMLOptions.Input, "input", "i", "", "Input file with sarif report")
 	toHtmlCmd.Flags().StringVarP(&allToHTMLOptions.OutputFile, "output", "o", "scanio-report.html", "output file")
-	toHtmlCmd.Flags().StringVarP(&allToHTMLOptions.SourceFolder, "source", "s", "", "source folder")
-	toHtmlCmd.Flags().StringVar(&allToHTMLOptions.VCS, "vcs", "generic", "vcs type")
+	toHtmlCmd.Flags().StringVarP(&allToHTMLOptions.SourceFolder, "source", "s", "", "Source folder")
+	toHtmlCmd.Flags().StringVar(&allToHTMLOptions.VCS, "vcs", "generic", "VCS type")
+	toHtmlCmd.Flags().BoolVarP(&allToHTMLOptions.NoSuppressions, "no-supressions", "", false, "Enable removing results with suppressions properties")
 }
