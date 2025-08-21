@@ -417,6 +417,47 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse,
 	return result, nil
 }
 
+// CreateIssue creates a new GitHub issue using the provided request.
+//
+// Parameters:
+//
+//	args - VCSIssueCreationRequest containing repository details and issue content
+//
+// Examples:
+//   - Create an issue:
+//     req := shared.VCSIssueCreationRequest{
+//     RepoParam: shared.RepositoryParams{
+//     Namespace: "octocat",
+//     Repository: "hello-world",
+//     },
+//     Title: "New Feature Request",
+//     Body: "Please add support for...",
+//     }
+//     issueNumber, err := githubClient.CreateIssue(req)
+//
+// Returns:
+//   - The number of the created issue
+//   - An error if the issue creation fails
+func (g *VCSGithub) CreateIssue(args shared.VCSIssueCreationRequest) (int, error) {
+	client, err := g.initializeGithubClient()
+	if err != nil {
+		return 0, fmt.Errorf("failed to initialize GitHub client: %w", err)
+	}
+
+	issue := &github.IssueRequest{
+		Title: github.String(args.Title),
+		Body:  github.String(args.Body),
+	}
+
+	ctx := context.Background()
+	createdIssue, _, err := client.Issues.Create(ctx, args.RepoParam.Namespace, args.RepoParam.Repository, issue)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create GitHub issue: %w", err)
+	}
+
+	return createdIssue.GetNumber(), nil
+}
+
 // Setup initializes the global configuration for the VCSGithub instance.
 func (g *VCSGithub) Setup(configData config.Config) (bool, error) {
 	g.setGlobalConfig(&configData)
@@ -428,6 +469,7 @@ func (g *VCSGithub) Setup(configData config.Config) (bool, error) {
 }
 
 func main() {
+
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level:      hclog.Trace,
 		Output:     os.Stderr,
