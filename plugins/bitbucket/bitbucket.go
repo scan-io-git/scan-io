@@ -253,6 +253,18 @@ func (g *VCSBitbucket) CreateIssue(args shared.VCSIssueCreationRequest) (int, er
 	return 0, fmt.Errorf("CreateIssue not implemented for Bitbucket")
 }
 
+// ListIssues is not implemented for Bitbucket yet. Added to satisfy the VCS interface.
+func (g *VCSBitbucket) ListIssues(args shared.VCSListIssuesRequest) ([]shared.IssueParams, error) {
+	g.logger.Error("ListIssues not implemented for Bitbucket", "repo", fmt.Sprintf("%s/%s", args.RepoParam.Namespace, args.RepoParam.Repository))
+	return nil, fmt.Errorf("ListIssues not implemented for Bitbucket")
+}
+
+// UpdateIssue is not implemented for Bitbucket yet. Added to satisfy the VCS interface.
+func (g *VCSBitbucket) UpdateIssue(args shared.VCSIssueUpdateRequest) (bool, error) {
+	g.logger.Error("UpdateIssue not implemented for Bitbucket", "repo", fmt.Sprintf("%s/%s", args.RepoParam.Namespace, args.RepoParam.Repository), "number", args.Number)
+	return false, fmt.Errorf("UpdateIssue not implemented for Bitbucket")
+}
+
 // fetchPR handles fetching pull request changes.
 func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	g.logger.Info("handling PR changes fetching")

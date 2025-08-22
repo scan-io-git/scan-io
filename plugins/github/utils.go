@@ -11,10 +11,10 @@ import (
 
 // safeString safely dereferences a string pointer, returning an empty string if the pointer is nil.
 func safeString(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
+    if s == nil {
+        return ""
+    }
+    return *s
 }
 
 // safeInt safely dereferences an int pointer, returning 0 if the pointer is nil.
@@ -27,10 +27,27 @@ func safeInt(i *int) int {
 
 // safeTime safely dereferences a time pointer, returning 0 if the pointer is nil.
 func safeTime(t *time.Time) int64 {
-	if t == nil {
-		return 0
-	}
-	return t.Unix()
+    if t == nil {
+        return 0
+    }
+    return t.Unix()
+}
+
+// convertToIssueParams converts a GitHub Issue object to shared.IssueParams.
+func convertToIssueParams(iss *github.Issue) shared.IssueParams {
+    if iss == nil {
+        return shared.IssueParams{}
+    }
+
+    return shared.IssueParams{
+        Number:      safeInt(iss.Number),
+        Title:       safeString(iss.Title),
+        State:       safeString(iss.State),
+        Author:      safeUser(iss.User),
+        URL:         safeString(iss.HTMLURL),
+        CreatedDate: safeTime(iss.CreatedAt),
+        UpdatedDate: safeTime(iss.UpdatedAt),
+    }
 }
 
 // safeUser converts a GitHub user to a shared.User, handling nil safely.

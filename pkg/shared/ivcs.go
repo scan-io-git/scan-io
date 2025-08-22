@@ -33,6 +33,17 @@ type PRParams struct {
 	UpdatedDate int64     `json:"updated_date"`
 }
 
+// IssueParams holds the details of an issue.
+type IssueParams struct {
+	Number      int    `json:"number"`
+	Title       string `json:"title"`
+	State       string `json:"state"`
+	Author      User   `json:"author"`
+	URL         string `json:"url"`
+	CreatedDate int64  `json:"created_date"`
+	UpdatedDate int64  `json:"updated_date"`
+}
+
 // User holds the details of a user.
 type User struct {
 	UserName string `json:"user_name"`
@@ -96,11 +107,26 @@ type VCSIssueCreationRequest struct {
 	Body  string `json:"body"`
 }
 
+// VCSIssueUpdateRequest represents a request to update an existing issue.
+type VCSIssueUpdateRequest struct {
+	VCSRequestBase
+	Number int    `json:"number"`
+	Title  string `json:"title"`
+	Body   string `json:"body"`
+	State  string `json:"state"` // optional: "open" or "closed"
+}
+
 // VCSAddCommentToPRRequest represents a request to add a comment to a PR.
 type VCSAddCommentToPRRequest struct {
 	VCSRequestBase
 	Comment   string   `json:"comment"`
 	FilePaths []string `json:"file_paths"`
+}
+
+// VCSListIssuesRequest represents a request to list issues in a repository.
+type VCSListIssuesRequest struct {
+	VCSRequestBase
+	State string `json:"state"` // open, closed, all; default open
 }
 
 // ListFuncResult holds the result of a list function.
@@ -126,6 +152,11 @@ type VCSRetrievePRInformationResponse struct {
 	PR PRParams `json:"pr"`
 }
 
+// VCSListIssuesResponse represents a response from listing issues.
+type VCSListIssuesResponse struct {
+	Issues []IssueParams `json:"issues"`
+}
+
 // VCS defines the interface for VCS-related operations.
 type VCS interface {
 	Setup(configData config.Config) (bool, error)
@@ -136,6 +167,8 @@ type VCS interface {
 	SetStatusOfPR(req VCSSetStatusOfPRRequest) (bool, error)
 	AddCommentToPR(req VCSAddCommentToPRRequest) (bool, error)
 	CreateIssue(req VCSIssueCreationRequest) (int, error)
+	ListIssues(req VCSListIssuesRequest) ([]IssueParams, error)
+	UpdateIssue(req VCSIssueUpdateRequest) (bool, error)
 }
 
 // VCSRPCClient implements the VCS interface for RPC clients.
@@ -223,6 +256,26 @@ func (c *VCSRPCClient) CreateIssue(req VCSIssueCreationRequest) (int, error) {
 	return resp, nil
 }
 
+// ListIssues calls the ListIssues method on the RPC client.
+func (c *VCSRPCClient) ListIssues(req VCSListIssuesRequest) ([]IssueParams, error) {
+	var resp VCSListIssuesResponse
+	err := c.client.Call("Plugin.ListIssues", req, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("RPC client ListIssues call failed: %w", err)
+	}
+	return resp.Issues, nil
+}
+
+// UpdateIssue calls the UpdateIssue method on the RPC client.
+func (c *VCSRPCClient) UpdateIssue(req VCSIssueUpdateRequest) (bool, error) {
+	var resp bool
+	err := c.client.Call("Plugin.UpdateIssue", req, &resp)
+	if err != nil {
+		return false, fmt.Errorf("RPC client UpdateIssue call failed: %w", err)
+	}
+	return resp, nil
+}
+
 // VCSRPCServer wraps a VCS implementation to provide an RPC server.
 type VCSRPCServer struct {
 	Impl VCS
@@ -304,6 +357,26 @@ func (s *VCSRPCServer) CreateIssue(args VCSIssueCreationRequest, resp *int) erro
 	*resp, err = s.Impl.CreateIssue(args)
 	if err != nil {
 		return fmt.Errorf("VCS CreateIssue failed: %w", err)
+	}
+	return nil
+}
+
+// ListIssues calls the ListIssues method on the VCS implementation.
+func (s *VCSRPCServer) ListIssues(args VCSListIssuesRequest, resp *VCSListIssuesResponse) error {
+	issues, err := s.Impl.ListIssues(args)
+	if err != nil {
+		return fmt.Errorf("VCS ListIssues failed: %w", err)
+	}
+	resp.Issues = issues
+	return nil
+}
+
+// UpdateIssue calls the UpdateIssue method on the VCS implementation.
+func (s *VCSRPCServer) UpdateIssue(args VCSIssueUpdateRequest, resp *bool) error {
+	var err error
+	*resp, err = s.Impl.UpdateIssue(args)
+	if err != nil {
+		return fmt.Errorf("VCS UpdateIssue failed: %w", err)
 	}
 	return nil
 }

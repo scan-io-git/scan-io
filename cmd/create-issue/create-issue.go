@@ -20,13 +20,15 @@ type RunOptions struct {
 }
 
 var (
-	AppConfig   *config.Config
-	opts        RunOptions
+	AppConfig *config.Config
+	opts      RunOptions
 
 	// CreateIssueCmd represents the command to create a GitHub issue.
 	CreateIssueCmd = &cobra.Command{
 		Use:                   "create-issue --namespace NAMESPACE --repository REPO --title TITLE [--body BODY]",
 		Short:                 "Create a GitHub issue (minimal command)",
+		Example:               "go run ./main.go create-issue --namespace scan-io-git --repository scanio-test --title 'My Title' --body 'My Body'",
+		Hidden:                true,
 		SilenceUsage:          true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -90,8 +92,14 @@ func init() {
 }
 
 func validate(o *RunOptions) error {
-	if o.Namespace == "" { return fmt.Errorf("--namespace is required") }
-	if o.Repository == "" { return fmt.Errorf("--repository is required") }
-	if o.Title == "" { return fmt.Errorf("--title is required") }
+	if o.Namespace == "" {
+		return fmt.Errorf("--namespace is required")
+	}
+	if o.Repository == "" {
+		return fmt.Errorf("--repository is required")
+	}
+	if o.Title == "" {
+		return fmt.Errorf("--title is required")
+	}
 	return nil
 }

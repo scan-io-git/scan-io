@@ -12,6 +12,8 @@ import (
 	"github.com/scan-io-git/scan-io/cmd/fetch"
 	integrationvcs "github.com/scan-io-git/scan-io/cmd/integration-vcs"
 	"github.com/scan-io-git/scan-io/cmd/list"
+	listissues "github.com/scan-io-git/scan-io/cmd/list-issues"
+	updateissue "github.com/scan-io-git/scan-io/cmd/update-issue"
 	"github.com/scan-io-git/scan-io/cmd/version"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
@@ -72,6 +74,8 @@ func initConfig() {
 	analyse.Init(AppConfig)
 	integrationvcs.Init(AppConfig)
 	createissue.Init(AppConfig)
+	listissues.Init(AppConfig)
+	updateissue.Init(AppConfig)
 	version.Init(AppConfig)
 }
 
@@ -84,6 +88,8 @@ func init() {
 	rootCmd.AddCommand(analyse.AnalyseCmd)
 	rootCmd.AddCommand(integrationvcs.IntegrationVCSCmd)
 	rootCmd.AddCommand(createissue.CreateIssueCmd)
+	rootCmd.AddCommand(listissues.ListIssuesCmd)
+	rootCmd.AddCommand(updateissue.UpdateIssueCmd)
 	rootCmd.AddCommand(version.NewVersionCmd())
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file")
 }
