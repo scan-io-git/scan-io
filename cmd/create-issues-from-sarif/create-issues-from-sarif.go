@@ -76,46 +76,12 @@ var (
 					if res.RuleID != nil {
 						ruleID = *res.RuleID
 					}
-					// Prefer human-readable rule description from the SARIF rules table
-					titleBase := getRuleFullDescription(run, ruleID)
-					if titleBase == "" {
-						// fallback to result provided title or message
-						titleBase = getStringProp(res.Properties, "Title")
-					}
-					if titleBase == "" && res.Message.Text != nil {
-						titleBase = *res.Message.Text
-					}
-					if titleBase == "" {
-						titleBase = ruleID
-					}
-					titleText := fmt.Sprintf("[SARIF][%s][%s]", ruleID, titleBase)
 
-					fileURI := ""
-					line := 0
-					endLine := 0
-					if len(res.Locations) > 0 {
-						loc := res.Locations[0]
-						if loc.PhysicalLocation != nil && loc.PhysicalLocation.ArtifactLocation != nil && loc.PhysicalLocation.ArtifactLocation.URI != nil {
-							uri := *loc.PhysicalLocation.ArtifactLocation.URI
-							if filepath.IsAbs(uri) && opts.SourceFolder != "" {
-								rel := strings.TrimPrefix(uri, opts.SourceFolder)
-								if strings.HasPrefix(rel, string(filepath.Separator)) {
-									rel = rel[1:]
-								}
-								fileURI = rel
-							} else {
-								fileURI = uri
-							}
-						}
-						if loc.PhysicalLocation != nil && loc.PhysicalLocation.Region != nil {
-							if loc.PhysicalLocation.Region.StartLine != nil {
-								line = *loc.PhysicalLocation.Region.StartLine
-							}
-							if loc.PhysicalLocation.Region.EndLine != nil {
-								endLine = *loc.PhysicalLocation.Region.EndLine
-							}
-						}
-					}
+					titleText := fmt.Sprintf("[SARIF][%s]", ruleID)
+
+					// derive file path and region info from SARIF result
+					fileURI := extractFileURIFromResult(res, opts.SourceFolder)
+					line, endLine := extractRegionFromResult(res)
 					// Normalize file path for title readability
 					shortPath := filepath.ToSlash(fileURI)
 					if shortPath == "" {
@@ -273,6 +239,82 @@ func encodePathSegments(p string) string {
 		parts[i] = url.PathEscape(seg)
 	}
 	return strings.Join(parts, "/")
+}
+
+// extractLocationInfo derives a file path (relative when appropriate), start line and end line
+// from a SARIF result's first location. It mirrors the previous inline logic used in the
+// command handler. Returns (fileURI, startLine, endLine).
+// extractFileURIFromResult returns a file path derived from the SARIF result's first location.
+// If the URI is absolute and a non-empty sourceFolder is provided, the returned path will be
+// made relative to sourceFolder (matching previous behaviour).
+func extractFileURIFromResult(res *sarif.Result, sourceFolder string) string {
+	if res == nil || len(res.Locations) == 0 {
+		return ""
+	}
+	loc := res.Locations[0]
+	if loc.PhysicalLocation == nil {
+		return ""
+	}
+	art := loc.PhysicalLocation.ArtifactLocation
+	if art == nil || art.URI == nil {
+		return ""
+	}
+	uri := *art.URI
+	// If URI is not absolute or there's no sourceFolder provided, return it unchanged.
+	if !filepath.IsAbs(uri) || sourceFolder == "" {
+		return uri
+	}
+
+	// Normalize sourceFolder to an absolute, cleaned path so relative inputs like
+	// "../scanio-test" match absolute URIs such as "/home/jekos/.../scanio-test/...".
+	if absSource, err := filepath.Abs(sourceFolder); err == nil {
+		absSource = filepath.Clean(absSource)
+
+		// Prefer filepath.Rel which will produce a relative path when uri is under absSource.
+		if rel, err := filepath.Rel(absSource, uri); err == nil {
+			// If rel does not escape to parent directories, it's a proper subpath.
+			if rel != "" && !strings.HasPrefix(rel, "..") {
+				return rel
+			}
+		}
+
+		// Fallback: trim the absolute source prefix explicitly when possible.
+		prefix := absSource + string(filepath.Separator)
+		if strings.HasPrefix(uri, prefix) {
+			return strings.TrimPrefix(uri, prefix)
+		}
+		if strings.HasPrefix(uri, absSource) {
+			return strings.TrimPrefix(uri, absSource)
+		}
+	}
+
+	// Last-resort: try trimming the raw sourceFolder string provided by the user.
+	rel := strings.TrimPrefix(uri, sourceFolder)
+	if strings.HasPrefix(rel, string(filepath.Separator)) {
+		return rel[1:]
+	}
+	return rel
+}
+
+// extractRegionFromResult returns start and end line numbers (0 when not present)
+// taken from the SARIF result's first location region.
+func extractRegionFromResult(res *sarif.Result) (int, int) {
+	if res == nil || len(res.Locations) == 0 {
+		return 0, 0
+	}
+	loc := res.Locations[0]
+	if loc.PhysicalLocation == nil || loc.PhysicalLocation.Region == nil {
+		return 0, 0
+	}
+	start := 0
+	end := 0
+	if loc.PhysicalLocation.Region.StartLine != nil {
+		start = *loc.PhysicalLocation.Region.StartLine
+	}
+	if loc.PhysicalLocation.Region.EndLine != nil {
+		end = *loc.PhysicalLocation.Region.EndLine
+	}
+	return start, end
 }
 
 // getRuleFullDescription returns the human-readable description for a rule from the run's rules table.
