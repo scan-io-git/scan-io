@@ -37,6 +37,7 @@ type PRParams struct {
 type IssueParams struct {
 	Number      int    `json:"number"`
 	Title       string `json:"title"`
+	Body        string `json:"body,omitempty"`
 	State       string `json:"state"`
 	Author      User   `json:"author"`
 	URL         string `json:"url"`

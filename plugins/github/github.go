@@ -36,45 +36,45 @@ type VCSGithub struct {
 
 // UpdateIssue updates an existing GitHub issue's title and/or body.
 func (g *VCSGithub) UpdateIssue(args shared.VCSIssueUpdateRequest) (bool, error) {
-    // Basic validation
-    if args.RepoParam.Namespace == "" || args.RepoParam.Repository == "" {
-        return false, fmt.Errorf("namespace and repository are required")
-    }
-    if args.Number <= 0 {
-        return false, fmt.Errorf("valid issue number is required")
-    }
+	// Basic validation
+	if args.RepoParam.Namespace == "" || args.RepoParam.Repository == "" {
+		return false, fmt.Errorf("namespace and repository are required")
+	}
+	if args.Number <= 0 {
+		return false, fmt.Errorf("valid issue number is required")
+	}
 
-    client, err := g.initializeGithubClient()
-    if err != nil {
-        return false, fmt.Errorf("failed to initialize GitHub client: %w", err)
-    }
+	client, err := g.initializeGithubClient()
+	if err != nil {
+		return false, fmt.Errorf("failed to initialize GitHub client: %w", err)
+	}
 
-    req := &github.IssueRequest{}
-    if strings.TrimSpace(args.Title) != "" {
-        req.Title = github.String(args.Title)
-    }
-    if strings.TrimSpace(args.Body) != "" {
-        req.Body = github.String(args.Body)
-    }
-    if s := strings.ToLower(strings.TrimSpace(args.State)); s != "" {
-        switch s {
-        case "open", "closed":
-            req.State = github.String(s)
-        default:
-            return false, fmt.Errorf("invalid state: %s (allowed: open, closed)", args.State)
-        }
-    }
+	req := &github.IssueRequest{}
+	if strings.TrimSpace(args.Title) != "" {
+		req.Title = github.String(args.Title)
+	}
+	if strings.TrimSpace(args.Body) != "" {
+		req.Body = github.String(args.Body)
+	}
+	if s := strings.ToLower(strings.TrimSpace(args.State)); s != "" {
+		switch s {
+		case "open", "closed":
+			req.State = github.String(s)
+		default:
+			return false, fmt.Errorf("invalid state: %s (allowed: open, closed)", args.State)
+		}
+	}
 
-    if req.Title == nil && req.Body == nil && req.State == nil {
-        return false, fmt.Errorf("nothing to update: provide title, body and/or state")
-    }
+	if req.Title == nil && req.Body == nil && req.State == nil {
+		return false, fmt.Errorf("nothing to update: provide title, body and/or state")
+	}
 
-    _, _, err = client.Issues.Edit(context.Background(), args.RepoParam.Namespace, args.RepoParam.Repository, args.Number, req)
-    if err != nil {
-        return false, fmt.Errorf("failed to update GitHub issue: %w", err)
-    }
+	_, _, err = client.Issues.Edit(context.Background(), args.RepoParam.Namespace, args.RepoParam.Repository, args.Number, req)
+	if err != nil {
+		return false, fmt.Errorf("failed to update GitHub issue: %w", err)
+	}
 
-    return true, nil
+	return true, nil
 }
 
 // newVCSGithub creates a new instance of VCSGithub.
@@ -512,13 +512,15 @@ func (g *VCSGithub) ListIssues(args shared.VCSListIssuesRequest) ([]shared.Issue
 	state := strings.ToLower(strings.TrimSpace(args.State))
 	switch state {
 	case "", "open", "closed", "all":
-		if state == "" { state = "open" }
+		if state == "" {
+			state = "open"
+		}
 	default:
 		return nil, fmt.Errorf("invalid state: %s (allowed: open, closed, all)", args.State)
 	}
 
 	opt := &github.IssueListByRepoOptions{
-		State: state,
+		State:       state,
 		ListOptions: github.ListOptions{PerPage: 100, Page: 1},
 	}
 
@@ -528,8 +530,13 @@ func (g *VCSGithub) ListIssues(args shared.VCSListIssuesRequest) ([]shared.Issue
 		if err != nil {
 			return nil, fmt.Errorf("failed to list issues: %w", err)
 		}
+		if len(issues) > 0 {
+			g.logger.Debug("first issue", "number", issues[0].GetNumber(), "title", issues[0].GetTitle(), "body", issues[0].GetBody())
+		}
 		all = append(all, issues...)
-		if resp == nil || resp.NextPage == 0 { break }
+		if resp == nil || resp.NextPage == 0 {
+			break
+		}
 		opt.Page = resp.NextPage
 	}
 

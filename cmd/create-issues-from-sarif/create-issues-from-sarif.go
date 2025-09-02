@@ -6,10 +6,12 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	hclog "github.com/hashicorp/go-hclog"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	internalsarif "github.com/scan-io-git/scan-io/internal/sarif"
 	"github.com/scan-io-git/scan-io/pkg/shared"
@@ -61,127 +63,16 @@ var (
 			report.EnrichResultsTitleProperty()
 			// No need to enrich locations here; we'll compute file path from URI directly
 
-			created := 0
-			// Iterate runs and results
-			for _, run := range report.Runs {
-				for _, res := range run.Results {
-					// Only high severity: map to Level == "error"
-					level, _ := res.Properties["Level"].(string)
-					if strings.ToLower(level) != "error" {
-						continue
-					}
+			//TODO: get all open github issues
+			openIssues, err := listOpenIssues(opts)
+			if err != nil {
+				return err
+			}
+			lg.Info("fetched open issues from repository", "count", len(openIssues))
 
-					// Basic fields
-					ruleID := ""
-					if res.RuleID != nil {
-						ruleID = *res.RuleID
-					}
-
-					titleText := fmt.Sprintf("[SARIF][%s]", ruleID)
-
-					// derive file path and region info from SARIF result
-					fileURI := extractFileURIFromResult(res, opts.SourceFolder)
-					line, endLine := extractRegionFromResult(res)
-					// Normalize file path for title readability
-					shortPath := filepath.ToSlash(fileURI)
-					if shortPath == "" {
-						shortPath = "<unknown>"
-					}
-					if line > 0 {
-						if endLine > line {
-							titleText = fmt.Sprintf("%s at %s:%d-%d", titleText, shortPath, line, endLine)
-						} else {
-							titleText = fmt.Sprintf("%s at %s:%d", titleText, shortPath, line)
-						}
-					} else {
-						titleText = fmt.Sprintf("%s at %s", titleText, shortPath)
-					}
-
-					desc := getStringProp(res.Properties, "Description")
-					if desc == "" && res.Message.Text != nil {
-						desc = *res.Message.Text
-					}
-
-					// Optionally include a GitHub permalink if ref is provided
-					// If EndLine is present, use a range anchor: #Lstart-Lend
-					permalink := ""
-					if opts.Ref != "" && shortPath != "<unknown>" && line > 0 {
-						encodedPath := encodePathSegments(shortPath)
-						if endLine > line {
-							permalink = fmt.Sprintf("https://github.com/%s/%s/blob/%s/%s#L%d-L%d", opts.Namespace, opts.Repository, opts.Ref, encodedPath, line, endLine)
-						} else {
-							permalink = fmt.Sprintf("https://github.com/%s/%s/blob/%s/%s#L%d", opts.Namespace, opts.Repository, opts.Ref, encodedPath, line)
-						}
-					}
-
-					// Include line or line range in the body
-					lineInfo := fmt.Sprintf("Line: %d", line)
-					if endLine > line {
-						lineInfo = fmt.Sprintf("Lines: %d-%d", line, endLine)
-					}
-
-					// Compute SHA256 over the referenced snippet (single line or range)
-					snippetHash := ""
-					if shortPath != "<unknown>" && line > 0 && opts.SourceFolder != "" {
-						absPath := filepath.Join(opts.SourceFolder, filepath.FromSlash(shortPath))
-						if data, err := os.ReadFile(absPath); err == nil {
-							lines := strings.Split(string(data), "\n")
-							start := line
-							end := line
-							if endLine > line {
-								end = endLine
-							}
-							// Validate bounds (1-based line numbers)
-							if start >= 1 && start <= len(lines) {
-								if end > len(lines) {
-									end = len(lines)
-								}
-								if end >= start {
-									snippet := strings.Join(lines[start-1:end], "\n")
-									sum := sha256.Sum256([]byte(snippet))
-									snippetHash = fmt.Sprintf("%x", sum[:])
-								}
-							}
-						}
-					}
-
-					body := fmt.Sprintf("Severity: %s\nRule: %s\nFile: %s\n%s\n", strings.ToUpper(level), ruleID, shortPath, lineInfo)
-					if permalink != "" {
-						body += fmt.Sprintf("Permalink: %s\n", permalink)
-					}
-					if snippetHash != "" {
-						body += fmt.Sprintf("Snippet SHA256: %s\n", snippetHash)
-					}
-					body += "\n" + desc
-
-					// Build request for VCS plugin
-					req := shared.VCSIssueCreationRequest{
-						VCSRequestBase: shared.VCSRequestBase{
-							RepoParam: shared.RepositoryParams{
-								Namespace:  opts.Namespace,
-								Repository: opts.Repository,
-							},
-							Action: "createIssue",
-						},
-						Title: titleText,
-						Body:  body,
-					}
-
-					// Call plugin
-					err := shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, "github", func(raw interface{}) error {
-						vcs, ok := raw.(shared.VCS)
-						if !ok {
-							return fmt.Errorf("invalid VCS plugin type")
-						}
-						_, err := vcs.CreateIssue(req)
-						return err
-					})
-					if err != nil {
-						lg.Error("failed to create issue via plugin", "error", err, "rule", ruleID, "file", shortPath, "line", line)
-						return errors.NewCommandError(opts, nil, fmt.Errorf("create issue failed: %w", err), 2)
-					}
-					created++
-				}
+			created, err := processSARIFReport(report, opts, lg)
+			if err != nil {
+				return err
 			}
 
 			lg.Info("issues created from SARIF high severity findings", "count", created)
@@ -239,6 +130,267 @@ func encodePathSegments(p string) string {
 		parts[i] = url.PathEscape(seg)
 	}
 	return strings.Join(parts, "/")
+}
+
+// buildSARIFTitle creates a concise issue title for a SARIF result using ruleID and location info.
+// It formats as "[SARIF][<ruleID>] at <file>:<line>" or with a range when endLine > line.
+func buildSARIFTitle(ruleID, fileURI string, line, endLine int) string {
+	title := fmt.Sprintf("[SARIF][%s]", ruleID)
+	if line > 0 {
+		if endLine > line {
+			return fmt.Sprintf("%s at %s:%d-%d", title, fileURI, line, endLine)
+		}
+		return fmt.Sprintf("%s at %s:%d", title, fileURI, line)
+	}
+	return fmt.Sprintf("%s at %s", title, fileURI)
+}
+
+// computeSnippetHash reads the snippet (single line or range) from sourceFolder + fileURI
+// and returns its SHA256 hex string. Returns empty string on any error or if inputs are invalid.
+func computeSnippetHash(fileURI string, line, endLine int, sourceFolder string) string {
+	if fileURI == "" || fileURI == "<unknown>" || line <= 0 || sourceFolder == "" {
+		return ""
+	}
+	absPath := filepath.Join(sourceFolder, filepath.FromSlash(fileURI))
+	data, err := os.ReadFile(absPath)
+	if err != nil {
+		return ""
+	}
+	lines := strings.Split(string(data), "\n")
+	start := line
+	end := line
+	if endLine > line {
+		end = endLine
+	}
+	// Validate bounds (1-based line numbers)
+	if start < 1 || start > len(lines) {
+		return ""
+	}
+	if end > len(lines) {
+		end = len(lines)
+	}
+	if end < start {
+		return ""
+	}
+	snippet := strings.Join(lines[start-1:end], "\n")
+	sum := sha256.Sum256([]byte(snippet))
+	return fmt.Sprintf("%x", sum[:])
+}
+
+// getScannerName returns the tool/driver name for a SARIF run when available.
+func getScannerName(run *sarif.Run) string {
+	if run == nil {
+		return ""
+	}
+	if run.Tool.Driver == nil {
+		return ""
+	}
+	if run.Tool.Driver.Name != "" {
+		return run.Tool.Driver.Name
+	}
+	return ""
+}
+
+// OpenIssueReport represents parsed metadata from an open issue body.
+type OpenIssueReport struct {
+	Severity    string
+	Scanner     string
+	FilePath    string
+	StartLine   int
+	EndLine     int
+	Hash        string
+	Description string
+}
+
+// OpenIssueEntry combines parsed metadata from an open issue body with the
+// original IssueParams returned by the VCS plugin. The map returned by
+// listOpenIssues uses the issue number as key and this struct as value.
+type OpenIssueEntry struct {
+	OpenIssueReport
+	Params shared.IssueParams
+}
+
+// parseIssueBody attempts to read the body produced by this command and extract
+// known metadata lines (Severity, Scanner, File, Line(s), Snippet SHA256, Description).
+// Returns an OpenIssueReport with zero values when fields are missing.
+func parseIssueBody(body string) OpenIssueReport {
+	rep := OpenIssueReport{}
+	for _, line := range strings.Split(body, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "Severity:") {
+			rep.Severity = strings.TrimSpace(strings.TrimPrefix(line, "Severity:"))
+			continue
+		}
+		if strings.HasPrefix(line, "Scanner:") {
+			rep.Scanner = strings.TrimSpace(strings.TrimPrefix(line, "Scanner:"))
+			continue
+		}
+		if strings.HasPrefix(line, "File:") {
+			rep.FilePath = strings.TrimSpace(strings.TrimPrefix(line, "File:"))
+			continue
+		}
+		if strings.HasPrefix(line, "Line:") {
+			v := strings.TrimSpace(strings.TrimPrefix(line, "Line:"))
+			if n, err := strconv.Atoi(v); err == nil {
+				rep.StartLine = n
+				rep.EndLine = n
+			}
+			continue
+		}
+		if strings.HasPrefix(line, "Lines:") {
+			v := strings.TrimSpace(strings.TrimPrefix(line, "Lines:"))
+			parts := strings.Split(v, "-")
+			if len(parts) == 2 {
+				if s, err := strconv.Atoi(strings.TrimSpace(parts[0])); err == nil {
+					rep.StartLine = s
+				}
+				if e, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil {
+					rep.EndLine = e
+				}
+			}
+			continue
+		}
+		if strings.HasPrefix(line, "Snippet SHA256:") {
+			rep.Hash = strings.TrimSpace(strings.TrimPrefix(line, "Snippet SHA256:"))
+			continue
+		}
+		// When we hit a non-metadata line and description is empty, assume rest is description
+		if rep.Description == "" && line != "" {
+			rep.Description = line
+		}
+	}
+	return rep
+}
+
+// listOpenIssues calls the VCS plugin to list open issues for the configured repo
+// and parses their bodies into OpenIssueReport structures.
+func listOpenIssues(options RunOptions) (map[int]OpenIssueEntry, error) {
+	req := shared.VCSListIssuesRequest{
+		VCSRequestBase: shared.VCSRequestBase{
+			RepoParam: shared.RepositoryParams{
+				Namespace:  options.Namespace,
+				Repository: options.Repository,
+			},
+			Action: "listIssues",
+		},
+		State: "open",
+	}
+
+	var issues []shared.IssueParams
+	err := shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, "github", func(raw interface{}) error {
+		vcs, ok := raw.(shared.VCS)
+		if !ok {
+			return fmt.Errorf("invalid VCS plugin type")
+		}
+		list, err := vcs.ListIssues(req)
+		if err != nil {
+			return err
+		}
+		issues = list
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	reports := make(map[int]OpenIssueEntry, len(issues))
+	for _, it := range issues {
+		rep := parseIssueBody(it.Body)
+		reports[it.Number] = OpenIssueEntry{
+			OpenIssueReport: rep,
+			Params:          it,
+		}
+	}
+	return reports, nil
+}
+
+// processSARIFReport iterates runs/results in the SARIF report and creates VCS issues for
+// high severity findings. Returns number of created issues or an error.
+func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hclog.Logger) (int, error) {
+	created := 0
+	for _, run := range report.Runs {
+		for _, res := range run.Results {
+			level, _ := res.Properties["Level"].(string)
+			if strings.ToLower(level) != "error" {
+				continue
+			}
+
+			ruleID := ""
+			if res.RuleID != nil {
+				ruleID = *res.RuleID
+			}
+
+			fileURI := filepath.ToSlash(extractFileURIFromResult(res, options.SourceFolder))
+			if fileURI == "" {
+				fileURI = "<unknown>"
+			}
+			line, endLine := extractRegionFromResult(res)
+
+			titleText := buildSARIFTitle(ruleID, fileURI, line, endLine)
+
+			desc := getStringProp(res.Properties, "Description")
+			if desc == "" && res.Message.Text != nil {
+				desc = *res.Message.Text
+			}
+
+			permalink := ""
+			if options.Ref != "" && fileURI != "<unknown>" && line > 0 {
+				encodedPath := encodePathSegments(fileURI)
+				if endLine > line {
+					permalink = fmt.Sprintf("https://github.com/%s/%s/blob/%s/%s#L%d-L%d", options.Namespace, options.Repository, options.Ref, encodedPath, line, endLine)
+				} else {
+					permalink = fmt.Sprintf("https://github.com/%s/%s/blob/%s/%s#L%d", options.Namespace, options.Repository, options.Ref, encodedPath, line)
+				}
+			}
+
+			lineInfo := fmt.Sprintf("Line: %d", line)
+			if endLine > line {
+				lineInfo = fmt.Sprintf("Lines: %d-%d", line, endLine)
+			}
+
+			snippetHash := computeSnippetHash(fileURI, line, endLine, options.SourceFolder)
+			scannerName := getScannerName(run)
+
+			body := fmt.Sprintf("Severity: %s\nRule: %s\nFile: %s\n%s\n", strings.ToUpper(level), ruleID, fileURI, lineInfo)
+			if scannerName != "" {
+				body += fmt.Sprintf("Scanner: %s\n", scannerName)
+			}
+			if permalink != "" {
+				body += fmt.Sprintf("Permalink: %s\n", permalink)
+			}
+			if snippetHash != "" {
+				body += fmt.Sprintf("Snippet SHA256: %s\n", snippetHash)
+			}
+			body += "\n" + desc
+
+			req := shared.VCSIssueCreationRequest{
+				VCSRequestBase: shared.VCSRequestBase{
+					RepoParam: shared.RepositoryParams{
+						Namespace:  options.Namespace,
+						Repository: options.Repository,
+					},
+					Action: "createIssue",
+				},
+				Title: titleText,
+				Body:  body,
+			}
+
+			err := shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, "github", func(raw interface{}) error {
+				vcs, ok := raw.(shared.VCS)
+				if !ok {
+					return fmt.Errorf("invalid VCS plugin type")
+				}
+				_, err := vcs.CreateIssue(req)
+				return err
+			})
+			if err != nil {
+				lg.Error("failed to create issue via plugin", "error", err, "rule", ruleID, "file", fileURI, "line", line)
+				return created, errors.NewCommandError(options, nil, fmt.Errorf("create issue failed: %w", err), 2)
+			}
+			created++
+		}
+	}
+	return created, nil
 }
 
 // extractLocationInfo derives a file path (relative when appropriate), start line and end line

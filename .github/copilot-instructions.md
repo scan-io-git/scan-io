@@ -3,6 +3,7 @@
 ## Commands
 - Build cli with: `make build-cli`
 - Build plugins with: `make build-plugins`
+- Build everything with: `make build`
 - Test with: `make test`
 - Use `go fmt` for formatting
 
