@@ -14,6 +14,8 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
+const PluginName = "codeql"
+
 // TODO: Wrap it in a custom error handler to add to the stack trace.
 // Metadata of the plugin
 var (
@@ -26,12 +28,14 @@ var (
 type ScannerCodeQL struct {
 	logger       hclog.Logger
 	globalConfig *config.Config
+	name         string
 }
 
 // newScannerCodeQL creates a new instance of ScannerCodeQL.
 func newScannerCodeQL(logger hclog.Logger) *ScannerCodeQL {
 	return &ScannerCodeQL{
 		logger: logger,
+		name:   PluginName,
 	}
 }
 
