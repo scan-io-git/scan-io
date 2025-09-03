@@ -5,18 +5,15 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/go-git/go-git/v5"
 	"github.com/hashicorp/go-hclog"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 
+	ftutils "github.com/scan-io-git/scan-io/internal/fetcher-utils"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
-)
-
-const (
-	BasicMode  = "basic"
-	PRScanMode = "fetchPR"
 )
 
 // Fetcher represents the configuration and behavior of a fetcher.
@@ -46,7 +43,7 @@ func New(pluginName, authType, sshKey, branch, outputPath string, rmListExts []s
 }
 
 // PrepFetchReqList prepares fetch arguments for the repositories.
-func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.RepositoryParams) ([]shared.VCSFetchRequest, error) {
+func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.RepositoryParams, fetchMode string, depth int, singleBranch bool, tagMode git.TagMode) ([]shared.VCSFetchRequest, error) {
 	var fetchReqList []shared.VCSFetchRequest
 
 	for _, repo := range repos {
@@ -66,7 +63,11 @@ func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.Repository
 			repo.Branch = f.Branch
 		}
 
-		fetchMode := getFetchMode(repo)
+		mode, err := ftutils.GetFetchMode(repo.PullRequestID, fetchMode)
+		if err != nil {
+			f.logger.Warn("pr fetch mode", "msg", err)
+		}
+
 		if f.PluginName == "bitbucket" && strings.HasPrefix(repo.Namespace, "~") {
 			repo.Namespace = strings.TrimPrefix(repo.Namespace, "~") // in the case of user repos we should put results into the same folder for ssh and http links
 		}
@@ -81,7 +82,7 @@ func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.Repository
 		}
 
 		f.logger.Debug("Final destination determined", "outputPath", targetFolder)
-		fetchReqList = append(fetchReqList, f.createFetchRequest(repo, cloneURL, targetFolder, fetchMode))
+		fetchReqList = append(fetchReqList, f.createFetchRequest(repo, cloneURL, targetFolder, mode, depth, singleBranch, tagMode))
 	}
 	return fetchReqList, nil
 }
@@ -94,23 +95,18 @@ func (f *Fetcher) getCloneURL(repo shared.RepositoryParams) string {
 	return repo.SSHLink
 }
 
-// getFetchMode determines the mode for the fetch request.
-func getFetchMode(repo shared.RepositoryParams) string {
-	if repo.PullRequestID != "" {
-		return PRScanMode
-	}
-	return BasicMode
-}
-
 // createFetchRequest creates a VCSFetchRequest with the specified parameters.
-func (f *Fetcher) createFetchRequest(repo shared.RepositoryParams, cloneURL, targetFolder, fetchMode string) shared.VCSFetchRequest {
+func (f *Fetcher) createFetchRequest(repo shared.RepositoryParams, cloneURL, targetFolder string, fetchMode ftutils.FetchMode, depth int, singleBranch bool, TagMode git.TagMode) shared.VCSFetchRequest {
 	return shared.VCSFetchRequest{
 		CloneURL:     cloneURL,
 		Branch:       repo.Branch,
 		AuthType:     f.AuthType,
 		SSHKey:       f.SshKey,
 		TargetFolder: targetFolder,
-		Mode:         fetchMode,
+		FetchMode:    fetchMode,
+		Depth:        depth,
+		SingleBranch: singleBranch,
+		TagMode:      TagMode,
 		RepoParam:    repo,
 	}
 }
