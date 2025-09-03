@@ -39,7 +39,6 @@ func ValidateFetchArgs(args *shared.VCSFetchRequest) error {
 		"repository URL":      args.CloneURL,
 		"authentication type": args.AuthType,
 		"target folder":       args.TargetFolder,
-		"mode":                args.Mode,
 		// "RepoParam": args.RepoParam, // TODO: Add params validation
 	}
 

@@ -22,6 +22,11 @@ type RunOptionsFetch struct {
 	SSHKey        string   `json:"ssh_key,omitempty"`
 	Branch        string   `json:"branch,omitempty"`
 	OutputPath    string   `json:"output_path,omitempty"`
+	PrMode        string   `json:"pr_mode,omitempty"`
+	SingleBranch  bool     `json:"single_branch,omitempty"`
+	Tags          bool     `json:"tags,omitempty"`
+	NoTags        bool     `json:"no_tags,omitempty"`
+	Depth         int      `json:"depth,omitempty"`
 	RmListExts    []string `json:"rm_list_exts"`
 	Threads       int      `json:"threads"`
 }
@@ -86,7 +91,17 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 		return errors.NewCommandError(fetchOptions, nil, fmt.Errorf("invalid fetch arguments: %w", err), 1)
 	}
 
-	mode := determineMode(args)
+	cmdMode := determineCmdMode(args)
+	tagMode, err := determineAddFlags(cmd, AppConfig, &fetchOptions)
+	if err != nil {
+		return errors.NewCommandError(fetchOptions, nil, err, 1)
+	}
+
+	reposParams, err := prepareFetchTargets(&fetchOptions, args, cmdMode)
+	if err != nil {
+		logger.Error("failed to prepare fetch targets", "error", err)
+		return errors.NewCommandError(fetchOptions, nil, fmt.Errorf("failed to prepare fetch targets: %w", err), 1)
+	}
 
 	f := fetcher.New(
 		fetchOptions.VCSPluginName,
@@ -99,13 +114,7 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 		logger,
 	)
 
-	reposParams, err := prepareFetchTargets(&fetchOptions, args, mode)
-	if err != nil {
-		logger.Error("failed to prepare fetch targets", "error", err)
-		return errors.NewCommandError(fetchOptions, nil, fmt.Errorf("failed to prepare fetch targets: %w", err), 1)
-	}
-
-	fetchReqList, err := f.PrepFetchReqList(AppConfig, reposParams)
+	fetchReqList, err := f.PrepFetchReqList(AppConfig, reposParams, fetchOptions.PrMode, fetchOptions.Depth, fetchOptions.SingleBranch, tagMode)
 	if err != nil {
 		logger.Error("failed to prepare fetch requests", "error", err)
 		return errors.NewCommandError(fetchOptions, nil, fmt.Errorf("failed to prepare fetch arguments: %w", err), 1)
@@ -153,8 +162,13 @@ func init() {
 	FetchCmd.Flags().StringVarP(&fetchOptions.InputFile, "input-file", "i", "", "Path to a file in Scanio format containing a list of repositories to fetch. Use the list command to prepare this file.")
 	FetchCmd.Flags().StringVarP(&fetchOptions.AuthType, "auth-type", "a", "", "Type of authentication (e.g., http, ssh-agent, ssh-key).")
 	FetchCmd.Flags().StringVarP(&fetchOptions.SSHKey, "ssh-key", "k", "", "Path to an SSH key.")
-	FetchCmd.Flags().StringVarP(&fetchOptions.Branch, "branch", "b", "", "Specific branch to fetch (default: main or master).")
+	FetchCmd.Flags().StringVarP(&fetchOptions.Branch, "branch", "b", "", "Specific branch to fetch (default: main or master). This flag implies --single-branch.")
 	FetchCmd.Flags().StringVarP(&fetchOptions.OutputPath, "output", "o", "", "Path to the output directory where the cmd results will be saved.")
+	FetchCmd.Flags().StringVarP(&fetchOptions.PrMode, "pr-mode", "", "", "PR fetching modes (branch, ref, commit).")
+	FetchCmd.Flags().BoolVar(&fetchOptions.SingleBranch, "single-branch", false, "Fetch only a single branch.")
+	FetchCmd.Flags().IntVar(&fetchOptions.Depth, "depth", -1, "shallow depth; 0=full history, 1=shallowest. Default: CI mode - 1, User mode - 0")
+	FetchCmd.Flags().BoolVar(&fetchOptions.Tags, "tags", false, "Fetch all tags.")
+	FetchCmd.Flags().BoolVar(&fetchOptions.NoTags, "no-tags", false, "Do not fetch tags.")
 	FetchCmd.Flags().StringSliceVar(&fetchOptions.RmListExts, "rm-ext", []string{"csv", "png", "ipynb", "txt", "md", "mp4", "zip", "gif", "gz", "jpg", "jpeg", "cache", "tar", "svg", "bin", "lock", "exe"}, "Comma-separated list of file extensions to remove automatically after fetching.")
 	FetchCmd.Flags().IntVarP(&fetchOptions.Threads, "threads", "j", 1, "Number of concurrent threads to use.")
 	FetchCmd.Flags().BoolP("help", "h", false, "Show help for the fetch command.")

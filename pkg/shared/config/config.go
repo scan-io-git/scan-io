@@ -99,12 +99,8 @@ type Proxy struct {
 
 // GitClient configures settings for Git operations.
 type GitClient struct {
-	Depth        int           `yaml:"depth"`         // Level of depth for cloning and fetching.
-	InsecureTLS  *bool         `yaml:"insecure_tls"`  // Flag to skip SSL certificates if true.
-	Timeout      time.Duration `yaml:"timeout"`       // The maximum duration for the Git request before timing it out.
-	SingleBranch *bool         `yaml:"single_branch"` // Specified branch history downloading.
-	Tags         string        `yaml:"tags"`          // Fetching tags mode.
-
+	InsecureTLS *bool         `yaml:"insecure_tls"` // Flag to skip SSL certificates if true.
+	Timeout     time.Duration `yaml:"timeout"`      // The maximum duration for the Git request before timing it out.
 	// TODO: Add CABundle
 }
 
