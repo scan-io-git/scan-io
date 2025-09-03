@@ -18,7 +18,7 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/vcsurl"
 
-	ftutils "github.com/scan-io-git/scan-io/internal/fetcher-utils"
+	ftutils "github.com/scan-io-git/scan-io/internal/fetcherutils"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 )
 

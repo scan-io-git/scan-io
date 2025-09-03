@@ -14,19 +14,29 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 
-	ftutils "github.com/scan-io-git/scan-io/internal/fetcher-utils"
+	ftutils "github.com/scan-io-git/scan-io/internal/fetcherutils"
 	scconfig "github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
+// TargetKind represents the type of target to fetch from a repository.
 type TargetKind int
 
 const (
+	// TargetDefault indicates no specific target provided — defaults to repository's default branch.
 	TargetDefault TargetKind = iota
+
+	// TargetBranch indicates a branch reference (e.g., refs/heads/main).
 	TargetBranch
+
+	// TargetPR indicates a pull request reference (e.g., refs/pull/123/head).
 	TargetPR
+
+	// TargetCommit indicates a direct commit hash target.
 	TargetCommit
 )
 
+// Target represents a repository target for fetch/clone operations.
+// It specifies what to fetch: branch, pull request, or commit.
 type Target struct {
 	Kind       TargetKind
 	BranchRef  plumbing.ReferenceName // refs/heads/...
@@ -34,6 +44,7 @@ type Target struct {
 	CommitHash plumbing.Hash          // SHA hash
 }
 
+// String returns the human-readable string representation of a TargetKind.
 func (t TargetKind) String() string {
 	switch t {
 	case TargetBranch:
@@ -189,6 +200,8 @@ func sameRemote(a, b string) bool {
 	return ha == hb && pa == pb
 }
 
+// normalizeRemote parses and normalizes a Git remote URL to extract the host and full repository path.
+// It removes protocol, credentials, query parameters, and the `.git` suffix to ensure consistent comparison.
 func normalizeRemote(raw string) (string, string, error) {
 	u, err := vcsurl.Parse(raw)
 	if err != nil {

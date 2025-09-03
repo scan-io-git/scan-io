@@ -32,8 +32,6 @@ type RunOptionsFetch struct {
 }
 
 // Global variables for configuration and command arguments
-// TODO: add PR example for github
-// output example
 var (
 	AppConfig         *config.Config
 	fetchOptions      RunOptionsFetch
@@ -48,6 +46,9 @@ var (
 
   # Fetching using SSH agent authentication, specifying a commit hash and URL pointing to a specific repository
   scanio fetch --vcs github --auth-type ssh-agent -b c0c9e9af80666d80e564881a5bdfa661c60e053e https://github.com/scan-io-git/scan-io
+
+  # Fetching the tip of pull request using SSH key authentication, with a URL pointing to a specific pull request
+  scanio fetch --vcs github --auth-type ssh-agent https://github.com/scan-io-git/scan-io/pull/1
 
   # Fetching the main branch using HTTP authentication, with a URL pointing to a specific repository
   scanio fetch --vcs github --auth-type http https://github.com/scan-io-git/scan-io
@@ -161,14 +162,14 @@ func init() {
 	FetchCmd.Flags().StringVarP(&fetchOptions.VCSPluginName, "vcs", "p", "", "Name of the VCS plugin to use (e.g., bitbucket, gitlab, github).")
 	FetchCmd.Flags().StringVarP(&fetchOptions.InputFile, "input-file", "i", "", "Path to a file in Scanio format containing a list of repositories to fetch. Use the list command to prepare this file.")
 	FetchCmd.Flags().StringVarP(&fetchOptions.AuthType, "auth-type", "a", "", "Type of authentication (e.g., http, ssh-agent, ssh-key).")
-	FetchCmd.Flags().StringVarP(&fetchOptions.SSHKey, "ssh-key", "k", "", "Path to an SSH key.")
-	FetchCmd.Flags().StringVarP(&fetchOptions.Branch, "branch", "b", "", "Specific branch to fetch (default: main or master). This flag implies --single-branch.")
-	FetchCmd.Flags().StringVarP(&fetchOptions.OutputPath, "output", "o", "", "Path to the output directory where the cmd results will be saved.")
-	FetchCmd.Flags().StringVarP(&fetchOptions.PrMode, "pr-mode", "", "", "PR fetching modes (branch, ref, commit).")
-	FetchCmd.Flags().BoolVar(&fetchOptions.SingleBranch, "single-branch", false, "Fetch only a single branch.")
-	FetchCmd.Flags().IntVar(&fetchOptions.Depth, "depth", -1, "shallow depth; 0=full history, 1=shallowest. Default: CI mode - 1, User mode - 0")
-	FetchCmd.Flags().BoolVar(&fetchOptions.Tags, "tags", false, "Fetch all tags.")
-	FetchCmd.Flags().BoolVar(&fetchOptions.NoTags, "no-tags", false, "Do not fetch tags.")
+	FetchCmd.Flags().StringVarP(&fetchOptions.SSHKey, "ssh-key", "k", "", "Path to the SSH key to use for authentication.")
+	FetchCmd.Flags().StringVarP(&fetchOptions.Branch, "branch", "b", "", "Specific branch to fetch. Default: main or master. Implies --single-branch.")
+	FetchCmd.Flags().StringVarP(&fetchOptions.OutputPath, "output", "o", "", "Directory where the fetched repository will be saved.")
+	FetchCmd.Flags().StringVarP(&fetchOptions.PrMode, "pr-mode", "", "", "PR fetching mode: 'branch', 'ref', or 'commit'.")
+	FetchCmd.Flags().BoolVar(&fetchOptions.SingleBranch, "single-branch", false, "Fetch only the specified branch without history from other branches.")
+	FetchCmd.Flags().IntVar(&fetchOptions.Depth, "depth", -1, "Create a shallow clone with a history truncated to the specified number of commits. Default: 1 in CI mode, 0 in User mode.")
+	FetchCmd.Flags().BoolVar(&fetchOptions.Tags, "tags", false, "Fetch all tags from the repository.")
+	FetchCmd.Flags().BoolVar(&fetchOptions.NoTags, "no-tags", false, "Do not fetch any tags from the repository.")
 	FetchCmd.Flags().StringSliceVar(&fetchOptions.RmListExts, "rm-ext", []string{"csv", "png", "ipynb", "txt", "md", "mp4", "zip", "gif", "gz", "jpg", "jpeg", "cache", "tar", "svg", "bin", "lock", "exe"}, "Comma-separated list of file extensions to remove automatically after fetching.")
 	FetchCmd.Flags().IntVarP(&fetchOptions.Threads, "threads", "j", 1, "Number of concurrent threads to use.")
 	FetchCmd.Flags().BoolP("help", "h", false, "Show help for the fetch command.")

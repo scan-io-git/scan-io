@@ -27,6 +27,11 @@ func determineCmdMode(args []string) string {
 	return CmdModeInputFile
 }
 
+// determineAddFlags processes and finalizes user-provided flags for the fetch command.
+// It sets default values for depth (1 in CI mode, 0 in user mode) when not explicitly provided,
+// forces --single-branch if a specific branch is specified, and resolves the tag mode
+// (all, follow, or no-tags) based on the provided flags.
+// Returns the resolved git.TagMode and any error if validation fails (e.g., negative depth).
 func determineAddFlags(cmd *cobra.Command, cfg *config.Config, options *RunOptionsFetch) (git.TagMode, error) {
 	ciMode := config.IsCI(cfg)
 	tagMode := resolveTagsMode(cmd)
@@ -50,7 +55,11 @@ func determineAddFlags(cmd *cobra.Command, cfg *config.Config, options *RunOptio
 	return tagMode, nil
 }
 
-// ResolveTagsMode decides the final TagMode.
+// resolveTagsMode determines the git.TagMode based on the user's CLI flags.
+// - If both --tags and --no-tags are set, it falls back to TagFollowing (safe default).
+// - If only --tags is set, it returns AllTags.
+// - If only --no-tags is set, it returns NoTags.
+// - If neither is set, it defaults to TagFollowing.
 func resolveTagsMode(cmd *cobra.Command) git.TagMode {
 	tagsSet := cmd.Flags().Changed("tags")
 	noTagsSet := cmd.Flags().Changed("no-tags")

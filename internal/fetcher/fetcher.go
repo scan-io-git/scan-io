@@ -12,7 +12,7 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 
-	ftutils "github.com/scan-io-git/scan-io/internal/fetcher-utils"
+	ftutils "github.com/scan-io-git/scan-io/internal/fetcherutils"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
 )
 
