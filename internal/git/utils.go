@@ -248,3 +248,17 @@ func safeLogURL(u string) string {
 func InsecureFromCfg(cfg *scconfig.Config) bool {
 	return scconfig.GetBoolValue(cfg.GitClient, "InsecureTLS", false)
 }
+
+// TagModeToString converts a git.TagMode value to a human-readable string.
+func TagModeToString(mode git.TagMode) string {
+	switch mode {
+	case git.AllTags:
+		return "all"
+	case git.TagFollowing:
+		return "follow"
+	case git.NoTags:
+		return "no"
+	default:
+		return fmt.Sprintf("unknown(%d)", mode)
+	}
+}

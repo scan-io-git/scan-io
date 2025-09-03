@@ -60,7 +60,7 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 	c.logger.Debug("start fetch",
 		"repo", info.Name, "target", target.Kind.String(), "branch", target.BranchRef,
 		"commit", target.CommitHash.String(), "cloneURL", safeLogURL(cloneURL), "dst", targetFolder,
-		"pr", target.PRRef, "depth", depth, "singleBranch", singleBranch, "tagsMode", tagsMode)
+		"pr", target.PRRef, "depth", depth, "singleBranch", singleBranch, "tagsMode", TagModeToString(tagsMode))
 
 	var haveRef string
 	var haveHash plumbing.Hash
@@ -69,7 +69,7 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 	if !existed {
 		c.logger.Info("repository not found locally — cloning",
 			"dst", targetFolder, "cloneURL", safeLogURL(cloneURL), "target", target.Kind.String(),
-			"depth", depth, "singleBranch", singleBranch, "tagsMode", tagsMode)
+			"depth", depth, "singleBranch", singleBranch, "tagsMode", TagModeToString(tagsMode))
 
 		switch target.Kind {
 		case TargetBranch:
@@ -110,7 +110,8 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 			"current_hash", haveHash.String(),
 			"target_kind", target.Kind.String(),
 			"target_branch", target.BranchRef.String(),
-			"pr", target.PRRef,
+			"pr", target.PRRef, "depth", depth,
+			"singleBranch", singleBranch, "tagsMode", TagModeToString(tagsMode),
 		)
 	}
 
@@ -202,6 +203,8 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 				"target", target.Kind.String(), "branch", target.BranchRef,
 				"pr", target.PRRef, "to_ref", newHead.Name().String(),
 				"to_hash", newHead.Hash().String(), "repo", info.Name,
+				"depth", depth, "singleBranch", singleBranch,
+				"tagsMode", TagModeToString(tagsMode),
 			)
 		} else {
 			c.logger.Info("fetch complete",
@@ -209,7 +212,8 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 				"ref", newHead.Name().String(),
 				"target", target.Kind.String(), "branch", target.BranchRef,
 				"pr", target.PRRef, "hash", newHead.Hash().String(),
-				"repo", info.Name,
+				"repo", info.Name, "depth", depth, "singleBranch", singleBranch,
+				"tagsMode", TagModeToString(tagsMode),
 			)
 		}
 	}
