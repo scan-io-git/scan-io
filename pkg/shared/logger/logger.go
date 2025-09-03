@@ -58,6 +58,5 @@ func parseLogLevel(levelStr string) hclog.Level {
 func GetLoggerOutput(logger hclog.Logger) io.Writer {
 	return logger.StandardWriter(&hclog.StandardLoggerOptions{
 		InferLevels: true,
-		ForceLevel:  logger.GetLevel(),
 	})
 }
