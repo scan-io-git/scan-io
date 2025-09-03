@@ -16,7 +16,11 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/httpclient"
+
+	ftutils "github.com/scan-io-git/scan-io/internal/fetcher-utils"
 )
+
+const PluginName = "gitlab"
 
 // TODO: Wrap it in a custom error handler to add to the stack trace.
 // Metadata of the plugin
@@ -30,12 +34,14 @@ var (
 type VCSGitlab struct {
 	logger       hclog.Logger
 	globalConfig *config.Config
+	name         string
 }
 
 // newVCSGitlab creates a new instance of VCSGitlab.
 func newVCSGitlab(logger hclog.Logger) *VCSGitlab {
 	return &VCSGitlab{
 		logger: logger,
+		name:   PluginName,
 	}
 }
 
@@ -455,13 +461,21 @@ func (g *VCSGitlab) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		g.logger.Error("failed to retrieve MR", "projectID", projectID, "MRID", mrID, "error", err)
 		return "", fmt.Errorf("failed to retrieve MR: %w", err)
 	}
+	g.logger.Debug("MR Data", mrData)
 
 	if args.Branch == "" {
 		args.Branch = mrData.SourceBranch
 		if mrData.SourceProjectID != mrData.TargetProjectID {
 			args.Branch = mrData.SHA
 			g.logger.Warn("found merging from a fork", "fromUser", mrData.Author.Username)
-			g.logger.Warn("changes will be taken from the default branch and latest commit", "latest_commit", mrData.SHA)
+			g.logger.Warn("pr will be fetched as a detached latest commit",
+				"latest_commit", mrData.SHA,
+			)
+		} else if args.FetchMode == ftutils.PRCommitMode {
+			args.Branch = mrData.SHA
+			g.logger.Info("fetching pull request by commit",
+				"latest_commit", mrData.SHA,
+			)
 		}
 	}
 
@@ -488,7 +502,7 @@ func (g *VCSGitlab) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		return "", fmt.Errorf("error converting struct to map: %w", err)
 	}
 
-	clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, args)
+	clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, args, PluginName)
 	if err != nil {
 		g.logger.Error("failed to initialize Git client", "error", err)
 		return "", fmt.Errorf("failed to initialize Git client: %w", err)
@@ -537,8 +551,8 @@ func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse,
 		return shared.VCSFetchResponse{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	switch args.Mode {
-	case "fetchPR":
+	switch args.FetchMode {
+	case ftutils.PRBranchMode, ftutils.PRRefMode, ftutils.PRCommitMode:
 		path, err := g.fetchPR(&args)
 		if err != nil {
 			g.logger.Error("failed to fetch files from pull request", "error", err)
@@ -552,7 +566,7 @@ func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse,
 			return result, fmt.Errorf("error converting struct to map: %w", err)
 		}
 
-		clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, &args)
+		clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, &args, PluginName)
 		if err != nil {
 			g.logger.Error("failed to initialize Git client", "error", err)
 			return result, fmt.Errorf("failed to initialize Git client: %w", err)

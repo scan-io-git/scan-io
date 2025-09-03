@@ -18,7 +18,11 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/httpclient"
+
+	ftutils "github.com/scan-io-git/scan-io/internal/fetcher-utils"
 )
+
+const PluginName = "github"
 
 // TODO: Wrap it in a custom error handler to add to the stack trace.
 // Metadata of the plugin
@@ -32,12 +36,14 @@ var (
 type VCSGithub struct {
 	logger       hclog.Logger
 	globalConfig *config.Config
+	name         string
 }
 
 // newVCSGithub creates a new instance of VCSGithub.
 func newVCSGithub(logger hclog.Logger) *VCSGithub {
 	return &VCSGithub{
 		logger: logger,
+		name:   PluginName,
 	}
 }
 
@@ -318,7 +324,14 @@ func (g *VCSGithub) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		if prData.Head.Repo.GetFork() {
 			args.Branch = prData.Head.GetSHA()
 			g.logger.Warn("found merging from a fork", "fromRefLink", prData.Head.Repo.GetHTMLURL())
-			g.logger.Warn("changes will be taken from the default branch and latest commit", "latest_commit", prData.Head.GetSHA())
+			g.logger.Warn("pr will be fetched as a detached latest commit",
+				"latest_commit", prData.Head.GetSHA(),
+			)
+		} else if args.FetchMode == ftutils.PRCommitMode {
+			args.Branch = prData.Head.GetSHA()
+			g.logger.Info("fetching pull request by commit",
+				"latest_commit", prData.Head.GetSHA(),
+			)
 		}
 	}
 
@@ -338,7 +351,7 @@ func (g *VCSGithub) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		return "", err
 	}
 
-	clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, args)
+	clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, args, PluginName)
 	if err != nil {
 		g.logger.Error("failed to initialize Git client", "error", err)
 		return "", err
@@ -383,8 +396,8 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse,
 		return shared.VCSFetchResponse{}, err
 	}
 
-	switch args.Mode {
-	case "fetchPR":
+	switch args.FetchMode {
+	case ftutils.PRBranchMode, ftutils.PRRefMode, ftutils.PRCommitMode:
 		path, err := g.fetchPR(&args)
 		if err != nil {
 			g.logger.Error("failed to fetch pull request")
@@ -399,7 +412,7 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse,
 			return result, err
 		}
 
-		clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, &args)
+		clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, &args, PluginName)
 		if err != nil {
 			g.logger.Error("failed to initialize Git client", "error", err)
 			return result, err
