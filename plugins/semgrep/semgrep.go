@@ -19,6 +19,7 @@ const (
 	autoConfig      = "auto"
 	metricsFlag     = "--metrics"
 	metricsOffValue = "off"
+	PluginName      = "semgrep"
 )
 
 // TODO: Wrap it in a custom error handler to add to the stack trace.
@@ -33,12 +34,14 @@ var (
 type ScannerSemgrep struct {
 	logger       hclog.Logger
 	globalConfig *config.Config
+	name         string
 }
 
 // newScannerSemgrep creates a new instance of ScannerSemgrep.
 func newScannerSemgrep(logger hclog.Logger) *ScannerSemgrep {
 	return &ScannerSemgrep{
 		logger: logger,
+		name:   PluginName,
 	}
 }
 
