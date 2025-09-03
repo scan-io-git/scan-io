@@ -1,132 +1,57 @@
 package git
 
-// import (
-// 	"io/ioutil"
-// 	"os"
-// 	"testing"
+import (
+	"testing"
+)
 
-// 	"github.com/scan-io-git/scan-io/pkg/shared/config"
-// 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
-// )
+func TestSameRemote_Equivalent(t *testing.T) {
+	cases := [][2]string{
+		{"https://github.com/org/repo.git", "https://github.com/org/repo"},
+		{"https://token@github.com/org/repo", "https://github.com/org/repo"},
+		{"git@github.com:org/repo.git", "https://github.com/org/repo"},
+		{"ssh://git@github.com/org/repo", "git@github.com:org/repo.git"},
+		{"HTTPS://GitHub.com/Org/Repo", "git@github.com:org/repo"},
+		{"https://github.com/org/repo/?ref=main#frag", "https://github.com/org/repo"},
+	}
 
-// var TestAppConfig *config.Config
+	for i, c := range cases {
+		got := sameRemote(c[0], c[1])
+		if !got {
+			t.Fatalf("case %d expected true, got false: %q vs %q", i, c[0], c[1])
+		}
+	}
+}
 
-// func skipCI(t *testing.T) {
-// 	if os.Getenv("CI") != "" {
-// 		t.Skip("Skipping testing in CI environment")
-// 	}
-// }
+func TestSameRemote_Different(t *testing.T) {
+	cases := [][2]string{
+		{"https://github.com/org/repo", "https://github.com/org/repo2"},
+		{"https://github.com/org/repo", "https://github-enterprise.local/org/repo"},
+		{"git@github.com:org/repo", "git@github.com:other/repo"},
+		{"https://github.com/org/repo", "https://gitlab.com/org/repo"},
+		{"https://github.com/org/repo", "https://github.com/other/repo"},
+	}
 
-// func TestGitlabClonePrivateWithSSHAgent(t *testing.T) {
+	for i, c := range cases {
+		if sameRemote(c[0], c[1]) {
+			t.Fatalf("case %d expected false, got true: %q vs %q", i, c[0], c[1])
+		}
+	}
+}
 
-// 	skipCI(t)
+func TestNormalizeRemote(t *testing.T) {
+	host, path, err := normalizeRemote("git@github.com:Org/Repo.git")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if host != "github.com" || path != "org/repo" {
+		t.Fatalf("unexpected normalize result: host=%q path=%q", host, path)
+	}
 
-// 	// temp dir for fetching
-// 	dir, err := ioutil.TempDir("", "TestGitlabClonePrivateWithSSHAgent")
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	defer os.RemoveAll(dir)
-
-// 	// prep args
-// 	args := VCSFetchRequest{
-// 		CloneURL:     "git@gitlab.com:scanio-demo/juice-shop.git",
-// 		Branch:       "",
-// 		AuthType:     "ssh-key",
-// 		SSHKey:       "~/.ssh/id_rsa",
-// 		TargetFolder: dir,
-// 	}
-// 	vars := EvnVariables{}
-// 	logger := logger.NewLogger(TestAppConfig, "test")
-
-// 	// function check
-// 	_, err = GitClone(args, vars, logger)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// }
-
-// func TestGithubClonePublic(t *testing.T) {
-
-// 	// temp dir for fetching
-// 	dir, err := ioutil.TempDir("", "TestGithubClonePublic")
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	defer os.RemoveAll(dir)
-
-// 	// prep args
-// 	args := VCSFetchRequest{
-// 		CloneURL:     "https://github.com/gin-gonic/gin.git",
-// 		Branch:       "",
-// 		AuthType:     "http",
-// 		SSHKey:       "",
-// 		TargetFolder: dir,
-// 	}
-// 	vars := EvnVariables{}
-// 	logger := logger.NewLogger(TestAppConfig, "test")
-
-// 	// function check
-// 	_, err = GitClone(args, vars, logger)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// }
-
-// func TestGithubClonePrivateWithSSHKey(t *testing.T) {
-
-// 	skipCI(t)
-
-// 	// temp dir for fetching
-// 	dir, err := ioutil.TempDir("", "TestGithubClonePrivateWithSSHKey")
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	defer os.RemoveAll(dir)
-
-// 	// prep args
-// 	args := VCSFetchRequest{
-// 		CloneURL:     "git@github.com:scan-io-git/scan-io.git",
-// 		Branch:       "",
-// 		AuthType:     "ssh-key",
-// 		SSHKey:       "~/.ssh/id_ed25519",
-// 		TargetFolder: dir,
-// 	}
-// 	vars := EvnVariables{}
-// 	logger := logger.NewLogger(TestAppConfig, "test")
-
-// 	// function check
-// 	_, err = GitClone(args, vars, logger)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// }
-
-// func TestGithubClonePrivateWithSSHAgent(t *testing.T) {
-
-// 	skipCI(t)
-
-// 	// temp dir for fetching
-// 	dir, err := ioutil.TempDir("", "TestGithubClonePrivateWithSSHAgent")
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	defer os.RemoveAll(dir)
-
-// 	// prep args
-// 	args := VCSFetchRequest{
-// 		CloneURL:     "git@github.com:scan-io-git/scan-io.git",
-// 		Branch:       "",
-// 		AuthType:     "ssh-agent",
-// 		SSHKey:       "",
-// 		TargetFolder: dir,
-// 	}
-// 	vars := EvnVariables{}
-// 	logger := logger.NewLogger(TestAppConfig, "test")
-
-// 	// function check
-// 	_, err = GitClone(args, vars, logger)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// }
+	host, path, err = normalizeRemote("ssh://git@github.com/Org/Repo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if host != "github.com" || path != "org/repo" {
+		t.Fatalf("unexpected normalize result: host=%q path=%q", host, path)
+	}
+}
