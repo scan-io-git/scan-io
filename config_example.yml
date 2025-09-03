@@ -68,8 +68,5 @@ http_client:
   
 ## GitClient config
 git_client:
-  depth: 0              # Default: 0. Full gclone is 0 (usefull if you need to search secrets in git history).
   insecure_tls: false   # Turning off verification of TLS certificates. Default: false.
   timeout: 10m          # The maximum duration for the Git request before timing it out. Default: 10m.
-  single_branch: false  # Specified branch history downloading. Default: false
-  tags:  "all"          # Fetching tags mode. Choose: all, no, follow. Default: All
