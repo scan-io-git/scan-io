@@ -27,6 +27,8 @@ type RunOptionsFetch struct {
 	Tags          bool     `json:"tags,omitempty"`
 	NoTags        bool     `json:"no_tags,omitempty"`
 	Depth         int      `json:"depth,omitempty"`
+	AutoRepair    bool     `json:"auto_repair,omitempty"`
+	CleanWorkdir  bool     `json:"clean_workdir,omitempty"`
 	RmListExts    []string `json:"rm_list_exts"`
 	Threads       int      `json:"threads"`
 }
@@ -98,7 +100,7 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 		return errors.NewCommandError(fetchOptions, nil, err, 1)
 	}
 
-	reposParams, err := prepareFetchTargets(&fetchOptions, args, cmdMode)
+	reposParams, err := prepareFetchTargets(&fetchOptions, args, cmdMode, logger)
 	if err != nil {
 		logger.Error("failed to prepare fetch targets", "error", err)
 		return errors.NewCommandError(fetchOptions, nil, fmt.Errorf("failed to prepare fetch targets: %w", err), 1)
@@ -108,9 +110,10 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 		fetchOptions.VCSPluginName,
 		fetchOptions.AuthType,
 		fetchOptions.SSHKey,
-		fetchOptions.Branch,
 		fetchOptions.OutputPath,
 		fetchOptions.RmListExts,
+		fetchOptions.AutoRepair,
+		fetchOptions.CleanWorkdir,
 		fetchOptions.Threads,
 		logger,
 	)
@@ -170,6 +173,8 @@ func init() {
 	FetchCmd.Flags().IntVar(&fetchOptions.Depth, "depth", -1, "Create a shallow clone with a history truncated to the specified number of commits. Default: 1 in CI mode, 0 in User mode.")
 	FetchCmd.Flags().BoolVar(&fetchOptions.Tags, "tags", false, "Fetch all tags from the repository.")
 	FetchCmd.Flags().BoolVar(&fetchOptions.NoTags, "no-tags", false, "Do not fetch any tags from the repository.")
+	FetchCmd.Flags().BoolVar(&fetchOptions.NoTags, "auto-repair", false, "Automatically repair corrupted repositories by forcing a refetch or recloning if needed.")
+	FetchCmd.Flags().BoolVar(&fetchOptions.NoTags, "clean-workdir", false, "Reset the working tree to HEAD and remove untracked files (like 'git reset --hard' + 'git clean -fdx').")
 	FetchCmd.Flags().StringSliceVar(&fetchOptions.RmListExts, "rm-ext", []string{"csv", "png", "ipynb", "txt", "md", "mp4", "zip", "gif", "gz", "jpg", "jpeg", "cache", "tar", "svg", "bin", "lock", "exe"}, "Comma-separated list of file extensions to remove automatically after fetching.")
 	FetchCmd.Flags().IntVarP(&fetchOptions.Threads, "threads", "j", 1, "Number of concurrent threads to use.")
 	FetchCmd.Flags().BoolP("help", "h", false, "Show help for the fetch command.")
