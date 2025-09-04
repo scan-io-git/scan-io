@@ -65,7 +65,7 @@ var (
 
 // FetchCmd represents the command for fetch command.
 var FetchCmd = &cobra.Command{
-	Use:                   "fetch --vcs/p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [--output/-o PATH] [--rm-ext LIST_OF_EXTENTIONS][-j THREADS_NUMBER, default=1] {--input-file/-i PATH | [-b BRANCH/HASH] URL}",
+	Use:                   "fetch --vcs/p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [--output/-o PATH] [--rm-ext LIST_OF_EXTENTIONS][-j THREADS_NUMBER, default=1][--pr-mode PR_MODE][--single-branch][--depth DEPTH, default=0][--tags][--no-tags] {--input-file/-i PATH | [-b/--branch BRANCH/HASH] URL}",
 	SilenceUsage:          true,
 	DisableFlagsInUseLine: true,
 	Example:               exampleFetchUsage,
@@ -93,7 +93,7 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	cmdMode := determineCmdMode(args)
-	tagMode, err := determineAddFlags(cmd, AppConfig, &fetchOptions)
+	tagMode, err := determineAddFlags(cmd, &fetchOptions)
 	if err != nil {
 		return errors.NewCommandError(fetchOptions, nil, err, 1)
 	}
