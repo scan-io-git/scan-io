@@ -170,7 +170,7 @@ func init() {
 	FetchCmd.Flags().StringVarP(&fetchOptions.OutputPath, "output", "o", "", "Directory where the fetched repository will be saved.")
 	FetchCmd.Flags().StringVarP(&fetchOptions.PrMode, "pr-mode", "", "", "PR fetching mode: 'branch', 'ref', or 'commit'.")
 	FetchCmd.Flags().BoolVar(&fetchOptions.SingleBranch, "single-branch", false, "Fetch only the specified branch without history from other branches.")
-	FetchCmd.Flags().IntVar(&fetchOptions.Depth, "depth", -1, "Create a shallow clone with a history truncated to the specified number of commits. Default: 1 in CI mode, 0 in User mode.")
+	FetchCmd.Flags().IntVar(&fetchOptions.Depth, "depth", -1, "Create a shallow clone with a history truncated to the specified number of commits. Default: 0")
 	FetchCmd.Flags().BoolVar(&fetchOptions.Tags, "tags", false, "Fetch all tags from the repository.")
 	FetchCmd.Flags().BoolVar(&fetchOptions.NoTags, "no-tags", false, "Do not fetch any tags from the repository.")
 	FetchCmd.Flags().BoolVar(&fetchOptions.AutoRepair, "auto-repair", false, "Automatically repair corrupted repositories by forcing a refetch and recloning if needed.")
