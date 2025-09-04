@@ -61,6 +61,8 @@ type VCSFetchRequest struct {
 	Depth        int               `json:"depth"`
 	SingleBranch bool              `json:"single_branch"`
 	TagMode      git.TagMode       `json:"tag_mode"`
+	AutoRepair   bool              `json:"auto_repair,omitempty"`
+	CleanWorkdir bool              `json:"clean_workdir,omitempty"`
 }
 
 // VCSRequestBase is the base structure for VCS requests.
