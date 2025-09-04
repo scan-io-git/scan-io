@@ -3,7 +3,6 @@ package createissuesfromsarif
 import (
 	"crypto/sha256"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -14,11 +13,18 @@ import (
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	internalsarif "github.com/scan-io-git/scan-io/internal/sarif"
+	"github.com/scan-io-git/scan-io/internal/git"
+	issuecorrelation "github.com/scan-io-git/scan-io/pkg/issuecorrelation"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
+
+// scanioManagedAnnotation is appended to issue bodies created by this command
+// and is required for correlation/auto-closure to consider an issue
+// managed by automation.
+const scanioManagedAnnotation = "> This issue was created and will be managed by scanio automation. Don't change body manually for proper processing, unless you know what you do"
 
 // RunOptions holds flags for the create-issues-from-sarif command.
 type RunOptions struct {
@@ -63,7 +69,7 @@ var (
 			report.EnrichResultsTitleProperty()
 			// No need to enrich locations here; we'll compute file path from URI directly
 
-			//TODO: get all open github issues
+			// get all open github issues
 			openIssues, err := listOpenIssues(opts)
 			if err != nil {
 				return err
@@ -120,29 +126,22 @@ func getStringProp(m map[string]interface{}, key string) string {
 	return ""
 }
 
-// encodePathSegments safely encodes each path segment without encoding slashes
-func encodePathSegments(p string) string {
-	if p == "" {
-		return ""
-	}
-	parts := strings.Split(p, "/")
-	for i, seg := range parts {
-		parts[i] = url.PathEscape(seg)
-	}
-	return strings.Join(parts, "/")
-}
-
-// buildSARIFTitle creates a concise issue title for a SARIF result using ruleID and location info.
-// It formats as "[SARIF][<ruleID>] at <file>:<line>" or with a range when endLine > line.
-func buildSARIFTitle(ruleID, fileURI string, line, endLine int) string {
-	title := fmt.Sprintf("[SARIF][%s]", ruleID)
-	if line > 0 {
-		if endLine > line {
-			return fmt.Sprintf("%s at %s:%d-%d", title, fileURI, line, endLine)
-		}
-		return fmt.Sprintf("%s at %s:%d", title, fileURI, line)
-	}
-	return fmt.Sprintf("%s at %s", title, fileURI)
+// buildIssueTitle creates a concise issue title using scanner name (fallback to SARIF),
+// ruleID and location info. It formats as "[<scanner>][<ruleID>] at <file>:<line>"
+// or with a range when endLine > line.
+func buildIssueTitle(scannerName, ruleID, fileURI string, line, endLine int) string {
+    label := strings.TrimSpace(scannerName)
+    if label == "" {
+        label = "SARIF"
+    }
+    title := fmt.Sprintf("[%s][%s]", label, ruleID)
+    if line > 0 {
+        if endLine > line {
+            return fmt.Sprintf("%s at %s:%d-%d", title, fileURI, line, endLine)
+        }
+        return fmt.Sprintf("%s at %s:%d", title, fileURI, line)
+    }
+    return fmt.Sprintf("%s at %s", title, fileURI)
 }
 
 // computeSnippetHash reads the snippet (single line or range) from sourceFolder + fileURI
@@ -191,10 +190,41 @@ func getScannerName(run *sarif.Run) string {
 	return ""
 }
 
+// buildGitHubPermalink builds a permalink to a file and region in GitHub.
+// It prefers the CLI --ref when provided; otherwise attempts to read the
+// current commit hash from --source-folder using git metadata. When neither
+// is available, returns an empty string.
+func buildGitHubPermalink(options RunOptions, fileURI string, start, end int) string {
+    base := fmt.Sprintf("https://github.com/%s/%s", options.Namespace, options.Repository)
+    ref := strings.TrimSpace(options.Ref)
+
+    if ref == "" && options.SourceFolder != "" {
+        if md, err := git.CollectRepositoryMetadata(options.SourceFolder); err == nil && md.CommitHash != nil && *md.CommitHash != "" {
+            ref = *md.CommitHash
+        }
+    }
+
+    if ref == "" || fileURI == "" || fileURI == "<unknown>" {
+        return ""
+    }
+
+    path := filepath.ToSlash(fileURI)
+    anchor := ""
+    if start > 0 {
+        anchor = fmt.Sprintf("#L%d", start)
+        if end > start {
+            anchor = fmt.Sprintf("%s-L%d", anchor, end)
+        }
+    }
+
+    return fmt.Sprintf("%s/blob/%s/%s%s", base, ref, path, anchor)
+}
+
 // OpenIssueReport represents parsed metadata from an open issue body.
 type OpenIssueReport struct {
 	Severity    string
 	Scanner     string
+	RuleID      string
 	FilePath    string
 	StartLine   int
 	EndLine     int
@@ -223,6 +253,10 @@ func parseIssueBody(body string) OpenIssueReport {
 		}
 		if strings.HasPrefix(line, "Scanner:") {
 			rep.Scanner = strings.TrimSpace(strings.TrimPrefix(line, "Scanner:"))
+			continue
+		}
+		if strings.HasPrefix(line, "Rule:") {
+			rep.RuleID = strings.TrimSpace(strings.TrimPrefix(line, "Rule:"))
 			continue
 		}
 		if strings.HasPrefix(line, "File:") {
@@ -307,7 +341,12 @@ func listOpenIssues(options RunOptions) (map[int]OpenIssueEntry, error) {
 // processSARIFReport iterates runs/results in the SARIF report and creates VCS issues for
 // high severity findings. Returns number of created issues or an error.
 func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hclog.Logger) (int, error) {
-	created := 0
+	// Build list of new issues from SARIF (only high severity -> "error").
+	newIssues := make([]issuecorrelation.IssueMetadata, 0)
+	// Also keep parallel arrays of the text bodies and titles so we can create issues later.
+	newBodies := make([]string, 0)
+	newTitles := make([]string, 0)
+
 	for _, run := range report.Runs {
 		for _, res := range run.Results {
 			level, _ := res.Properties["Level"].(string)
@@ -326,70 +365,168 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 			}
 			line, endLine := extractRegionFromResult(res)
 
-			titleText := buildSARIFTitle(ruleID, fileURI, line, endLine)
-
 			desc := getStringProp(res.Properties, "Description")
 			if desc == "" && res.Message.Text != nil {
 				desc = *res.Message.Text
 			}
 
-			permalink := ""
-			if options.Ref != "" && fileURI != "<unknown>" && line > 0 {
-				encodedPath := encodePathSegments(fileURI)
-				if endLine > line {
-					permalink = fmt.Sprintf("https://github.com/%s/%s/blob/%s/%s#L%d-L%d", options.Namespace, options.Repository, options.Ref, encodedPath, line, endLine)
-				} else {
-					permalink = fmt.Sprintf("https://github.com/%s/%s/blob/%s/%s#L%d", options.Namespace, options.Repository, options.Ref, encodedPath, line)
-				}
-			}
+			snippetHash := computeSnippetHash(fileURI, line, endLine, options.SourceFolder)
+			scannerName := getScannerName(run)
 
+            // build body and title with scanner name label
+            titleText := buildIssueTitle(scannerName, ruleID, fileURI, line, endLine)
 			lineInfo := fmt.Sprintf("Line: %d", line)
 			if endLine > line {
 				lineInfo = fmt.Sprintf("Lines: %d-%d", line, endLine)
 			}
 
-			snippetHash := computeSnippetHash(fileURI, line, endLine, options.SourceFolder)
-			scannerName := getScannerName(run)
-
 			body := fmt.Sprintf("Severity: %s\nRule: %s\nFile: %s\n%s\n", strings.ToUpper(level), ruleID, fileURI, lineInfo)
 			if scannerName != "" {
 				body += fmt.Sprintf("Scanner: %s\n", scannerName)
 			}
-			if permalink != "" {
-				body += fmt.Sprintf("Permalink: %s\n", permalink)
-			}
-			if snippetHash != "" {
-				body += fmt.Sprintf("Snippet SHA256: %s\n", snippetHash)
-			}
-			body += "\n" + desc
+            if snippetHash != "" {
+                body += fmt.Sprintf("Snippet SHA256: %s\n", snippetHash)
+            }
+            if link := buildGitHubPermalink(options, fileURI, line, endLine); link != "" {
+                body += fmt.Sprintf("Permalink: %s\n", link)
+            }
+            body += "\n" + desc + "\n\n" + scanioManagedAnnotation
 
-			req := shared.VCSIssueCreationRequest{
-				VCSRequestBase: shared.VCSRequestBase{
-					RepoParam: shared.RepositoryParams{
-						Namespace:  options.Namespace,
-						Repository: options.Repository,
-					},
-					Action: "createIssue",
-				},
-				Title: titleText,
-				Body:  body,
-			}
-
-			err := shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, "github", func(raw interface{}) error {
-				vcs, ok := raw.(shared.VCS)
-				if !ok {
-					return fmt.Errorf("invalid VCS plugin type")
-				}
-				_, err := vcs.CreateIssue(req)
-				return err
+			newIssues = append(newIssues, issuecorrelation.IssueMetadata{
+				IssueID:     "",
+				Scanner:     scannerName,
+				RuleID:      ruleID,
+				Severity:    level,
+				Filename:    fileURI,
+				StartLine:   line,
+				EndLine:     endLine,
+				SnippetHash: snippetHash,
 			})
-			if err != nil {
-				lg.Error("failed to create issue via plugin", "error", err, "rule", ruleID, "file", fileURI, "line", line)
-				return created, errors.NewCommandError(options, nil, fmt.Errorf("create issue failed: %w", err), 2)
-			}
-			created++
+			newBodies = append(newBodies, body)
+			newTitles = append(newTitles, titleText)
 		}
 	}
+
+	// Build list of known issues (open issues fetched previously by caller via listOpenIssues)
+	openIssues, err := listOpenIssues(options)
+	if err != nil {
+		return 0, err
+	}
+
+	knownIssues := make([]issuecorrelation.IssueMetadata, 0, len(openIssues))
+	for num, entry := range openIssues {
+		rep := entry.OpenIssueReport
+		// Only include well-structured issues for automatic closure.
+		// If an open issue doesn't include basic metadata we skip it so
+		// we don't accidentally close unrelated or free-form issues.
+		if rep.Scanner == "" || rep.RuleID == "" || rep.FilePath == "" {
+			lg.Debug("skipping malformed open issue (won't be auto-closed)", "number", num)
+			continue
+		}
+
+		// Only consider issues that contain the scanio-managed annotation.
+		// If the annotation is absent, treat the issue as manually managed and
+		// exclude it from correlation/auto-closure logic.
+		if !strings.Contains(entry.Params.Body, scanioManagedAnnotation) {
+			lg.Debug("skipping non-scanio-managed issue (won't be auto-closed)", "number", num)
+			continue
+		}
+		knownIssues = append(knownIssues, issuecorrelation.IssueMetadata{
+			IssueID:     fmt.Sprintf("%d", num),
+			Scanner:     rep.Scanner,
+			RuleID:      rep.RuleID,
+			Severity:    rep.Severity,
+			Filename:    rep.FilePath,
+			StartLine:   rep.StartLine,
+			EndLine:     rep.EndLine,
+			SnippetHash: rep.Hash,
+		})
+	}
+
+	// correlate
+	corr := issuecorrelation.NewCorrelator(newIssues, knownIssues)
+	corr.Process()
+
+	// Create only unmatched new issues
+	unmatchedNew := corr.UnmatchedNew()
+	created := 0
+	for _, u := range unmatchedNew {
+		// find corresponding index in newIssues to retrieve body/title
+		var idx int = -1
+		for ni, n := range newIssues {
+			if n == u {
+				idx = ni
+				break
+			}
+		}
+		if idx == -1 {
+			// shouldn't happen
+			continue
+		}
+
+		req := shared.VCSIssueCreationRequest{
+			VCSRequestBase: shared.VCSRequestBase{
+				RepoParam: shared.RepositoryParams{
+					Namespace:  options.Namespace,
+					Repository: options.Repository,
+				},
+				Action: "createIssue",
+			},
+			Title: newTitles[idx],
+			Body:  newBodies[idx],
+		}
+
+		err := shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, "github", func(raw interface{}) error {
+			vcs, ok := raw.(shared.VCS)
+			if !ok {
+				return fmt.Errorf("invalid VCS plugin type")
+			}
+			_, err := vcs.CreateIssue(req)
+			return err
+		})
+		if err != nil {
+			lg.Error("failed to create issue via plugin", "error", err, "file", u.Filename, "line", u.StartLine)
+			return created, errors.NewCommandError(options, nil, fmt.Errorf("create issue failed: %w", err), 2)
+		}
+		created++
+	}
+
+	// Close unmatched known issues (open issues that did not correlate)
+	unmatchedKnown := corr.UnmatchedKnown()
+	for _, k := range unmatchedKnown {
+		// known IssueID contains the number as string
+		num, err := strconv.Atoi(k.IssueID)
+		if err != nil {
+			// skip if we can't parse number
+			continue
+		}
+		upd := shared.VCSIssueUpdateRequest{
+			VCSRequestBase: shared.VCSRequestBase{
+				RepoParam: shared.RepositoryParams{
+					Namespace:  options.Namespace,
+					Repository: options.Repository,
+				},
+				Action: "updateIssue",
+			},
+			Number: num,
+			State:  "closed",
+		}
+
+		err = shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, "github", func(raw interface{}) error {
+			vcs, ok := raw.(shared.VCS)
+			if !ok {
+				return fmt.Errorf("invalid VCS plugin type")
+			}
+			_, err := vcs.UpdateIssue(upd)
+			return err
+		})
+		if err != nil {
+			lg.Error("failed to close issue via plugin", "error", err, "number", num)
+			// continue closing others but report an error at end
+			return created, errors.NewCommandError(options, nil, fmt.Errorf("close issue failed: %w", err), 2)
+		}
+	}
+
 	return created, nil
 }
 
@@ -467,24 +604,4 @@ func extractRegionFromResult(res *sarif.Result) (int, int) {
 		end = *loc.PhysicalLocation.Region.EndLine
 	}
 	return start, end
-}
-
-// getRuleFullDescription returns the human-readable description for a rule from the run's rules table.
-// It prefers rule.FullDescription.Text, falls back to rule.ShortDescription.Text, otherwise empty string.
-func getRuleFullDescription(run *sarif.Run, ruleID string) string {
-	if run == nil || run.Tool.Driver == nil {
-		return ""
-	}
-	for _, rule := range run.Tool.Driver.Rules {
-		if rule == nil {
-			continue
-		}
-		if rule.ID == ruleID {
-			if rule.FullDescription != nil && rule.FullDescription.Text != nil && *rule.FullDescription.Text != "" {
-				return *rule.FullDescription.Text
-			}
-			return ""
-		}
-	}
-	return ""
 }
