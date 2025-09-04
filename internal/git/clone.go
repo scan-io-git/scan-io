@@ -20,7 +20,6 @@ import (
 	gitconfig "github.com/go-git/go-git/v5/config"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
-	"github.com/scan-io-git/scan-io/pkg/shared/config"
 
 	log "github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
@@ -55,7 +54,6 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 	insecure := InsecureFromCfg(c.globalConfig)
 	singleBranch := args.SingleBranch
 	tagsMode := args.TagMode
-	ciMode := config.IsCI(c.globalConfig)
 
 	c.logger.Debug("start fetch",
 		"repo", info.Name, "target", target.Kind.String(), "branch", target.BranchRef,
@@ -117,11 +115,6 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 
 	if existed {
 		reclone := func() (*git.Repository, error) {
-			if !ciMode {
-				// TODO: get user consent
-				return nil, ErrRecloneConsent
-
-			}
 			parent := filepath.Dir(targetFolder)
 			tmp, err := os.MkdirTemp(parent, ".reclone-*")
 			if err != nil {
@@ -169,7 +162,7 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 
 		c.logger.Debug("fetch data", "targetFolder", targetFolder)
 		repo, err = fetchTarget(ctx, repo, target, c.auth,
-			depth, insecure, tagsMode, output, c.logger, reclone, ciMode)
+			depth, insecure, tagsMode, output, c.logger, reclone, args.AutoRepair)
 		if err != nil {
 			return "", fmt.Errorf("error occurred during fetch: %w", err)
 
@@ -179,17 +172,17 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 	switch target.Kind {
 	case TargetBranch:
 		c.logger.Debug("checkout branch", "branch", target.BranchRef)
-		if err := checkoutRef(repo, target.BranchRef, ciMode); err != nil {
+		if err := checkoutRef(repo, target.BranchRef, args.CleanWorkdir, c.logger); err != nil {
 			return "", fmt.Errorf("error occurred during checkout: %w", err)
 		}
 	case TargetPR:
 		c.logger.Debug("checkout PR", "pr", target.PRRef)
-		if err := checkoutPR(repo, target.PRRef, ciMode); err != nil {
+		if err := checkoutPR(repo, target.PRRef, args.CleanWorkdir, c.logger); err != nil {
 			return "", fmt.Errorf("error occurred during checkout: %w", err)
 		}
 	case TargetCommit:
 		c.logger.Debug("checking out hash", "hash", target.CommitHash.String(), "targetFolder", targetFolder)
-		if err := checkoutCommit(repo, target.CommitHash, ciMode); err != nil {
+		if err := checkoutCommit(repo, target.CommitHash, args.CleanWorkdir, c.logger); err != nil {
 			return "", err
 		}
 		cleanupTmpRef(repo, target.CommitHash)
@@ -276,7 +269,7 @@ func cleanupTmpRef(repo *git.Repository, hash plumbing.Hash) {
 
 // fetchTarget fetches updates for the specified branch, PR, or commit, with retry and shallow clone handling.
 func fetchTarget(ctx context.Context, repo *git.Repository, target Target, auth transport.AuthMethod, depth int,
-	insecureTLS bool, tags git.TagMode, output io.Writer, logger hclog.Logger, reclone func() (*git.Repository, error), ciMode bool) (*git.Repository, error) {
+	insecureTLS bool, tags git.TagMode, output io.Writer, logger hclog.Logger, reclone func() (*git.Repository, error), autoRepair bool) (*git.Repository, error) {
 
 	fo := &git.FetchOptions{
 		RemoteName:      "origin",
@@ -322,23 +315,39 @@ func fetchTarget(ctx context.Context, repo *git.Repository, target Target, auth 
 			}
 
 			if isObjectMissing(err) {
-				if ciMode {
+				logger.Warn("repository appears shallow/corrupt", "error", err)
+				if !autoRepair {
+					return ErrRecloneConsent
+				} else {
+					logger.Warn("repository appears shallow/corrupt; recloning", "error", err)
 					hard := *fo
 					hard.Force = true
 					hard.Prune = true
 					hard.Depth = 0
-					if errFetch := repo.FetchContext(ctx, &hard); errFetch == nil || errors.Is(errFetch, git.NoErrAlreadyUpToDate) {
+
+					logger.Info("retrying fetch with recovery options",
+						"force", true,
+						"prune", true,
+						"depth", 0,
+						"refspecs", hard.RefSpecs,
+					)
+
+					errFetch := repo.FetchContext(ctx, &hard)
+					if errFetch == nil || errors.Is(errFetch, git.NoErrAlreadyUpToDate) {
+						logger.Info("recovery fetch succeeded")
 						return nil
 					}
-					logger.Warn("repository appears shallow/corrupt; recloning", "error", err)
+
+					logger.Warn("recovery fetch failed; proceeding to safe reclone",
+						"error", errFetch,
+					)
 					newRepo, errReclone := reclone()
 					if errReclone != nil {
-						return fmt.Errorf("reclone after corruption failed: %w (original fetch error: %v)", errReclone, err)
+						return fmt.Errorf("reclone after corruption failed: %w", errReclone)
 					}
 					*repo = *newRepo
 					return nil
 				}
-				return ErrRecloneConsent
 			}
 			return err
 		}
@@ -362,7 +371,7 @@ func fetchTarget(ctx context.Context, repo *git.Repository, target Target, auth 
 }
 
 // checkoutRef checks out a branch reference and optionally resets/cleans the repository in CI mode.
-func checkoutRef(repo *git.Repository, ref plumbing.ReferenceName, ciMode bool) error {
+func checkoutRef(repo *git.Repository, ref plumbing.ReferenceName, cleanWorkdir bool, log hclog.Logger) error {
 	wt, err := repo.Worktree()
 	if err != nil {
 		return fmt.Errorf("error accessing worktree: %w", err)
@@ -383,7 +392,8 @@ func checkoutRef(repo *git.Repository, ref plumbing.ReferenceName, ciMode bool) 
 		return fmt.Errorf("error occurred during checkout: %w", err)
 	}
 
-	if ciMode {
+	if cleanWorkdir {
+		log.Info("hard reset and clean folder")
 		if err := wt.Reset(&git.ResetOptions{Mode: git.HardReset}); err != nil {
 			return fmt.Errorf("error occurred during reset: %w", err)
 		}
@@ -395,7 +405,7 @@ func checkoutRef(repo *git.Repository, ref plumbing.ReferenceName, ciMode bool) 
 }
 
 // checkoutCommit checks out a specific commit hash and optionally resets/cleans the repository in CI mode.
-func checkoutCommit(repo *git.Repository, commitHash plumbing.Hash, ciMode bool) error {
+func checkoutCommit(repo *git.Repository, commitHash plumbing.Hash, cleanWorkdir bool, log hclog.Logger) error {
 	wt, err := repo.Worktree()
 	if err != nil {
 		return fmt.Errorf("error accessing worktree: %w", err)
@@ -405,7 +415,8 @@ func checkoutCommit(repo *git.Repository, commitHash plumbing.Hash, ciMode bool)
 		return fmt.Errorf("error occurred during checkout: %w", err)
 	}
 
-	if ciMode {
+	if cleanWorkdir {
+		log.Info("hard reset and clean folder")
 		if err := wt.Reset(&git.ResetOptions{Mode: git.HardReset}); err != nil {
 			return fmt.Errorf("error occurred during reset: %w", err)
 		}
@@ -416,7 +427,7 @@ func checkoutCommit(repo *git.Repository, commitHash plumbing.Hash, ciMode bool)
 }
 
 // checkoutPR checks out a pull request reference as a local branch and resets/cleans in CI mode if configured.
-func checkoutPR(repo *git.Repository, prRef plumbing.ReferenceName, ciMode bool) error {
+func checkoutPR(repo *git.Repository, prRef plumbing.ReferenceName, cleanWorkdir bool, log hclog.Logger) error {
 	wt, err := repo.Worktree()
 	if err != nil {
 		return fmt.Errorf("error accessing worktree: %w", err)
@@ -433,10 +444,11 @@ func checkoutPR(repo *git.Repository, prRef plumbing.ReferenceName, ciMode bool)
 		return fmt.Errorf("set local PR branch: %w", err)
 	}
 
-	if err := wt.Checkout(&git.CheckoutOptions{Branch: localRef, Force: ciMode}); err != nil {
+	if err := wt.Checkout(&git.CheckoutOptions{Branch: localRef, Force: true}); err != nil {
 		return fmt.Errorf("checkout PR: %w", err)
 	}
-	if ciMode {
+	if cleanWorkdir {
+		log.Info("hard reset and clean folder")
 		if err := wt.Reset(&git.ResetOptions{Mode: git.HardReset}); err != nil {
 			return fmt.Errorf("reset: %w", err)
 		}
