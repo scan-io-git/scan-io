@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
@@ -72,7 +73,7 @@ func resolveTagsMode(cmd *cobra.Command) git.TagMode {
 }
 
 // prepareFetchTargets prepares the targets for fetching based on the validated arguments.
-func prepareFetchTargets(options *RunOptionsFetch, args []string, cmdMode string) ([]shared.RepositoryParams, error) {
+func prepareFetchTargets(options *RunOptionsFetch, args []string, cmdMode string, logger hclog.Logger) ([]shared.RepositoryParams, error) {
 	var reposInfo []shared.RepositoryParams
 
 	switch cmdMode {
@@ -80,6 +81,14 @@ func prepareFetchTargets(options *RunOptionsFetch, args []string, cmdMode string
 		targetURL := args[0]
 		vcsType := vcsurl.StringToVCSType(options.VCSPluginName)
 		url, err := vcsurl.ParseForVCSType(targetURL, vcsType)
+
+		if url.Branch != "" && options.Branch != "" {
+			logger.Warn("Conflicting branch values: using branch from arguments instead of URL", "args_branch", options.Branch, "url_branch", url.Branch)
+			url.Branch = options.Branch
+		} else if url.Branch == "" {
+			url.Branch = options.Branch
+		}
+
 		repoInfo := shared.RepositoryParams{
 			Domain:        url.ParsedURL.Hostname(),
 			Namespace:     url.Namespace,

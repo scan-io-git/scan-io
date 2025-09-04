@@ -21,22 +21,24 @@ type Fetcher struct {
 	PluginName     string       // Name of the VCS plugin to use
 	AuthType       string       // Authentication type (e.g., "http", "ssh")
 	SshKey         string       // Path to the SSH key
-	Branch         string       // Branch to fetch
 	OutputPath     string       // Output path for fetching
 	RmListExts     []string     // List of extensions to remove after fetching
+	AutoRepair     bool         // Repair corrupted repositories by forcing a refetch or recloning
+	CleanWorkdir   bool         // Reset the working tree to HEAD and remove untracked files
 	ConcurrentJobs int          // Number of concurrent jobs to run
 	logger         hclog.Logger // Logger for logging messages and errors
 }
 
 // New creates a new Fetcher instance with the provided configuration.
-func New(pluginName, authType, sshKey, branch, outputPath string, rmListExts []string, jobs int, logger hclog.Logger) *Fetcher {
+func New(pluginName, authType, sshKey, outputPath string, rmListExts []string, repair, clean bool, jobs int, logger hclog.Logger) *Fetcher {
 	return &Fetcher{
 		PluginName:     pluginName,
 		AuthType:       authType,
 		SshKey:         sshKey,
-		Branch:         branch,
 		OutputPath:     outputPath, // TODO: fix the PR fetch behavior. It ignores output the path now
 		RmListExts:     rmListExts,
+		AutoRepair:     repair,
+		CleanWorkdir:   clean,
 		ConcurrentJobs: jobs,
 		logger:         logger,
 	}
@@ -54,13 +56,6 @@ func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.Repository
 				return nil, fmt.Errorf("failed to get domain for URL %s: %w", cloneURL, err)
 			}
 			repo.Domain = domain
-		}
-
-		if repo.Branch != "" && f.Branch != "" {
-			repo.Branch = f.Branch
-			f.logger.Warn("Conflicting branch values: using branch from arguments instead of URL", "args_branch", f.Branch, "url_branch", repo.Branch)
-		} else if repo.Branch == "" {
-			repo.Branch = f.Branch
 		}
 
 		mode, err := ftutils.GetFetchMode(repo.PullRequestID, fetchMode)
@@ -107,6 +102,8 @@ func (f *Fetcher) createFetchRequest(repo shared.RepositoryParams, cloneURL, tar
 		Depth:        depth,
 		SingleBranch: singleBranch,
 		TagMode:      TagMode,
+		AutoRepair:   f.AutoRepair,
+		CleanWorkdir: f.CleanWorkdir,
 		RepoParam:    repo,
 	}
 }
