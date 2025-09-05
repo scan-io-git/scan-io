@@ -53,7 +53,7 @@ RUN set -euxo pipefail && \
     echo "Building dependencies for '$TARGETOS/$TARGETARCH'" && \
     apk update && \
     apk upgrade && \
-    apk add --no-cache bash python3 py3-pip openssh && \
+    apk add --no-cache bash python3 py3-pip openssh git && \
     apk add --no-cache --virtual .build-deps \
         jq \
         libc6-compat \
@@ -61,7 +61,6 @@ RUN set -euxo pipefail && \
         openssl \
         ca-certificates \
         curl \
-        git \
         musl-dev && \
     PLUGIN_VENVS_DIR="/opt/venvs" && \
     mkdir -p "$PLUGIN_VENVS_DIR" && \
