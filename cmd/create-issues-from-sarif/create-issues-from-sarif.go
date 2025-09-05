@@ -12,8 +12,8 @@ import (
 
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/owenrumney/go-sarif/v2/sarif"
-	internalsarif "github.com/scan-io-git/scan-io/internal/sarif"
 	"github.com/scan-io-git/scan-io/internal/git"
+	internalsarif "github.com/scan-io-git/scan-io/internal/sarif"
 	issuecorrelation "github.com/scan-io-git/scan-io/pkg/issuecorrelation"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
@@ -41,15 +41,41 @@ var (
 
 	// CreateIssuesFromSarifCmd represents the command to create GitHub issues from a SARIF file.
 	CreateIssuesFromSarifCmd = &cobra.Command{
-		Use:                   "create-issues-from-sarif --namespace NAMESPACE --repository REPO --sarif PATH [--source-folder PATH] [--ref REF]",
+		Use:                   "create-issues-from-sarif --sarif PATH [--namespace NAMESPACE] [--repository REPO]  [--source-folder PATH] [--ref REF]",
 		Short:                 "Create GitHub issues for high severity SARIF findings",
-		Example:               "scanio create-issues-from-sarif --namespace org --repository repo --sarif /path/to/report.sarif",
+		Example:               "scanio create-issues-from-sarif --namespace scan-io-git --repository scan-io --sarif /path/to/report.sarif",
 		SilenceUsage:          true,
 		Hidden:                true,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 && !shared.HasFlags(cmd.Flags()) {
 				return cmd.Help()
+			}
+
+			// Fallback: if --namespace not provided, try $GITHUB_REPOSITORY_OWNER
+			if strings.TrimSpace(opts.Namespace) == "" {
+				if ns := strings.TrimSpace(os.Getenv("GITHUB_REPOSITORY_OWNER")); ns != "" {
+					opts.Namespace = ns
+				}
+			}
+
+			// Fallback: if --repository not provided, try ${GITHUB_REPOSITORY#*/}
+			if strings.TrimSpace(opts.Repository) == "" {
+				if gr := strings.TrimSpace(os.Getenv("GITHUB_REPOSITORY")); gr != "" {
+					if idx := strings.Index(gr, "/"); idx >= 0 && idx < len(gr)-1 {
+						opts.Repository = gr[idx+1:]
+					} else {
+						// No slash present; fall back to the whole value
+						opts.Repository = gr
+					}
+				}
+			}
+
+			// Fallback: if --ref not provided, try $GITHUB_SHA
+			if strings.TrimSpace(opts.Ref) == "" {
+				if sha := strings.TrimSpace(os.Getenv("GITHUB_SHA")); sha != "" {
+					opts.Ref = sha
+				}
 			}
 
 			if err := validate(&opts); err != nil {
@@ -92,11 +118,11 @@ var (
 func Init(cfg *config.Config) { AppConfig = cfg }
 
 func init() {
-	CreateIssuesFromSarifCmd.Flags().StringVar(&opts.Namespace, "namespace", "", "GitHub org/user")
-	CreateIssuesFromSarifCmd.Flags().StringVar(&opts.Repository, "repository", "", "Repository name")
+	CreateIssuesFromSarifCmd.Flags().StringVar(&opts.Namespace, "namespace", "", "GitHub org/user (defaults to $GITHUB_REPOSITORY_OWNER when unset)")
+	CreateIssuesFromSarifCmd.Flags().StringVar(&opts.Repository, "repository", "", "Repository name (defaults to ${GITHUB_REPOSITORY#*/} when unset)")
 	CreateIssuesFromSarifCmd.Flags().StringVar(&opts.SarifPath, "sarif", "", "Path to SARIF file")
 	CreateIssuesFromSarifCmd.Flags().StringVar(&opts.SourceFolder, "source-folder", "", "Optional: source folder to improve file path resolution in SARIF (used for absolute paths)")
-	CreateIssuesFromSarifCmd.Flags().StringVar(&opts.Ref, "ref", "", "Git ref (branch or commit SHA) to build a permalink to the vulnerable code")
+	CreateIssuesFromSarifCmd.Flags().StringVar(&opts.Ref, "ref", "", "Git ref (branch or commit SHA) to build a permalink to the vulnerable code (defaults to $GITHUB_SHA when unset)")
 	CreateIssuesFromSarifCmd.Flags().BoolP("help", "h", false, "Show help for create-issues-from-sarif command.")
 }
 
@@ -130,18 +156,18 @@ func getStringProp(m map[string]interface{}, key string) string {
 // ruleID and location info. It formats as "[<scanner>][<ruleID>] at <file>:<line>"
 // or with a range when endLine > line.
 func buildIssueTitle(scannerName, ruleID, fileURI string, line, endLine int) string {
-    label := strings.TrimSpace(scannerName)
-    if label == "" {
-        label = "SARIF"
-    }
-    title := fmt.Sprintf("[%s][%s]", label, ruleID)
-    if line > 0 {
-        if endLine > line {
-            return fmt.Sprintf("%s at %s:%d-%d", title, fileURI, line, endLine)
-        }
-        return fmt.Sprintf("%s at %s:%d", title, fileURI, line)
-    }
-    return fmt.Sprintf("%s at %s", title, fileURI)
+	label := strings.TrimSpace(scannerName)
+	if label == "" {
+		label = "SARIF"
+	}
+	title := fmt.Sprintf("[%s][%s]", label, ruleID)
+	if line > 0 {
+		if endLine > line {
+			return fmt.Sprintf("%s at %s:%d-%d", title, fileURI, line, endLine)
+		}
+		return fmt.Sprintf("%s at %s:%d", title, fileURI, line)
+	}
+	return fmt.Sprintf("%s at %s", title, fileURI)
 }
 
 // computeSnippetHash reads the snippet (single line or range) from sourceFolder + fileURI
@@ -195,29 +221,29 @@ func getScannerName(run *sarif.Run) string {
 // current commit hash from --source-folder using git metadata. When neither
 // is available, returns an empty string.
 func buildGitHubPermalink(options RunOptions, fileURI string, start, end int) string {
-    base := fmt.Sprintf("https://github.com/%s/%s", options.Namespace, options.Repository)
-    ref := strings.TrimSpace(options.Ref)
+	base := fmt.Sprintf("https://github.com/%s/%s", options.Namespace, options.Repository)
+	ref := strings.TrimSpace(options.Ref)
 
-    if ref == "" && options.SourceFolder != "" {
-        if md, err := git.CollectRepositoryMetadata(options.SourceFolder); err == nil && md.CommitHash != nil && *md.CommitHash != "" {
-            ref = *md.CommitHash
-        }
-    }
+	if ref == "" && options.SourceFolder != "" {
+		if md, err := git.CollectRepositoryMetadata(options.SourceFolder); err == nil && md.CommitHash != nil && *md.CommitHash != "" {
+			ref = *md.CommitHash
+		}
+	}
 
-    if ref == "" || fileURI == "" || fileURI == "<unknown>" {
-        return ""
-    }
+	if ref == "" || fileURI == "" || fileURI == "<unknown>" {
+		return ""
+	}
 
-    path := filepath.ToSlash(fileURI)
-    anchor := ""
-    if start > 0 {
-        anchor = fmt.Sprintf("#L%d", start)
-        if end > start {
-            anchor = fmt.Sprintf("%s-L%d", anchor, end)
-        }
-    }
+	path := filepath.ToSlash(fileURI)
+	anchor := ""
+	if start > 0 {
+		anchor = fmt.Sprintf("#L%d", start)
+		if end > start {
+			anchor = fmt.Sprintf("%s-L%d", anchor, end)
+		}
+	}
 
-    return fmt.Sprintf("%s/blob/%s/%s%s", base, ref, path, anchor)
+	return fmt.Sprintf("%s/blob/%s/%s%s", base, ref, path, anchor)
 }
 
 // OpenIssueReport represents parsed metadata from an open issue body.
@@ -373,8 +399,8 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 			snippetHash := computeSnippetHash(fileURI, line, endLine, options.SourceFolder)
 			scannerName := getScannerName(run)
 
-            // build body and title with scanner name label
-            titleText := buildIssueTitle(scannerName, ruleID, fileURI, line, endLine)
+			// build body and title with scanner name label
+			titleText := buildIssueTitle(scannerName, ruleID, fileURI, line, endLine)
 			lineInfo := fmt.Sprintf("Line: %d", line)
 			if endLine > line {
 				lineInfo = fmt.Sprintf("Lines: %d-%d", line, endLine)
@@ -384,13 +410,13 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 			if scannerName != "" {
 				body += fmt.Sprintf("Scanner: %s\n", scannerName)
 			}
-            if snippetHash != "" {
-                body += fmt.Sprintf("Snippet SHA256: %s\n", snippetHash)
-            }
-            if link := buildGitHubPermalink(options, fileURI, line, endLine); link != "" {
-                body += fmt.Sprintf("Permalink: %s\n", link)
-            }
-            body += "\n" + desc + "\n\n" + scanioManagedAnnotation
+			if snippetHash != "" {
+				body += fmt.Sprintf("Snippet SHA256: %s\n", snippetHash)
+			}
+			if link := buildGitHubPermalink(options, fileURI, line, endLine); link != "" {
+				body += fmt.Sprintf("Permalink: %s\n", link)
+			}
+			body += "\n" + desc + "\n\n" + scanioManagedAnnotation
 
 			newIssues = append(newIssues, issuecorrelation.IssueMetadata{
 				IssueID:     "",
