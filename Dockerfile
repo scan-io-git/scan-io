@@ -61,6 +61,7 @@ RUN set -euxo pipefail && \
         openssl \
         ca-certificates \
         curl \
+        git \
         musl-dev && \
     PLUGIN_VENVS_DIR="/opt/venvs" && \
     mkdir -p "$PLUGIN_VENVS_DIR" && \
