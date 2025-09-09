@@ -318,21 +318,19 @@ func (g *VCSGithub) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		return "", fmt.Errorf("failed to retrieve PR: %w", err)
 	}
 
-	if len(args.Branch) == 0 {
-		args.Branch = prData.Head.GetRef()
+	args.Branch = prData.Head.GetRef()
 
-		if prData.Head.Repo.GetFork() {
-			args.Branch = prData.Head.GetSHA()
-			g.logger.Warn("found merging from a fork", "fromRefLink", prData.Head.Repo.GetHTMLURL())
-			g.logger.Warn("pr will be fetched as a detached latest commit",
-				"latest_commit", prData.Head.GetSHA(),
-			)
-		} else if args.FetchMode == ftutils.PRCommitMode {
-			args.Branch = prData.Head.GetSHA()
-			g.logger.Info("fetching pull request by commit",
-				"latest_commit", prData.Head.GetSHA(),
-			)
-		}
+	if prData.Head.Repo.GetFork() {
+		args.Branch = prData.Head.GetSHA()
+		g.logger.Warn("found merging from a fork", "fromRefLink", prData.Head.Repo.GetHTMLURL())
+		g.logger.Warn("pr will be fetched as a detached latest commit",
+			"latest_commit", prData.Head.GetSHA(),
+		)
+	} else if args.FetchMode == ftutils.PRCommitMode {
+		args.Branch = prData.Head.GetSHA()
+		g.logger.Info("fetching pull request by commit",
+			"latest_commit", prData.Head.GetSHA(),
+		)
 	}
 
 	changes, _, err := client.PullRequests.ListFiles(context.Background(), args.RepoParam.Namespace, args.RepoParam.Repository, prID, nil)

@@ -279,24 +279,22 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 		return "", err
 	}
 
-	if len(args.Branch) == 0 {
-		args.Branch = prData.FromReference.ID
+	args.Branch = prData.FromReference.ID
 
-		pathDirs := vcsurl.GetPathDirs(u.Path)
-		if pathDirs[0] == "users" {
-			args.Branch = prData.FromReference.LatestCommit
-			g.logger.Warn("found merging from user personal repository",
-				"fromRefLink", fromRefLink,
-			)
-			g.logger.Warn("pr will be fetched as a detached latest commit",
-				"latest_commit", prData.FromReference.LatestCommit,
-			)
-		} else if args.FetchMode == ftutils.PRCommitMode {
-			args.Branch = prData.FromReference.LatestCommit
-			g.logger.Info("fetching pull request by commit",
-				"latest_commit", prData.FromReference.LatestCommit,
-			)
-		}
+	pathDirs := vcsurl.GetPathDirs(u.Path)
+	if pathDirs[0] == "users" {
+		args.Branch = prData.FromReference.LatestCommit
+		g.logger.Warn("found merging from user personal repository",
+			"fromRefLink", fromRefLink,
+		)
+		g.logger.Warn("pr will be fetched as a detached latest commit",
+			"latest_commit", prData.FromReference.LatestCommit,
+		)
+	} else if args.FetchMode == ftutils.PRCommitMode {
+		args.Branch = prData.FromReference.LatestCommit
+		g.logger.Info("fetching pull request by commit",
+			"latest_commit", prData.FromReference.LatestCommit,
+		)
 	}
 
 	changes, err := prData.GetChanges()

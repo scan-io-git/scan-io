@@ -463,20 +463,18 @@ func (g *VCSGitlab) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	}
 	g.logger.Debug("MR Data", mrData)
 
-	if args.Branch == "" {
-		args.Branch = mrData.SourceBranch
-		if mrData.SourceProjectID != mrData.TargetProjectID {
-			args.Branch = mrData.SHA
-			g.logger.Warn("found merging from a fork", "fromUser", mrData.Author.Username)
-			g.logger.Warn("pr will be fetched as a detached latest commit",
-				"latest_commit", mrData.SHA,
-			)
-		} else if args.FetchMode == ftutils.PRCommitMode {
-			args.Branch = mrData.SHA
-			g.logger.Info("fetching pull request by commit",
-				"latest_commit", mrData.SHA,
-			)
-		}
+	args.Branch = mrData.SourceBranch
+	if mrData.SourceProjectID != mrData.TargetProjectID {
+		args.Branch = mrData.SHA
+		g.logger.Warn("found merging from a fork", "fromUser", mrData.Author.Username)
+		g.logger.Warn("pr will be fetched as a detached latest commit",
+			"latest_commit", mrData.SHA,
+		)
+	} else if args.FetchMode == ftutils.PRCommitMode {
+		args.Branch = mrData.SHA
+		g.logger.Info("fetching pull request by commit",
+			"latest_commit", mrData.SHA,
+		)
 	}
 
 	diffs, err := fetchPaginated(func(opts *gitlab.ListOptions) ([]*gitlab.MergeRequestDiff, *gitlab.Response, error) {
