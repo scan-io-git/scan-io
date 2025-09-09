@@ -24,13 +24,14 @@ type TargetKind int
 const (
 	// TargetDefault indicates no specific target provided — defaults to repository's default branch.
 	TargetDefault TargetKind = iota
-
 	// TargetBranch indicates a branch reference (e.g., refs/heads/main).
 	TargetBranch
-
+	// TargetNote indicates a note reference (e.g., refs/notes). Not implemented
+	TargetNote
+	// TargetTag indicates a tag reference (e.g., refs/tags).
+	TargetTag
 	// TargetPR indicates a pull request reference (e.g., refs/pull/123/head).
 	TargetPR
-
 	// TargetCommit indicates a direct commit hash target.
 	TargetCommit
 )
@@ -40,6 +41,8 @@ const (
 type Target struct {
 	Kind       TargetKind
 	BranchRef  plumbing.ReferenceName // refs/heads/...
+	TagRef     plumbing.ReferenceName // refs/tags/...
+	NotesRef   plumbing.ReferenceName // refs/notes/...
 	PRRef      plumbing.ReferenceName // provider PR ref (e.g. refs/pull/123/head)
 	CommitHash plumbing.Hash          // SHA hash
 }
@@ -49,6 +52,10 @@ func (t TargetKind) String() string {
 	switch t {
 	case TargetBranch:
 		return "branch"
+	case TargetTag:
+		return "tag"
+	case TargetNote:
+		return "note"
 	case TargetPR:
 		return "pull-request"
 	case TargetCommit:
@@ -60,21 +67,28 @@ func (t TargetKind) String() string {
 	}
 }
 
-// determineTarget determines the type of target (branch, PR, commit, or default branch) for the clone operation.
+// determineTarget resolves the desired fetch/checkout target from user input (branch/commit/PR/tag), remote refs, and VCS provider semantics.
 func determineTarget(branchOrCommit, cloneURL, vcs string, args *shared.VCSFetchRequest, auth transport.AuthMethod) (Target, error) {
 	var t Target
 
+	remoteRefs, err := listRemoteRefs(cloneURL, auth)
+	if err != nil {
+		return t, fmt.Errorf("list remote refs: %w", err)
+	}
+	idxRemoteRef := indexRefs(remoteRefs)
+
 	// PR fetch case
 	if args.FetchMode == ftutils.PRRefMode && args.RepoParam.PullRequestID != "" {
-		t.Kind = TargetPR
-
 		head, _, ok := prRefsForVCS(vcs, args.RepoParam.PullRequestID)
 		if !ok {
 			return t, fmt.Errorf("vcs %q not supported for pr scanning", vcs)
 		}
 
-		t.PRRef = head
-		return t, nil
+		if _, ok := idxRemoteRef[head]; !ok {
+			return t, fmt.Errorf("remote ref %q not found", head.String())
+		}
+
+		return Target{Kind: TargetPR, PRRef: head}, nil
 	}
 
 	// If the branch is explicitly provided, return it as the reference
@@ -84,35 +98,50 @@ func determineTarget(branchOrCommit, cloneURL, vcs string, args *shared.VCSFetch
 			if len(s) != 40 {
 				return t, ErrShortCommitSHA
 			}
-			t.Kind = TargetCommit
-			t.CommitHash = plumbing.NewHash(s)
-			return t, nil
+
+			return Target{Kind: TargetCommit, CommitHash: plumbing.NewHash(s)}, nil
 		}
 		// Branch name case
 		rn := plumbing.ReferenceName(s)
 
-		// Ensure we avoid double concatenation of refs if it already looks like a ref
-		if !rn.IsBranch() && !rn.IsRemote() && !rn.IsTag() && !rn.IsNote() {
-			rn = plumbing.NewBranchReferenceName(rn.String())
+		if strings.HasPrefix(s, "refs/") {
+			switch {
+			case rn.IsBranch(): // refs/heads/..
+				if _, ok := idxRemoteRef[rn]; !ok {
+					return t, fmt.Errorf("remote branch %q not found", rn)
+				}
+				return Target{Kind: TargetBranch, BranchRef: rn}, nil
+			case rn.IsTag(): // refs/tags/...
+				if _, ok := idxRemoteRef[rn]; !ok {
+					return t, fmt.Errorf("remote tag %q not found", rn)
+				}
+				return Target{Kind: TargetTag, TagRef: rn}, nil
+			// case rn.IsRemote(): // refs/remotes/...
+			// if _, ok := idxRemoteRef[rn]; !ok {
+			// 	return t, fmt.Errorf("remote branch %q not found", rn)
+			// }
+			// 	return Target{Kind: TargetPR, PRRef: rn}, nil
+			case rn.IsNote(): // refs/notes/…
+				return Target{Kind: TargetDefault}, fmt.Errorf("note not supported as fetch target")
+			default:
+				// Treat any other refs/* (e.g., PR/MR namespaces) as custom PR refs
+				if _, ok := idxRemoteRef[rn]; !ok {
+					return t, fmt.Errorf("remote reference %q not found", rn)
+				}
+				return Target{Kind: TargetPR, PRRef: rn}, nil
+			}
 		}
-		t.Kind = TargetBranch
-		t.BranchRef = rn
-		return t, nil
-	}
 
-	// No branch provided, resolve the default branch by fetching the remote HEAD
-	remote := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
-		Name: "origin",
-		URLs: []string{cloneURL},
-	})
+		// Ensure we avoid double concatenation of refs if it already looks like a ref
+		if tt, ok := pickRefByPrecedenceIdx(idxRemoteRef, s); ok {
+			return tt, nil
+		}
 
-	refs, err := remote.List(&git.ListOptions{Auth: auth})
-	if err != nil {
-		return t, fmt.Errorf("list remote refs: %w", err)
+		return t, fmt.Errorf("no branch or tag named %q found on remote", s)
 	}
 
 	// Find the reference that HEAD points to (default branch)
-	for _, ref := range refs {
+	for _, ref := range remoteRefs {
 		if ref.Name() == plumbing.HEAD {
 			target := ref.Target()
 			if target.IsBranch() {
@@ -122,7 +151,39 @@ func determineTarget(branchOrCommit, cloneURL, vcs string, args *shared.VCSFetch
 			}
 		}
 	}
+
 	return t, ErrDefaultBranchHead
+}
+
+// listRemoteRefs returns all advertised references for the remote at cloneURL using the provided auth.
+func listRemoteRefs(cloneURL string, auth transport.AuthMethod) ([]*plumbing.Reference, error) {
+	remote := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
+		Name: origin,
+		URLs: []string{cloneURL},
+	})
+	return remote.List(&git.ListOptions{Auth: auth})
+}
+
+// indexRefs builds a set of reference names from a remote ref list for 0(1) checks.
+func indexRefs(refs []*plumbing.Reference) map[plumbing.ReferenceName]struct{} {
+	m := make(map[plumbing.ReferenceName]struct{}, len(refs))
+	for _, r := range refs {
+		m[r.Name()] = struct{}{}
+	}
+	return m
+}
+
+// pickRefByPrecedenceIdx prefers a branch over a tag when both exist for the same short name; returns Target and true on match.
+func pickRefByPrecedenceIdx(idx map[plumbing.ReferenceName]struct{}, short string) (Target, bool) {
+	br := plumbing.NewBranchReferenceName(short)
+	if _, ok := idx[br]; ok {
+		return Target{Kind: TargetBranch, BranchRef: br}, true
+	}
+	tg := plumbing.NewTagReferenceName(short)
+	if _, ok := idx[tg]; ok {
+		return Target{Kind: TargetTag, TagRef: tg}, true
+	}
+	return Target{}, false
 }
 
 // findGitRepositoryPath walks up the directory tree to find the root of a Git repository.
@@ -170,9 +231,42 @@ func prRefsForVCS(vcs, id string) (head, merge plumbing.ReferenceName, ok bool) 
 	}
 }
 
+// refspecsFor builds the minimal fetch refspecs for the given target and remote name (branch/tag/PR/commit).
+func refspecsFor(target Target, remoteName string) ([]config.RefSpec, error) {
+	switch target.Kind {
+	case TargetBranch:
+		// +refs/heads/X:refs/remotes/origin/X
+		src := target.BranchRef.String()
+		dst := plumbing.NewRemoteReferenceName(remoteName, target.BranchRef.Short()).String()
+		return []config.RefSpec{config.RefSpec("+" + src + ":" + dst)}, nil
+
+	case TargetPR:
+		// +refs/pull/1/head : refs/remotes/origin/pull/1/head
+		src := target.PRRef.String()
+		dst := "refs/remotes/" + remoteName + "/" + strings.TrimPrefix(src, "refs/")
+		return []config.RefSpec{config.RefSpec("+" + src + ":" + dst)}, nil
+
+	case TargetTag:
+		// +refs/tags/X : refs/tags/X
+		src := target.TagRef.String()
+		dst := src
+		return []config.RefSpec{config.RefSpec("+" + src + ":" + dst)}, nil
+
+	case TargetCommit:
+		// Only if we need to ensure the object exists. If already present locally, no refspecs are needed.
+		tmp := plumbing.ReferenceName(tmpRefPrefix + target.CommitHash.String())
+		src := target.CommitHash.String()
+		dst := tmp.String()
+		return []config.RefSpec{config.RefSpec("+" + src + ":" + dst)}, nil
+
+	default:
+		return nil, fmt.Errorf("unsupported target kind: %v", target.Kind.String())
+	}
+}
+
 // originURL returns the remote URL of the origin remote for the repository.
 func originURL(repo *git.Repository) string {
-	r, err := repo.Remote("origin")
+	r, err := repo.Remote(origin)
 	if err != nil || r == nil || len(r.Config().URLs) == 0 {
 		return ""
 	}
@@ -217,27 +311,33 @@ func normalizeRemote(raw string) (string, string, error) {
 	return host, full, nil
 }
 
-// remoteTrackingForPR constructs the remote-tracking reference path for a pull request.
+// remoteTrackingForPR maps a provider PR ref (e.g., refs/pull/1/head) to its corresponding remote-tracking ref under refs/remotes/origin/.
 func remoteTrackingForPR(remotePRRef plumbing.ReferenceName) plumbing.ReferenceName {
 	// refs/remotes/origin/<provider path>
 	suffix := strings.TrimPrefix(remotePRRef.String(), "refs/")
-	return plumbing.ReferenceName("refs/remotes/origin/" + suffix)
+	return plumbing.ReferenceName("refs/remotes/" + origin + "/" + suffix)
 }
 
-// localBranchForPR constructs the local branch reference path for a pull request.
+// localBranchForPR maps a provider PR ref to a local branch name under refs/heads/ for checkout.
 func localBranchForPR(remotePRRef plumbing.ReferenceName) plumbing.ReferenceName {
 	// refs/heads/<provider path>
 	suffix := strings.TrimPrefix(remotePRRef.String(), "refs/")
 	return plumbing.ReferenceName("refs/heads/" + suffix)
 }
 
-// isObjectMissing detects object-missing errors in go-git operations, independent of error string variations.
+// isObjectMissing heuristically detects go-git errors indicating missing/corrupted objects or shallow history issues.
 func isObjectMissing(err error) bool {
 	if err == nil {
 		return false
 	}
 	s := strings.ToLower(err.Error())
-	return strings.Contains(s, "object not found") || strings.Contains(s, "missing blob") || strings.Contains(s, "missing tree")
+	return strings.Contains(s, "object not found") ||
+		strings.Contains(s, "missing blob") ||
+		strings.Contains(s, "missing tree") ||
+		strings.Contains(s, "delta base") ||
+		strings.Contains(s, "no such object") ||
+		strings.Contains(s, "invalid commit") ||
+		(strings.Contains(s, "want ") && strings.Contains(s, "not valid"))
 }
 
 // isRefNotFound detects missing reference errors from go-git fetch or reference lookups.

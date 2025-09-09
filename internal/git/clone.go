@@ -24,8 +24,13 @@ import (
 	log "github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
-// CloneRepository clones or updates a Git repository into the target folder,
-// checking out a branch, PR, or specific commit based on the provided configuration.
+const (
+	origin       = "origin"
+	tmpRefPrefix = "refs/tmp/"
+)
+
+// CloneRepository clones or fetches a repository into args.TargetFolder, checks out the requested target (branch/tag/PR/commit)
+// and returns the target folder path. It auto-repairs (reclone from scratch) shallow/corrupted repos when AutoRepair is true.
 func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 	targetFolder := args.TargetFolder
 	cloneURL := args.CloneURL
@@ -75,11 +80,16 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 				"dst", targetFolder, "cloneURL", safeLogURL(cloneURL), "branch", target.BranchRef)
 			repo, err = cloneAtRef(ctx, targetFolder, cloneURL, target.BranchRef, c.auth,
 				depth, insecure, singleBranch, tagsMode, output)
-		case TargetPR:
-			c.logger.Info("cloning pull request",
-				"dst", targetFolder, "cloneURL", safeLogURL(cloneURL), "pr", target.PRRef)
-			repo, err = cloneAtRef(ctx, targetFolder, cloneURL, target.PRRef, c.auth,
+		case TargetTag:
+			c.logger.Info("cloning tag",
+				"dst", targetFolder, "cloneURL", safeLogURL(cloneURL), "branch", target.TagRef)
+			repo, err = cloneAtRef(ctx, targetFolder, cloneURL, target.TagRef, c.auth,
 				depth, insecure, singleBranch, tagsMode, output)
+		case TargetPR:
+			c.logger.Info("cloning pull request special reference",
+				"dst", targetFolder, "cloneURL", safeLogURL(cloneURL), "pr", target.PRRef)
+			repo, err = cloneCustomRef(ctx, targetFolder, cloneURL, target.PRRef, c.auth,
+				depth, insecure, tagsMode, output)
 		case TargetCommit:
 			c.logger.Info("cloning commit",
 				"dst", targetFolder, "cloneURL", safeLogURL(cloneURL), "commit", target.CommitHash.String())
@@ -108,8 +118,9 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 			"current_hash", haveHash.String(),
 			"target_kind", target.Kind.String(),
 			"target_branch", target.BranchRef.String(),
-			"pr", target.PRRef, "depth", depth,
-			"singleBranch", singleBranch, "tagsMode", TagModeToString(tagsMode),
+			"target_pr", target.PRRef, "target_tag", target.TagRef,
+			"depth", depth, "singleBranch", singleBranch,
+			"tagsMode", TagModeToString(tagsMode),
 		)
 	}
 
@@ -125,9 +136,12 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 			case TargetBranch:
 				_, err = cloneAtRef(ctx, tmp, cloneURL, target.BranchRef,
 					c.auth, depth, insecure, singleBranch, tagsMode, output)
+			case TargetTag:
+				_, err = cloneAtRef(ctx, tmp, cloneURL, target.TagRef, c.auth,
+					depth, insecure, singleBranch, tagsMode, output)
 			case TargetPR:
-				_, err = cloneAtRef(ctx, tmp, cloneURL, target.PRRef,
-					c.auth, depth, insecure, singleBranch, tagsMode, output)
+				_, err = cloneCustomRef(ctx, tmp, cloneURL, target.PRRef, c.auth,
+					depth, insecure, tagsMode, output)
 			case TargetCommit:
 				_, err = cloneCommit(ctx, tmp, cloneURL, target.CommitHash,
 					c.auth, depth, insecure, output)
@@ -180,9 +194,9 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 		if err := checkoutPR(repo, target.PRRef, args.CleanWorkdir, c.logger); err != nil {
 			return "", fmt.Errorf("error occurred during checkout: %w", err)
 		}
-	case TargetCommit:
+	case TargetCommit, TargetTag:
 		c.logger.Debug("checking out hash", "hash", target.CommitHash.String(), "targetFolder", targetFolder)
-		if err := checkoutCommit(repo, target.CommitHash, args.CleanWorkdir, c.logger); err != nil {
+		if err := checkoutCommit(repo, target.CommitHash, target.TagRef, args.CleanWorkdir, c.logger); err != nil {
 			return "", err
 		}
 		cleanupTmpRef(repo, target.CommitHash)
@@ -194,7 +208,7 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 				"path", targetFolder,
 				"from_ref", haveRef, "from_hash", haveHash.String(),
 				"target", target.Kind.String(), "branch", target.BranchRef,
-				"pr", target.PRRef, "to_ref", newHead.Name().String(),
+				"pr", target.PRRef, "tag", target.TagRef, "to_ref", newHead.Name().String(),
 				"to_hash", newHead.Hash().String(), "repo", info.Name,
 				"depth", depth, "singleBranch", singleBranch,
 				"tagsMode", TagModeToString(tagsMode),
@@ -204,7 +218,7 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 				"path", targetFolder,
 				"ref", newHead.Name().String(),
 				"target", target.Kind.String(), "branch", target.BranchRef,
-				"pr", target.PRRef, "hash", newHead.Hash().String(),
+				"pr", target.PRRef, "tag", target.TagRef, "hash", newHead.Hash().String(),
 				"repo", info.Name, "depth", depth, "singleBranch", singleBranch,
 				"tagsMode", TagModeToString(tagsMode),
 			)
@@ -214,7 +228,7 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 	return targetFolder, nil
 }
 
-// cloneAtRef clones a repository at the specified branch or PR reference, without performing a checkout.
+// cloneAtRef performs a shallow/full clone at a specific branch or tag, creating the repo without checking out files.
 func cloneAtRef(ctx context.Context, targetFolder, url string, ref plumbing.ReferenceName,
 	auth transport.AuthMethod, depth int, insecureTLS, singleBranch bool, tags git.TagMode, output io.Writer) (*git.Repository, error) {
 
@@ -231,7 +245,36 @@ func cloneAtRef(ctx context.Context, targetFolder, url string, ref plumbing.Refe
 	})
 }
 
-// cloneCommit initializes an empty repository and fetches a specific commit hash for later checkout.
+// cloneCustomRef initializes an empty repo, adds origin, and fetches a provider-specific PR ref into a remote-tracking ref without checkout.
+func cloneCustomRef(ctx context.Context, targetFolder, url string, prRef plumbing.ReferenceName,
+	auth transport.AuthMethod, depth int, insecureTLS bool, tags git.TagMode, output io.Writer) (*git.Repository, error) {
+	repo, err := git.PlainInit(targetFolder, false)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := repo.CreateRemote(&gitconfig.RemoteConfig{Name: origin, URLs: []string{url}}); err != nil {
+		return nil, err
+	}
+	// Map provider PR ref to a remote-tracking ref
+	local := remoteTrackingForPR(prRef) // refs/remotes/origin/<provider path>
+	rs := gitconfig.RefSpec(fmt.Sprintf("+%s:%s", prRef.String(), local.String()))
+	// Fetch with explicit refspec
+	if err := repo.FetchContext(ctx, &git.FetchOptions{
+		RemoteName:      origin,
+		Auth:            auth,
+		Depth:           depth,
+		InsecureSkipTLS: insecureTLS,
+		Progress:        output,
+		Tags:            tags,
+		RefSpecs:        []gitconfig.RefSpec{rs},
+	}); err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
+		return nil, err
+	}
+	return repo, nil
+}
+
+// cloneCommit initializes an empty repo and fetches a specific commit object into a temporary ref for later checkout.
 func cloneCommit(ctx context.Context, targetFolder, url string, hash plumbing.Hash,
 	auth transport.AuthMethod, depth int, insecureTLS bool, output io.Writer) (*git.Repository, error) {
 
@@ -240,15 +283,15 @@ func cloneCommit(ctx context.Context, targetFolder, url string, hash plumbing.Ha
 		return nil, err
 	}
 
-	_, err = repo.CreateRemote(&gitconfig.RemoteConfig{Name: "origin", URLs: []string{url}})
+	_, err = repo.CreateRemote(&gitconfig.RemoteConfig{Name: origin, URLs: []string{url}})
 	if err != nil {
 		return nil, err
 	}
 
-	tmpRef := plumbing.ReferenceName(fmt.Sprintf("refs/tmp/%s", hash.String()))
+	tmpRef := plumbing.ReferenceName(fmt.Sprintf(tmpRefPrefix+"%s", hash.String()))
 	refspec := gitconfig.RefSpec(fmt.Sprintf("+%s:%s", hash.String(), tmpRef))
 	err = repo.FetchContext(ctx, &git.FetchOptions{
-		RemoteName:      "origin",
+		RemoteName:      origin,
 		Auth:            auth,
 		Depth:           depth,
 		InsecureSkipTLS: insecureTLS,
@@ -263,41 +306,36 @@ func cloneCommit(ctx context.Context, targetFolder, url string, hash plumbing.Ha
 
 // cleanupTmpRef removes temporary references used during commit-based cloning to keep the repository clean.
 func cleanupTmpRef(repo *git.Repository, hash plumbing.Hash) {
-	tmpRef := plumbing.ReferenceName(fmt.Sprintf("refs/tmp/%s", hash.String()))
+	tmpRef := plumbing.ReferenceName(fmt.Sprintf(tmpRefPrefix+"%s", hash.String()))
 	_ = repo.Storer.RemoveReference(tmpRef)
 }
 
-// fetchTarget fetches updates for the specified branch, PR, or commit, with retry and shallow clone handling.
+// fetchTarget fetches the desired refs for a branch/tag/PR/commit into an existing repo, with retry and optional auto-repair via reclone on object corruption/shallow.
 func fetchTarget(ctx context.Context, repo *git.Repository, target Target, auth transport.AuthMethod, depth int,
 	insecureTLS bool, tags git.TagMode, output io.Writer, logger hclog.Logger, reclone func() (*git.Repository, error), autoRepair bool) (*git.Repository, error) {
 
+	// Special handling for commit-only target: fetch only if we don't have the object.
+	if target.Kind == TargetCommit {
+		if _, err := repo.CommitObject(target.CommitHash); err == nil {
+			// Already have the object locally; nothing to fetch.
+			return repo, nil
+		}
+	}
+
+	rs, err := refspecsFor(target, origin)
+	if err != nil {
+		return nil, err
+	}
+
 	fo := &git.FetchOptions{
-		RemoteName:      "origin",
+		RemoteName:      origin,
 		Auth:            auth,
 		Depth:           depth,
 		InsecureSkipTLS: insecureTLS,
-		Progress:        output,
 		Tags:            tags,
-	}
-
-	switch target.Kind {
-	case TargetBranch:
-		// +refs/heads/X:refs/remotes/origin/X
-		rs := gitconfig.RefSpec(fmt.Sprintf("+%s:%s",
-			target.BranchRef.String(),
-			plumbing.NewRemoteReferenceName("origin", target.BranchRef.Short()).String()))
-		fo.RefSpecs = []gitconfig.RefSpec{rs}
-	case TargetPR:
-		// +<provider PR ref> : refs/remotes/origin/<provider path>
-		local := plumbing.ReferenceName(fmt.Sprintf("refs/remotes/origin/%s",
-			strings.TrimPrefix(target.PRRef.String(), "refs/")))
-		rs := gitconfig.RefSpec(fmt.Sprintf("+%s:%s", target.PRRef.String(), local.String()))
-		fo.RefSpecs = []gitconfig.RefSpec{rs}
-	case TargetCommit:
-		// For updates of a commit-only repo we can no-op
-		return repo, nil
-	default:
-		return nil, fmt.Errorf("unsupported target kind")
+		Force:           true,
+		RefSpecs:        rs,
+		Progress:        output,
 	}
 
 	try := func() error {
@@ -307,47 +345,35 @@ func fetchTarget(ctx context.Context, repo *git.Repository, target Target, auth 
 				return nil
 			}
 			if isRefNotFound(err) {
-				if target.Kind == TargetPR {
-					return fmt.Errorf("remote PR ref %q not found: %w (note: some providers prune PR/MR head refs after close/merge; try fetch the base branch/commit)",
-						target.PRRef.String(), err)
+				switch target.Kind {
+				case TargetBranch:
+					return fmt.Errorf("remote branch %q not found: %w", target.BranchRef.String(), err)
+				case TargetTag:
+					return fmt.Errorf("remote tag %q not found: %w", target.TagRef.String(), err)
+				case TargetPR:
+					return fmt.Errorf("remote PR ref %q not found: %w (provider may prune PR heads after close/merge); try fetch the base branch/commit)", target.PRRef.String(), err)
+				case TargetCommit:
+					return fmt.Errorf("commit %s not fetchable by SHA on this remote: %w", target.CommitHash.String(), err)
+				default:
+					return fmt.Errorf("remote ref not found: %w", err)
 				}
-				return fmt.Errorf("remote ref not found for %q: %w", target.BranchRef.String(), err)
 			}
 
+			// There is no way to update shallow clone, we need to clone from scratch as shallow or full
+			// https://github.com/go-git/go-git/issues/1443
 			if isObjectMissing(err) {
 				logger.Warn("repository appears shallow/corrupt", "error", err)
 				if !autoRepair {
 					return ErrRecloneConsent
-				} else {
-					logger.Warn("repository appears shallow/corrupt; recloning", "error", err)
-					hard := *fo
-					hard.Force = true
-					hard.Prune = true
-					hard.Depth = 0
-
-					logger.Info("retrying fetch with recovery options",
-						"force", true,
-						"prune", true,
-						"depth", 0,
-						"refspecs", hard.RefSpecs,
-					)
-
-					errFetch := repo.FetchContext(ctx, &hard)
-					if errFetch == nil || errors.Is(errFetch, git.NoErrAlreadyUpToDate) {
-						logger.Info("recovery fetch succeeded")
-						return nil
-					}
-
-					logger.Warn("recovery fetch failed; proceeding to safe reclone",
-						"error", errFetch,
-					)
-					newRepo, errReclone := reclone()
-					if errReclone != nil {
-						return fmt.Errorf("reclone after corruption failed: %w", errReclone)
-					}
-					*repo = *newRepo
-					return nil
 				}
+
+				newRepo, errReclone := reclone()
+				if errReclone != nil {
+					return fmt.Errorf("reclone after corruption/shallow failed: %w", errReclone)
+				}
+				*repo = *newRepo
+				return nil
+
 			}
 			return err
 		}
@@ -370,14 +396,14 @@ func fetchTarget(ctx context.Context, repo *git.Repository, target Target, auth 
 	return repo, nil
 }
 
-// checkoutRef checks out a branch reference and optionally resets/cleans the repository in CI mode.
+// checkoutRef creates/updates a local branch from a fetched remote branch and checks it out; optionally resets and cleans the worktree.
 func checkoutRef(repo *git.Repository, ref plumbing.ReferenceName, cleanWorkdir bool, log hclog.Logger) error {
 	wt, err := repo.Worktree()
 	if err != nil {
 		return fmt.Errorf("error accessing worktree: %w", err)
 	}
 
-	remoteRef := plumbing.NewRemoteReferenceName("origin", ref.Short())
+	remoteRef := plumbing.NewRemoteReferenceName(origin, ref.Short())
 	r, err := repo.Reference(remoteRef, true)
 	if err != nil {
 		return fmt.Errorf("remote branch %q not present locally; fetch it first: %w", remoteRef, err)
@@ -404,8 +430,22 @@ func checkoutRef(repo *git.Repository, ref plumbing.ReferenceName, cleanWorkdir 
 	return nil
 }
 
-// checkoutCommit checks out a specific commit hash and optionally resets/cleans the repository in CI mode.
-func checkoutCommit(repo *git.Repository, commitHash plumbing.Hash, cleanWorkdir bool, log hclog.Logger) error {
+// checkoutCommit checks out an exact commit (or resolves a tag to its commit first); optionally resets and cleans the worktree.
+func checkoutCommit(repo *git.Repository, commitHash plumbing.Hash, tagRef plumbing.ReferenceName, cleanWorkdir bool, log hclog.Logger) error {
+	if tagRef != "" {
+		r, err := repo.Reference(tagRef, true)
+		if err != nil {
+			return fmt.Errorf("tag %q not present locally; fetch it first: %w", tagRef, err)
+		}
+		commitHash = r.Hash()
+
+		if to, err := repo.TagObject(commitHash); err == nil && to != nil {
+			if c, err := to.Commit(); err == nil {
+				commitHash = c.Hash
+			}
+		}
+	}
+
 	wt, err := repo.Worktree()
 	if err != nil {
 		return fmt.Errorf("error accessing worktree: %w", err)
@@ -426,7 +466,7 @@ func checkoutCommit(repo *git.Repository, commitHash plumbing.Hash, cleanWorkdir
 	return nil
 }
 
-// checkoutPR checks out a pull request reference as a local branch and resets/cleans in CI mode if configured.
+// checkoutPR materializes a local branch for a fetched PR ref and checks it out; optionally resets and cleans the worktree.
 func checkoutPR(repo *git.Repository, prRef plumbing.ReferenceName, cleanWorkdir bool, log hclog.Logger) error {
 	wt, err := repo.Worktree()
 	if err != nil {
@@ -436,7 +476,7 @@ func checkoutPR(repo *git.Repository, prRef plumbing.ReferenceName, cleanWorkdir
 	remoteRef := remoteTrackingForPR(prRef)
 	r, err := repo.Reference(remoteRef, true)
 	if err != nil {
-		return fmt.Errorf("remote PR ref %q not present locally; fetch it first: %w", remoteRef, err)
+		return fmt.Errorf("remote PR ref %q not present locally; error: %w", remoteRef, err)
 	}
 
 	localRef := localBranchForPR(prRef)
