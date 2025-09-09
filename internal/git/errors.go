@@ -5,7 +5,7 @@ import "errors"
 // Repo errors
 var (
 	ErrDifferentRepo  = errors.New("target folder contains a different repo")
-	ErrRecloneConsent = errors.New("repository corruption detected. Repair requires user consent. Re-run the command with '--auto-repair' to allow automatic recovery.")
+	ErrRecloneConsent = errors.New("corrupted/shallow repository detected. Repair requires user consent. Re-run the command with '--auto-repair' to allow automatic recovery.")
 )
 
 // Target resolution errors
