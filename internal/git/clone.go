@@ -126,8 +126,7 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 
 	if existed {
 		reclone := func() (*git.Repository, error) {
-			parent := filepath.Dir(targetFolder)
-			tmp, err := os.MkdirTemp(parent, ".reclone-*")
+			tmp, err := os.MkdirTemp("", "reclone-"+info.FullName+"-*")
 			if err != nil {
 				return nil, fmt.Errorf("mkdtemp: %w", err)
 			}
