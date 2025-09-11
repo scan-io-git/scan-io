@@ -103,7 +103,7 @@ The `fetch` command generates a JSON file as output, capturing detailed informat
         "auth_type": "<auth_type>",
         "ssh_key": "<path_to_ssh_key>",
         "target_folder": "<path_to_folder_for_code>",
-        "mode": "<fetch_mode>",
+        "fetch_mode": "<fetch_mode>",
         "repo_param": {
           "domain": "<domain_name>",
           "namespace": "<namespace_name>",
@@ -111,7 +111,10 @@ The `fetch` command generates a JSON file as output, capturing detailed informat
           "pull_request_id": "<pr_id>",
           "http_link": "<http_link>",
           "ssh_link": "<ssh_link>"
-        }
+        },
+        "depth": "<depth>",
+        "single_branch": "<single_branch_bool>",
+        "tag_mode": "<tag_mode>",
       },
       "result": {
         "path": "<path_to_folder_with_saved_code>"
@@ -140,8 +143,12 @@ The `fetch` command generates a JSON file as output, capturing detailed informat
 | `auth_type`| Specifies the authentication method used.                                    |
 | `ssh_key`| Path to the SSH key file if auth_type is ssh-key.                              |
 | `target_folder`| Path to the folder where the repository code will be saved.              |
-| `mode`| The fetch mode (`basic` or `fetchPR`).                                            |
+| `fetch_mode`| The fetch mode (`basic`, `pull-branch`, `pull-ref`, `pull-commit`).         |
 | `repo_param`| Contains repository-specific parameters, including domain and namespace.    |
+| `depth`| Actuall depth during cloning/fetching by git dependency.                         |
+| `single_branch`| Fetch only the specified branch status.                                  |
+| `tag_mode`| Tag mode used during cloning by git dependency (all, no, or following tags)   |
+
 
 ### Fields in the `repo_param` Object
 
