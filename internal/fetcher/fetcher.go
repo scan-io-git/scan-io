@@ -53,7 +53,7 @@ func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.Repository
 		if repo.Domain == "" {
 			domain, err := utils.GetDomain(cloneURL)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get domain for URL %s: %w", cloneURL, err)
+				return nil, fmt.Errorf("failed to get domain for URL %q: %w", cloneURL, err)
 			}
 			repo.Domain = domain
 		}
@@ -71,7 +71,7 @@ func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.Repository
 		if f.OutputPath != "" {
 			_, tFolder, err := files.DetermineFileFullPath(f.OutputPath, "")
 			if err != nil {
-				return fetchReqList, fmt.Errorf("failed to determine output path for '%s': %w", f.OutputPath, err)
+				return fetchReqList, fmt.Errorf("failed to determine output path for %q: %w", f.OutputPath, err)
 			}
 			targetFolder = tFolder
 		}

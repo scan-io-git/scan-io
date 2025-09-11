@@ -75,7 +75,7 @@ func GetDomain(repositoryURL string) (string, error) {
 
 	parsedUrl, err := url.Parse(repositoryURL)
 	if err != nil {
-		return "", fmt.Errorf("error during parsing repositoryURL '%s': %w", repositoryURL, err)
+		return "", fmt.Errorf("error during parsing repositoryURL %q: %w", repositoryURL, err)
 	}
 
 	parts := strings.Split(parsedUrl.Host, ":")
@@ -85,7 +85,7 @@ func GetDomain(repositoryURL string) (string, error) {
 	case 2:
 		return parts[0], nil
 	default:
-		return "", fmt.Errorf("unable to get domain from %s", parsedUrl.Host)
+		return "", fmt.Errorf("unable to get domain from %q", parsedUrl.Host)
 	}
 }
 
@@ -95,14 +95,14 @@ func GetPath(repositoryURL string) (string, error) {
 		url = strings.TrimSuffix(url, ".git")
 		parts := strings.Split(url, ":")
 		if len(parts) != 2 {
-			return "", fmt.Errorf("unknown format of url: %s", repositoryURL)
+			return "", fmt.Errorf("unknown format of url: %q", repositoryURL)
 		}
 		return parts[1], nil
 	}
 
 	parsedUrl, err := url.Parse(repositoryURL)
 	if err != nil {
-		return "", fmt.Errorf("error during parsing repositoryURL '%s': %w", repositoryURL, err)
+		return "", fmt.Errorf("error during parsing repositoryURL %q: %w", repositoryURL, err)
 	}
 
 	path := parsedUrl.Path

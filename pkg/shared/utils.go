@@ -26,7 +26,7 @@ func ContainsSubstring(target string, substrings []string) bool {
 func StructToMap(data interface{}) (map[string]string, error) {
 	val := reflect.ValueOf(data)
 	if val.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("expected a struct but got %s", val.Kind())
+		return nil, fmt.Errorf("expected a struct but got %q", val.Kind())
 	}
 
 	result := make(map[string]string)

@@ -185,7 +185,7 @@ func performAction(vcsPlugin shared.VCS, options interface{}, action string) (in
 		}
 		return vcsPlugin.SetStatusOfPR(setStatusRequest)
 	default:
-		return nil, fmt.Errorf("unsupported action: %s", action)
+		return nil, fmt.Errorf("unsupported action: %q", action)
 	}
 }
 

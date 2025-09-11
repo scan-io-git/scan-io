@@ -94,7 +94,7 @@ func (g *ScannerTrufflehog3) convertReportFormat(originalFormat, resultsPath str
 	case "markdown":
 		*updatedResultsPath, err = plugin_internal.JsonToPlainReport(resultsPath)
 	default:
-		err = fmt.Errorf("unsupported format: %s", originalFormat)
+		err = fmt.Errorf("unsupported format: %q", originalFormat)
 	}
 	return err
 }

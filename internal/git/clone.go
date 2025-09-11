@@ -352,7 +352,7 @@ func fetchTarget(ctx context.Context, repo *git.Repository, target Target, auth 
 				case TargetPR:
 					return fmt.Errorf("remote PR ref %q not found: %w (provider may prune PR heads after close/merge); try fetch the base branch/commit)", target.PRRef.String(), err)
 				case TargetCommit:
-					return fmt.Errorf("commit %s not fetchable by SHA on this remote: %w", target.CommitHash.String(), err)
+					return fmt.Errorf("commit %q not fetchable by SHA on this remote: %w", target.CommitHash.String(), err)
 				default:
 					return fmt.Errorf("remote ref not found: %w", err)
 				}

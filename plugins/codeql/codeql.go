@@ -53,8 +53,8 @@ func (g *ScannerCodeQL) executeCommand(cmd *exec.Cmd) error {
 	cmd.Stderr = mw
 
 	if err := cmd.Run(); err != nil {
-		g.logger.Error(fmt.Sprintf("%s execution error", cmd.Path), "error", err)
-		return fmt.Errorf("%s execution error: %w. Output: %s", cmd.Path, err, stdBuffer.String())
+		g.logger.Error(fmt.Sprintf("%q execution error", cmd.Path), "error", err)
+		return fmt.Errorf("%q execution error: %w. Output: %s", cmd.Path, err, stdBuffer.String())
 	}
 	return nil
 }

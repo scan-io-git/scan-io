@@ -31,11 +31,11 @@ func ValidatePath(path string) error {
 		return fmt.Errorf("path stat error: %w", err)
 	}
 	if info.IsDir() {
-		return fmt.Errorf("path '%s' is a directory, not a file", path)
+		return fmt.Errorf("path %q is a directory, not a file", path)
 	}
 
 	if info.Mode()&os.ModeType != 0 {
-		return fmt.Errorf("path '%s' is not a regular file", path)
+		return fmt.Errorf("path %q is not a regular file", path)
 	}
 	return nil
 }
@@ -53,7 +53,7 @@ func CopyDotFiles(src, dst string, logger hclog.Logger) error {
 	logger.Debug("copying files starting with a dot", "source", src, "destination", dst)
 	files, err := os.ReadDir(src)
 	if err != nil {
-		return fmt.Errorf("failed to read directory %s: %w", src, err)
+		return fmt.Errorf("failed to read directory %q: %w", src, err)
 	}
 
 	for _, file := range files {
@@ -81,7 +81,7 @@ func CopyDotFiles(src, dst string, logger hclog.Logger) error {
 func Copy(srcPath, destPath string) error {
 	srcInfo, err := os.Lstat(srcPath)
 	if err != nil {
-		return fmt.Errorf("failed to stat source path %s: %w", srcPath, err)
+		return fmt.Errorf("failed to stat source path %q: %w", srcPath, err)
 	}
 
 	switch {
@@ -98,23 +98,23 @@ func Copy(srcPath, destPath string) error {
 func CopyFile(srcFile, destFile string) error {
 	destDir := filepath.Dir(destFile)
 	if err := CreateFolderIfNotExists(destDir); err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", destDir, err)
+		return fmt.Errorf("failed to create directory %q: %w", destDir, err)
 	}
 
 	in, err := os.Open(srcFile)
 	if err != nil {
-		return fmt.Errorf("failed to open source file %s: %w", srcFile, err)
+		return fmt.Errorf("failed to open source file %q: %w", srcFile, err)
 	}
 	defer in.Close()
 
 	out, err := os.Create(destFile)
 	if err != nil {
-		return fmt.Errorf("failed to create destination file %s: %w", destFile, err)
+		return fmt.Errorf("failed to create destination file %q: %w", destFile, err)
 	}
 	defer out.Close()
 
 	if _, err = io.Copy(out, in); err != nil {
-		return fmt.Errorf("failed to copy data from %s to %s: %w", srcFile, destFile, err)
+		return fmt.Errorf("failed to copy data from %q to %q: %w", srcFile, destFile, err)
 	}
 	return nil
 }
@@ -123,11 +123,11 @@ func CopyFile(srcFile, destFile string) error {
 func CopyDir(srcDir, destDir string) error {
 	entries, err := os.ReadDir(srcDir)
 	if err != nil {
-		return fmt.Errorf("failed to read source directory %s: %w", srcDir, err)
+		return fmt.Errorf("failed to read source directory %q: %w", srcDir, err)
 	}
 
 	if err := CreateFolderIfNotExists(destDir); err != nil {
-		return fmt.Errorf("failed to create destination directory %s: %w", destDir, err)
+		return fmt.Errorf("failed to create destination directory %q: %w", destDir, err)
 	}
 
 	for _, entry := range entries {
@@ -146,11 +146,11 @@ func CopyDir(srcDir, destDir string) error {
 func CopySymLink(srcLink, destLink string) error {
 	linkTarget, err := os.Readlink(srcLink)
 	if err != nil {
-		return fmt.Errorf("failed to read symlink %s: %w", srcLink, err)
+		return fmt.Errorf("failed to read symlink %q: %w", srcLink, err)
 	}
 
 	if err := os.Symlink(linkTarget, destLink); err != nil {
-		return fmt.Errorf("failed to create symlink %s -> %s: %w", destLink, linkTarget, err)
+		return fmt.Errorf("failed to create symlink %q -> %q: %w", destLink, linkTarget, err)
 	}
 	return nil
 }
@@ -159,10 +159,10 @@ func CopySymLink(srcLink, destLink string) error {
 func CreateFolderIfNotExists(folder string) error {
 	if _, err := os.Stat(folder); os.IsNotExist(err) {
 		if err := os.MkdirAll(folder, os.ModePerm); err != nil {
-			return fmt.Errorf("unable to create folder %s: %w", folder, err)
+			return fmt.Errorf("unable to create folder %q: %w", folder, err)
 		}
 	} else if err != nil {
-		return fmt.Errorf("unable to check folder %s: %w", folder, err)
+		return fmt.Errorf("unable to check folder %q: %w", folder, err)
 	}
 	return nil
 }
@@ -171,7 +171,7 @@ func CreateFolderIfNotExists(folder string) error {
 func FindByExtAndRemove(root string, exts []string) {
 	filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return fmt.Errorf("failed to access %s: %w", path, err)
+			return fmt.Errorf("failed to access %q: %w", path, err)
 		}
 		ext := filepath.Ext(d.Name())
 		match := false
@@ -186,7 +186,7 @@ func FindByExtAndRemove(root string, exts []string) {
 		}
 		err = os.Remove(path)
 		if err != nil {
-			return fmt.Errorf("failed to remove file %s: %w", path, err)
+			return fmt.Errorf("failed to remove file %q: %w", path, err)
 		}
 		return nil
 	})
@@ -218,17 +218,17 @@ func DetermineFileFullPath(path, nameTemplate string) (string, string, error) {
 
 	// Normalization check
 	// if path != original {
-	// 	// return "", "", fmt.Errorf("the given path '%s' could not be accepted due to normalization result '%s'", original, path)
+	// 	// return "", "", fmt.Errorf("the given path %q could not be accepted due to normalization result %q", original, path)
 	// }
 
 	path, err := ExpandPath(path)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to unwrap path '%s': %w", path, err)
+		return "", "", fmt.Errorf("failed to unwrap path %q: %w", path, err)
 	}
 
 	fileInfo, err := os.Stat(path)
 	if err != nil && !os.IsNotExist(err) {
-		return "", "", fmt.Errorf("failed to unwrap path '%s': %w", path, err)
+		return "", "", fmt.Errorf("failed to unwrap path %q: %w", path, err)
 	}
 
 	var fullPath, folder string

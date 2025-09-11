@@ -136,7 +136,7 @@ func (c *Config) searchDefaultConfig() error {
 		if err := c.loadConfig(path); err == nil {
 			return nil
 		} else {
-			lastErr = fmt.Errorf("failed to load config from path '%s': %w", path, err)
+			lastErr = fmt.Errorf("failed to load config from path %q: %w", path, err)
 		}
 	}
 	return fmt.Errorf("no valid config file found in default paths: %w", lastErr)
@@ -146,23 +146,23 @@ func (c *Config) searchDefaultConfig() error {
 func (c *Config) loadConfig(path string) error {
 	expandedPath, err := files.ExpandPath(path)
 	if err != nil {
-		return fmt.Errorf("failed to expand path '%s': %w", path, err)
+		return fmt.Errorf("failed to expand path %q: %w", path, err)
 	}
 
 	if err := files.ValidatePath(expandedPath); err != nil {
-		return fmt.Errorf("failed to validate path '%s': %w", expandedPath, err)
+		return fmt.Errorf("failed to validate path %q: %w", expandedPath, err)
 	}
 
 	fileContent, err := os.ReadFile(expandedPath)
 	if err != nil {
-		return fmt.Errorf("failed to read config file '%s': %w", expandedPath, err)
+		return fmt.Errorf("failed to read config file %q: %w", expandedPath, err)
 	}
 
 	// Simple replace environment variable placeholders
 	expandedContent := os.ExpandEnv(string(fileContent))
 
 	if err := yaml.Unmarshal([]byte(expandedContent), c); err != nil {
-		return fmt.Errorf("failed to unmarshal config '%s': %w", expandedPath, err)
+		return fmt.Errorf("failed to unmarshal config %q: %w", expandedPath, err)
 	}
 	return nil
 }

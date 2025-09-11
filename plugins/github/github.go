@@ -229,7 +229,7 @@ func (g *VCSGithub) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error)
 		}
 	default:
 		g.logger.Error("unsupported role for PR operation", "role", args.Role)
-		return false, fmt.Errorf("unsupported role: %s", args.Role)
+		return false, fmt.Errorf("unsupported role: %q", args.Role)
 	}
 
 	g.logger.Info("user successfully added to the PR", "login", args.Login, "role", args.Role)

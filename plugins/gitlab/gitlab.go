@@ -301,7 +301,7 @@ func (g *VCSGitlab) AddRoleToPR(args shared.VCSAddRoleToPRRequest) (bool, error)
 	case "reviewer":
 		options.ReviewerIDs = &[]int{userData[0].ID}
 	default:
-		err := fmt.Errorf("unsupported role: %s", args.Role)
+		err := fmt.Errorf("unsupported role: %q", args.Role)
 		g.logger.Error("unsupported role for MR operation", "role", args.Role, "error", err)
 		return false, err
 	}
@@ -353,7 +353,7 @@ func (g *VCSGitlab) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, er
 			return false, fmt.Errorf("failed to unapprove the MR: %w", err)
 		}
 	default:
-		err := fmt.Errorf("unsupported status: %s", args.Status)
+		err := fmt.Errorf("unsupported status: %q", args.Status)
 		g.logger.Error("unsupported status for MR operation", "status", args.Status, "MRID", mrID, "projectID", projectID, "error", err)
 		return false, err
 	}

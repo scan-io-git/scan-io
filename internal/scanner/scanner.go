@@ -84,7 +84,7 @@ func (s *Scanner) prepareRepoScanArg(cfg *config.Config, repo shared.RepositoryP
 	resultsFile := filepath.Join(resultsFolderPath, nameTemplate)
 
 	if err := files.CreateFolderIfNotExists(resultsFolderPath); err != nil {
-		return shared.ScannerScanRequest{}, fmt.Errorf("failed to create results folder '%s': %w", resultsFolderPath, err)
+		return shared.ScannerScanRequest{}, fmt.Errorf("failed to create results folder %q: %w", resultsFolderPath, err)
 	}
 
 	return s.createScanRequest(targetPath, resultsFile), nil
@@ -102,11 +102,11 @@ func (s *Scanner) determineResultsFilePath(targetPath, outputPath, nameTemplate 
 func (s *Scanner) getOutputFilePath(path, nameTemplate string) (string, error) {
 	resultsFile, resultsFolder, err := files.DetermineFileFullPath(path, nameTemplate)
 	if err != nil {
-		return "", fmt.Errorf("failed to determine output path for '%s': %w", path, err)
+		return "", fmt.Errorf("failed to determine output path for %q: %w", path, err)
 	}
 
 	if err := files.CreateFolderIfNotExists(resultsFolder); err != nil {
-		return "", fmt.Errorf("failed to create results folder '%s': %w", resultsFolder, err)
+		return "", fmt.Errorf("failed to create results folder %q: %w", resultsFolder, err)
 	}
 
 	return resultsFile, nil

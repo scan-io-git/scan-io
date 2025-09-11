@@ -14,7 +14,7 @@ type NotImplementedError struct {
 
 // Implement the error interface for NotImplementedError
 func (e *NotImplementedError) Error() string {
-	return fmt.Sprintf("method %s is not implemented for %s", e.MethodName, e.PluginName)
+	return fmt.Sprintf("method %q is not implemented for %q", e.MethodName, e.PluginName)
 }
 
 // Constructor for NotImplementedError

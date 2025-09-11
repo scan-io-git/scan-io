@@ -127,7 +127,7 @@ func getAuthenticator(authType string) (Authenticator, error) {
 	case "http":
 		return &HTTPAuthenticator{}, nil
 	default:
-		return nil, fmt.Errorf("unknown auth type: %s", authType)
+		return nil, fmt.Errorf("unknown auth type: %q", authType)
 	}
 }
 

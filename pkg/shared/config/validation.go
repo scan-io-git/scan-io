@@ -95,10 +95,10 @@ func ValidateHTTPConfig(httpConfig *HTTPClient) error {
 // validateDuration checks that a time.Duration is valid and within a specified maximum duration.
 func validateDuration(d time.Duration, name string, max time.Duration) error {
 	if d < 0 {
-		return fmt.Errorf("invalid duration for %s: %v cannot be negative", name, d)
+		return fmt.Errorf("invalid duration for %q: %v cannot be negative", name, d)
 	}
 	if d > max {
-		return fmt.Errorf("%s duration is too long: %v exceeds maximum of %v", name, d, max)
+		return fmt.Errorf("%q duration is too long: %v exceeds maximum of %v", name, d, max)
 	}
 	return nil
 }
@@ -168,12 +168,12 @@ func updateHome(cfg *Config) error {
 
 	expandedHomePath, err := files.ExpandPath(cfg.Scanio.HomeFolder)
 	if err != nil {
-		return fmt.Errorf("failed to expand new home path '%s': %w", cfg.Scanio.HomeFolder, err)
+		return fmt.Errorf("failed to expand new home path %q: %w", cfg.Scanio.HomeFolder, err)
 	}
 	cfg.Scanio.HomeFolder = expandedHomePath
 
 	if err := files.CreateFolderIfNotExists(expandedHomePath); err != nil {
-		return fmt.Errorf("failed to create home folder '%s': %w", cfg.Scanio.HomeFolder, err)
+		return fmt.Errorf("failed to create home folder %q: %w", cfg.Scanio.HomeFolder, err)
 	}
 	return nil
 }
@@ -188,12 +188,12 @@ func updateFolder(folder *string, envVar, defaultSubFolder string, cfg *Config) 
 
 	expandedHomePath, err := files.ExpandPath(*folder)
 	if err != nil {
-		return fmt.Errorf("failed to expand new home path '%s': %w", *folder, err)
+		return fmt.Errorf("failed to expand new home path %q: %w", *folder, err)
 	}
 	*folder = expandedHomePath
 
 	if err := files.CreateFolderIfNotExists(expandedHomePath); err != nil {
-		return fmt.Errorf("failed to create folder '%s': %w", expandedHomePath, err)
+		return fmt.Errorf("failed to create folder %q: %w", expandedHomePath, err)
 	}
 	return nil
 }
