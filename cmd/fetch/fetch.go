@@ -5,13 +5,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/internal/fetcher"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
-	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 // RunOptionsFetch holds the arguments for the fetch command.
@@ -36,6 +36,7 @@ type RunOptionsFetch struct {
 // Global variables for configuration and command arguments
 var (
 	AppConfig         *config.Config
+	logger            hclog.Logger
 	fetchOptions      RunOptionsFetch
 	exampleFetchUsage = `  # Fetching using SSH agent authentication, URL pointing to a specific repository
   scanio fetch --vcs github --auth-type ssh-agent https://github.com/scan-io-git/scan-io
@@ -76,7 +77,7 @@ var FetchCmd = &cobra.Command{
 }
 
 // Init initializes the global configuration variable.
-func Init(cfg *config.Config) {
+func Init(cfg *config.Config, l hclog.Logger) {
 	AppConfig = cfg
 	FetchCmd.Long = generateLongDescription(AppConfig)
 }
@@ -86,8 +87,6 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 && !shared.HasFlags(cmd.Flags()) {
 		return cmd.Help()
 	}
-
-	logger := logger.NewLogger(AppConfig, "core-fetch")
 
 	if err := validateFetchArgs(&fetchOptions, args); err != nil {
 		logger.Error("invalid fetch arguments", "error", err)
@@ -143,7 +142,9 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 	logger.Info("fetch command completed successfully")
 	logger.Debug("fetch result", "result", fetchResult)
 	if config.IsCI(AppConfig) {
-		shared.PrintResultAsJSON(logger, fetchResult)
+		if err := shared.PrintResultAsJSON(fetchResult); err != nil {
+			logger.Error("error serializing JSON result", "error", err)
+		}
 	}
 	return nil
 }

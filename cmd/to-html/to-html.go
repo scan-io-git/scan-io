@@ -1,4 +1,4 @@
-package cmd
+package tohtml
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/spf13/cobra"
 
@@ -14,7 +15,7 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
-	"github.com/scan-io-git/scan-io/pkg/shared/logger"
+
 	"github.com/scan-io-git/scan-io/pkg/shared/vcsurl"
 
 	scaniosarif "github.com/scan-io-git/scan-io/internal/sarif"
@@ -36,8 +37,6 @@ type ToHTMLOptions struct {
 	NoSuppressions bool   `json:"nosuppressions,omitempty"`
 }
 
-var allToHTMLOptions ToHTMLOptions
-
 type ReportMetadata struct {
 	git.RepositoryMetadata
 	scaniosarif.ToolMetadata
@@ -50,7 +49,12 @@ type ReportMetadata struct {
 	CommitURL    string
 }
 
-var execExampleToHTML = `  # Generate html report for semgrep sarif output
+// Global variables for configuration and command arguments
+var (
+	AppConfig         *config.Config
+	logger            hclog.Logger
+	allToHTMLOptions  ToHTMLOptions
+	execExampleToHTML = `  # Generate html report for semgrep sarif output
   scanio to-html --input /tmp/juice-shop/semgrep.sarif --output /tmp/juice-shop/semgrep.html --source /tmp/juice-shop
 
   # Generate html report for semgrep sarif output, use bitbucket specific hyperlink URL builder
@@ -61,6 +65,7 @@ var execExampleToHTML = `  # Generate html report for semgrep sarif output
  
   # Use no-supressions to skip results with supressions sarif property
   scanio to-html -i /tmp/juice-shop/semgrep_results.sarif -o /tmp/juice-shop/semgrep_results.html -s /tmp/juice-shop/ -t ./templates/tohtml --no-supressions`
+)
 
 // this function will implement vcs specific logic to generate web URL to branch or commit + special case for onprem BB
 func buildWebURLToRef(url *vcsurl.VCSURL, refName, refType string) string {
@@ -112,13 +117,18 @@ func buildBitbucketLocationURL(location *sarif.Location, url vcsurl.VCSURL, repo
 	return locationWebURL
 }
 
-// toHtmlCmd represents the toHtml command
-var toHtmlCmd = &cobra.Command{
+// Init initializes the global configuration variable.
+func Init(cfg *config.Config, l hclog.Logger) {
+	AppConfig = cfg
+	logger = l
+}
+
+// ToHtmlCmd represents the toHtml command
+var ToHtmlCmd = &cobra.Command{
 	Use:     "to-html -i /path/to/input/report.sarif -o /path/to/output/report.html -s /path/to/source/folder",
 	Short:   "Generate HTML formatted report",
 	Example: execExampleToHTML,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		logger := logger.NewLogger(AppConfig, "core")
 		logger.Info("to-html called")
 
 		// read sarif report from file
@@ -241,13 +251,11 @@ var toHtmlCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(toHtmlCmd)
-
-	toHtmlCmd.Flags().StringVarP(&allToHTMLOptions.TempatesPath, "templates-path", "t", "", "Path to folder with templates")
-	toHtmlCmd.Flags().StringVar(&allToHTMLOptions.Title, "title", "Scanio Report", "Title for generated html file")
-	toHtmlCmd.Flags().StringVarP(&allToHTMLOptions.Input, "input", "i", "", "Input file with sarif report")
-	toHtmlCmd.Flags().StringVarP(&allToHTMLOptions.OutputFile, "output", "o", "scanio-report.html", "output file")
-	toHtmlCmd.Flags().StringVarP(&allToHTMLOptions.SourceFolder, "source", "s", "", "Source folder")
-	toHtmlCmd.Flags().StringVar(&allToHTMLOptions.VCS, "vcs", "generic", "VCS type")
-	toHtmlCmd.Flags().BoolVarP(&allToHTMLOptions.NoSuppressions, "no-supressions", "", false, "Enable removing results with suppressions properties")
+	ToHtmlCmd.Flags().StringVarP(&allToHTMLOptions.TempatesPath, "templates-path", "t", "", "Path to folder with templates")
+	ToHtmlCmd.Flags().StringVar(&allToHTMLOptions.Title, "title", "Scanio Report", "Title for generated html file")
+	ToHtmlCmd.Flags().StringVarP(&allToHTMLOptions.Input, "input", "i", "", "Input file with sarif report")
+	ToHtmlCmd.Flags().StringVarP(&allToHTMLOptions.OutputFile, "output", "o", "scanio-report.html", "output file")
+	ToHtmlCmd.Flags().StringVarP(&allToHTMLOptions.SourceFolder, "source", "s", "", "Source folder")
+	ToHtmlCmd.Flags().StringVar(&allToHTMLOptions.VCS, "vcs", "generic", "VCS type")
+	ToHtmlCmd.Flags().BoolVarP(&allToHTMLOptions.NoSuppressions, "no-supressions", "", false, "Enable removing results with suppressions properties")
 }

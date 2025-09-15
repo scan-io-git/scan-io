@@ -5,13 +5,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/internal/scanner"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
-	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 // RunOptionsAnalyse holds the arguments for the analyse command.
@@ -28,6 +28,7 @@ type RunOptionsAnalyse struct {
 // Global variables for configuration and command arguments
 var (
 	AppConfig           *config.Config
+	logger              hclog.Logger
 	analyseOptions      RunOptionsAnalyse
 	exampleAnalyseUsage = `  # Running semgrep scanner with an input file
   scanio analyse --scanner semgrep --input-file /path/to/list_output.file
@@ -62,8 +63,9 @@ var AnalyseCmd = &cobra.Command{
 }
 
 // Init initializes the global configuration variable.
-func Init(cfg *config.Config) {
+func Init(cfg *config.Config, l hclog.Logger) {
 	AppConfig = cfg
+	logger = l
 	AnalyseCmd.Long = generateLongDescription(AppConfig)
 }
 
@@ -73,7 +75,6 @@ func runAnalyseCommand(cmd *cobra.Command, args []string) error {
 		return cmd.Help()
 	}
 
-	logger := logger.NewLogger(AppConfig, "core-analyze")
 	argsLenAtDash := cmd.ArgsLenAtDash()
 
 	if err := validateAnalyseArgs(&analyseOptions, args, argsLenAtDash); err != nil {
@@ -124,7 +125,9 @@ func runAnalyseCommand(cmd *cobra.Command, args []string) error {
 	logger.Info("analyse command completed successfully")
 	logger.Debug("analyse result", "result", analyseResult)
 	if config.IsCI(AppConfig) {
-		shared.PrintResultAsJSON(logger, analyseResult)
+		if err := shared.PrintResultAsJSON(analyseResult); err != nil {
+			logger.Error("error serializing JSON result", "error", err)
+		}
 	}
 	return nil
 }

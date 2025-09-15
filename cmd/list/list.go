@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/internal/vcsintegrator"
@@ -13,12 +14,12 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
-	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 // Global variables for configuration and command arguments
 var (
 	AppConfig   *config.Config
+	logger      hclog.Logger
 	listOptions vcsintegrator.RunOptionsIntegrationVCS
 
 	exampleListUsage = `  # List all repositories in a VCS
@@ -45,8 +46,9 @@ var ListCmd = &cobra.Command{
 }
 
 // Init initializes the global configuration variable and sets the long description for the ListCmd command.
-func Init(cfg *config.Config) {
+func Init(cfg *config.Config, l hclog.Logger) {
 	AppConfig = cfg
+	logger = l
 	ListCmd.Long = generateLongDescription(AppConfig)
 }
 
@@ -54,8 +56,6 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 && !shared.HasFlags(cmd.Flags()) {
 		return cmd.Help()
 	}
-
-	logger := logger.NewLogger(AppConfig, "core-list")
 
 	if err := validateListArgs(&listOptions, args); err != nil {
 		logger.Error("invalid list arguments", "error", err)
@@ -124,7 +124,9 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 	logger.Debug("list result", "result", resultList)
 	logger.Info("amount of fetched repositories is", "number", len(repositories))
 	if config.IsCI(AppConfig) {
-		shared.PrintResultAsJSON(logger, resultList)
+		if err := shared.PrintResultAsJSON(resultList); err != nil {
+			logger.Error("error serializing JSON result", "error", err)
+		}
 	}
 	return nil
 }
