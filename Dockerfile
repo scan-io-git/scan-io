@@ -98,7 +98,7 @@ RUN set -euxo pipefail && \
     rm -rf /root/.cache/pip
 
 RUN mkdir -p /scanio /scanio/plugins /scanio/rules /scanio/templates \
-          /scanio/projects /scanio/results /scanio/tmp /scanio/artifacts /data \
+          /scanio/projects /scanio/results /scanio/tmp /scanio/artifacts /data
 
 # Copy built binaries and other necessary files from the build stage
 COPY --from=build-scanio /usr/bin/scanio /bin/scanio
