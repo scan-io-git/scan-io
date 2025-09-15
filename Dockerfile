@@ -7,7 +7,7 @@
 ARG PLUGINS="github,gitlab,bitbucket,semgrep,bandit,trufflehog"
 
 # Stage 1: Build Scanio core and plugins
-FROM golang:1.24.2-alpine3.21 AS build-scanio
+FROM golang:1.25.1-alpine3.21 AS build-scanio
 
 WORKDIR /usr/src/scanio
 
@@ -35,7 +35,7 @@ RUN echo "Building binaries and plugins for '$TARGETOS/$TARGETARCH'"
 RUN make build PLUGINS=$PLUGINS CORE_BINARY=/usr/bin/scanio PLUGINS_DIR=/usr/bin/plugins
 
 # Stage 2: Prepare the runtime environment
-FROM alpine:3.21.3 as runtime
+FROM alpine:3.21.3 AS runtime
 
 # Set target architecture for multi-arch builds
 ARG TARGETOS
