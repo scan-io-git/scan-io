@@ -207,7 +207,7 @@ var toHtmlCmd = &cobra.Command{
 
 		templateFullPath, _, err := files.DetermineFileFullPath(allToHTMLOptions.TempatesPath, defaultHtmlTemplateName)
 		if err != nil {
-			return errors.NewCommandError(allToHTMLOptions, nil, fmt.Errorf("failed to determine html template path for '%s': %w", allToHTMLOptions.TempatesPath, err), 1)
+			return errors.NewCommandError(allToHTMLOptions, nil, fmt.Errorf("failed to determine html template path for %q: %w", allToHTMLOptions.TempatesPath, err), 1)
 		}
 
 		tmpl, err := scaniotemplate.NewTemplate(templateFullPath)
