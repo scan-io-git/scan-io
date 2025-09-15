@@ -90,7 +90,7 @@ Refer to plugin-specific documentation for detailed examples and additional requ
                 "target_path": "<path_to_folder_with_code>",
                 "results_path": "<path_to_report_file>",
                 "config_path": "<path_to_config_file/folder>",
-                "report_path": "<report_format>",
+                "report_format": "<report_format>",
                 "additional_args": [
                     "<additional_arg>"
                 ]

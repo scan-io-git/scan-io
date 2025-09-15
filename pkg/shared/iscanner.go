@@ -19,7 +19,7 @@ type ScannerScanRequest struct {
 	TargetPath     string   `json:"target_path"`     // Path to the target to scan
 	ResultsPath    string   `json:"results_path"`    // Path to save the results of the scan
 	ConfigPath     string   `json:"config_path"`     // Path to the configuration file for the scanner
-	ReportFormat   string   `json:"report_path"`     // Format of the report to generate (e.g., JSON, Sarif)
+	ReportFormat   string   `json:"report_format"`   // Format of the report to generate (e.g., JSON, Sarif)
 	AdditionalArgs []string `json:"additional_args"` // Additional arguments for the scanner
 }
 
