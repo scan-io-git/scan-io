@@ -90,6 +90,8 @@ The `scanio` directive defines the overall structure and storage locations for S
 | `projects_folder` | `{home_folder}/projects`  | Directory for project-specific files, organized by VCS domain, namespace, and repository.                               |
 | `results_folder`  | `{home_folder}/results`   | Directory for scan results, organized hierarchically by VCS domain, namespace, and repository.             |
 | `temp_folder`     | `{home_folder}/tmp`       | Directory for temporary files, such as files from PR scans.               |
+| `artifacts_folder`     | `{home_folder}/artifacts`       | Directory for CI artifacts files, such json results of commands.               |
+
 
 > [!IMPORTANT]  
 >  It is recommended to use the default behavior and avoid changing folder-related directives unless necessary.
@@ -122,6 +124,7 @@ Scanio supports a range of environment variables for configuring core functional
 | `SCANIO_PROJECTS_FOLDER`  | `projects_folder`   | `{home_folder}/projects` | Overrides the directory for storing project-specific files.                                      |
 | `SCANIO_RESULTS_FOLDER`   | `results_folder`    | `{home_folder}/results` | Overrides the directory for storing scan results.                                                |
 | `SCANIO_TEMP_FOLDER`      | `temp_folder`       | `{home_folder}/tmp`  | Overrides the directory for temporary files.                                                     |
+| `SCANIO_ARTIFACTS_FOLDER` | `artifacts_folder`       | `{home_folder}/artifacts`  | Overrides the directory for artifacts files.                                          |
 | `SCANIO_LOG_LEVEL`        | `logger.level`      | `info`               | Sets the logging verbosity level. Supported values: `DEBUG`, `INFO`, `WARN`, `ERROR`, `TRACE`.   |
 
 ## Plugins Configuration
