@@ -92,7 +92,6 @@ func applyHTTPClientConfig(httpConfig *config.HTTPClient) config.RestyHTTPClient
 	defaultCfg := config.DefaultRestyConfig()
 	cfg := defaultCfg
 
-	// TODO: Add handling debug via the logger config
 	cfg.Debug = config.SetThenPtr(httpConfig.Debug, defaultCfg.Debug)
 	cfg.RetryCount = config.SetThen(httpConfig.RetryCount, defaultCfg.RetryCount)
 	cfg.RetryWaitTime = config.SetThen(httpConfig.RetryWaitTime, defaultCfg.RetryWaitTime)

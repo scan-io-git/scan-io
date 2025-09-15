@@ -84,6 +84,7 @@ type HTTPClient struct {
 	TLSClientConfig  TLSClientConfig   `yaml:"tls_client_config"`   // TLS configuration for HTTPS connections.
 	Proxy            Proxy             `yaml:"proxy"`               // A proxy configuration.
 	CustomHeaders    map[string]string `yaml:"custom_headers"`      // Custom headers to be added to each request.
+	Debug            *bool             `yaml:"debug"`               // Http client debug mode.
 }
 
 // TLSClientConfig configures the TLS aspects of HTTP connections.
