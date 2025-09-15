@@ -106,6 +106,7 @@ The `logger` directive configures logging behavior for Scanio. Logger settings a
 | `disable_time`   | `true`        | Disables [timestamps](https://pkg.go.dev/github.com/hashicorp/go-hclog#LoggerOptions) in logs.                                                                     |
 | `json_format`    | `false`       | [Formats](https://pkg.go.dev/github.com/hashicorp/go-hclog#LoggerOptions) logs as JSON if enabled.                                                                |
 | `include_location` | `false`    | Includes file and line number [information](https://pkg.go.dev/github.com/hashicorp/go-hclog#LoggerOptions) in log entries.                                        |
+| `folder_path` | `<home_folder>/log`    | Path to a log file. Default: <home_folder>/log.                                        |
 
 
 ### Environment Variables
@@ -150,6 +151,7 @@ The `http_client` directive manages HTTP request behavior for plugins, allowing 
 | `proxy.host`            | `none`           | Proxy server address. If a scheme is unspecified, defaults to `http://`.                             |
 | `proxy.port`            | `none`           | Proxy server port.                                                              |
 | `custom_headers`        | `none`           | Custom headers to add to each HTTP request (e.g., `Authorization`).                     |
+| `debug`                 | `false`          | Debug mode.                     |
 
 > [!CAUTION]
 > Custom headers will be added to every HTTP request made by any tool or plugin that supports the `http_client` directive.
