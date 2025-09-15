@@ -37,13 +37,6 @@ RUN make build PLUGINS=$PLUGINS CORE_BINARY=/usr/bin/scanio PLUGINS_DIR=/usr/bin
 # Stage 2: Prepare the runtime environment
 FROM alpine:3.21.3 as runtime
 
-# RUN addgroup -g 101 scanio && \
-#     adduser -h /home/scanio -s /bin/bash --uid 1001 -G scanio -D scanio && \
-#     chown -R scanio:scanio $SCANIO_PLUGINS_FOLDER && \
-#     chown -R scanio:scanio $SCANIO_HOME
-
-# USER scanio:scanio
-
 # Set target architecture for multi-arch builds
 ARG TARGETOS
 ARG TARGETARCH
@@ -104,11 +97,8 @@ RUN set -euxo pipefail && \
     find /usr -name '__pycache__' -exec rm -rf {} + && \
     rm -rf /root/.cache/pip
 
-# Set PATH for venv manually
-ENV PATH="/opt/venvs/semgrep/bin:/opt/venvs/trufflehog3/bin:/opt/venvs/bandit/bin:$PATH"
-
-# Create necessary directories
-RUN mkdir -p /scanio /data
+RUN mkdir -p /scanio /scanio/plugins /scanio/rules /scanio/templates \
+          /scanio/projects /scanio/results /scanio/tmp /scanio/artifacts /data \
 
 # Copy built binaries and other necessary files from the build stage
 COPY --from=build-scanio /usr/bin/scanio /bin/scanio
@@ -120,13 +110,17 @@ COPY templates /scanio/templates
 COPY VERSION /scanio/VERSION
 COPY config.yml /scanio/config.yml
 
+# Set PATH for venv manually
+ENV PATH="/opt/venvs/semgrep/bin:/opt/venvs/trufflehog3/bin:/opt/venvs/bandit/bin:${PATH}"
+
 # Write to config.yml customized values
 RUN echo -e "\n\nscanio:" >> /scanio/config.yml && \
     echo -e "  home_folder: /scanio" >> /scanio/config.yml && \
     echo -e "  plugins_folder: /scanio/plugins" >> /scanio/config.yml && \
     echo -e "  projects_folder: /scanio/projects" >> /scanio/config.yml && \
     echo -e "  results_folder: /scanio/results" >> /scanio/config.yml && \
-    echo -e "  temp_folder: /scanio/tmp\n" >> /scanio/config.yml
+    echo -e "  temp_folder: /scanio/tmp" >> /scanio/config.yml && \
+    echo -e "  artifacts_folder: /scanio/artifacts\n" >> /scanio/config.yml
 
 ENTRYPOINT ["/bin/scanio"]
 CMD ["--help"]
