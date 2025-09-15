@@ -145,7 +145,7 @@ func (s *Scanner) createScanRequest(targetPath, resultsFile string) shared.Scann
 func (s *Scanner) scanRepo(cfg *config.Config, scanArg shared.ScannerScanRequest) (shared.ScannerScanResponse, error) {
 	var result shared.ScannerScanResponse
 
-	err := shared.WithPlugin(cfg, "plugin-scanner", shared.PluginTypeScanner, s.PluginName, func(raw interface{}) error {
+	err := shared.WithPlugin(cfg, s.logger, shared.PluginTypeScanner, s.PluginName, func(raw interface{}) error {
 		scanner, ok := raw.(shared.Scanner)
 		if !ok {
 			return fmt.Errorf("invalid plugin type")

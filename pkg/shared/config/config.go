@@ -73,6 +73,7 @@ type Logger struct {
 	DisableTime     *bool  `yaml:"disable_time"`     // Flag to disable timestamp logging if true.
 	JSONFormat      *bool  `yaml:"json_format"`      // Flag to output logs in JSON format if true.
 	IncludeLocation *bool  `yaml:"include_location"` // Flag to include file and line number in logs if true.
+	FolderPath      string `yaml:"folder_path"`      // Path to a log folder.
 }
 
 // HTTPClient configures settings for the HTTP client used within the application.

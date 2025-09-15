@@ -10,6 +10,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
@@ -109,32 +110,32 @@ func readVersionFile(versionFilePath string) PluginMeta {
 }
 
 // WithPlugin initializes the plugin client, sets up the plugin, and executes the provided function.
-func WithPlugin(cfg *config.Config, loggerName, pluginType, pluginName string, f func(interface{}) error) error {
-	logger := logger.NewLogger(cfg, loggerName)
+func WithPlugin(cfg *config.Config, baseLogger hclog.Logger, pluginType, pluginName string, f func(interface{}) error) error {
+	plog := logger.ForkLogger(baseLogger, "plugin")
 
 	pluginPath := filepath.Join(config.GetScanioPluginsHome(cfg), pluginName, pluginName)
 	client := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig: HandshakeConfig,
 		Plugins:         PluginMap,
 		Cmd:             exec.Command(pluginPath),
-		Logger:          logger,
+		Logger:          plog,
 	})
 	defer client.Kill()
 
 	rpcClient, err := client.Client()
 	if err != nil {
-		logger.Error("failed to get RPC client", "error", err)
+		plog.Error("failed to get RPC client", "error", err)
 		return fmt.Errorf("failed to get RPC client: %w", err)
 	}
 
 	raw, err := rpcClient.Dispense(pluginType)
 	if err != nil {
-		logger.Error("failed to dispense plugin", "pluginType", pluginType, "error", err)
+		plog.Error("failed to dispense plugin", "pluginType", pluginType, "error", err)
 		return fmt.Errorf("failed to dispense plugin: %w", err)
 	}
 
 	if err = setupPlugin(cfg, pluginType, raw); err != nil {
-		logger.Error("failed to setup plugin", "pluginType", pluginType, "error", err)
+		plog.Error("failed to setup plugin", "pluginType", pluginType, "error", err)
 		return fmt.Errorf("failed to setup plugin: %w", err)
 	}
 

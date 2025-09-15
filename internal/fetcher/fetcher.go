@@ -112,7 +112,7 @@ func (f *Fetcher) createFetchRequest(repo shared.RepositoryParams, cloneURL, tar
 func (f *Fetcher) fetchRepo(cfg *config.Config, fetchArgs shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
 	var result shared.VCSFetchResponse
 
-	err := shared.WithPlugin(cfg, "plugin-vcs", shared.PluginTypeVCS, f.PluginName, func(raw interface{}) error {
+	err := shared.WithPlugin(cfg, f.logger, shared.PluginTypeVCS, f.PluginName, func(raw interface{}) error {
 		vcsPlugin, ok := raw.(shared.VCS)
 		if !ok {
 			return fmt.Errorf("invalid plugin type")
