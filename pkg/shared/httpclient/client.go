@@ -93,13 +93,13 @@ func applyHTTPClientConfig(httpConfig *config.HTTPClient) config.RestyHTTPClient
 	cfg := defaultCfg
 
 	// TODO: Add handling debug via the logger config
-	cfg.Debug = config.GetBoolValue(httpConfig, "Debug", defaultCfg.Debug)
+	cfg.Debug = config.SetThenPtr(httpConfig.Debug, defaultCfg.Debug)
 	cfg.RetryCount = config.SetThen(httpConfig.RetryCount, defaultCfg.RetryCount)
 	cfg.RetryWaitTime = config.SetThen(httpConfig.RetryWaitTime, defaultCfg.RetryWaitTime)
 	cfg.RetryMaxWaitTime = config.SetThen(httpConfig.RetryMaxWaitTime, defaultCfg.RetryMaxWaitTime)
 	cfg.Timeout = config.SetThen(httpConfig.Timeout, defaultCfg.Timeout)
-	cfg.TLSClientConfig.InsecureSkipVerify = !config.GetBoolValue(
-		httpConfig.TLSClientConfig, "Verify", defaultCfg.TLSClientConfig.InsecureSkipVerify)
+	cfg.TLSClientConfig.InsecureSkipVerify = !config.SetThenPtr(
+		httpConfig.TLSClientConfig.Verify, defaultCfg.TLSClientConfig.InsecureSkipVerify)
 
 	// TODO: Use default value from default config
 	if httpConfig.Proxy.Host != "" && httpConfig.Proxy.Port != 0 {

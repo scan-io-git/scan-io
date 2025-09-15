@@ -359,7 +359,7 @@ func safeLogURL(u string) string {
 
 // insecureFromCfg returns true if TLS verification should be skipped, based on configuration.
 func InsecureFromCfg(cfg *scconfig.Config) bool {
-	return scconfig.GetBoolValue(cfg.GitClient, "InsecureTLS", false)
+	return scconfig.SetThenPtr(cfg.GitClient.InsecureTLS, false)
 }
 
 // TagModeToString converts a git.TagMode value to a human-readable string.
