@@ -51,6 +51,7 @@ logger:
   disable_time: true        # Whether to disable time in logs. Default: true.
   json_format: false        # Whether to format logs in JSON. Default: false.
   include_location: false   # Whether to include file and line number in logs. Default: false.
+  folder_path: "" # Path to a log file. Default: <home_folder>/log.
 
 ## HttpClient config
 http_client:
@@ -65,6 +66,7 @@ http_client:
     port: 8080          # Proxy server port. Default: none.
   custom_headers:                          # Custom headers to be added to each HTTP request.
     Authorization: "Bearer ${TOKEN}"      # Example custom header 1 with its corresponding value.
+  debug: false # Http client debug mode.  Default: false.
   
 ## GitClient config
 git_client:
