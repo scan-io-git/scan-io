@@ -8,6 +8,7 @@ scanio:
   projects_folder: ""         # The directory where Scanio project files are stored. Default: <home_folder>/projects. Can be overridden with the environment variable SCANIO_PROJECTS_FOLDER.
   results_folder: ""          # The directory where Scanio results are stored. Default: <home_folder>/results. Can be overridden with the environment variable SCANIO_RESULTS_FOLDER.
   temp_folder: ""             # The directory for temporary files used by Scanio. Default: <home_folder>/tmp. Can be overridden with the environment variable SCANIO_TEMP_FOLDER.
+  artifacts_folder: ""        # The directory for CI artifacts files used by Scanio. Default: <home_folder>/artifacts. Can be overridden with the environment variable SCANIO_ARTIFACTS_FOLDER.
 
 ## Bitbucket plugin config
 bitbucket_plugin:

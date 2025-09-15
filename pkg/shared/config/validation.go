@@ -48,6 +48,9 @@ func ValidateScanioConfig(cfg *Config) error {
 	if err := updateFolder(&cfg.Scanio.TempFolder, "SCANIO_TEMP_FOLDER", "tmp", cfg); err != nil {
 		return fmt.Errorf("failed to update temp folder: %w", err)
 	}
+	if err := updateFolder(&cfg.Scanio.ArtifactsFolder, "SCANIO_ARTIFACTS_FOLDER", "artifacts", cfg); err != nil {
+		return fmt.Errorf("failed to update artifacts folder: %w", err)
+	}
 	if err := updateFolder(&cfg.Logger.FolderPath, "", "log", cfg); err != nil {
 		return fmt.Errorf("failed to update log folder: %w", err)
 	}

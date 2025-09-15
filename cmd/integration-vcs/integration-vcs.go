@@ -3,13 +3,13 @@ package integrationvcs
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/internal/vcsintegrator"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/artifacts"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 )
@@ -105,19 +105,12 @@ func runIntegrationVCSCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	resultIntegrationVCS, integrationVCSErr := i.IntegrationAction(AppConfig, integrationVCSRequest)
-	metaDataFileName := fmt.Sprintf("VCS-INTEGRATION_%s_%s",
-		strings.ToUpper(i.PluginName),
-		strings.ToUpper(integrationVCSOptions.Action))
-	if config.IsCI(AppConfig) {
-		startTime := time.Now().UTC().Format(time.RFC3339)
-		metaDataFileName = fmt.Sprintf("VCS-INTEGRATION_%s_%s_%v",
-			strings.ToUpper(i.PluginName),
-			strings.ToUpper(integrationVCSOptions.Action),
-			startTime)
-	}
 
-	if err := shared.WriteGenericResult(AppConfig, logger, resultIntegrationVCS, metaDataFileName); err != nil {
-		logger.Error("failed to write result", "error", err)
+	if config.IsCI(AppConfig) {
+		cmd := fmt.Sprintf("integration-vcs-%s", integrationVCSOptions.Action)
+		if _, err := artifacts.SaveArtifactJSON(AppConfig, logger, cmd, i.PluginName, resultIntegrationVCS); err != nil {
+			logger.Error("failed to write artifact", "error", err)
+		}
 	}
 
 	if integrationVCSErr != nil {

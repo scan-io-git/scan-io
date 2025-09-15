@@ -3,13 +3,13 @@ package analyse
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/internal/scanner"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/artifacts"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 )
@@ -107,15 +107,10 @@ func runAnalyseCommand(cmd *cobra.Command, args []string) error {
 
 	analyseResult, scanErr := s.ScanRepos(AppConfig, analyseArgs)
 
-	// TODO: use a logger system to write it in a persistent log
-	metaDataFileName := fmt.Sprintf("ANALYSE_%s", strings.ToUpper(s.PluginName))
 	if config.IsCI(AppConfig) {
-		startTime := time.Now().UTC().Format(time.RFC3339)
-		metaDataFileName = fmt.Sprintf("ANALYSE_%s_%v", strings.ToUpper(s.PluginName), startTime)
-	}
-
-	if err := shared.WriteGenericResult(AppConfig, logger, analyseResult, metaDataFileName); err != nil {
-		logger.Error("failed to write result", "error", err)
+		if _, err := artifacts.SaveArtifactJSON(AppConfig, logger, "analyse", s.PluginName, analyseResult); err != nil {
+			logger.Error("failed to write artifact", "error", err)
+		}
 	}
 
 	if scanErr != nil {

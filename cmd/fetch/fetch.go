@@ -3,13 +3,13 @@ package fetch
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/internal/fetcher"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/artifacts"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 )
@@ -125,13 +125,10 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 
 	fetchResult, fetchErr := f.FetchRepos(AppConfig, fetchReqList)
 
-	metaDataFileName := fmt.Sprintf("FETCH_%s", strings.ToUpper(f.PluginName))
 	if config.IsCI(AppConfig) {
-		startTime := time.Now().UTC().Format(time.RFC3339)
-		metaDataFileName = fmt.Sprintf("FETCH_%s_%v", strings.ToUpper(f.PluginName), startTime)
-	}
-	if err := shared.WriteGenericResult(AppConfig, logger, fetchResult, metaDataFileName); err != nil {
-		logger.Error("failed to write result", "error", err)
+		if _, err := artifacts.SaveArtifactJSON(AppConfig, logger, "fetch", f.PluginName, fetchResult); err != nil {
+			logger.Error("failed to write artifact", "error", err)
+		}
 	}
 
 	if fetchErr != nil {
