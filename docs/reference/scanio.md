@@ -19,5 +19,5 @@ Scanio uses several directories to manage configurations, plugins, results, and 
 | `results_folder` | `{home_folder}/results`      | Stores scan results.  |
 | Analyse cmd result path | `{home_folder}/results/<VCS_domain>/<namespace_name>/<repository_name>/<scanning_result_file>`      | Results from scanners will be stored here. This default behavior applies only if the user does not explicitly provide a custom path to store the results. |
 | `temp_folder`    | `{home_folder}/tmp`          | Temporary files for pull requests or other operations. |
+| `artifacts_folder`    | `{home_folder}/artifacts`          | Directory for CI artifacts files.    |
 | PR tmp path    | `{home_folder}/tmp/<VCS_domain>/<namespace_name>/<repository_name>/scanio-pr-tmp/<pr_id>` | Files from cloned pull requests will be temporarily stored here for scanning. |
-

@@ -45,7 +45,7 @@ scanio fetch --vcs/-p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [
 | `--branch`, `-b` | string  | Conditional | `main` or `master`                                           | The specific branch or commit hash to fetch.                                |
 | `--help`, `-h`   | flag    | No          | `false`                                                      | Displays help for the `fetch` command.                                      |
 | `--input-file`, `-i` | string | Conditional | `none`                                                       | Path to a file in [Scanio list command](cmd-list.md#command-output-format) format containing repositories to fetch.            |
-| `--output`, `-o` | string  | No          | `{home_folder}/projects/<VCS_domain>/  <namespace_name>/<repository_name>`                                        | Path to save the fetched repository code.                                   |
+| `--output`, `-o` | string  | No          | `{scanio_home_folder}/projects/<VCS_domain>/<namespace_name>/<repository_name>`      | Path to save the fetched repository code.         |
 | `--rm-ext`       | strings | No          | `[csv,png,ipynb,txt,md,mp4,zip,gif,  gz,jpg,jpeg,cache,tar,svg,bin,lock,exe]` | Comma-separated list of file extensions to remove after fetching.           |
 | `--ssh-key`, `-k` | string  | Conditional | `none`                                                       | Path to the SSH key to use (if `auth-type` is `ssh-key`).                    |
 | `--threads`, `-j`| int     | No          | `1`                                                          | Number of concurrent threads to use for parallel fetching.                   |
