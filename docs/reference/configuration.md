@@ -124,7 +124,7 @@ Scanio supports a range of environment variables for configuring core functional
 | `SCANIO_PROJECTS_FOLDER`  | `projects_folder`   | `{home_folder}/projects` | Overrides the directory for storing project-specific files.                                      |
 | `SCANIO_RESULTS_FOLDER`   | `results_folder`    | `{home_folder}/results` | Overrides the directory for storing scan results.                                                |
 | `SCANIO_TEMP_FOLDER`      | `temp_folder`       | `{home_folder}/tmp`  | Overrides the directory for temporary files.                                                     |
-| `SCANIO_ARTIFACTS_FOLDER` | `artifacts_folder`       | `{home_folder}/artifacts`  | Overrides the directory for artifacts files.                                          |
+| `SCANIO_ARTIFACTS_FOLDER` | `artifacts_folder`       | `{home_folder}/artifacts`  | Overrides the directory for CI artifacts files.                                          |
 | `SCANIO_LOG_LEVEL`        | `logger.level`      | `info`               | Sets the logging verbosity level. Supported values: `DEBUG`, `INFO`, `WARN`, `ERROR`, `TRACE`.   |
 
 ## Plugins Configuration

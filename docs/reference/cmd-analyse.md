@@ -37,7 +37,7 @@ scanio analyse --scanner/-p PLUGIN_NAME [--config/-c PATH] [--format/-f OUTPUT_F
 | `--config`, `-c`  | string         | No              | `none`                                                       | Path to the scanner's configuration file. The config format depends on the specific scanner being used.     |
 | `--format`, `-f`  | string         | No              | `raw`                                                        | Specifies the output format (e.g., `json`, `sarif`).                 |
 | `--input-file`, `-i`  | string     | Conditional | `none`                                                        | Path to a file in [Scanio list command](cmd-list.md#command-output-format) format containing repositories to scan.      |
-| `--output`, `-o`  | string     | No | ``{home_folder}/results/<VCS_domain>/  <namespace_name>/``                                                        | 	Path to save the analysis results.      |
+| `--output`, `-o`  | string     | No | `{scanio_home_folder}/results/<VCS_domain>/<namespace_name>/` | 	Path to save the analysis results.      |
 | `--threads`, `-j`| int     | No          | `1`                                                          | Number of concurrent threads to use for parallel fetching.                   |
 | `--help`, `-h`   | flag    | No          | `false`                                                      | Displays help for the `analyse` command.                                      |
 
