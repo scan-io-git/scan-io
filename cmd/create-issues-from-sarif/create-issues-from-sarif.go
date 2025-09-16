@@ -24,15 +24,17 @@ import (
 // scanioManagedAnnotation is appended to issue bodies created by this command
 // and is required for correlation/auto-closure to consider an issue
 // managed by automation.
-const scanioManagedAnnotation = "> This issue was created and will be managed by scanio automation. Don't change body manually for proper processing, unless you know what you do"
+const scanioManagedAnnotation = "> [!NOTE]\n> This issue was created and will be managed by scanio automation. Don't change body manually for proper processing, unless you know what you do"
 
 // RunOptions holds flags for the create-issues-from-sarif command.
 type RunOptions struct {
-	Namespace    string `json:"namespace,omitempty"`
-	Repository   string `json:"repository,omitempty"`
-	SarifPath    string `json:"sarif_path,omitempty"`
-	SourceFolder string `json:"source_folder,omitempty"`
-	Ref          string `json:"ref,omitempty"`
+	Namespace    string   `json:"namespace,omitempty"`
+	Repository   string   `json:"repository,omitempty"`
+	SarifPath    string   `json:"sarif_path,omitempty"`
+	SourceFolder string   `json:"source_folder,omitempty"`
+	Ref          string   `json:"ref,omitempty"`
+	Labels       []string `json:"labels,omitempty"`
+	Assignees    []string `json:"assignees,omitempty"`
 }
 
 var (
@@ -41,9 +43,9 @@ var (
 
 	// CreateIssuesFromSarifCmd represents the command to create GitHub issues from a SARIF file.
 	CreateIssuesFromSarifCmd = &cobra.Command{
-		Use:                   "create-issues-from-sarif --sarif PATH [--namespace NAMESPACE] [--repository REPO]  [--source-folder PATH] [--ref REF]",
+		Use:                   "create-issues-from-sarif --sarif PATH [--namespace NAMESPACE] [--repository REPO] [--source-folder PATH] [--ref REF] [--labels label[,label...]] [--assignees user[,user...]]",
 		Short:                 "Create GitHub issues for high severity SARIF findings",
-		Example:               "scanio create-issues-from-sarif --namespace scan-io-git --repository scan-io --sarif /path/to/report.sarif",
+		Example:               "scanio create-issues-from-sarif --namespace scan-io-git --repository scan-io --sarif /path/to/report.sarif --labels bug,security --assignees alice,bob",
 		SilenceUsage:          true,
 		Hidden:                true,
 		DisableFlagsInUseLine: true,
@@ -123,6 +125,10 @@ func init() {
 	CreateIssuesFromSarifCmd.Flags().StringVar(&opts.SarifPath, "sarif", "", "Path to SARIF file")
 	CreateIssuesFromSarifCmd.Flags().StringVar(&opts.SourceFolder, "source-folder", "", "Optional: source folder to improve file path resolution in SARIF (used for absolute paths)")
 	CreateIssuesFromSarifCmd.Flags().StringVar(&opts.Ref, "ref", "", "Git ref (branch or commit SHA) to build a permalink to the vulnerable code (defaults to $GITHUB_SHA when unset)")
+	// --labels supports multiple usages (e.g., --labels bug --labels security) or comma-separated values
+	CreateIssuesFromSarifCmd.Flags().StringSliceVar(&opts.Labels, "labels", nil, "Optional: labels to assign to created GitHub issues (repeat flag or use comma-separated values)")
+	// --assignees supports multiple usages or comma-separated values
+	CreateIssuesFromSarifCmd.Flags().StringSliceVar(&opts.Assignees, "assignees", nil, "Optional: assignees (GitHub logins) to assign to created issues (repeat flag or use comma-separated values)")
 	CreateIssuesFromSarifCmd.Flags().BoolP("help", "h", false, "Show help for create-issues-from-sarif command.")
 }
 
@@ -498,8 +504,10 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 				},
 				Action: "createIssue",
 			},
-			Title: newTitles[idx],
-			Body:  newBodies[idx],
+			Title:     newTitles[idx],
+			Body:      newBodies[idx],
+			Labels:    opts.Labels,
+			Assignees: opts.Assignees,
 		}
 
 		err := shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, "github", func(raw interface{}) error {

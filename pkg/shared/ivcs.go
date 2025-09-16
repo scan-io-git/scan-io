@@ -106,6 +106,12 @@ type VCSIssueCreationRequest struct {
 	VCSRequestBase
 	Title string `json:"title"`
 	Body  string `json:"body"`
+	// Logins for Users to assign to this issue.
+	// github supports multiple assignees
+	Assignees []string `json:"assignees,omitempty"`
+	// Labels is an optional list of label names to attach to the created issue.
+	// Not all VCS providers support labels; providers that don't will ignore this field.
+	Labels []string `json:"labels,omitempty"`
 }
 
 // VCSIssueUpdateRequest represents a request to update an existing issue.

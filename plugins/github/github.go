@@ -492,6 +492,16 @@ func (g *VCSGithub) CreateIssue(args shared.VCSIssueCreationRequest) (int, error
 		Body:  github.String(args.Body),
 	}
 
+	// If labels are provided, attach them to the issue request
+	if len(args.Labels) > 0 {
+		issue.Labels = &args.Labels
+	}
+
+	// If assignees are provided, attach them to the issue request
+	if len(args.Assignees) > 0 {
+		issue.Assignees = &args.Assignees
+	}
+
 	ctx := context.Background()
 	createdIssue, _, err := client.Issues.Create(ctx, args.RepoParam.Namespace, args.RepoParam.Repository, issue)
 	if err != nil {
@@ -529,9 +539,6 @@ func (g *VCSGithub) ListIssues(args shared.VCSListIssuesRequest) ([]shared.Issue
 		issues, resp, err := client.Issues.ListByRepo(context.Background(), args.RepoParam.Namespace, args.RepoParam.Repository, opt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list issues: %w", err)
-		}
-		if len(issues) > 0 {
-			g.logger.Debug("first issue", "number", issues[0].GetNumber(), "title", issues[0].GetTitle(), "body", issues[0].GetBody())
 		}
 		all = append(all, issues...)
 		if resp == nil || resp.NextPage == 0 {
