@@ -250,11 +250,14 @@ The Semgrep Plugin uses different default rule sets based on the mode:
 - User Mode: Templates follow the structure `scanio-report-<plugin_name>.<report_ext>`.
 - CI Mode: Templates include a timestamp for uniqueness: `scanio-report-<current_time.RFC3339>-<plugin_name>.<report_ext>`.
 
-#### Logging Behavior
-Log files differ in naming and location:
-- User Mode: Logs are named `<command>_<plugin_name>`.
-- CI Mode: Logs include a timestamp for uniqueness: `<command>_<plugin_name>_<current_time.RFC3339>`.
-Logs are stored in `{home_folder}/logs by default`.
+#### Artifacts
+Artifacts are special file that contains metadata about the command execution and results in the same format as [Result Output](#result-output). They are generated only in CI mode.
+
+Artifacts are stored in a dedicated folder instead of directly in the Scanio home directory: `<scanio_home_folder>/artifacts/`
+
+Filename format: `<command>_<plugin_name>_<current_time.RFC3339>.scanio-artifact.json`
+
+Example: analyse_semgrep_2025-09-15T08:28:46Z.scanio-artifact.json
 
 #### Command-Specific Adjustments
 For the `to-html` command, the `-s` (Source Folder) flag is ignored in CI Mode.

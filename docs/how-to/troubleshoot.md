@@ -5,11 +5,16 @@ When using Scanio, you may encounter issues. This section outlines common troubl
 
 ## Table of Contents
 
+- [Logs](#logs)
 - [Using Debug Mode](#using-debug-mode)
   - [Example: Running in Debug Mode via Docker](#example-running-in-debug-mode-via-docker)
   - [Example: Running in Debug Mode for Go CLI](#example-running-in-debug-mode-for-go-cli)
 - [Command Metadata Files](#command-metadata-files)
 - [Using Docker Interactive Bash Mode ](#using-docker-interactive-bash-mode)
+
+## Logs
+
+Logs are stored in `{home_folder}/log` by default.
 
 ## Using Debug Mode
 
