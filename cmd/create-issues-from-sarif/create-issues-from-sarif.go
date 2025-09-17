@@ -3,6 +3,7 @@ package createissuesfromsarif
 import (
 	"crypto/sha256"
 	"fmt"
+	"regexp"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -380,6 +381,22 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 	newTitles := make([]string, 0)
 
 	for _, run := range report.Runs {
+
+		// Build a map of rules keyed by rule ID for quick lookups
+		rulesByID := map[string]*sarif.ReportingDescriptor{}
+		if run.Tool.Driver != nil {
+			for _, r := range run.Tool.Driver.Rules {
+				if r == nil {
+					continue
+				}
+				id := strings.TrimSpace(r.ID)
+				if id == "" {
+					continue
+				}
+				rulesByID[id] = r
+			}
+		}
+
 		for _, res := range run.Results {
 			level, _ := res.Properties["Level"].(string)
 			if strings.ToLower(level) != "error" {
@@ -397,10 +414,10 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 			}
 			line, endLine := extractRegionFromResult(res)
 
-			desc := getStringProp(res.Properties, "Description")
-			if desc == "" && res.Message.Text != nil {
-				desc = *res.Message.Text
-			}
+			// desc := getStringProp(res.Properties, "Description")
+			// if desc == "" && res.Message.Text != nil {
+			// 	desc = *res.Message.Text
+			// }
 
 			snippetHash := computeSnippetHash(fileURI, line, endLine, options.SourceFolder)
 			scannerName := getScannerName(run)
@@ -422,7 +439,73 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 			if link := buildGitHubPermalink(options, fileURI, line, endLine); link != "" {
 				body += fmt.Sprintf("Permalink: %s\n", link)
 			}
-			body += "\n" + desc + "\n\n" + scanioManagedAnnotation
+			// Append rule help markdown if available
+			if r, ok := rulesByID[ruleID]; ok && r != nil && r.Help != nil && r.Help.Markdown != nil {
+				if hm := strings.TrimSpace(*r.Help.Markdown); hm != "" {
+					// Remove specific promotional footer from help markdown if present
+					hm = strings.ReplaceAll(hm, "#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n", "")
+					if cleaned := strings.TrimSpace(hm); cleaned != "" {
+						body += "\n\n" + cleaned
+					}
+				}
+			}
+
+			// Append security identifier tags (CWE, OWASP) with links if available in rule properties
+			if r, ok := rulesByID[ruleID]; ok && r != nil && r.Properties != nil {
+				var tags []string
+				if v, ok := r.Properties["tags"]; ok && v != nil {
+					switch tv := v.(type) {
+					case []string:
+						tags = tv
+					case []interface{}:
+						for _, it := range tv {
+							if s, ok := it.(string); ok {
+								tags = append(tags, s)
+							}
+						}
+					}
+				}
+
+				if len(tags) > 0 {
+					cweRe := regexp.MustCompile(`^CWE-(\d+)\b`)
+					owaspRe := regexp.MustCompile(`^OWASP[- ]?A(\d{2}):(\d{4})\s*-\s*(.+)$`)
+					var lines []string
+					for _, tag := range tags {
+						t := strings.TrimSpace(tag)
+						if t == "" {
+							continue
+						}
+						if m := cweRe.FindStringSubmatch(t); len(m) == 2 {
+							num := m[1]
+							url := fmt.Sprintf("https://cwe.mitre.org/data/definitions/%s.html", num)
+							lines = append(lines, fmt.Sprintf("- [%s](%s)", t, url))
+							continue
+						}
+						if m := owaspRe.FindStringSubmatch(t); len(m) == 4 {
+							rank := m[1]
+							year := m[2]
+							title := m[3]
+							slug := strings.ReplaceAll(strings.TrimSpace(title), " ", "_")
+							// Remove characters that are not letters, numbers, underscore, or hyphen
+							clean := make([]rune, 0, len(slug))
+							for _, r := range slug {
+								if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' {
+									clean = append(clean, r)
+								}
+							}
+							slug = string(clean)
+							url := fmt.Sprintf("https://owasp.org/Top10/A%s_%s-%s/", rank, year, slug)
+							lines = append(lines, fmt.Sprintf("- [%s](%s)", t, url))
+							continue
+						}
+					}
+					if len(lines) > 0 {
+						body += "\n" + strings.Join(lines, "\n")
+					}
+				}
+			}
+
+			body += "\n\n" + scanioManagedAnnotation
 
 			newIssues = append(newIssues, issuecorrelation.IssueMetadata{
 				IssueID:     "",
