@@ -417,6 +417,12 @@ func (g *VCSGitlab) UpdateIssue(args shared.VCSIssueUpdateRequest) (bool, error)
 	return false, fmt.Errorf("UpdateIssue not implemented for GitLab")
 }
 
+// CreateIssueComment is not implemented for GitLab yet. Added to satisfy the VCS interface.
+func (g *VCSGitlab) CreateIssueComment(args shared.VCSCreateIssueCommentRequest) (bool, error) {
+	g.logger.Error("CreateIssueComment not implemented for GitLab", "repo", fmt.Sprintf("%s/%s", args.RepoParam.Namespace, args.RepoParam.Repository), "number", args.Number)
+	return false, fmt.Errorf("CreateIssueComment not implemented for GitLab")
+}
+
 // buildCommentWithAttachments constructs the full comment text with file attachments.
 func (g *VCSGitlab) buildCommentWithAttachments(client *gitlab.Client, projectID int, comment string, filePaths []string) (string, error) {
 	var attachmentsText strings.Builder

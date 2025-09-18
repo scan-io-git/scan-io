@@ -123,6 +123,13 @@ type VCSIssueUpdateRequest struct {
 	State  string `json:"state"` // optional: "open" or "closed"
 }
 
+// VCSCreateIssueCommentRequest represents a request to create a comment on an issue.
+type VCSCreateIssueCommentRequest struct {
+	VCSRequestBase
+	Number int    `json:"number"`
+	Body   string `json:"body"`
+}
+
 // VCSAddCommentToPRRequest represents a request to add a comment to a PR.
 type VCSAddCommentToPRRequest struct {
 	VCSRequestBase
@@ -176,6 +183,7 @@ type VCS interface {
 	CreateIssue(req VCSIssueCreationRequest) (int, error)
 	ListIssues(req VCSListIssuesRequest) ([]IssueParams, error)
 	UpdateIssue(req VCSIssueUpdateRequest) (bool, error)
+	CreateIssueComment(req VCSCreateIssueCommentRequest) (bool, error)
 }
 
 // VCSRPCClient implements the VCS interface for RPC clients.
@@ -283,6 +291,16 @@ func (c *VCSRPCClient) UpdateIssue(req VCSIssueUpdateRequest) (bool, error) {
 	return resp, nil
 }
 
+// CreateIssueComment calls the CreateIssueComment method on the RPC client.
+func (c *VCSRPCClient) CreateIssueComment(req VCSCreateIssueCommentRequest) (bool, error) {
+	var resp bool
+	err := c.client.Call("Plugin.CreateIssueComment", req, &resp)
+	if err != nil {
+		return false, fmt.Errorf("RPC client CreateIssueComment call failed: %w", err)
+	}
+	return resp, nil
+}
+
 // VCSRPCServer wraps a VCS implementation to provide an RPC server.
 type VCSRPCServer struct {
 	Impl VCS
@@ -384,6 +402,16 @@ func (s *VCSRPCServer) UpdateIssue(args VCSIssueUpdateRequest, resp *bool) error
 	*resp, err = s.Impl.UpdateIssue(args)
 	if err != nil {
 		return fmt.Errorf("VCS UpdateIssue failed: %w", err)
+	}
+	return nil
+}
+
+// CreateIssueComment calls the CreateIssueComment method on the VCS implementation.
+func (s *VCSRPCServer) CreateIssueComment(args VCSCreateIssueCommentRequest, resp *bool) error {
+	var err error
+	*resp, err = s.Impl.CreateIssueComment(args)
+	if err != nil {
+		return fmt.Errorf("VCS CreateIssueComment failed: %w", err)
 	}
 	return nil
 }

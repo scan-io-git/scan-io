@@ -617,6 +617,32 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 			// skip if we can't parse number
 			continue
 		}
+		// Leave a comment before closing the issue to explain why it is being closed
+		commentReq := shared.VCSCreateIssueCommentRequest{
+			VCSRequestBase: shared.VCSRequestBase{
+				RepoParam: shared.RepositoryParams{
+					Namespace:  options.Namespace,
+					Repository: options.Repository,
+				},
+				Action: "createIssueComment",
+			},
+			Number: num,
+			Body:   "Recent scan didn't see the issue; closing this as resolved.",
+		}
+
+		err = shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, "github", func(raw interface{}) error {
+			vcs, ok := raw.(shared.VCS)
+			if !ok {
+				return fmt.Errorf("invalid VCS plugin type")
+			}
+			_, err := vcs.CreateIssueComment(commentReq)
+			return err
+		})
+		if err != nil {
+			lg.Error("failed to add comment before closing issue", "error", err, "number", num)
+			// continue to attempt closing even if commenting failed
+		}
+
 		upd := shared.VCSIssueUpdateRequest{
 			VCSRequestBase: shared.VCSRequestBase{
 				RepoParam: shared.RepositoryParams{

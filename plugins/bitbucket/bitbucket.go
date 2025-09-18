@@ -265,6 +265,12 @@ func (g *VCSBitbucket) UpdateIssue(args shared.VCSIssueUpdateRequest) (bool, err
 	return false, fmt.Errorf("UpdateIssue not implemented for Bitbucket")
 }
 
+// CreateIssueComment is not implemented for Bitbucket yet. Added to satisfy the VCS interface.
+func (g *VCSBitbucket) CreateIssueComment(args shared.VCSCreateIssueCommentRequest) (bool, error) {
+	g.logger.Error("CreateIssueComment not implemented for Bitbucket", "repo", fmt.Sprintf("%s/%s", args.RepoParam.Namespace, args.RepoParam.Repository), "number", args.Number)
+	return false, fmt.Errorf("CreateIssueComment not implemented for Bitbucket")
+}
+
 // fetchPR handles fetching pull request changes.
 func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	g.logger.Info("handling PR changes fetching")

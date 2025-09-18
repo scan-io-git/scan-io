@@ -34,6 +34,33 @@ type VCSGithub struct {
 	globalConfig *config.Config
 }
 
+// CreateIssueComment creates a new comment on an existing GitHub issue.
+func (g *VCSGithub) CreateIssueComment(args shared.VCSCreateIssueCommentRequest) (bool, error) {
+    // Basic validation
+    if strings.TrimSpace(args.RepoParam.Namespace) == "" || strings.TrimSpace(args.RepoParam.Repository) == "" {
+        return false, fmt.Errorf("namespace and repository are required")
+    }
+    if args.Number <= 0 {
+        return false, fmt.Errorf("valid issue number is required")
+    }
+    if strings.TrimSpace(args.Body) == "" {
+        return false, fmt.Errorf("comment body is required")
+    }
+
+    client, err := g.initializeGithubClient()
+    if err != nil {
+        return false, fmt.Errorf("failed to initialize GitHub client: %w", err)
+    }
+
+    comment := &github.IssueComment{Body: github.String(args.Body)}
+    _, _, err = client.Issues.CreateComment(context.Background(), args.RepoParam.Namespace, args.RepoParam.Repository, args.Number, comment)
+    if err != nil {
+        return false, fmt.Errorf("failed to create issue comment: %w", err)
+    }
+
+    return true, nil
+}
+
 // UpdateIssue updates an existing GitHub issue's title and/or body.
 func (g *VCSGithub) UpdateIssue(args shared.VCSIssueUpdateRequest) (bool, error) {
 	// Basic validation
