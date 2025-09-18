@@ -5,7 +5,7 @@ In this documentation, we use the following conventions for placeholders:
 
 ### Folder Structure and Usage
 
-Scanio uses several directories to manage configurations, plugins, results, and temporary files. These directories can be customized via the `scanio` directive in the configuration file or through environment variables.
+Scanio uses several directories to manage configurations, plugins, artifacts, results, and temporary files. These directories can be customized via the `scanio` directive in the configuration file or through environment variables.
 
 | Folder Name     | Default Path                  | Description                                                                                     |
 |------------------|-------------------------------|-------------------------------------------------------------------------------------------------|
@@ -18,5 +18,28 @@ Scanio uses several directories to manage configurations, plugins, results, and 
 | `temp_folder`    | `{home_folder}/tmp`          | Temporary files for pull requests or other operations. |
 | `artifacts_folder`    | `{home_folder}/artifacts`          | Directory for CI artifacts files.    |
 | PR tmp path    | `{home_folder}/tmp/<VCS_domain>/<namespace_name>/<repository_name>/scanio-pr-tmp/<pr_id>` | Files from cloned pull requests will be temporarily stored here for scanning. |
+| `logger.folder_path` | `{home_folder}/log`    | Path to a log file directory. Default: `{home_folder}/log`.                                        |
 
 
+All files are placed under scanio home folder:
+```
+~/.scanio
+|-- project/
+    `-- github.com/
+        `-- scan-io/
+        |   `-- scan-io/
+|-- results/
+    `-- github.com/
+        `-- scan-io/
+        |   `-- scan-io/
+|-- artifacts/
+|-- log/
+    `-- scanio.log
+|-- tmp/
+|-- plugins/
+    |-- github/
+    |-- gitlab/
+    |-- semgrep/
+    `-- trufflehog/
+`-- config.yml
+```

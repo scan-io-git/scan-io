@@ -108,7 +108,7 @@ The `logger` directive configures logging behavior for Scanio. Logger settings a
 | `disable_time`   | `true`        | Disables [timestamps](https://pkg.go.dev/github.com/hashicorp/go-hclog#LoggerOptions) in logs.                                                                     |
 | `json_format`    | `false`       | [Formats](https://pkg.go.dev/github.com/hashicorp/go-hclog#LoggerOptions) logs as JSON if enabled.                                                                |
 | `include_location` | `false`    | Includes file and line number [information](https://pkg.go.dev/github.com/hashicorp/go-hclog#LoggerOptions) in log entries.                                        |
-| `folder_path` | `<home_folder>/log`    | Path to a log file. Default: <home_folder>/log.                                        |
+| `folder_path` | `{home_folder}/log`    | Path to a log file directory. Default: `{home_folder}/log`.                                        |
 
 
 ### Environment Variables
