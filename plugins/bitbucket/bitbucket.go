@@ -88,35 +88,39 @@ func (g *VCSBitbucket) listRepositoriesForProject(client *bitbucket.Client, proj
 }
 
 // listRepositoriesForAllProjects fetches repositories for all projects.
-func (g *VCSBitbucket) listRepositoriesForAllProjects(client *bitbucket.Client) ([]shared.RepositoryParams, error) {
+func (g *VCSBitbucket) listRepositoriesForAllProjects(client *bitbucket.Client) ([]shared.NamespaceParams, int, error) {
+	var gRepoCount int
 	projects, err := client.Projects.List()
 	if err != nil {
 		g.logger.Error("failed to list all projects", "error", err)
-		return nil, err
+		return nil, gRepoCount, err
 	}
 
 	if projects == nil {
-		return nil, fmt.Errorf("no projects found")
+		return nil, gRepoCount, fmt.Errorf("no projects found")
 	}
 
-	var result []shared.RepositoryParams
+	var result []shared.NamespaceParams
 	for _, project := range *projects {
 		repos, err := g.listRepositoriesForProject(client, project.Key)
 		if err != nil {
 			g.logger.Error("failed to list repositories for project, continuing...", "project", project.Key, "error", err)
 			continue
 		}
-		result = append(result, repos...)
+		repoCount := len(repos)
+		gRepoCount += repoCount
+		result = append(result, shared.NamespaceParams{Namespace: project.Key, RepositoryCount: repoCount, Repositories: repos})
 	}
 
 	if len(result) == 0 {
-		return nil, fmt.Errorf("list of repositories is empty")
+		return nil, gRepoCount, fmt.Errorf("list of repositories is empty")
 	}
-	return result, nil
+	return result, gRepoCount, nil
 }
 
 // ListRepos handles listing repositories based on the provided VCSListReposRequest.
-func (g *VCSBitbucket) ListRepositories(args shared.VCSListRepositoriesRequest) ([]shared.RepositoryParams, error) {
+func (g *VCSBitbucket) ListRepositories(args shared.VCSListRepositoriesRequest) ([]shared.VCSParams, error) {
+	var result []shared.VCSParams
 	g.logger.Debug("starting execution of list repositories function", "args", args)
 
 	if err := g.validateList(&args); err != nil {
@@ -130,9 +134,35 @@ func (g *VCSBitbucket) ListRepositories(args shared.VCSListRepositoriesRequest) 
 	}
 
 	if len(args.RepoParam.Namespace) > 0 {
-		return g.listRepositoriesForProject(client, args.RepoParam.Namespace)
+		repos, err := g.listRepositoriesForProject(client, args.RepoParam.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, shared.VCSParams{
+			Domain:          args.VCSDomain,
+			NamespaceCount:  1,
+			RepositoryCount: len(repos),
+			Namespaces: []shared.NamespaceParams{
+				{
+					Namespace:       args.RepoParam.Namespace,
+					RepositoryCount: len(repos),
+					Repositories:    repos,
+				},
+			}})
+		return result, nil
 	}
-	return g.listRepositoriesForAllProjects(client)
+
+	projects, repoCount, err := g.listRepositoriesForAllProjects(client)
+	if err != nil {
+		return nil, err
+	}
+	result = append(result, shared.VCSParams{
+		Domain:          args.VCSDomain,
+		NamespaceCount:  len(projects),
+		RepositoryCount: repoCount,
+		Namespaces:      projects,
+	})
+	return result, nil
 }
 
 // RetrievePRInformation handles retrieving PR information based on the provided VCSRetrievePRInformationRequest.

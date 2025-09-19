@@ -11,6 +11,21 @@ import (
 	ftutils "github.com/scan-io-git/scan-io/internal/fetcherutils"
 )
 
+// VCSParams holds the details of a VCS.
+type VCSParams struct {
+	Domain          string            `json:"domain,omitempty"`
+	NamespaceCount  int               `json:"namespace_count,omitempty"`
+	RepositoryCount int               `json:"repository_count,omitempty"`
+	Namespaces      []NamespaceParams `json:"namespaces"`
+}
+
+// NamespaceParams holds the details of a namespace.
+type NamespaceParams struct {
+	Namespace       string             `json:"namespace,omitempty"`
+	RepositoryCount int                `json:"repository_count,omitempty"`
+	Repositories    []RepositoryParams `json:"repositories"`
+}
+
 // RepositoryParams holds the details of a repository.
 type RepositoryParams struct {
 	Domain        string `json:"domain,omitempty"`
@@ -67,6 +82,7 @@ type VCSFetchRequest struct {
 
 // VCSRequestBase is the base structure for VCS requests.
 type VCSRequestBase struct {
+	VCSDomain string           `json:"vcs_domain"`
 	RepoParam RepositoryParams `json:"repo_param"`
 	Action    string           `json:"action"`
 }
@@ -119,7 +135,7 @@ type VCSFetchResponse struct {
 
 // VCSListRepositoriesResponse represents a response from listing repositories.
 type VCSListRepositoriesResponse struct {
-	Repositories []RepositoryParams `json:"repositories"`
+	VCS []VCSParams `json:"vcs"`
 }
 
 // VCSRetrievePRInformationResponse represents a response from retrieving PR information.
@@ -131,7 +147,7 @@ type VCSRetrievePRInformationResponse struct {
 type VCS interface {
 	Setup(configData config.Config) (bool, error)
 	Fetch(req VCSFetchRequest) (VCSFetchResponse, error)
-	ListRepositories(req VCSListRepositoriesRequest) ([]RepositoryParams, error)
+	ListRepositories(req VCSListRepositoriesRequest) ([]VCSParams, error)
 	RetrievePRInformation(req VCSRetrievePRInformationRequest) (PRParams, error)
 	AddRoleToPR(req VCSAddRoleToPRRequest) (bool, error)
 	SetStatusOfPR(req VCSSetStatusOfPRRequest) (bool, error)
@@ -154,13 +170,14 @@ func (c *VCSRPCClient) Setup(configData config.Config) (bool, error) {
 }
 
 // ListRepositories calls the ListRepositories method on the RPC client.
-func (c *VCSRPCClient) ListRepositories(req VCSListRepositoriesRequest) ([]RepositoryParams, error) {
+func (c *VCSRPCClient) ListRepositories(req VCSListRepositoriesRequest) ([]VCSParams, error) {
 	var resp VCSListRepositoriesResponse
 	err := c.client.Call("Plugin.ListRepositories", req, &resp)
 	if err != nil {
 		return nil, fmt.Errorf("RPC client ListRepositories call failed: %w", err)
 	}
-	return resp.Repositories, nil
+
+	return resp.VCS, nil
 }
 
 // Fetch calls the Fetch method on the RPC client.
@@ -240,11 +257,11 @@ func (s *VCSRPCServer) Fetch(args VCSFetchRequest, resp *VCSFetchResponse) error
 
 // ListRepositories calls the ListRepositories method on the VCS implementation.
 func (s *VCSRPCServer) ListRepositories(args VCSListRepositoriesRequest, resp *VCSListRepositoriesResponse) error {
-	projects, err := s.Impl.ListRepositories(args)
+	vcs, err := s.Impl.ListRepositories(args)
 	if err != nil {
 		return fmt.Errorf("VCS ListRepositories failed: %w", err)
 	}
-	resp.Repositories = projects
+	resp.VCS = vcs
 	return nil
 }
 

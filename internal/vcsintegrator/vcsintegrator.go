@@ -55,6 +55,7 @@ func New(pluginName, action string, logger hclog.Logger) *VCSIntegrator {
 func (i *VCSIntegrator) createListRequest(repo shared.RepositoryParams, language string) shared.VCSListRepositoriesRequest {
 	return shared.VCSListRepositoriesRequest{
 		VCSRequestBase: shared.VCSRequestBase{
+			VCSDomain: repo.Domain,
 			RepoParam: repo,
 			Action:    i.Action,
 		},

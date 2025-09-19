@@ -99,14 +99,15 @@ func (g *VCSGithub) listRepositoriesForProject(client *github.Client, projectKey
 }
 
 // listRepositoriesForAllProjects fetches repositories for all projects.
-func (g *VCSGithub) listRepositoriesForAllProjects(client *github.Client) ([]shared.RepositoryParams, error) {
-	var result []shared.RepositoryParams
+func (g *VCSGithub) listRepositoriesForAllProjects(client *github.Client) ([]shared.NamespaceParams, int, error) {
+	var gRepoCount int
+	var result []shared.NamespaceParams
 
 	// Retrieve the list of organizations for the authenticated user
 	orgs, _, err := client.Organizations.List(context.Background(), "", nil)
 	if err != nil {
 		g.logger.Error("failed to list organizations", "error", err)
-		return nil, fmt.Errorf("failed to list organizations: %w", err)
+		return nil, gRepoCount, fmt.Errorf("failed to list organizations: %w", err)
 	}
 
 	// Fetch repositories for each organization
@@ -124,8 +125,10 @@ func (g *VCSGithub) listRepositoriesForAllProjects(client *github.Client) ([]sha
 			g.logger.Error("failed to list repositories for organization", "organization", orgName, "error", err)
 			continue
 		}
+		repoCount := len(repos)
+		gRepoCount += repoCount
 
-		result = append(result, repos...)
+		result = append(result, shared.NamespaceParams{Namespace: orgName, RepositoryCount: repoCount, Repositories: repos})
 	}
 
 	// If no organizations were found, fallback to listing repositories for the authenticated user
@@ -134,20 +137,21 @@ func (g *VCSGithub) listRepositoriesForAllProjects(client *github.Client) ([]sha
 		userRepos, _, err := client.Repositories.List(context.Background(), "", nil)
 		if err != nil {
 			g.logger.Error("failed to retrieve repositories for the current user", "error", err)
-			return nil, fmt.Errorf("failed to retrieve repositories for the current user: %w", err)
+			return nil, gRepoCount, fmt.Errorf("failed to retrieve repositories for the current user: %w", err)
 		}
 
-		result = append(result, toRepositoryParams(userRepos)...)
+		result, gRepoCount = toNamespaceParams(userRepos)
 	}
 
 	if len(result) == 0 {
-		return nil, fmt.Errorf("no repositories found for organizations or the current user")
+		return nil, gRepoCount, fmt.Errorf("no repositories found for organizations or the current user")
 	}
-	return result, nil
+	return result, gRepoCount, nil
 }
 
 // ListRepos handles listing repositories based on the provided VCSListReposRequest.
-func (g *VCSGithub) ListRepositories(args shared.VCSListRepositoriesRequest) ([]shared.RepositoryParams, error) {
+func (g *VCSGithub) ListRepositories(args shared.VCSListRepositoriesRequest) ([]shared.VCSParams, error) {
+	var result []shared.VCSParams
 	g.logger.Debug("starting execution of list repositories function", "args", args)
 
 	if err := g.validateList(&args); err != nil {
@@ -161,10 +165,36 @@ func (g *VCSGithub) ListRepositories(args shared.VCSListRepositoriesRequest) ([]
 	}
 
 	if len(args.RepoParam.Namespace) > 0 {
-		return g.listRepositoriesForProject(client, args.RepoParam.Namespace)
+		repos, err := g.listRepositoriesForProject(client, args.RepoParam.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, shared.VCSParams{
+			Domain:          args.VCSDomain,
+			NamespaceCount:  1,
+			RepositoryCount: len(repos),
+			Namespaces: []shared.NamespaceParams{
+				{
+					Namespace:       args.RepoParam.Namespace,
+					RepositoryCount: len(repos),
+					Repositories:    repos,
+				},
+			}})
+		return result, nil
 	}
 
-	return g.listRepositoriesForAllProjects(client)
+	projects, repoCount, err := g.listRepositoriesForAllProjects(client)
+	if err != nil {
+		return nil, err
+	}
+	result = append(result, shared.VCSParams{
+		Domain:          args.VCSDomain,
+		NamespaceCount:  len(projects),
+		RepositoryCount: repoCount,
+		Namespaces:      projects,
+	})
+
+	return result, nil
 }
 
 // RetrievePRInformation handles retrieving PR information based on the provided VCSRetrievePRInformationRequest.

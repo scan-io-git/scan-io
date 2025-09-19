@@ -100,13 +100,13 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 		return errors.NewCommandErrorWithResult(resultList, fmt.Errorf("list command failed: %w", listErr), 2)
 	}
 
-	repositories, ok := resultList.Launches[0].Result.([]shared.RepositoryParams)
+	vcsData, ok := resultList.Launches[0].Result.([]shared.VCSParams)
 	if !ok {
 		return fmt.Errorf("failed to parse results")
 	}
 
 	// TODO: fix temporary code
-	resultData, err := json.MarshalIndent(resultList, "", "    ")
+	resultData, err := json.MarshalIndent(vcsData[0].Namespaces, "", "    ")
 	if err != nil {
 		return fmt.Errorf("error marshaling the result data: %w", err)
 	}
@@ -117,10 +117,9 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 
 	logger.Info("list command completed successfully")
 	logger.Info("results saved to file", "path", listOptions.OutputPath)
-	logger.Debug("list result", "result", resultList)
-	logger.Info("amount of fetched repositories is", "number", len(repositories))
+	logger.Info("statistic", "number_namespaces", vcsData[0].NamespaceCount, "number_repositories", vcsData[0].RepositoryCount)
 	if config.IsCI(AppConfig) {
-		if err := shared.PrintResultAsJSON(resultList); err != nil {
+		if err := shared.PrintResultAsJSON(resultData); err != nil {
 			logger.Error("error serializing JSON result", "error", err)
 		}
 	}

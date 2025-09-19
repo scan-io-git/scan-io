@@ -55,24 +55,61 @@ func safeReference(ref *github.PullRequestBranch, latestCommit *string) shared.R
 
 // toRepositoryParams converts a slice of internal Repository type to a slice of external RepositoryParams type.
 func toRepositoryParams(repos []*github.Repository) []shared.RepositoryParams {
-	var repoParams []shared.RepositoryParams
+	result := make([]shared.RepositoryParams, 0, len(repos))
+	for _, repo := range repos {
+		if rp, ok := repoToParams(repo); ok {
+			result = append(result, rp)
+		}
+	}
+	return result
+}
+
+// repoToParams converts a single *github.Repository into RepositoryParams.
+// ok=false if repo is nil.
+func repoToParams(repo *github.Repository) (shared.RepositoryParams, bool) {
+	if repo == nil {
+		return shared.RepositoryParams{}, false
+	}
+	fullName := safeString(repo.FullName)
+	parts := strings.Split(fullName, "/")
+
+	return shared.RepositoryParams{
+		Domain:     safeString(repo.Homepage),
+		Namespace:  strings.Join(parts[:len(parts)-1], "/"),
+		Repository: safeString(repo.Name),
+		HTTPLink:   safeString(repo.CloneURL),
+		SSHLink:    safeString(repo.SSHURL),
+	}, true
+}
+
+// toNamespaceParams converts a slice of internal Repository type to a slice of external RepositoryParams type.
+func toNamespaceParams(repos []*github.Repository) ([]shared.NamespaceParams, int) {
+	var gRepoCount int
+	npMap := make(map[string][]shared.RepositoryParams)
+
 	for _, repo := range repos {
 		if repo == nil {
 			continue
 		}
 
-		fullName := safeString(repo.FullName)
-		parts := strings.Split(fullName, "/")
+		orgName := safeString(repo.Organization.Name)
+		if rp, ok := repoToParams(repo); ok {
+			npMap[orgName] = append(npMap[orgName], rp)
+		}
+	}
 
-		repoParams = append(repoParams, shared.RepositoryParams{
-			Domain:     safeString(repo.Homepage),
-			Namespace:  strings.Join(parts[:len(parts)-1], "/"),
-			Repository: safeString(repo.Name),
-			HTTPLink:   safeString(repo.CloneURL),
-			SSHLink:    safeString(repo.SSHURL),
+	result := make([]shared.NamespaceParams, 0, len(npMap))
+	for ns, repos := range npMap {
+		repoCount := len(repos)
+		gRepoCount += repoCount
+		result = append(result, shared.NamespaceParams{
+			Namespace:       ns,
+			RepositoryCount: len(repos),
+			Repositories:    repos,
 		})
 	}
-	return repoParams
+
+	return result, gRepoCount
 }
 
 // convertToPRParams converts a GitHub PullRequest object to shared.PRParams.
