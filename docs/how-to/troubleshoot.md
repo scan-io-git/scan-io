@@ -14,7 +14,7 @@ When using Scanio, you may encounter issues. This section outlines common troubl
 
 ## Logs
 
-Logs are stored in `{home_folder}/log` by default.
+Logs are stored in `{scanio_home_folder}/log` by default.
 
 ## Using Debug Mode
 
