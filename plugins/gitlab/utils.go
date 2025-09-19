@@ -25,28 +25,54 @@ func safeUser(user *gitlab.BasicUser) shared.User {
 	return shared.User{UserName: user.Username}
 }
 
-// toRepositoryParams converts a slice of internal Project type to a slice of external RepositoryParams type.
-func toRepositoryParams(repos []*gitlab.Project) []shared.RepositoryParams {
-	var repoParams []shared.RepositoryParams
+// repoToParams converts a single *gitlab.Repository into RepositoryParams.
+// ok=false if repo is nil.
+func repoToParams(repo *gitlab.Project) (shared.RepositoryParams, bool) {
+	if repo == nil {
+		return shared.RepositoryParams{}, false
+	}
+
+	return shared.RepositoryParams{
+		Domain:     "",
+		Namespace:  repo.Namespace.FullPath,
+		Repository: repo.Path,
+		HTTPLink:   repo.HTTPURLToRepo,
+		SSHLink:    repo.SSHURLToRepo,
+	}, true
+}
+
+// toNamespaceParams converts a slice of internal Repository type to a slice of external RepositoryParams type.
+func toNamespaceParams(repos []*gitlab.Project) ([]shared.NamespaceParams, int) {
+	var gRepoCount int
+	npMap := make(map[string][]shared.RepositoryParams)
+
 	for _, repo := range repos {
 		if repo == nil {
 			continue
 		}
 
-		repoParams = append(repoParams, shared.RepositoryParams{
-			Domain:     "",
-			Namespace:  repo.Namespace.FullPath,
-			Repository: repo.Path,
-			HTTPLink:   repo.HTTPURLToRepo,
-			SSHLink:    repo.SSHURLToRepo,
+		groupName := repo.Namespace.FullPath
+		if rp, ok := repoToParams(repo); ok {
+			npMap[groupName] = append(npMap[groupName], rp)
+		}
+	}
+
+	result := make([]shared.NamespaceParams, 0, len(npMap))
+	for ns, repos := range npMap {
+		repoCount := len(repos)
+		gRepoCount += repoCount
+		result = append(result, shared.NamespaceParams{
+			Namespace:       ns,
+			RepositoryCount: len(repos),
+			Repositories:    repos,
 		})
 	}
-	return repoParams
+
+	return result, gRepoCount
 }
 
 // convertToPRParams converts a GitHub PullRequest object to shared.PRParams.
 func convertToPRParams(mr *gitlab.MergeRequest) shared.PRParams {
-
 	if mr == nil {
 		return shared.PRParams{}
 	}

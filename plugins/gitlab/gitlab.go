@@ -110,9 +110,9 @@ func isLanguagePresent(languages *gitlab.ProjectLanguages, language string) bool
 }
 
 // listProjectsForGroup fetches repositories for a given group and supports searching in subgorups
-func (g *VCSGitlab) listProjectsForGroup(client *gitlab.Client, groupKey, language string) ([]shared.RepositoryParams, error) {
+func (g *VCSGitlab) listProjectsForGroup(client *gitlab.Client, groupKey, language string) ([]shared.NamespaceParams, int, error) {
 	g.logger.Debug("listing projects for group", "groupKey", groupKey, "language", language)
-
+	var gRepoCount int
 	var allProjects []*gitlab.Project
 	var collectProjects func(groupKey string) error
 
@@ -151,7 +151,7 @@ func (g *VCSGitlab) listProjectsForGroup(client *gitlab.Client, groupKey, langua
 
 	// Start collecting projects and subgroups from the top-level group
 	if err := collectProjects(groupKey); err != nil {
-		return nil, fmt.Errorf("failed to retrieve projects for group and subgroups: %w", err)
+		return nil, gRepoCount, fmt.Errorf("failed to retrieve projects for group and subgroups: %w", err)
 	}
 
 	var filteredProjects []*gitlab.Project
@@ -172,48 +172,55 @@ func (g *VCSGitlab) listProjectsForGroup(client *gitlab.Client, groupKey, langua
 		filteredProjects = append(filteredProjects, project)
 	}
 
-	return toRepositoryParams(filteredProjects), nil
+	result, gRepoCount := toNamespaceParams(filteredProjects)
+	return result, gRepoCount, nil
 }
 
 // listProjectsForAllGroups fetches projects for all groups.
-func (g *VCSGitlab) listProjectsForAllGroups(client *gitlab.Client, language string) ([]shared.RepositoryParams, error) {
+func (g *VCSGitlab) listProjectsForAllGroups(client *gitlab.Client, language string) ([]shared.NamespaceParams, int, error) {
+	var gRepoCount int
+	var result []shared.NamespaceParams
+
 	g.logger.Debug("listing projects for all groups", "language", language)
 	allGroups, err := fetchPaginated(func(opts *gitlab.ListOptions) ([]*gitlab.Group, *gitlab.Response, error) {
 		return client.Groups.ListGroups(&gitlab.ListGroupsOptions{
 			ListOptions:  *opts,
 			OrderBy:      gitlab.Ptr("id"),
 			Sort:         gitlab.Ptr("asc"),
-			AllAvailable: gitlab.Ptr(true),
+			TopLevelOnly: gitlab.Ptr(true),
+			// AllAvailable: gitlab.Ptr(true), // returns all avaliable repos for a user
 		})
 	})
 	if err != nil {
 		g.logger.Error("failed to list groups", "error", err)
-		return nil, fmt.Errorf("failed to list groups: %w", err)
+		return nil, gRepoCount, fmt.Errorf("failed to list groups: %w", err)
 	}
 
-	var allRepositories []shared.RepositoryParams
 	for _, group := range allGroups {
 		if group == nil || len(group.FullPath) == 0 {
 			g.logger.Warn("skipping group with missing name")
 			continue
 		}
+
 		g.logger.Debug("fetching projects for group", "group", group.FullPath)
-		repos, err := g.listProjectsForGroup(client, group.FullPath, language)
+		repos, repoCount, err := g.listProjectsForGroup(client, group.FullPath, language)
 		if err != nil {
 			g.logger.Error("failed to list projects for group", "group", group.FullPath, "error", err)
 			continue
 		}
-		allRepositories = append(allRepositories, repos...)
+		gRepoCount += repoCount
+		result = append(result, repos...)
 	}
 
-	if len(allRepositories) == 0 {
-		return nil, fmt.Errorf("no projects found for groups or the current user")
+	if len(result) == 0 {
+		return nil, gRepoCount, fmt.Errorf("no projects found for groups or the current user")
 	}
-	return allRepositories, nil
+	return result, gRepoCount, nil
 }
 
 // ListRepos handles listing repositories based on the provided VCSListReposRequest.
-func (g *VCSGitlab) ListRepositories(args shared.VCSListRepositoriesRequest) ([]shared.RepositoryParams, error) {
+func (g *VCSGitlab) ListRepositories(args shared.VCSListRepositoriesRequest) ([]shared.VCSParams, error) {
+	var result []shared.VCSParams
 	g.logger.Debug("starting projects listing", "args", args)
 
 	if err := g.validateList(&args); err != nil {
@@ -228,9 +235,32 @@ func (g *VCSGitlab) ListRepositories(args shared.VCSListRepositoriesRequest) ([]
 	}
 
 	if len(args.RepoParam.Namespace) > 0 {
-		return g.listProjectsForGroup(client, args.RepoParam.Namespace, args.Language)
+		groups, repoCount, err := g.listProjectsForGroup(client, args.RepoParam.Namespace, args.Language)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, shared.VCSParams{
+			Domain:          args.VCSDomain,
+			NamespaceCount:  len(groups),
+			RepositoryCount: repoCount,
+			Namespaces:      groups,
+		})
+		return result, nil
 	}
-	return g.listProjectsForAllGroups(client, args.Language)
+
+	projects, repoCount, err := g.listProjectsForAllGroups(client, args.Language)
+	if err != nil {
+		return nil, err
+	}
+	result = append(result, shared.VCSParams{
+		Domain:          args.VCSDomain,
+		NamespaceCount:  len(projects),
+		RepositoryCount: repoCount,
+		Namespaces:      projects,
+	})
+
+	return result, nil
 }
 
 // RetrievePRInformation handles retrieving PR information based on the provided VCSRetrievePRInformationRequest.
