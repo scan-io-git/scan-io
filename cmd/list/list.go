@@ -119,7 +119,8 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 	logger.Info("results saved to file", "path", listOptions.OutputPath)
 	logger.Info("statistic", "number_namespaces", vcsData[0].NamespaceCount, "number_repositories", vcsData[0].RepositoryCount)
 	if config.IsCI(AppConfig) {
-		if err := shared.PrintResultAsJSON(resultData); err != nil {
+		resultList.Launches[0].Result = vcsData[0].Namespaces
+		if err := shared.PrintResultAsJSON(resultList); err != nil {
 			logger.Error("error serializing JSON result", "error", err)
 		}
 	}
