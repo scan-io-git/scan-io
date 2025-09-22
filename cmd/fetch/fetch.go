@@ -79,7 +79,6 @@ var FetchCmd = &cobra.Command{
 // Init initializes the global configuration variable.
 func Init(cfg *config.Config, l hclog.Logger) {
 	AppConfig = cfg
-	logger = l
 	FetchCmd.Long = generateLongDescription(AppConfig)
 }
 
