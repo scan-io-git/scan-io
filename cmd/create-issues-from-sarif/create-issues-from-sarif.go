@@ -3,11 +3,14 @@ package createissuesfromsarif
 import (
 	"crypto/sha256"
 	"fmt"
-	"regexp"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/spf13/cobra"
 
@@ -278,8 +281,63 @@ type OpenIssueEntry struct {
 // Returns an OpenIssueReport with zero values when fields are missing.
 func parseIssueBody(body string) OpenIssueReport {
 	rep := OpenIssueReport{}
+	// Prefer new-style rule ID header first; fallback to legacy "Rule:" line if absent.
+	if rid := extractRuleIDFromBody(body); rid != "" {
+		rep.RuleID = rid
+	}
 	for _, line := range strings.Split(body, "\n") {
 		line = strings.TrimSpace(line)
+		// Support new blockquote compact metadata lines
+		// "> **Severity**: Error,  **Scanner**: Semgrep OSS"
+		// "> **File**: app.py, **Lines**: 11-29"
+		if strings.HasPrefix(line, "> ") {
+			// Remove "> " prefix for easier parsing
+			l := strings.TrimSpace(strings.TrimPrefix(line, "> "))
+			// Normalize bold markers to plain keys
+			l = strings.ReplaceAll(l, "**", "")
+			// Split into comma-separated parts first
+			parts := strings.Split(l, ",")
+			for _, p := range parts {
+				seg := strings.TrimSpace(p)
+				if strings.HasPrefix(seg, "Severity:") {
+					rep.Severity = strings.TrimSpace(strings.TrimPrefix(seg, "Severity:"))
+					continue
+				}
+				if strings.HasPrefix(seg, "Scanner:") {
+					rep.Scanner = strings.TrimSpace(strings.TrimPrefix(seg, "Scanner:"))
+					continue
+				}
+				if strings.HasPrefix(seg, "File:") {
+					// If File appears on the first line with comma, capture
+					v := strings.TrimSpace(strings.TrimPrefix(seg, "File:"))
+					if v != "" {
+						rep.FilePath = v
+					}
+					continue
+				}
+				if strings.HasPrefix(seg, "Lines:") {
+					v := strings.TrimSpace(strings.TrimPrefix(seg, "Lines:"))
+					if strings.Contains(v, "-") {
+						lr := strings.SplitN(v, "-", 2)
+						if len(lr) == 2 {
+							if s, err := strconv.Atoi(strings.TrimSpace(lr[0])); err == nil {
+								rep.StartLine = s
+							}
+							if e, err := strconv.Atoi(strings.TrimSpace(lr[1])); err == nil {
+								rep.EndLine = e
+							}
+						}
+					} else {
+						if n, err := strconv.Atoi(v); err == nil {
+							rep.StartLine = n
+							rep.EndLine = n
+						}
+					}
+					continue
+				}
+			}
+			continue
+		}
 		if strings.HasPrefix(line, "Severity:") {
 			rep.Severity = strings.TrimSpace(strings.TrimPrefix(line, "Severity:"))
 			continue
@@ -289,7 +347,10 @@ func parseIssueBody(body string) OpenIssueReport {
 			continue
 		}
 		if strings.HasPrefix(line, "Rule:") {
-			rep.RuleID = strings.TrimSpace(strings.TrimPrefix(line, "Rule:"))
+			// Legacy fallback only if not already populated by new header format
+			if rep.RuleID == "" {
+				rep.RuleID = strings.TrimSpace(strings.TrimPrefix(line, "Rule:"))
+			}
 			continue
 		}
 		if strings.HasPrefix(line, "File:") {
@@ -327,6 +388,24 @@ func parseIssueBody(body string) OpenIssueReport {
 		}
 	}
 	return rep
+}
+
+// extractRuleIDFromBody attempts to parse a rule ID from the new body format header line:
+// "## <emoji> <ruleID>" where <emoji> can be any single or combined emoji/symbol token.
+// Returns empty string if not found.
+func extractRuleIDFromBody(body string) string {
+	// Compile regex once per call; trivial cost compared to network IO. If needed, lift to package scope.
+	re := regexp.MustCompile(`^##\s+[^\w\s]+\s+(.+)$`)
+	for _, line := range strings.Split(body, "\n") {
+		l := strings.TrimSpace(line)
+		if !strings.HasPrefix(l, "##") {
+			continue
+		}
+		if m := re.FindStringSubmatch(l); len(m) == 2 {
+			return strings.TrimSpace(m[1])
+		}
+	}
+	return ""
 }
 
 // listOpenIssues calls the VCS plugin to list open issues for the configured repo
@@ -424,15 +503,29 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 
 			// build body and title with scanner name label
 			titleText := buildIssueTitle(scannerName, ruleID, fileURI, line, endLine)
-			lineInfo := fmt.Sprintf("Line: %d", line)
-			if endLine > line {
-				lineInfo = fmt.Sprintf("Lines: %d-%d", line, endLine)
-			}
 
-			body := fmt.Sprintf("Severity: %s\nRule: %s\nFile: %s\n%s\n", strings.ToUpper(level), ruleID, fileURI, lineInfo)
-			if scannerName != "" {
-				body += fmt.Sprintf("Scanner: %s\n", scannerName)
+			// New body header and compact metadata blockquote
+			header := ""
+			if strings.TrimSpace(ruleID) != "" {
+				header = fmt.Sprintf("## 🐞 %s\n\n", ruleID)
 			}
+			sev := cases.Title(language.Und).String(strings.ToLower(level))
+			scannerDisp := scannerName
+			if scannerDisp == "" {
+				scannerDisp = "SARIF"
+			}
+			fileDisp := fileURI
+			linesDisp := fmt.Sprintf("%d", line)
+			if endLine > line {
+				linesDisp = fmt.Sprintf("%d-%d", line, endLine)
+			}
+			meta := fmt.Sprintf(
+				"> **Severity**: %s,  **Scanner**: %s\n> **File**: %s, **Lines**: %s\n",
+				sev, scannerDisp, fileDisp, linesDisp,
+			)
+			// Only use the new header and blockquote metadata
+			body := header + meta + "\n"
+			// Do not append legacy Scanner line; scanner is already present in blockquote
 			if snippetHash != "" {
 				body += fmt.Sprintf("Snippet SHA256: %s\n", snippetHash)
 			}
