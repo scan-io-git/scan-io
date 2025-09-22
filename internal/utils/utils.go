@@ -1,10 +1,8 @@
 package common
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"strings"
@@ -12,55 +10,38 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared"
 )
 
-func ReadReposFile(inputFile string) ([]string, error) {
-	readFile, err := os.Open(inputFile)
+func ReadReposFile(inputFile string) ([]shared.RepositoryParams, error) {
+	var file shared.GenericLaunchesResult
+
+	data, err := os.ReadFile(inputFile)
 	if err != nil {
 		return nil, err
 	}
-	defer readFile.Close()
 
-	fileScanner := bufio.NewScanner(readFile)
-	fileScanner.Split(bufio.ScanLines)
-
-	lines := []string{}
-	for fileScanner.Scan() {
-		lines = append(lines, fileScanner.Text())
-	}
-
-	return lines, nil
-}
-
-func ReadReposFile2(inputFile string) ([]shared.RepositoryParams, error) {
-	var wholeFile shared.GenericLaunchesResult
-	var result []shared.RepositoryParams
-
-	readFile, err := os.Open(inputFile)
-	if err != nil {
-		return result, err
-	}
-	defer readFile.Close()
-
-	byteValue, err := ioutil.ReadAll(readFile)
-	if err != nil {
+	if err := json.Unmarshal(data, &file); err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(byteValue, &wholeFile)
-	if err != nil {
-		return result, err
+	if len(file.Launches) == 0 {
+		return nil, fmt.Errorf("no data in file")
 	}
 
-	if len(wholeFile.Launches) > 0 {
-		resultBytes, err := json.Marshal(wholeFile.Launches[0].Result)
+	var repos []shared.RepositoryParams
+	for _, launch := range file.Launches {
+		resultBytes, err := json.Marshal(launch.Result)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal result: %w", err)
+			return nil, fmt.Errorf("failed to marshal launch.Result: %w", err)
 		}
 
-		if err := json.Unmarshal(resultBytes, &result); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal result into RepositoryParams slice: %w", err)
+		var namespaces []shared.NamespaceParams
+		if err := json.Unmarshal(resultBytes, &namespaces); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal result into []NamespaceParams: %w", err)
 		}
-		return result, nil
+		for _, ns := range namespaces {
+			repos = append(repos, ns.Repositories...)
+		}
 	}
-	return nil, fmt.Errorf("unexpected type for result: %T", wholeFile.Launches[0].Result)
+
+	return repos, nil
 }
 
 func GetDomain(repositoryURL string) (string, error) {

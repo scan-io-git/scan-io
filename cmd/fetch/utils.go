@@ -109,7 +109,7 @@ func prepareFetchTargets(options *RunOptionsFetch, args []string, cmdMode string
 		reposInfo = append(reposInfo, repoInfo)
 
 	case CmdModeInputFile:
-		reposData, err := utils.ReadReposFile2(options.InputFile)
+		reposData, err := utils.ReadReposFile(options.InputFile)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing the input file %q: %v", options.InputFile, err)
 		}

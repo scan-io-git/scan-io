@@ -12,7 +12,7 @@ import (
 // type MockRepoFileReader struct{}
 
 // Mock utility function to simulate reading a repositories file
-// func (m *MockRepoFileReader) ReadReposFile2(inputFile string) ([]shared.RepositoryParams, error) {
+// func (m *MockRepoFileReader) ReadReposFile(inputFile string) ([]shared.RepositoryParams, error) {
 // 	return []shared.RepositoryParams{}, nil
 // }
 

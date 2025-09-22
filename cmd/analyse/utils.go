@@ -31,7 +31,7 @@ func prepareScanTargets(options *RunOptionsAnalyse, args []string, mode string) 
 	case ModeSinglePath:
 		targetPath = args[0]
 	case ModeInputFile:
-		reposData, err := utils.ReadReposFile2(options.InputFile)
+		reposData, err := utils.ReadReposFile(options.InputFile)
 		if err != nil {
 			return nil, "", fmt.Errorf("error parsing the input file %q: %v", options.InputFile, err)
 		}
