@@ -4,21 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/internal/vcsintegrator"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/artifacts"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
-	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 // Global variables for configuration and command arguments
 var (
 	AppConfig   *config.Config
+	logger      hclog.Logger
 	listOptions vcsintegrator.RunOptionsIntegrationVCS
 
 	exampleListUsage = `  # List all repositories in a VCS
@@ -45,8 +46,9 @@ var ListCmd = &cobra.Command{
 }
 
 // Init initializes the global configuration variable and sets the long description for the ListCmd command.
-func Init(cfg *config.Config) {
+func Init(cfg *config.Config, l hclog.Logger) {
 	AppConfig = cfg
+	logger = l
 	ListCmd.Long = generateLongDescription(AppConfig)
 }
 
@@ -54,8 +56,6 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 && !shared.HasFlags(cmd.Flags()) {
 		return cmd.Help()
 	}
-
-	logger := logger.NewLogger(AppConfig, "core-list")
 
 	if err := validateListArgs(&listOptions, args); err != nil {
 		logger.Error("invalid list arguments", "error", err)
@@ -89,14 +89,10 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 
 	resultList, listErr := i.IntegrationAction(AppConfig, listRequest)
 
-	metaDataFileName := fmt.Sprintf("LIST_%s", strings.ToUpper(i.PluginName))
 	if config.IsCI(AppConfig) {
-		startTime := time.Now().UTC().Format(time.RFC3339)
-		metaDataFileName = fmt.Sprintf("LIST_%s_%v", strings.ToUpper(i.PluginName), startTime)
-	}
-
-	if err := shared.WriteGenericResult(AppConfig, logger, resultList, metaDataFileName); err != nil {
-		logger.Error("failed to write result", "error", err)
+		if _, err := artifacts.SaveArtifactJSON(AppConfig, logger, "list", i.PluginName, resultList); err != nil {
+			logger.Error("failed to write artifact", "error", err)
+		}
 	}
 
 	if listErr != nil {
@@ -124,7 +120,9 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 	logger.Debug("list result", "result", resultList)
 	logger.Info("amount of fetched repositories is", "number", len(repositories))
 	if config.IsCI(AppConfig) {
-		shared.PrintResultAsJSON(logger, resultList)
+		if err := shared.PrintResultAsJSON(resultList); err != nil {
+			logger.Error("error serializing JSON result", "error", err)
+		}
 	}
 	return nil
 }

@@ -103,7 +103,7 @@ func (c Client) GetSLAConfiguration(name string) (*SLAConfiguration, error) {
 		return nil, err
 	}
 	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("%d on getting sla_configurations '%s'", resp.StatusCode(), name)
+		return nil, fmt.Errorf("%d on getting sla_configurations %q", resp.StatusCode(), name)
 	}
 
 	for _, sla := range r.Results {
@@ -111,7 +111,7 @@ func (c Client) GetSLAConfiguration(name string) (*SLAConfiguration, error) {
 			return &sla, nil
 		}
 	}
-	return nil, fmt.Errorf("sla_configurations with name '%s' was not found", name)
+	return nil, fmt.Errorf("sla_configurations with name %q was not found", name)
 }
 
 func (c Client) CreateSLAConfiguration(sla SLAConfiguration) (*SLAConfiguration, error) {
@@ -131,7 +131,7 @@ func (c Client) CreateSLAConfiguration(sla SLAConfiguration) (*SLAConfiguration,
 		return nil, err
 	}
 	if resp.StatusCode() != http.StatusCreated {
-		return nil, fmt.Errorf("response != 201 on creating sla configuration '%s'", sla.Name)
+		return nil, fmt.Errorf("response != 201 on creating sla configuration %q", sla.Name)
 	}
 	return &createdSLA, nil
 }
@@ -163,10 +163,10 @@ func (c Client) GetProductType(productTypeName string) (*ProductType, error) {
 		return nil, err
 	}
 	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("%d on getting product_types '%s'", resp.StatusCode(), productTypeName)
+		return nil, fmt.Errorf("%d on getting product_types %q", resp.StatusCode(), productTypeName)
 	}
 	if r.Count > 1 {
-		return nil, fmt.Errorf("multiple product_types with the same name '%s'", productTypeName)
+		return nil, fmt.Errorf("multiple product_types with the same name %q", productTypeName)
 	}
 	if r.Count == 0 {
 		return nil, nil
@@ -186,7 +186,7 @@ func (c Client) CreateProductType(productTypeName string) (*ProductType, error) 
 		return nil, err
 	}
 	if resp.StatusCode() != http.StatusCreated {
-		return nil, fmt.Errorf("%d on getting product '%s'", resp.StatusCode(), productTypeName)
+		return nil, fmt.Errorf("%d on getting product %q", resp.StatusCode(), productTypeName)
 	}
 	return &p, nil
 }
@@ -214,10 +214,10 @@ func (c Client) GetProduct(productName string) (*Product, error) {
 		return nil, err
 	}
 	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("%d on getting product '%s'", resp.StatusCode(), productName)
+		return nil, fmt.Errorf("%d on getting product %q", resp.StatusCode(), productName)
 	}
 	if r.Count > 1 {
-		return nil, fmt.Errorf("multiple products with the same name '%s'", productName)
+		return nil, fmt.Errorf("multiple products with the same name %q", productName)
 	}
 	if r.Count == 0 {
 		return nil, nil
@@ -230,7 +230,7 @@ func (c Client) CreateProduct(productName string, productType ProductType) (*Pro
 	resp, err := c.httpc.R().
 		SetFormData(map[string]string{
 			"name":        productName,
-			"description": fmt.Sprintf("Default desctiption for product: '%s'", productName),
+			"description": fmt.Sprintf("Default desctiption for product: %q", productName),
 			"prod_type":   strconv.Itoa(productType.ID),
 		}).
 		SetResult(&p).
@@ -239,7 +239,7 @@ func (c Client) CreateProduct(productName string, productType ProductType) (*Pro
 		return nil, err
 	}
 	if resp.StatusCode() != http.StatusCreated {
-		return nil, fmt.Errorf("%d on creating product '%s'", resp.StatusCode(), productName)
+		return nil, fmt.Errorf("%d on creating product %q", resp.StatusCode(), productName)
 	}
 	return &p, nil
 }
@@ -272,7 +272,7 @@ func (c Client) CreateEngagement(product Product) (*Engagement, error) {
 		return nil, err
 	}
 	if resp.StatusCode() != http.StatusCreated {
-		return nil, fmt.Errorf("%d on creating engagement for product '%s'", resp.StatusCode(), product.Name)
+		return nil, fmt.Errorf("%d on creating engagement for product %q", resp.StatusCode(), product.Name)
 	}
 	return &engagement, nil
 }

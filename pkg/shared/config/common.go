@@ -73,6 +73,11 @@ func GetScanioTempHome(cfg *Config) string {
 	return cfg.Scanio.TempFolder
 }
 
+// GetScanioArtifactsHome returns the Scanio artifacts directory from the configuration.
+func GetScanioArtifactsHome(cfg *Config) string {
+	return cfg.Scanio.ArtifactsFolder
+}
+
 // GetRepositoryPath constructs the path to a repository based on the VCS URL and repository namespace.
 func GetRepositoryPath(cfg *Config, Domain, repoWithNamespace string) string {
 	return filepath.Join(GetScanioProjectsHome(cfg), strings.ToLower(Domain), strings.ToLower(repoWithNamespace))

@@ -46,7 +46,7 @@ func prepareIntegrationVCSTarget(options *vcsintegrator.RunOptionsIntegrationVCS
 			SSHLink:       url.SSHRepoLink,
 		}
 		if err != nil {
-			return repoInfo, fmt.Errorf("failed to extract data from provided URL '%s': %w", targetURL, err)
+			return repoInfo, fmt.Errorf("failed to extract data from provided URL %q: %w", targetURL, err)
 		}
 		return repoInfo, nil
 
@@ -59,7 +59,7 @@ func prepareIntegrationVCSTarget(options *vcsintegrator.RunOptionsIntegrationVCS
 		}, nil
 
 	default:
-		return shared.RepositoryParams{}, fmt.Errorf("invalid integration VCS mode: %s", mode)
+		return shared.RepositoryParams{}, fmt.Errorf("invalid integration VCS mode: %q", mode)
 	}
 }
 
@@ -71,11 +71,11 @@ func getCommentContent(options *vcsintegrator.RunOptionsIntegrationVCS) (string,
 
 	expandedPath, err := files.ExpandPath(options.CommentFile)
 	if err != nil {
-		return "", fmt.Errorf("failed to expand path '%s': %w", options.CommentFile, err)
+		return "", fmt.Errorf("failed to expand path %q %w", options.CommentFile, err)
 	}
 
 	if err := files.ValidatePath(expandedPath); err != nil {
-		return "", fmt.Errorf("failed to validate path '%s': %w", expandedPath, err)
+		return "", fmt.Errorf("failed to validate path %q: %w", expandedPath, err)
 	}
 
 	data, err := os.ReadFile(expandedPath)

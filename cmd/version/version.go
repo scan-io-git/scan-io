@@ -2,12 +2,13 @@ package version
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
-	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 var (
@@ -24,7 +25,7 @@ type CoreVersions struct {
 }
 
 // Init initializes the global configuration variable.
-func Init(cfg *config.Config) {
+func Init(cfg *config.Config, l hclog.Logger) {
 	AppConfig = cfg
 }
 
@@ -47,7 +48,9 @@ func NewVersionCmd() *cobra.Command {
 			}
 
 			if config.IsCI(AppConfig) {
-				shared.PrintResultAsJSON(logger.NewLogger(AppConfig, "core"), version)
+				if err := shared.PrintResultAsJSON(version); err != nil {
+					fmt.Fprintf(os.Stderr, "error serializing JSON result: %v\n", err)
+				}
 			} else {
 				printVersionInfo(&version)
 			}

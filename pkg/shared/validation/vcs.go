@@ -27,7 +27,7 @@ func ValidateBaseArgs(args *shared.VCSRequestBase) error {
 
 	for field, value := range requiredFields {
 		if value == "" {
-			return fmt.Errorf("%s is required", field)
+			return fmt.Errorf("%q is required", field)
 		}
 	}
 	return nil
@@ -39,13 +39,12 @@ func ValidateFetchArgs(args *shared.VCSFetchRequest) error {
 		"repository URL":      args.CloneURL,
 		"authentication type": args.AuthType,
 		"target folder":       args.TargetFolder,
-		"mode":                args.Mode,
 		// "RepoParam": args.RepoParam, // TODO: Add params validation
 	}
 
 	for field, value := range requiredFields {
 		if value == "" {
-			return fmt.Errorf("%s is required", field)
+			return fmt.Errorf("%q is required", field)
 		}
 	}
 
@@ -81,7 +80,7 @@ func ValidateAddRoleToPRArgs(args *shared.VCSAddRoleToPRRequest, roles []string)
 
 	for field, value := range requiredFields {
 		if value == "" {
-			return fmt.Errorf("%s is required", field)
+			return fmt.Errorf("%q is required", field)
 		}
 	}
 

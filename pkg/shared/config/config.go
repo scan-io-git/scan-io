@@ -26,12 +26,13 @@ type Config struct {
 
 // Scanio holds configuration specific to the Scanio application.
 type Scanio struct {
-	Mode           string `yaml:"mode"`            // Scanio mode cofiguration.
-	HomeFolder     string `yaml:"home_folder"`     // The home directory for Scanio.
-	PluginsFolder  string `yaml:"plugins_folder"`  // The directory where Scanio plugins are stored.
-	ProjectsFolder string `yaml:"projects_folder"` // The directory where Scanio project files are stored.
-	ResultsFolder  string `yaml:"results_folder"`  // The directory where Scanio results are stored.
-	TempFolder     string `yaml:"temp_folder"`     // The directory for temporary files used by Scanio.
+	Mode            string `yaml:"mode"`             // Scanio mode cofiguration.
+	HomeFolder      string `yaml:"home_folder"`      // The home directory for Scanio.
+	PluginsFolder   string `yaml:"plugins_folder"`   // The directory where Scanio plugins are stored.
+	ProjectsFolder  string `yaml:"projects_folder"`  // The directory where Scanio project files are stored.
+	ResultsFolder   string `yaml:"results_folder"`   // The directory where Scanio results are stored.
+	TempFolder      string `yaml:"temp_folder"`      // The directory for temporary files used by Scanio.
+	ArtifactsFolder string `yaml:"artifacts_folder"` // The directory for CI artifacts files used by Scanio.
 }
 
 // BitbucketPlugin holds configuration specific to the Bitbucket plugin.
@@ -73,6 +74,7 @@ type Logger struct {
 	DisableTime     *bool  `yaml:"disable_time"`     // Flag to disable timestamp logging if true.
 	JSONFormat      *bool  `yaml:"json_format"`      // Flag to output logs in JSON format if true.
 	IncludeLocation *bool  `yaml:"include_location"` // Flag to include file and line number in logs if true.
+	FolderPath      string `yaml:"folder_path"`      // Path to a log folder.
 }
 
 // HTTPClient configures settings for the HTTP client used within the application.
@@ -84,6 +86,7 @@ type HTTPClient struct {
 	TLSClientConfig  TLSClientConfig   `yaml:"tls_client_config"`   // TLS configuration for HTTPS connections.
 	Proxy            Proxy             `yaml:"proxy"`               // A proxy configuration.
 	CustomHeaders    map[string]string `yaml:"custom_headers"`      // Custom headers to be added to each request.
+	Debug            *bool             `yaml:"debug"`               // Http client debug mode.
 }
 
 // TLSClientConfig configures the TLS aspects of HTTP connections.
@@ -99,7 +102,6 @@ type Proxy struct {
 
 // GitClient configures settings for Git operations.
 type GitClient struct {
-	Depth       int           `yaml:"depth"`        // Level of depth for cloning and fetching.
 	InsecureTLS *bool         `yaml:"insecure_tls"` // Flag to skip SSL certificates if true.
 	Timeout     time.Duration `yaml:"timeout"`      // The maximum duration for the Git request before timing it out.
 	// TODO: Add CABundle
@@ -137,7 +139,7 @@ func (c *Config) searchDefaultConfig() error {
 		if err := c.loadConfig(path); err == nil {
 			return nil
 		} else {
-			lastErr = fmt.Errorf("failed to load config from path '%s': %w", path, err)
+			lastErr = fmt.Errorf("failed to load config from path %q: %w", path, err)
 		}
 	}
 	return fmt.Errorf("no valid config file found in default paths: %w", lastErr)
@@ -147,23 +149,23 @@ func (c *Config) searchDefaultConfig() error {
 func (c *Config) loadConfig(path string) error {
 	expandedPath, err := files.ExpandPath(path)
 	if err != nil {
-		return fmt.Errorf("failed to expand path '%s': %w", path, err)
+		return fmt.Errorf("failed to expand path %q: %w", path, err)
 	}
 
 	if err := files.ValidatePath(expandedPath); err != nil {
-		return fmt.Errorf("failed to validate path '%s': %w", expandedPath, err)
+		return fmt.Errorf("failed to validate path %q: %w", expandedPath, err)
 	}
 
 	fileContent, err := os.ReadFile(expandedPath)
 	if err != nil {
-		return fmt.Errorf("failed to read config file '%s': %w", expandedPath, err)
+		return fmt.Errorf("failed to read config file %q: %w", expandedPath, err)
 	}
 
 	// Simple replace environment variable placeholders
 	expandedContent := os.ExpandEnv(string(fileContent))
 
 	if err := yaml.Unmarshal([]byte(expandedContent), c); err != nil {
-		return fmt.Errorf("failed to unmarshal config '%s': %w", expandedPath, err)
+		return fmt.Errorf("failed to unmarshal config %q: %w", expandedPath, err)
 	}
 	return nil
 }

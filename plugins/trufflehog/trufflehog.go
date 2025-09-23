@@ -14,6 +14,8 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
+const PluginName = "trufflehog"
+
 // TODO: Wrap it in a custom error handler to add to the stack trace.
 // Metadata of the plugin
 var (
@@ -26,12 +28,14 @@ var (
 type ScannerTrufflehog struct {
 	logger       hclog.Logger
 	globalConfig *config.Config
+	name         string
 }
 
 // newScannerTrufflehog creates a new instance of ScannerTrufflehog.
 func newScannerTrufflehog(logger hclog.Logger) *ScannerTrufflehog {
 	return &ScannerTrufflehog{
 		logger: logger,
+		name:   PluginName,
 	}
 }
 

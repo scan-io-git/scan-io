@@ -18,6 +18,8 @@ import (
 	plugin_internal "github.com/scan-io-git/scan-io/plugins/trufflehog3/internal"
 )
 
+const PluginName = "trufflehog3"
+
 // TODO: Wrap it in a custom error handler to add to the stack trace.
 // Metadata of the plugin
 var (
@@ -30,12 +32,14 @@ var (
 type ScannerTrufflehog3 struct {
 	logger       hclog.Logger
 	globalConfig *config.Config
+	name         string
 }
 
 // newScannerScannerTrufflehog3 creates a new instance of ScannerTrufflehog3.
 func newScannerTrufflehog3(logger hclog.Logger) *ScannerTrufflehog3 {
 	return &ScannerTrufflehog3{
 		logger: logger,
+		name:   PluginName,
 	}
 }
 
@@ -90,7 +94,7 @@ func (g *ScannerTrufflehog3) convertReportFormat(originalFormat, resultsPath str
 	case "markdown":
 		*updatedResultsPath, err = plugin_internal.JsonToPlainReport(resultsPath)
 	default:
-		err = fmt.Errorf("unsupported format: %s", originalFormat)
+		err = fmt.Errorf("unsupported format: %q", originalFormat)
 	}
 	return err
 }

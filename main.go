@@ -1,7 +1,12 @@
 package main
 
-import "github.com/scan-io-git/scan-io/cmd"
+import (
+	"os"
+
+	"github.com/scan-io-git/scan-io/cmd"
+)
 
 func main() {
-	cmd.Execute()
+	code := cmd.Execute()
+	os.Exit(code)
 }

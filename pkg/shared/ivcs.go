@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"net/rpc"
 
+	"github.com/go-git/go-git/v5"
 	"github.com/hashicorp/go-plugin"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+
+	ftutils "github.com/scan-io-git/scan-io/internal/fetcherutils"
 )
 
 // RepositoryParams holds the details of a repository.
@@ -48,13 +51,18 @@ type Reference struct {
 
 // VCSFetchRequest represents a fetch request for a VCS.
 type VCSFetchRequest struct {
-	CloneURL     string           `json:"clone_url"`
-	Branch       string           `json:"branch"`
-	AuthType     string           `json:"auth_type"`
-	SSHKey       string           `json:"ssh_key"`
-	TargetFolder string           `json:"target_folder"`
-	Mode         string           `json:"mode"`
-	RepoParam    RepositoryParams `json:"repo_param"`
+	CloneURL     string            `json:"clone_url"`
+	Branch       string            `json:"branch"`
+	AuthType     string            `json:"auth_type"`
+	SSHKey       string            `json:"ssh_key"`
+	TargetFolder string            `json:"target_folder"`
+	FetchMode    ftutils.FetchMode `json:"fetch_mode"`
+	RepoParam    RepositoryParams  `json:"repo_param"`
+	Depth        int               `json:"depth"`
+	SingleBranch bool              `json:"single_branch"`
+	TagMode      git.TagMode       `json:"tag_mode"`
+	AutoRepair   bool              `json:"auto_repair,omitempty"`
+	CleanWorkdir bool              `json:"clean_workdir,omitempty"`
 }
 
 // VCSRequestBase is the base structure for VCS requests.

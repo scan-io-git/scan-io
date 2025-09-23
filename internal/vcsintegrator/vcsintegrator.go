@@ -185,7 +185,7 @@ func performAction(vcsPlugin shared.VCS, options interface{}, action string) (in
 		}
 		return vcsPlugin.SetStatusOfPR(setStatusRequest)
 	default:
-		return nil, fmt.Errorf("unsupported action: %s", action)
+		return nil, fmt.Errorf("unsupported action: %q", action)
 	}
 }
 
@@ -194,7 +194,7 @@ func (i *VCSIntegrator) IntegrationAction(cfg *config.Config, actionRequest inte
 	i.logger.Info("vcs integrator action starting", "action", i.Action)
 
 	var result shared.GenericLaunchesResult
-	err := shared.WithPlugin(cfg, "plugin-vcs", shared.PluginTypeVCS, i.PluginName, func(raw interface{}) error {
+	err := shared.WithPlugin(cfg, i.logger, shared.PluginTypeVCS, i.PluginName, func(raw interface{}) error {
 		vcsPlugin, ok := raw.(shared.VCS)
 		if !ok {
 			return fmt.Errorf("invalid plugin type")

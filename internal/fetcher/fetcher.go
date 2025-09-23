@@ -5,18 +5,15 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/go-git/go-git/v5"
 	"github.com/hashicorp/go-hclog"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 
+	ftutils "github.com/scan-io-git/scan-io/internal/fetcherutils"
 	utils "github.com/scan-io-git/scan-io/internal/utils"
-)
-
-const (
-	BasicMode  = "basic"
-	PRScanMode = "fetchPR"
 )
 
 // Fetcher represents the configuration and behavior of a fetcher.
@@ -24,29 +21,31 @@ type Fetcher struct {
 	PluginName     string       // Name of the VCS plugin to use
 	AuthType       string       // Authentication type (e.g., "http", "ssh")
 	SshKey         string       // Path to the SSH key
-	Branch         string       // Branch to fetch
 	OutputPath     string       // Output path for fetching
 	RmListExts     []string     // List of extensions to remove after fetching
+	AutoRepair     bool         // Repair corrupted repositories by forcing a refetch or recloning
+	CleanWorkdir   bool         // Reset the working tree to HEAD and remove untracked files
 	ConcurrentJobs int          // Number of concurrent jobs to run
 	logger         hclog.Logger // Logger for logging messages and errors
 }
 
 // New creates a new Fetcher instance with the provided configuration.
-func New(pluginName, authType, sshKey, branch, outputPath string, rmListExts []string, jobs int, logger hclog.Logger) *Fetcher {
+func New(pluginName, authType, sshKey, outputPath string, rmListExts []string, repair, clean bool, jobs int, logger hclog.Logger) *Fetcher {
 	return &Fetcher{
 		PluginName:     pluginName,
 		AuthType:       authType,
 		SshKey:         sshKey,
-		Branch:         branch,
 		OutputPath:     outputPath, // TODO: fix the PR fetch behavior. It ignores output the path now
 		RmListExts:     rmListExts,
+		AutoRepair:     repair,
+		CleanWorkdir:   clean,
 		ConcurrentJobs: jobs,
 		logger:         logger,
 	}
 }
 
 // PrepFetchReqList prepares fetch arguments for the repositories.
-func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.RepositoryParams) ([]shared.VCSFetchRequest, error) {
+func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.RepositoryParams, fetchMode string, depth int, singleBranch bool, tagMode git.TagMode) ([]shared.VCSFetchRequest, error) {
 	var fetchReqList []shared.VCSFetchRequest
 
 	for _, repo := range repos {
@@ -54,19 +53,16 @@ func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.Repository
 		if repo.Domain == "" {
 			domain, err := utils.GetDomain(cloneURL)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get domain for URL %s: %w", cloneURL, err)
+				return nil, fmt.Errorf("failed to get domain for URL %q: %w", cloneURL, err)
 			}
 			repo.Domain = domain
 		}
 
-		if repo.Branch != "" && f.Branch != "" {
-			repo.Branch = f.Branch
-			f.logger.Warn("Conflicting branch values: using branch from arguments instead of URL", "args_branch", f.Branch, "url_branch", repo.Branch)
-		} else if repo.Branch == "" {
-			repo.Branch = f.Branch
+		mode, err := ftutils.GetFetchMode(repo.PullRequestID, fetchMode)
+		if err != nil {
+			f.logger.Warn("pr fetch mode", "msg", err)
 		}
 
-		fetchMode := getFetchMode(repo)
 		if f.PluginName == "bitbucket" && strings.HasPrefix(repo.Namespace, "~") {
 			repo.Namespace = strings.TrimPrefix(repo.Namespace, "~") // in the case of user repos we should put results into the same folder for ssh and http links
 		}
@@ -75,13 +71,13 @@ func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.Repository
 		if f.OutputPath != "" {
 			_, tFolder, err := files.DetermineFileFullPath(f.OutputPath, "")
 			if err != nil {
-				return fetchReqList, fmt.Errorf("failed to determine output path for '%s': %w", f.OutputPath, err)
+				return fetchReqList, fmt.Errorf("failed to determine output path for %q: %w", f.OutputPath, err)
 			}
 			targetFolder = tFolder
 		}
 
 		f.logger.Debug("Final destination determined", "outputPath", targetFolder)
-		fetchReqList = append(fetchReqList, f.createFetchRequest(repo, cloneURL, targetFolder, fetchMode))
+		fetchReqList = append(fetchReqList, f.createFetchRequest(repo, cloneURL, targetFolder, mode, depth, singleBranch, tagMode))
 	}
 	return fetchReqList, nil
 }
@@ -94,23 +90,20 @@ func (f *Fetcher) getCloneURL(repo shared.RepositoryParams) string {
 	return repo.SSHLink
 }
 
-// getFetchMode determines the mode for the fetch request.
-func getFetchMode(repo shared.RepositoryParams) string {
-	if repo.PullRequestID != "" {
-		return PRScanMode
-	}
-	return BasicMode
-}
-
 // createFetchRequest creates a VCSFetchRequest with the specified parameters.
-func (f *Fetcher) createFetchRequest(repo shared.RepositoryParams, cloneURL, targetFolder, fetchMode string) shared.VCSFetchRequest {
+func (f *Fetcher) createFetchRequest(repo shared.RepositoryParams, cloneURL, targetFolder string, fetchMode ftutils.FetchMode, depth int, singleBranch bool, TagMode git.TagMode) shared.VCSFetchRequest {
 	return shared.VCSFetchRequest{
 		CloneURL:     cloneURL,
 		Branch:       repo.Branch,
 		AuthType:     f.AuthType,
 		SSHKey:       f.SshKey,
 		TargetFolder: targetFolder,
-		Mode:         fetchMode,
+		FetchMode:    fetchMode,
+		Depth:        depth,
+		SingleBranch: singleBranch,
+		TagMode:      TagMode,
+		AutoRepair:   f.AutoRepair,
+		CleanWorkdir: f.CleanWorkdir,
 		RepoParam:    repo,
 	}
 }
@@ -119,7 +112,7 @@ func (f *Fetcher) createFetchRequest(repo shared.RepositoryParams, cloneURL, tar
 func (f *Fetcher) fetchRepo(cfg *config.Config, fetchArgs shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
 	var result shared.VCSFetchResponse
 
-	err := shared.WithPlugin(cfg, "plugin-vcs", shared.PluginTypeVCS, f.PluginName, func(raw interface{}) error {
+	err := shared.WithPlugin(cfg, f.logger, shared.PluginTypeVCS, f.PluginName, func(raw interface{}) error {
 		vcsPlugin, ok := raw.(shared.VCS)
 		if !ok {
 			return fmt.Errorf("invalid plugin type")
