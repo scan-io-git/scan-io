@@ -28,7 +28,10 @@ import (
 // scanioManagedAnnotation is appended to issue bodies created by this command
 // and is required for correlation/auto-closure to consider an issue
 // managed by automation.
-const scanioManagedAnnotation = "> [!NOTE]\n> This issue was created and will be managed by scanio automation. Don't change body manually for proper processing, unless you know what you do"
+const (
+	scanioManagedAnnotation = "> [!NOTE]\n> This issue was created and will be managed by scanio automation. Don't change body manually for proper processing, unless you know what you do"
+	semgrepPromoFooter      = "#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n"
+)
 
 // RunOptions holds flags for the create-issues-from-sarif command.
 type RunOptions struct {
@@ -212,6 +215,46 @@ func computeSnippetHash(fileURI string, line, endLine int, sourceFolder string) 
 	return fmt.Sprintf("%x", sum[:])
 }
 
+// parseRuleHelpMarkdown removes promotional content from help markdown and splits
+// it into the descriptive details and a list of reference bullet points.
+func parseRuleHelpMarkdown(markdown string) (string, []string) {
+	cleaned := strings.ReplaceAll(markdown, semgrepPromoFooter, "")
+	cleaned = strings.TrimSpace(cleaned)
+	if cleaned == "" {
+		return "", nil
+	}
+
+	lines := strings.Split(cleaned, "\n")
+	referencesStart := -1
+	for idx, raw := range lines {
+		if strings.TrimSpace(raw) == "<b>References:</b>" {
+			referencesStart = idx
+			break
+		}
+	}
+
+	if referencesStart == -1 {
+		return cleaned, nil
+	}
+
+	detail := strings.TrimSpace(strings.Join(lines[:referencesStart], "\n"))
+	var references []string
+	for _, raw := range lines[referencesStart+1:] {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" {
+			continue
+		}
+		// Normalise to Markdown bullet points regardless of the original marker.
+		trimmed = strings.TrimLeft(trimmed, "-* \t")
+		if trimmed == "" {
+			continue
+		}
+		references = append(references, "- "+trimmed)
+	}
+
+	return detail, references
+}
+
 // getScannerName returns the tool/driver name for a SARIF run when available.
 func getScannerName(run *sarif.Run) string {
 	if run == nil {
@@ -265,6 +308,7 @@ type OpenIssueReport struct {
 	StartLine   int
 	EndLine     int
 	Hash        string
+	Permalink   string
 	Description string
 }
 
@@ -335,6 +379,11 @@ func parseIssueBody(body string) OpenIssueReport {
 					}
 					continue
 				}
+				// Support snippet hash in blockquoted metadata line at end of issue
+				if strings.HasPrefix(seg, "Snippet SHA256:") {
+					rep.Hash = strings.TrimSpace(strings.TrimPrefix(seg, "Snippet SHA256:"))
+					continue
+				}
 			}
 			continue
 		}
@@ -380,6 +429,15 @@ func parseIssueBody(body string) OpenIssueReport {
 		}
 		if strings.HasPrefix(line, "Snippet SHA256:") {
 			rep.Hash = strings.TrimSpace(strings.TrimPrefix(line, "Snippet SHA256:"))
+			continue
+		}
+		if strings.HasPrefix(line, "Permalink:") {
+			rep.Permalink = strings.TrimSpace(strings.TrimPrefix(line, "Permalink:"))
+			continue
+		}
+		// Check if line is a URL (for new format without "Permalink:" prefix)
+		if strings.HasPrefix(line, "https://github.com/") && strings.Contains(line, "/blob/") {
+			rep.Permalink = strings.TrimSpace(line)
 			continue
 		}
 		// When we hit a non-metadata line and description is empty, assume rest is description
@@ -525,22 +583,24 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 			)
 			// Only use the new header and blockquote metadata
 			body := header + meta + "\n"
-			// Do not append legacy Scanner line; scanner is already present in blockquote
-			if snippetHash != "" {
-				body += fmt.Sprintf("Snippet SHA256: %s\n", snippetHash)
-			}
-			if link := buildGitHubPermalink(options, fileURI, line, endLine); link != "" {
-				body += fmt.Sprintf("Permalink: %s\n", link)
-			}
+			var references []string
+
 			// Append rule help markdown if available
 			if r, ok := rulesByID[ruleID]; ok && r != nil && r.Help != nil && r.Help.Markdown != nil {
 				if hm := strings.TrimSpace(*r.Help.Markdown); hm != "" {
-					// Remove specific promotional footer from help markdown if present
-					hm = strings.ReplaceAll(hm, "#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n", "")
-					if cleaned := strings.TrimSpace(hm); cleaned != "" {
-						body += "\n\n" + cleaned
+					detail, helpRefs := parseRuleHelpMarkdown(hm)
+					if detail != "" {
+						body += "\n\n" + detail
+					}
+					if len(helpRefs) > 0 {
+						references = append(references, helpRefs...)
 					}
 				}
+			}
+
+			// Append permalink if available
+			if link := buildGitHubPermalink(options, fileURI, line, endLine); link != "" {
+				body += fmt.Sprintf("\n%s\n", link)
 			}
 
 			// Append security identifier tags (CWE, OWASP) with links if available in rule properties
@@ -562,7 +622,7 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 				if len(tags) > 0 {
 					cweRe := regexp.MustCompile(`^CWE-(\d+)\b`)
 					owaspRe := regexp.MustCompile(`^OWASP[- ]?A(\d{2}):(\d{4})\s*-\s*(.+)$`)
-					var lines []string
+					var tagRefs []string
 					for _, tag := range tags {
 						t := strings.TrimSpace(tag)
 						if t == "" {
@@ -571,7 +631,7 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 						if m := cweRe.FindStringSubmatch(t); len(m) == 2 {
 							num := m[1]
 							url := fmt.Sprintf("https://cwe.mitre.org/data/definitions/%s.html", num)
-							lines = append(lines, fmt.Sprintf("- [%s](%s)", t, url))
+							tagRefs = append(tagRefs, fmt.Sprintf("- [%s](%s)", t, url))
 							continue
 						}
 						if m := owaspRe.FindStringSubmatch(t); len(m) == 4 {
@@ -588,17 +648,25 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 							}
 							slug = string(clean)
 							url := fmt.Sprintf("https://owasp.org/Top10/A%s_%s-%s/", rank, year, slug)
-							lines = append(lines, fmt.Sprintf("- [%s](%s)", t, url))
+							tagRefs = append(tagRefs, fmt.Sprintf("- [%s](%s)", t, url))
 							continue
 						}
 					}
-					if len(lines) > 0 {
-						body += "\n" + strings.Join(lines, "\n")
+					if len(tagRefs) > 0 {
+						references = append(references, tagRefs...)
 					}
 				}
 			}
 
-			body += "\n\n" + scanioManagedAnnotation
+			if len(references) > 0 {
+				body += "\n\n<b>References:</b>\n" + strings.Join(references, "\n")
+			}
+
+			// Add a second snippet hash right before the scanio-managed note, as a blockquote
+			if snippetHash != "" {
+				body += fmt.Sprintf("\n\n> **Snippet SHA256**: %s\n", snippetHash)
+			}
+			body += "\n" + scanioManagedAnnotation
 
 			newIssues = append(newIssues, issuecorrelation.IssueMetadata{
 				IssueID:     "",
