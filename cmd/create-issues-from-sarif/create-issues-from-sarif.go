@@ -152,6 +152,26 @@ func validate(o *RunOptions) error {
 	return nil
 }
 
+// displaySeverity normalizes SARIF severity levels to more descriptive labels.
+func displaySeverity(level string) string {
+	normalized := strings.ToLower(strings.TrimSpace(level))
+	switch normalized {
+	case "error":
+		return "High"
+	case "warning":
+		return "Medium"
+	case "note":
+		return "Low"
+	case "none":
+		return "Info"
+	default:
+		if normalized == "" {
+			return ""
+		}
+		return cases.Title(language.Und).String(normalized)
+	}
+}
+
 // helper to fetch a string property safely
 func getStringProp(m map[string]interface{}, key string) string {
 	if m == nil {
@@ -166,14 +186,20 @@ func getStringProp(m map[string]interface{}, key string) string {
 }
 
 // buildIssueTitle creates a concise issue title using scanner name (fallback to SARIF),
-// ruleID and location info. It formats as "[<scanner>][<ruleID>] at <file>:<line>"
-// or with a range when endLine > line.
-func buildIssueTitle(scannerName, ruleID, fileURI string, line, endLine int) string {
+// severity, ruleID and location info. It formats as "[<scanner>][<severity>][<ruleID>] at"
+// and includes a range when endLine > line.
+func buildIssueTitle(scannerName, severity, ruleID, fileURI string, line, endLine int) string {
 	label := strings.TrimSpace(scannerName)
 	if label == "" {
 		label = "SARIF"
 	}
-	title := fmt.Sprintf("[%s][%s]", label, ruleID)
+	sev := strings.TrimSpace(severity)
+	parts := []string{label}
+	if sev != "" {
+		parts = append(parts, sev)
+	}
+	parts = append(parts, ruleID)
+	title := fmt.Sprintf("[%s]", strings.Join(parts, "]["))
 	if line > 0 {
 		if endLine > line {
 			return fmt.Sprintf("%s at %s:%d-%d", title, fileURI, line, endLine)
@@ -558,16 +584,16 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 
 			snippetHash := computeSnippetHash(fileURI, line, endLine, options.SourceFolder)
 			scannerName := getScannerName(run)
+			sev := displaySeverity(level)
 
 			// build body and title with scanner name label
-			titleText := buildIssueTitle(scannerName, ruleID, fileURI, line, endLine)
+			titleText := buildIssueTitle(scannerName, sev, ruleID, fileURI, line, endLine)
 
 			// New body header and compact metadata blockquote
 			header := ""
 			if strings.TrimSpace(ruleID) != "" {
 				header = fmt.Sprintf("## 🐞 %s\n\n", ruleID)
 			}
-			sev := cases.Title(language.Und).String(strings.ToLower(level))
 			scannerDisp := scannerName
 			if scannerDisp == "" {
 				scannerDisp = "SARIF"
