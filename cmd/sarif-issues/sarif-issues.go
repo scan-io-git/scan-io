@@ -115,7 +115,7 @@ var (
 			}
 			lg.Info("fetched open issues from repository", "count", len(openIssues))
 
-			created, err := processSARIFReport(report, opts, lg)
+			created, err := processSARIFReport(report, opts, lg, openIssues)
 			if err != nil {
 				return err
 			}
@@ -520,7 +520,7 @@ func listOpenIssues(options RunOptions) (map[int]OpenIssueEntry, error) {
 
 // processSARIFReport iterates runs/results in the SARIF report and creates VCS issues for
 // high severity findings. Returns number of created issues or an error.
-func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hclog.Logger) (int, error) {
+func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hclog.Logger, openIssues map[int]OpenIssueEntry) (int, error) {
 	// Build list of new issues from SARIF (only high severity -> "error").
 	newIssues := make([]issuecorrelation.IssueMetadata, 0)
 	// Also keep parallel arrays of the text bodies and titles so we can create issues later.
@@ -676,12 +676,7 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 		}
 	}
 
-	// Build list of known issues (open issues fetched previously by caller via listOpenIssues)
-	openIssues, err := listOpenIssues(options)
-	if err != nil {
-		return 0, err
-	}
-
+	// Build list of known issues from the provided open issues data
 	knownIssues := make([]issuecorrelation.IssueMetadata, 0, len(openIssues))
 	for num, entry := range openIssues {
 		rep := entry.OpenIssueReport
