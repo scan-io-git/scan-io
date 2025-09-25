@@ -48,6 +48,10 @@ var (
 	AppConfig *config.Config
 	opts      RunOptions
 
+	// Compiled regex patterns for security tag parsing
+	cweRegex   = regexp.MustCompile(`^CWE-(\d+)\b`)
+	owaspRegex = regexp.MustCompile(`^OWASP[- ]?A(\d{2}):(\d{4})\s*-\s*(.+)$`)
+
 	// SarifIssuesCmd represents the command to create GitHub issues from a SARIF file.
 	SarifIssuesCmd = &cobra.Command{
 		Use:                   "sarif-issues --sarif PATH [--namespace NAMESPACE] [--repository REPO] [--source-folder PATH] [--ref REF] [--labels label[,label...]] [--assignees user[,user...]]",
@@ -152,6 +156,72 @@ func validate(o *RunOptions) error {
 	return nil
 }
 
+// generateOWASPSlug creates a URL-safe slug from OWASP title text.
+// Converts spaces to underscores and removes non-alphanumeric characters except hyphens and underscores.
+func generateOWASPSlug(title string) string {
+	slug := strings.ReplaceAll(strings.TrimSpace(title), " ", "_")
+	clean := make([]rune, 0, len(slug))
+	for _, r := range slug {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' {
+			clean = append(clean, r)
+		}
+	}
+	return string(clean)
+}
+
+// processSecurityTags converts security tags (CWE, OWASP) into reference links.
+// Returns a slice of markdown reference links for recognized security identifiers.
+func processSecurityTags(tags []string) []string {
+	var tagRefs []string
+	for _, tag := range tags {
+		t := strings.TrimSpace(tag)
+		if t == "" {
+			continue
+		}
+
+		// Process CWE tags
+		if m := cweRegex.FindStringSubmatch(t); len(m) == 2 {
+			num := m[1]
+			url := fmt.Sprintf("https://cwe.mitre.org/data/definitions/%s.html", num)
+			tagRefs = append(tagRefs, fmt.Sprintf("- [%s](%s)", t, url))
+			continue
+		}
+
+		// Process OWASP tags
+		if m := owaspRegex.FindStringSubmatch(t); len(m) == 4 {
+			rank := m[1]
+			year := m[2]
+			title := m[3]
+			slug := generateOWASPSlug(title)
+			url := fmt.Sprintf("https://owasp.org/Top10/A%s_%s-%s/", rank, year, slug)
+			tagRefs = append(tagRefs, fmt.Sprintf("- [%s](%s)", t, url))
+			continue
+		}
+	}
+	return tagRefs
+}
+
+// parseLineRange parses line range from strings like "123" or "123-456".
+// Returns (start, end) where end equals start for single line numbers.
+func parseLineRange(value string) (int, int) {
+	value = strings.TrimSpace(value)
+	if strings.Contains(value, "-") {
+		parts := strings.SplitN(value, "-", 2)
+		if len(parts) == 2 {
+			start, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
+			end, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
+			if err1 == nil && err2 == nil {
+				return start, end
+			}
+		}
+	} else {
+		if line, err := strconv.Atoi(value); err == nil {
+			return line, line
+		}
+	}
+	return 0, 0
+}
+
 // displaySeverity normalizes SARIF severity levels to more descriptive labels.
 func displaySeverity(level string) string {
 	normalized := strings.ToLower(strings.TrimSpace(level))
@@ -170,19 +240,6 @@ func displaySeverity(level string) string {
 		}
 		return cases.Title(language.Und).String(normalized)
 	}
-}
-
-// helper to fetch a string property safely
-func getStringProp(m map[string]interface{}, key string) string {
-	if m == nil {
-		return ""
-	}
-	if v, ok := m[key]; ok {
-		if s, ok := v.(string); ok {
-			return s
-		}
-	}
-	return ""
 }
 
 // buildIssueTitle creates a concise issue title using scanner name (fallback to SARIF),
@@ -347,128 +404,55 @@ type OpenIssueEntry struct {
 }
 
 // parseIssueBody attempts to read the body produced by this command and extract
-// known metadata lines (Severity, Scanner, File, Line(s), Snippet SHA256, Description).
+// known metadata from blockquote format lines. Only supports the new format:
+// "> **Severity**: Error,  **Scanner**: Semgrep OSS"
+// "> **File**: app.py, **Lines**: 11-29"
 // Returns an OpenIssueReport with zero values when fields are missing.
 func parseIssueBody(body string) OpenIssueReport {
 	rep := OpenIssueReport{}
-	// Prefer new-style rule ID header first; fallback to legacy "Rule:" line if absent.
+
+	// Extract rule ID from header format: "## 🐞 <ruleID>"
 	if rid := extractRuleIDFromBody(body); rid != "" {
 		rep.RuleID = rid
 	}
+
 	for _, line := range strings.Split(body, "\n") {
 		line = strings.TrimSpace(line)
-		// Support new blockquote compact metadata lines
-		// "> **Severity**: Error,  **Scanner**: Semgrep OSS"
-		// "> **File**: app.py, **Lines**: 11-29"
-		if strings.HasPrefix(line, "> ") {
-			// Remove "> " prefix for easier parsing
-			l := strings.TrimSpace(strings.TrimPrefix(line, "> "))
-			// Normalize bold markers to plain keys
-			l = strings.ReplaceAll(l, "**", "")
-			// Split into comma-separated parts first
-			parts := strings.Split(l, ",")
-			for _, p := range parts {
-				seg := strings.TrimSpace(p)
-				if strings.HasPrefix(seg, "Severity:") {
-					rep.Severity = strings.TrimSpace(strings.TrimPrefix(seg, "Severity:"))
-					continue
-				}
-				if strings.HasPrefix(seg, "Scanner:") {
-					rep.Scanner = strings.TrimSpace(strings.TrimPrefix(seg, "Scanner:"))
-					continue
-				}
-				if strings.HasPrefix(seg, "File:") {
-					// If File appears on the first line with comma, capture
-					v := strings.TrimSpace(strings.TrimPrefix(seg, "File:"))
-					if v != "" {
-						rep.FilePath = v
-					}
-					continue
-				}
-				if strings.HasPrefix(seg, "Lines:") {
-					v := strings.TrimSpace(strings.TrimPrefix(seg, "Lines:"))
-					if strings.Contains(v, "-") {
-						lr := strings.SplitN(v, "-", 2)
-						if len(lr) == 2 {
-							if s, err := strconv.Atoi(strings.TrimSpace(lr[0])); err == nil {
-								rep.StartLine = s
-							}
-							if e, err := strconv.Atoi(strings.TrimSpace(lr[1])); err == nil {
-								rep.EndLine = e
-							}
-						}
-					} else {
-						if n, err := strconv.Atoi(v); err == nil {
-							rep.StartLine = n
-							rep.EndLine = n
-						}
-					}
-					continue
-				}
-				// Support snippet hash in blockquoted metadata line at end of issue
-				if strings.HasPrefix(seg, "Snippet SHA256:") {
-					rep.Hash = strings.TrimSpace(strings.TrimPrefix(seg, "Snippet SHA256:"))
-					continue
-				}
+
+		// Only process blockquote metadata lines
+		if !strings.HasPrefix(line, "> ") {
+			// Check for GitHub permalink URLs
+			if rep.Permalink == "" && strings.HasPrefix(line, "https://github.com/") && strings.Contains(line, "/blob/") {
+				rep.Permalink = line
+			}
+			// Capture first non-metadata line as description if empty
+			if rep.Description == "" && line != "" && !strings.HasPrefix(line, "##") && !strings.HasPrefix(line, "<b>") {
+				rep.Description = line
 			}
 			continue
 		}
-		if strings.HasPrefix(line, "Severity:") {
-			rep.Severity = strings.TrimSpace(strings.TrimPrefix(line, "Severity:"))
-			continue
-		}
-		if strings.HasPrefix(line, "Scanner:") {
-			rep.Scanner = strings.TrimSpace(strings.TrimPrefix(line, "Scanner:"))
-			continue
-		}
-		if strings.HasPrefix(line, "Rule:") {
-			// Legacy fallback only if not already populated by new header format
-			if rep.RuleID == "" {
-				rep.RuleID = strings.TrimSpace(strings.TrimPrefix(line, "Rule:"))
+
+		// Remove "> " prefix and normalize bold markers
+		content := strings.TrimSpace(strings.TrimPrefix(line, "> "))
+		content = strings.ReplaceAll(content, "**", "")
+
+		// Parse comma-separated metadata fields
+		parts := strings.Split(content, ",")
+		for _, part := range parts {
+			segment := strings.TrimSpace(part)
+
+			if strings.HasPrefix(segment, "Severity:") {
+				rep.Severity = strings.TrimSpace(strings.TrimPrefix(segment, "Severity:"))
+			} else if strings.HasPrefix(segment, "Scanner:") {
+				rep.Scanner = strings.TrimSpace(strings.TrimPrefix(segment, "Scanner:"))
+			} else if strings.HasPrefix(segment, "File:") {
+				rep.FilePath = strings.TrimSpace(strings.TrimPrefix(segment, "File:"))
+			} else if strings.HasPrefix(segment, "Lines:") {
+				value := strings.TrimSpace(strings.TrimPrefix(segment, "Lines:"))
+				rep.StartLine, rep.EndLine = parseLineRange(value)
+			} else if strings.HasPrefix(segment, "Snippet SHA256:") {
+				rep.Hash = strings.TrimSpace(strings.TrimPrefix(segment, "Snippet SHA256:"))
 			}
-			continue
-		}
-		if strings.HasPrefix(line, "File:") {
-			rep.FilePath = strings.TrimSpace(strings.TrimPrefix(line, "File:"))
-			continue
-		}
-		if strings.HasPrefix(line, "Line:") {
-			v := strings.TrimSpace(strings.TrimPrefix(line, "Line:"))
-			if n, err := strconv.Atoi(v); err == nil {
-				rep.StartLine = n
-				rep.EndLine = n
-			}
-			continue
-		}
-		if strings.HasPrefix(line, "Lines:") {
-			v := strings.TrimSpace(strings.TrimPrefix(line, "Lines:"))
-			parts := strings.Split(v, "-")
-			if len(parts) == 2 {
-				if s, err := strconv.Atoi(strings.TrimSpace(parts[0])); err == nil {
-					rep.StartLine = s
-				}
-				if e, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil {
-					rep.EndLine = e
-				}
-			}
-			continue
-		}
-		if strings.HasPrefix(line, "Snippet SHA256:") {
-			rep.Hash = strings.TrimSpace(strings.TrimPrefix(line, "Snippet SHA256:"))
-			continue
-		}
-		if strings.HasPrefix(line, "Permalink:") {
-			rep.Permalink = strings.TrimSpace(strings.TrimPrefix(line, "Permalink:"))
-			continue
-		}
-		// Check if line is a URL (for new format without "Permalink:" prefix)
-		if strings.HasPrefix(line, "https://github.com/") && strings.Contains(line, "/blob/") {
-			rep.Permalink = strings.TrimSpace(line)
-			continue
-		}
-		// When we hit a non-metadata line and description is empty, assume rest is description
-		if rep.Description == "" && line != "" {
-			rep.Description = line
 		}
 	}
 	return rep
@@ -571,19 +555,34 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 				ruleID = *res.RuleID
 			}
 
+			// Warn about missing rule ID
+			if strings.TrimSpace(ruleID) == "" {
+				lg.Warn("SARIF result missing rule ID, skipping", "result_index", len(newIssues))
+				continue
+			}
+
 			fileURI := filepath.ToSlash(extractFileURIFromResult(res, options.SourceFolder))
 			if fileURI == "" {
 				fileURI = "<unknown>"
+				lg.Warn("SARIF result missing file URI, using placeholder", "rule_id", ruleID)
 			}
 			line, endLine := extractRegionFromResult(res)
 
-			// desc := getStringProp(res.Properties, "Description")
-			// if desc == "" && res.Message.Text != nil {
-			// 	desc = *res.Message.Text
-			// }
+			// Warn about missing location information
+			if line <= 0 {
+				lg.Warn("SARIF result missing line information", "rule_id", ruleID, "file", fileURI)
+			}
 
 			snippetHash := computeSnippetHash(fileURI, line, endLine, options.SourceFolder)
+			if snippetHash == "" && fileURI != "<unknown>" && line > 0 {
+				lg.Warn("failed to compute snippet hash", "rule_id", ruleID, "file", fileURI, "line", line)
+			}
+
 			scannerName := getScannerName(run)
+			if scannerName == "" {
+				lg.Warn("SARIF run missing scanner/tool name, using fallback", "rule_id", ruleID)
+			}
+
 			sev := displaySeverity(level)
 
 			// build body and title with scanner name label
@@ -646,39 +645,7 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 				}
 
 				if len(tags) > 0 {
-					cweRe := regexp.MustCompile(`^CWE-(\d+)\b`)
-					owaspRe := regexp.MustCompile(`^OWASP[- ]?A(\d{2}):(\d{4})\s*-\s*(.+)$`)
-					var tagRefs []string
-					for _, tag := range tags {
-						t := strings.TrimSpace(tag)
-						if t == "" {
-							continue
-						}
-						if m := cweRe.FindStringSubmatch(t); len(m) == 2 {
-							num := m[1]
-							url := fmt.Sprintf("https://cwe.mitre.org/data/definitions/%s.html", num)
-							tagRefs = append(tagRefs, fmt.Sprintf("- [%s](%s)", t, url))
-							continue
-						}
-						if m := owaspRe.FindStringSubmatch(t); len(m) == 4 {
-							rank := m[1]
-							year := m[2]
-							title := m[3]
-							slug := strings.ReplaceAll(strings.TrimSpace(title), " ", "_")
-							// Remove characters that are not letters, numbers, underscore, or hyphen
-							clean := make([]rune, 0, len(slug))
-							for _, r := range slug {
-								if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' {
-									clean = append(clean, r)
-								}
-							}
-							slug = string(clean)
-							url := fmt.Sprintf("https://owasp.org/Top10/A%s_%s-%s/", rank, year, slug)
-							tagRefs = append(tagRefs, fmt.Sprintf("- [%s](%s)", t, url))
-							continue
-						}
-					}
-					if len(tagRefs) > 0 {
+					if tagRefs := processSecurityTags(tags); len(tagRefs) > 0 {
 						references = append(references, tagRefs...)
 					}
 				}
