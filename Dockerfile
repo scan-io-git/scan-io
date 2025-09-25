@@ -46,7 +46,7 @@ RUN set -euxo pipefail && \
     echo "Building dependencies for '$TARGETOS/$TARGETARCH'" && \
     apk update && \
     apk upgrade && \
-    apk add --no-cache bash python3 py3-pip openssh && \
+    apk add --no-cache bash python3 py3-pip openssh git && \
     apk add --no-cache --virtual .build-deps \
         jq \
         libc6-compat \

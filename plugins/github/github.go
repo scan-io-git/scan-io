@@ -39,6 +39,76 @@ type VCSGithub struct {
 	name         string
 }
 
+// CreateIssueComment creates a new comment on an existing GitHub issue.
+func (g *VCSGithub) CreateIssueComment(args shared.VCSCreateIssueCommentRequest) (bool, error) {
+    // Basic validation
+    if strings.TrimSpace(args.RepoParam.Namespace) == "" || strings.TrimSpace(args.RepoParam.Repository) == "" {
+        return false, fmt.Errorf("namespace and repository are required")
+    }
+    if args.Number <= 0 {
+        return false, fmt.Errorf("valid issue number is required")
+    }
+    if strings.TrimSpace(args.Body) == "" {
+        return false, fmt.Errorf("comment body is required")
+    }
+
+    client, err := g.initializeGithubClient()
+    if err != nil {
+        return false, fmt.Errorf("failed to initialize GitHub client: %w", err)
+    }
+
+    comment := &github.IssueComment{Body: github.String(args.Body)}
+    _, _, err = client.Issues.CreateComment(context.Background(), args.RepoParam.Namespace, args.RepoParam.Repository, args.Number, comment)
+    if err != nil {
+        return false, fmt.Errorf("failed to create issue comment: %w", err)
+    }
+
+    return true, nil
+}
+
+// UpdateIssue updates an existing GitHub issue's title and/or body.
+func (g *VCSGithub) UpdateIssue(args shared.VCSIssueUpdateRequest) (bool, error) {
+	// Basic validation
+	if args.RepoParam.Namespace == "" || args.RepoParam.Repository == "" {
+		return false, fmt.Errorf("namespace and repository are required")
+	}
+	if args.Number <= 0 {
+		return false, fmt.Errorf("valid issue number is required")
+	}
+
+	client, err := g.initializeGithubClient()
+	if err != nil {
+		return false, fmt.Errorf("failed to initialize GitHub client: %w", err)
+	}
+
+	req := &github.IssueRequest{}
+	if strings.TrimSpace(args.Title) != "" {
+		req.Title = github.String(args.Title)
+	}
+	if strings.TrimSpace(args.Body) != "" {
+		req.Body = github.String(args.Body)
+	}
+	if s := strings.ToLower(strings.TrimSpace(args.State)); s != "" {
+		switch s {
+		case "open", "closed":
+			req.State = github.String(s)
+		default:
+			return false, fmt.Errorf("invalid state: %s (allowed: open, closed)", args.State)
+		}
+	}
+
+	if req.Title == nil && req.Body == nil && req.State == nil {
+		return false, fmt.Errorf("nothing to update: provide title, body and/or state")
+	}
+
+	_, _, err = client.Issues.Edit(context.Background(), args.RepoParam.Namespace, args.RepoParam.Repository, args.Number, req)
+	if err != nil {
+		return false, fmt.Errorf("failed to update GitHub issue: %w", err)
+	}
+
+	return true, nil
+}
+
 // newVCSGithub creates a new instance of VCSGithub.
 func newVCSGithub(logger hclog.Logger) *VCSGithub {
 	return &VCSGithub{
@@ -458,6 +528,105 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse,
 	return result, nil
 }
 
+// CreateIssue creates a new GitHub issue using the provided request.
+//
+// Parameters:
+//
+//	args - VCSIssueCreationRequest containing repository details and issue content
+//
+// Examples:
+//   - Create an issue:
+//     req := shared.VCSIssueCreationRequest{
+//     RepoParam: shared.RepositoryParams{
+//     Namespace: "octocat",
+//     Repository: "hello-world",
+//     },
+//     Title: "New Feature Request",
+//     Body: "Please add support for...",
+//     }
+//     issueNumber, err := githubClient.CreateIssue(req)
+//
+// Returns:
+//   - The number of the created issue
+//   - An error if the issue creation fails
+func (g *VCSGithub) CreateIssue(args shared.VCSIssueCreationRequest) (int, error) {
+	client, err := g.initializeGithubClient()
+	if err != nil {
+		return 0, fmt.Errorf("failed to initialize GitHub client: %w", err)
+	}
+
+	issue := &github.IssueRequest{
+		Title: github.String(args.Title),
+		Body:  github.String(args.Body),
+	}
+
+	// If labels are provided, attach them to the issue request
+	if len(args.Labels) > 0 {
+		issue.Labels = &args.Labels
+	}
+
+	// If assignees are provided, attach them to the issue request
+	if len(args.Assignees) > 0 {
+		issue.Assignees = &args.Assignees
+	}
+
+	ctx := context.Background()
+	createdIssue, _, err := client.Issues.Create(ctx, args.RepoParam.Namespace, args.RepoParam.Repository, issue)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create GitHub issue: %w", err)
+	}
+
+	return createdIssue.GetNumber(), nil
+}
+
+// ListIssues lists issues for a repository.
+// Supports optional state filter: "open", "closed", or "all" (default: "open").
+func (g *VCSGithub) ListIssues(args shared.VCSListIssuesRequest) ([]shared.IssueParams, error) {
+	client, err := g.initializeGithubClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize GitHub client: %w", err)
+	}
+
+	state := strings.ToLower(strings.TrimSpace(args.State))
+	switch state {
+	case "", "open", "closed", "all":
+		if state == "" {
+			state = "open"
+		}
+	default:
+		return nil, fmt.Errorf("invalid state: %s (allowed: open, closed, all)", args.State)
+	}
+
+	opt := &github.IssueListByRepoOptions{
+		State:       state,
+		ListOptions: github.ListOptions{PerPage: 100, Page: 1},
+	}
+
+	var all []*github.Issue
+	for {
+		issues, resp, err := client.Issues.ListByRepo(context.Background(), args.RepoParam.Namespace, args.RepoParam.Repository, opt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list issues: %w", err)
+		}
+		all = append(all, issues...)
+		if resp == nil || resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
+	}
+
+	// Filter out pull requests and convert to shared type
+	var result []shared.IssueParams
+	for _, it := range all {
+		if it == nil || it.PullRequestLinks != nil { // skip PRs
+			continue
+		}
+		result = append(result, convertToIssueParams(it))
+	}
+
+	return result, nil
+}
+
 // Setup initializes the global configuration for the VCSGithub instance.
 func (g *VCSGithub) Setup(configData config.Config) (bool, error) {
 	g.setGlobalConfig(&configData)
@@ -469,6 +638,7 @@ func (g *VCSGithub) Setup(configData config.Config) (bool, error) {
 }
 
 func main() {
+
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level:      hclog.Trace,
 		Output:     os.Stderr,
