@@ -1,4 +1,4 @@
-package createissuesfromsarif
+package sarifissues
 
 import (
 	"crypto/sha256"
@@ -48,13 +48,13 @@ var (
 	AppConfig *config.Config
 	opts      RunOptions
 
-	// CreateIssuesFromSarifCmd represents the command to create GitHub issues from a SARIF file.
-	CreateIssuesFromSarifCmd = &cobra.Command{
-		Use:                   "create-issues-from-sarif --sarif PATH [--namespace NAMESPACE] [--repository REPO] [--source-folder PATH] [--ref REF] [--labels label[,label...]] [--assignees user[,user...]]",
+	// SarifIssuesCmd represents the command to create GitHub issues from a SARIF file.
+	SarifIssuesCmd = &cobra.Command{
+		Use:                   "sarif-issues --sarif PATH [--namespace NAMESPACE] [--repository REPO] [--source-folder PATH] [--ref REF] [--labels label[,label...]] [--assignees user[,user...]]",
 		Short:                 "Create GitHub issues for high severity SARIF findings",
-		Example:               "scanio create-issues-from-sarif --namespace scan-io-git --repository scan-io --sarif /path/to/report.sarif --labels bug,security --assignees alice,bob",
-		SilenceUsage:          true,
-		Hidden:                true,
+		Example:               "scanio sarif-issues --namespace scan-io-git --repository scan-io --sarif /path/to/report.sarif --labels bug,security --assignees alice,bob",
+		SilenceUsage:          false,
+		Hidden:                false,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 && !shared.HasFlags(cmd.Flags()) {
@@ -127,16 +127,16 @@ var (
 func Init(cfg *config.Config) { AppConfig = cfg }
 
 func init() {
-	CreateIssuesFromSarifCmd.Flags().StringVar(&opts.Namespace, "namespace", "", "GitHub org/user (defaults to $GITHUB_REPOSITORY_OWNER when unset)")
-	CreateIssuesFromSarifCmd.Flags().StringVar(&opts.Repository, "repository", "", "Repository name (defaults to ${GITHUB_REPOSITORY#*/} when unset)")
-	CreateIssuesFromSarifCmd.Flags().StringVar(&opts.SarifPath, "sarif", "", "Path to SARIF file")
-	CreateIssuesFromSarifCmd.Flags().StringVar(&opts.SourceFolder, "source-folder", "", "Optional: source folder to improve file path resolution in SARIF (used for absolute paths)")
-	CreateIssuesFromSarifCmd.Flags().StringVar(&opts.Ref, "ref", "", "Git ref (branch or commit SHA) to build a permalink to the vulnerable code (defaults to $GITHUB_SHA when unset)")
+	SarifIssuesCmd.Flags().StringVar(&opts.Namespace, "namespace", "", "GitHub org/user (defaults to $GITHUB_REPOSITORY_OWNER when unset)")
+	SarifIssuesCmd.Flags().StringVar(&opts.Repository, "repository", "", "Repository name (defaults to ${GITHUB_REPOSITORY#*/} when unset)")
+	SarifIssuesCmd.Flags().StringVar(&opts.SarifPath, "sarif", "", "Path to SARIF file")
+	SarifIssuesCmd.Flags().StringVar(&opts.SourceFolder, "source-folder", "", "Optional: source folder to improve file path resolution in SARIF (used for absolute paths)")
+	SarifIssuesCmd.Flags().StringVar(&opts.Ref, "ref", "", "Git ref (branch or commit SHA) to build a permalink to the vulnerable code (defaults to $GITHUB_SHA when unset)")
 	// --labels supports multiple usages (e.g., --labels bug --labels security) or comma-separated values
-	CreateIssuesFromSarifCmd.Flags().StringSliceVar(&opts.Labels, "labels", nil, "Optional: labels to assign to created GitHub issues (repeat flag or use comma-separated values)")
+	SarifIssuesCmd.Flags().StringSliceVar(&opts.Labels, "labels", nil, "Optional: labels to assign to created GitHub issues (repeat flag or use comma-separated values)")
 	// --assignees supports multiple usages or comma-separated values
-	CreateIssuesFromSarifCmd.Flags().StringSliceVar(&opts.Assignees, "assignees", nil, "Optional: assignees (GitHub logins) to assign to created issues (repeat flag or use comma-separated values)")
-	CreateIssuesFromSarifCmd.Flags().BoolP("help", "h", false, "Show help for create-issues-from-sarif command.")
+	SarifIssuesCmd.Flags().StringSliceVar(&opts.Assignees, "assignees", nil, "Optional: assignees (GitHub logins) to assign to created issues (repeat flag or use comma-separated values)")
+	SarifIssuesCmd.Flags().BoolP("help", "h", false, "Show help for create-issues-from-sarif command.")
 }
 
 func validate(o *RunOptions) error {

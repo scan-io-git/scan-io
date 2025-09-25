@@ -9,11 +9,11 @@ import (
 
 	"github.com/scan-io-git/scan-io/cmd/analyse"
 	createissue "github.com/scan-io-git/scan-io/cmd/create-issue"
-	createissuesfromsarif "github.com/scan-io-git/scan-io/cmd/create-issues-from-sarif"
 	"github.com/scan-io-git/scan-io/cmd/fetch"
 	integrationvcs "github.com/scan-io-git/scan-io/cmd/integration-vcs"
 	"github.com/scan-io-git/scan-io/cmd/list"
 	listissues "github.com/scan-io-git/scan-io/cmd/list-issues"
+	sarifissues "github.com/scan-io-git/scan-io/cmd/sarif-issues"
 	updateissue "github.com/scan-io-git/scan-io/cmd/update-issue"
 	"github.com/scan-io-git/scan-io/cmd/version"
 	"github.com/scan-io-git/scan-io/pkg/shared"
@@ -77,7 +77,7 @@ func initConfig() {
 	createissue.Init(AppConfig)
 	listissues.Init(AppConfig)
 	updateissue.Init(AppConfig)
-	createissuesfromsarif.Init(AppConfig)
+	sarifissues.Init(AppConfig)
 	version.Init(AppConfig)
 }
 
@@ -92,7 +92,7 @@ func init() {
 	rootCmd.AddCommand(createissue.CreateIssueCmd)
 	rootCmd.AddCommand(listissues.ListIssuesCmd)
 	rootCmd.AddCommand(updateissue.UpdateIssueCmd)
-	rootCmd.AddCommand(createissuesfromsarif.CreateIssuesFromSarifCmd)
+	rootCmd.AddCommand(sarifissues.SarifIssuesCmd)
 	rootCmd.AddCommand(version.NewVersionCmd())
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file")
 }
