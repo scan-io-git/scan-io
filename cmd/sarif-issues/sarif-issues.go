@@ -518,17 +518,19 @@ func listOpenIssues(options RunOptions) (map[int]OpenIssueEntry, error) {
 	return reports, nil
 }
 
-// processSARIFReport iterates runs/results in the SARIF report and creates VCS issues for
-// high severity findings. Returns number of created issues or an error.
-func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hclog.Logger, openIssues map[int]OpenIssueEntry) (int, error) {
-	// Build list of new issues from SARIF (only high severity -> "error").
-	newIssues := make([]issuecorrelation.IssueMetadata, 0)
-	// Also keep parallel arrays of the text bodies and titles so we can create issues later.
-	newBodies := make([]string, 0)
-	newTitles := make([]string, 0)
+// NewIssueData holds the data needed to create a new issue from SARIF results.
+type NewIssueData struct {
+	Metadata issuecorrelation.IssueMetadata
+	Body     string
+	Title    string
+}
+
+// buildNewIssuesFromSARIF processes SARIF report and extracts high severity findings,
+// returning structured data for creating new issues.
+func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, lg hclog.Logger) []NewIssueData {
+	var newIssueData []NewIssueData
 
 	for _, run := range report.Runs {
-
 		// Build a map of rules keyed by rule ID for quick lookups
 		rulesByID := map[string]*sarif.ReportingDescriptor{}
 		if run.Tool.Driver != nil {
@@ -557,7 +559,7 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 
 			// Warn about missing rule ID
 			if strings.TrimSpace(ruleID) == "" {
-				lg.Warn("SARIF result missing rule ID, skipping", "result_index", len(newIssues))
+				lg.Warn("SARIF result missing rule ID, skipping", "result_index", len(newIssueData))
 				continue
 			}
 
@@ -661,22 +663,29 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 			}
 			body += "\n" + scanioManagedAnnotation
 
-			newIssues = append(newIssues, issuecorrelation.IssueMetadata{
-				IssueID:     "",
-				Scanner:     scannerName,
-				RuleID:      ruleID,
-				Severity:    level,
-				Filename:    fileURI,
-				StartLine:   line,
-				EndLine:     endLine,
-				SnippetHash: snippetHash,
+			newIssueData = append(newIssueData, NewIssueData{
+				Metadata: issuecorrelation.IssueMetadata{
+					IssueID:     "",
+					Scanner:     scannerName,
+					RuleID:      ruleID,
+					Severity:    level,
+					Filename:    fileURI,
+					StartLine:   line,
+					EndLine:     endLine,
+					SnippetHash: snippetHash,
+				},
+				Body:  body,
+				Title: titleText,
 			})
-			newBodies = append(newBodies, body)
-			newTitles = append(newTitles, titleText)
 		}
 	}
 
-	// Build list of known issues from the provided open issues data
+	return newIssueData
+}
+
+// buildKnownIssuesFromOpen converts open GitHub issues into correlation metadata,
+// filtering for well-structured scanio-managed issues only.
+func buildKnownIssuesFromOpen(openIssues map[int]OpenIssueEntry, lg hclog.Logger) []issuecorrelation.IssueMetadata {
 	knownIssues := make([]issuecorrelation.IssueMetadata, 0, len(openIssues))
 	for num, entry := range openIssues {
 		rep := entry.OpenIssueReport
@@ -706,13 +715,12 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 			SnippetHash: rep.Hash,
 		})
 	}
+	return knownIssues
+}
 
-	// correlate
-	corr := issuecorrelation.NewCorrelator(newIssues, knownIssues)
-	corr.Process()
-
-	// Create only unmatched new issues
-	unmatchedNew := corr.UnmatchedNew()
+// createUnmatchedIssues creates GitHub issues for new findings that don't correlate with existing issues.
+// Returns the number of successfully created issues.
+func createUnmatchedIssues(unmatchedNew []issuecorrelation.IssueMetadata, newIssues []issuecorrelation.IssueMetadata, newBodies, newTitles []string, options RunOptions, lg hclog.Logger) (int, error) {
 	created := 0
 	for _, u := range unmatchedNew {
 		// find corresponding index in newIssues to retrieve body/title
@@ -756,9 +764,12 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 		}
 		created++
 	}
+	return created, nil
+}
 
-	// Close unmatched known issues (open issues that did not correlate)
-	unmatchedKnown := corr.UnmatchedKnown()
+// closeUnmatchedIssues closes GitHub issues for known findings that don't correlate with current scan results.
+// Returns an error if any issue closure fails.
+func closeUnmatchedIssues(unmatchedKnown []issuecorrelation.IssueMetadata, options RunOptions, lg hclog.Logger) error {
 	for _, k := range unmatchedKnown {
 		// known IssueID contains the number as string
 		num, err := strconv.Atoi(k.IssueID)
@@ -815,8 +826,47 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 		if err != nil {
 			lg.Error("failed to close issue via plugin", "error", err, "number", num)
 			// continue closing others but report an error at end
-			return created, errors.NewCommandError(options, nil, fmt.Errorf("close issue failed: %w", err), 2)
+			return errors.NewCommandError(options, nil, fmt.Errorf("close issue failed: %w", err), 2)
 		}
+	}
+	return nil
+}
+
+// processSARIFReport iterates runs/results in the SARIF report and creates VCS issues for
+// high severity findings. Returns number of created issues or an error.
+func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hclog.Logger, openIssues map[int]OpenIssueEntry) (int, error) {
+	// Build list of new issues from SARIF using extracted function
+	newIssueData := buildNewIssuesFromSARIF(report, options, lg)
+
+	// Extract metadata, bodies, and titles for correlation and issue creation
+	newIssues := make([]issuecorrelation.IssueMetadata, len(newIssueData))
+	newBodies := make([]string, len(newIssueData))
+	newTitles := make([]string, len(newIssueData))
+
+	for i, data := range newIssueData {
+		newIssues[i] = data.Metadata
+		newBodies[i] = data.Body
+		newTitles[i] = data.Title
+	}
+
+	// Build list of known issues from the provided open issues data
+	knownIssues := buildKnownIssuesFromOpen(openIssues, lg)
+
+	// correlate
+	corr := issuecorrelation.NewCorrelator(newIssues, knownIssues)
+	corr.Process()
+
+	// Create only unmatched new issues
+	unmatchedNew := corr.UnmatchedNew()
+	created, err := createUnmatchedIssues(unmatchedNew, newIssues, newBodies, newTitles, options, lg)
+	if err != nil {
+		return created, err
+	}
+
+	// Close unmatched known issues (open issues that did not correlate)
+	unmatchedKnown := corr.UnmatchedKnown()
+	if err := closeUnmatchedIssues(unmatchedKnown, options, lg); err != nil {
+		return created, err
 	}
 
 	return created, nil
