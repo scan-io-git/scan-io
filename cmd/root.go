@@ -91,12 +91,7 @@ func initConfig() {
 	version.Init(AppConfig, Logger.Named("version"))
 	tohtml.Init(AppConfig, Logger.Named("to-html"))
 	upload.Init(AppConfig, Logger.Named("upload"))
-	list.Init(AppConfig)
-	fetch.Init(AppConfig)
-	analyse.Init(AppConfig)
-	integrationvcs.Init(AppConfig)
-	sarifissues.Init(AppConfig)
-	version.Init(AppConfig)
+	sarifissues.Init(AppConfig, Logger.Named("sarif-issues"))
 }
 
 func init() {
