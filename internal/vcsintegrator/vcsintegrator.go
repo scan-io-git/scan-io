@@ -10,11 +10,12 @@ import (
 )
 
 const (
-	VCSListing       = "list"
-	VCSCheckPR       = "checkPR"
-	VCSCommentPR     = "addComment"
-	VCSAddRoleToPR   = "addRoleToPR"
-	VCSSetStatusOfPR = "setStatusOfPR"
+	VCSListing          = "list"
+	VCSCheckPR          = "checkPR"
+	VCSCommentPR        = "addComment"
+	VCSAddRoleToPR      = "addRoleToPR"
+	VCSSetStatusOfPR    = "setStatusOfPR"
+	VCSAddCommentsSarif = "addCommentsFromSarif"
 )
 
 // VCSIntegrator represents the configuration and behavior of VCS integration actions.
@@ -40,6 +41,9 @@ type RunOptionsIntegrationVCS struct {
 	Comment       string   `json:"comment,omitempty"`
 	CommentFile   string   `json:"comment_file,omitempty"`
 	AttachFiles   []string `json:"attach_files,omitempty"`
+	SarifInput    string   `json:"sarif_input,omitempty"`
+	SourceFolder  string   `json:"source_folder,omitempty"`
+	SarifLimit    int      `json:"sarif_limit,omitempty"`
 }
 
 // New creates a new VCSIntegrator instance with the provided configuration.
@@ -90,8 +94,10 @@ func (i *VCSIntegrator) createAddCommentRequest(repo shared.RepositoryParams, op
 			},
 			Action: i.Action,
 		},
-		Comment:   options.Comment,
-		FilePaths: options.AttachFiles,
+		Comment: shared.Comment{
+			Body:      options.Comment,
+			FilePaths: options.AttachFiles,
+		},
 	}
 }
 
@@ -145,6 +151,21 @@ func (i *VCSIntegrator) PrepIntegrationRequest(cfg *config.Config, options *RunO
 		arguments = i.createAddRoleToPRRequest(repo, options)
 	case VCSSetStatusOfPR:
 		arguments = i.createSetStatusOfPRRequest(repo, options)
+	case VCSAddCommentsSarif:
+		reqSarif, err := PrepareSarifComments(
+			i.logger,
+			i.PluginName,
+			repo,
+			options.SarifInput,
+			options.SourceFolder,
+			1, // options.SarifLimit,
+			options.Comment,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		arguments = reqSarif
 	default:
 		return arguments, fmt.Errorf("action is not implemented: %v", i.Action)
 	}
@@ -173,6 +194,13 @@ func performAction(vcsPlugin shared.VCS, options interface{}, action string) (in
 			return nil, fmt.Errorf("invalid argument type for action '%v'", VCSCommentPR)
 		}
 		return vcsPlugin.AddCommentToPR(addCommentRequest)
+	case VCSAddCommentsSarif:
+		addCommentsRequest, ok := options.(shared.VCSAddSarifCommentsRequest)
+		if !ok {
+			return nil, fmt.Errorf("invalid argument type for action '%v'", VCSAddCommentsSarif)
+		}
+
+		return vcsPlugin.AddCommentsFromSarif(addCommentsRequest)
 	case VCSAddRoleToPR:
 		addRoleRequest, ok := options.(shared.VCSAddRoleToPRRequest)
 		if !ok {
