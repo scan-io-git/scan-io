@@ -157,14 +157,28 @@ type VCSCreateIssueCommentRequest struct {
 // VCSAddCommentToPRRequest represents a request to add a comment to a PR.
 type VCSAddCommentToPRRequest struct {
 	VCSRequestBase
-	Comment   string   `json:"comment"`
-	FilePaths []string `json:"file_paths"`
+	Comment Comment `json:"comment"`
 }
 
 // VCSListIssuesRequest represents a request to list issues in a repository.
 type VCSListIssuesRequest struct {
 	VCSRequestBase
 	State string `json:"state"` // open, closed, all; default open
+}
+
+// Comment represents a single comment whether inline or common.
+type Comment struct {
+	Body      string   `json:"body"`
+	Path      string   `json:"path,omitempty"`
+	Line      int      `json:"line,omitempty"`
+	EndLine   int      `json:"end_line,omitempty"`
+	FilePaths []string `json:"file_paths"`
+}
+
+type VCSAddSarifCommentsRequest struct {
+	VCSRequestBase
+	Comments []Comment `json:"comments"`
+	Summary  string    `json:"summary,omitempty"` // Summary will be added as the last comment on top of the comments list
 }
 
 // ListFuncResult holds the result of a list function.
@@ -208,6 +222,7 @@ type VCS interface {
 	ListIssues(req VCSListIssuesRequest) ([]IssueParams, error)
 	UpdateIssue(req VCSIssueUpdateRequest) (bool, error)
 	CreateIssueComment(req VCSCreateIssueCommentRequest) (bool, error)
+	AddCommentsFromSarif(req VCSAddSarifCommentsRequest) (bool, error)
 }
 
 // VCSRPCClient implements the VCS interface for RPC clients.
@@ -326,6 +341,15 @@ func (c *VCSRPCClient) CreateIssueComment(req VCSCreateIssueCommentRequest) (boo
 	return resp, nil
 }
 
+func (c *VCSRPCClient) AddCommentsFromSarif(req VCSAddSarifCommentsRequest) (bool, error) {
+	var resp bool
+	err := c.client.Call("Plugin.AddCommentsFromSarif", req, &resp)
+	if err != nil {
+		return false, fmt.Errorf("RPC client AddCommentsFromSarif call failed: %w", err)
+	}
+	return resp, nil
+}
+
 // VCSRPCServer wraps a VCS implementation to provide an RPC server.
 type VCSRPCServer struct {
 	Impl VCS
@@ -439,6 +463,16 @@ func (s *VCSRPCServer) CreateIssueComment(args VCSCreateIssueCommentRequest, res
 		return fmt.Errorf("VCS CreateIssueComment failed: %w", err)
 	}
 	return nil
+}
+
+// AddCommentToPR calls the AddCommentToPR method on the VCS implementation.
+func (s *VCSRPCServer) AddCommentsFromSarif(args VCSAddSarifCommentsRequest, resp *bool) error {
+	var err error
+	*resp, err = s.Impl.AddCommentsFromSarif(args)
+	if err != nil {
+		return fmt.Errorf("VCS AddCommentsFromSarif failed: %w", err)
+	}
+	return err
 }
 
 // VCSPlugin is the implementation of the plugin.Plugin interface for VCS.

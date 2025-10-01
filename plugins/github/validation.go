@@ -84,7 +84,7 @@ func (g *VCSGithub) validateAddCommentToPR(args *shared.VCSAddCommentToPRRequest
 		return err
 	}
 
-	if len(args.FilePaths) != 0 {
+	if len(args.Comment.FilePaths) != 0 {
 		g.logger.Warn("uploading files is not supported for github plugin. Uploading will be skipped!")
 	}
 	return g.validateAPICommonCredentials()

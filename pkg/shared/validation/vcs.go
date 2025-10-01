@@ -126,7 +126,7 @@ func ValidateAddCommentToPRArgs(args *shared.VCSAddCommentToPRRequest) error {
 		return err
 	}
 
-	if args.Comment == "" {
+	if args.Comment.Body == "" {
 		return fmt.Errorf("comment is required")
 	}
 	return nil
