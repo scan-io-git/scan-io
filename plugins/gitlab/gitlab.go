@@ -14,6 +14,7 @@ import (
 	"github.com/scan-io-git/scan-io/internal/git"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/httpclient"
 
@@ -416,7 +417,7 @@ func (g *VCSGitlab) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (bool, 
 		return false, fmt.Errorf("failed to retrieve MR: %w", err)
 	}
 
-	commentText, err := g.buildCommentWithAttachments(client, mrData.ProjectID, args.Comment, args.FilePaths)
+	commentText, err := g.buildCommentWithAttachments(client, mrData.ProjectID, args.Comment.Body, args.Comment.FilePaths)
 	if err != nil {
 		g.logger.Warn("some files failed during upload, continuing with other files", "error", err)
 	}
@@ -457,6 +458,10 @@ func (g *VCSGitlab) UpdateIssue(args shared.VCSIssueUpdateRequest) (bool, error)
 func (g *VCSGitlab) CreateIssueComment(args shared.VCSCreateIssueCommentRequest) (bool, error) {
 	g.logger.Error("CreateIssueComment not implemented for GitLab", "repo", fmt.Sprintf("%s/%s", args.RepoParam.Namespace, args.RepoParam.Repository), "number", args.Number)
 	return false, fmt.Errorf("CreateIssueComment not implemented for GitLab")
+}
+
+func (g *VCSGitlab) AddCommentsFromSarif(req shared.VCSAddSarifCommentsRequest) (bool, error) {
+	return false, errors.NewNotImplementedError("AddCommentsFromSarif", g.name)
 }
 
 // buildCommentWithAttachments constructs the full comment text with file attachments.

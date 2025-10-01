@@ -16,6 +16,7 @@ import (
 	"github.com/scan-io-git/scan-io/internal/git"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/httpclient"
 
@@ -41,29 +42,29 @@ type VCSGithub struct {
 
 // CreateIssueComment creates a new comment on an existing GitHub issue.
 func (g *VCSGithub) CreateIssueComment(args shared.VCSCreateIssueCommentRequest) (bool, error) {
-    // Basic validation
-    if strings.TrimSpace(args.RepoParam.Namespace) == "" || strings.TrimSpace(args.RepoParam.Repository) == "" {
-        return false, fmt.Errorf("namespace and repository are required")
-    }
-    if args.Number <= 0 {
-        return false, fmt.Errorf("valid issue number is required")
-    }
-    if strings.TrimSpace(args.Body) == "" {
-        return false, fmt.Errorf("comment body is required")
-    }
+	// Basic validation
+	if strings.TrimSpace(args.RepoParam.Namespace) == "" || strings.TrimSpace(args.RepoParam.Repository) == "" {
+		return false, fmt.Errorf("namespace and repository are required")
+	}
+	if args.Number <= 0 {
+		return false, fmt.Errorf("valid issue number is required")
+	}
+	if strings.TrimSpace(args.Body) == "" {
+		return false, fmt.Errorf("comment body is required")
+	}
 
-    client, err := g.initializeGithubClient()
-    if err != nil {
-        return false, fmt.Errorf("failed to initialize GitHub client: %w", err)
-    }
+	client, err := g.initializeGithubClient()
+	if err != nil {
+		return false, fmt.Errorf("failed to initialize GitHub client: %w", err)
+	}
 
-    comment := &github.IssueComment{Body: github.String(args.Body)}
-    _, _, err = client.Issues.CreateComment(context.Background(), args.RepoParam.Namespace, args.RepoParam.Repository, args.Number, comment)
-    if err != nil {
-        return false, fmt.Errorf("failed to create issue comment: %w", err)
-    }
+	comment := &github.IssueComment{Body: github.String(args.Body)}
+	_, _, err = client.Issues.CreateComment(context.Background(), args.RepoParam.Namespace, args.RepoParam.Repository, args.Number, comment)
+	if err != nil {
+		return false, fmt.Errorf("failed to create issue comment: %w", err)
+	}
 
-    return true, nil
+	return true, nil
 }
 
 // UpdateIssue updates an existing GitHub issue's title and/or body.
@@ -391,7 +392,7 @@ func (g *VCSGithub) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (bool, 
 	}
 	g.logger.Info("commenting on a particular PR", "PR URL", fmt.Sprintf("%v/%v/%v/%v", args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, prID))
 	comment := &github.IssueComment{
-		Body: github.String(args.Comment),
+		Body: github.String(args.Comment.Body),
 	}
 	if _, _, err = client.Issues.CreateComment(context.Background(), args.RepoParam.Namespace, args.RepoParam.Repository, prID, comment); err != nil {
 		g.logger.Error("failed to add comment to PR", "error", err)
@@ -400,6 +401,10 @@ func (g *VCSGithub) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (bool, 
 
 	g.logger.Info("successfully added a comment to PR", "PR", prID)
 	return true, nil
+}
+
+func (g *VCSGithub) AddCommentsFromSarif(req shared.VCSAddSarifCommentsRequest) (bool, error) {
+	return false, errors.NewNotImplementedError("AddCommentsFromSarif", g.name)
 }
 
 // fetchPR handles fetching pull request changes.

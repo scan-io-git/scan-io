@@ -273,7 +273,7 @@ func (g *VCSBitbucket) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (boo
 	}
 	g.logger.Info("commenting on a particular PR", "PR URL", fmt.Sprintf("%v/%v/%v/%v", args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, prID))
 
-	if _, err := prData.AddComment(args.Comment, args.FilePaths); err != nil {
+	if _, err := prData.AddComment(args.Comment.Body, args.Comment.FilePaths); err != nil {
 		g.logger.Error("failed to add comment to PR", "error", err)
 		return false, err
 	}
@@ -304,6 +304,79 @@ func (g *VCSBitbucket) UpdateIssue(args shared.VCSIssueUpdateRequest) (bool, err
 func (g *VCSBitbucket) CreateIssueComment(args shared.VCSCreateIssueCommentRequest) (bool, error) {
 	g.logger.Error("CreateIssueComment not implemented for Bitbucket", "repo", fmt.Sprintf("%s/%s", args.RepoParam.Namespace, args.RepoParam.Repository), "number", args.Number)
 	return false, fmt.Errorf("CreateIssueComment not implemented for Bitbucket")
+}
+
+func (g *VCSBitbucket) AddCommentsFromSarif(req shared.VCSAddSarifCommentsRequest) (bool, error) {
+	g.logger.Debug("adding sarif comments to PR", "args", req)
+
+	if err := g.validateAddSarifComments(&req); err != nil {
+		g.logger.Error("sarif comment validation failed", "error", err)
+		return false, err
+	}
+
+	client, err := g.initializeBitbucketClient(req.RepoParam.Domain)
+	if err != nil {
+		return false, err
+	}
+
+	prID, _ := strconv.Atoi(req.RepoParam.PullRequestID)
+	pr, err := client.PullRequests.Get(req.RepoParam.Namespace, req.RepoParam.Repository, prID)
+	if err != nil {
+		g.logger.Error("failed to retrieve PR", "PRID", prID, "error", err)
+		return false, err
+	}
+
+	for idx, comment := range req.Comments {
+		if err := g.postInlineComment(pr, idx, comment); err != nil {
+			return false, err
+		}
+	}
+
+	if summary := strings.TrimSpace(req.Summary); summary != "" {
+		if _, err := pr.AddComment(summary, nil); err != nil {
+			g.logger.Error("failed to add sarif summary comment", "error", err)
+			return false, err
+		}
+	}
+
+	return true, nil
+}
+
+func (g *VCSBitbucket) postInlineComment(pr *bitbucket.PullRequest, idx int, comment shared.Comment) error {
+	text := strings.TrimSpace(comment.Body)
+	if text == "" {
+		return nil
+	}
+
+	var addErr error
+	if comment.Path != "" && comment.Line > 0 {
+		_, addErr = pr.AddInlineComment(
+			text,
+			comment.Path,
+			comment.Line,
+			bitbucket.InlineCommentOptions{
+				LineType:    bitbucket.LineTypeAdded,
+				FileType:    bitbucket.FileTypeTo,
+				DiffType:    bitbucket.DiffTypeEffective,
+				Attachments: comment.FilePaths,
+			},
+		)
+	} else {
+		_, addErr = pr.AddComment(text, comment.FilePaths)
+	}
+
+	if addErr != nil {
+		g.logger.Error("failed to add comment",
+			"index", idx,
+			"path", comment.Path,
+			"line", comment.Line,
+			"error", addErr,
+		)
+		return addErr
+	}
+
+	g.logger.Debug("sarif comment posted", "index", idx, "path", comment.Path, "line", comment.Line)
+	return nil
 }
 
 // fetchPR handles fetching pull request changes.
