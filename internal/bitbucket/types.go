@@ -189,3 +189,45 @@ type Attachment struct {
 type Link struct {
 	Href string `json:"href,omitempty"`
 }
+
+type DiffType string
+
+const (
+	DiffTypeEffective DiffType = "EFFECTIVE"
+	DiffTypeCommit    DiffType = "COMMIT"
+	DiffTypeRange     DiffType = "RANGE"
+)
+
+type LineType string
+
+const (
+	LineTypeAdded   LineType = "ADDED"
+	LineTypeRemoved LineType = "REMOVED"
+	LineTypeContext LineType = "CONTEXT"
+)
+
+type FileType string
+
+const (
+	FileTypeFrom FileType = "FROM"
+	FileTypeTo   FileType = "TO"
+)
+
+type Comment struct {
+	ID       int           `json:"id"`
+	Text     string        `json:"text"`
+	Severity string        `json:"severity"`
+	Anchor   CommentAnchor `json:"anchor"`
+	Parent   *Comment      `json:"parent,omitempty"`
+}
+
+type CommentAnchor struct {
+	DiffType DiffType `json:"diffType,omitempty"`
+	FileType FileType `json:"fileType"`
+	FromHash string   `json:"fromHash"`
+	ToHash   string   `json:"toHash"`
+	Line     int      `json:"line"`
+	LineType LineType `json:"lineType"`
+	Path     string   `json:"path"`
+	SrcPath  string   `json:"srcPath,omitempty"`
+}

@@ -15,6 +15,15 @@ type pullRequestsService struct {
 	limit int
 }
 
+type InlineCommentOptions struct {
+	LineType    LineType // ADDED | REMOVED | CONTEXT (defaults to ADDED)
+	FileType    FileType // defaults to FILE
+	SrcLine     int      // optional: original line (for REMOVED/CONTEXT)
+	SrcPath     string   // optional: original file path
+	DiffType    DiffType // optional: EFFECTIVE | CONFLICT etc.
+	Attachments []string // optional: file paths to upload and append to message
+}
+
 // NewPullRequestsService initializes a new pull requests service with a given pagination limit.
 func NewPullRequestsService(client *Client, limit int) PullRequestsService {
 	if limit <= 0 {
@@ -69,29 +78,13 @@ func (pr *PullRequest) AddComment(commentText string, paths []string) (*PullRequ
 
 	path := fmt.Sprintf("%s/comments", pr.Links.Self[0].Href) // Works even without /rest/api/1.0/ prefix
 
-	var attachmentsText strings.Builder
-	if len(paths) != 0 {
-		attachmentsText.WriteString("\n**Report(s):**")
-		for _, filePath := range paths {
-			attachment, filename, err := pr.AttachFileToRepository(filePath)
-			if err != nil {
-				pr.client.Logger.Error("failed to attach file to the repository",
-					"file-path", filePath,
-					"repository", pr.FromReference.DisplayID,
-					"error", err,
-				)
-				return nil, fmt.Errorf("failed to attach file to the repository: %w", err)
-			}
-			attachmentLink := fmt.Sprintf("* [%s](%s)", filename, attachment.Links.Attachment.Href)
-			attachmentsText.WriteString("\n" + attachmentLink)
-		}
+	text, err := pr.buildCommentText(commentText, paths)
+	if err != nil {
+		return nil, err
 	}
 
-	var fullCommentText strings.Builder
-	fullCommentText.WriteString(commentText)
-	fullCommentText.WriteString(attachmentsText.String())
 	body := map[string]interface{}{
-		"text": fullCommentText.String(),
+		"text": text,
 	}
 
 	response, err := pr.client.post(path, nil, body)
@@ -105,6 +98,95 @@ func (pr *PullRequest) AddComment(commentText string, paths []string) (*PullRequ
 	}
 
 	return &result, nil
+}
+
+func (pr *PullRequest) AddInlineComment(commentText, filePath string, line int, opts InlineCommentOptions) (*Comment, error) {
+	if filePath == "" {
+		return nil, fmt.Errorf("file path must be provided")
+	}
+	if line <= 0 {
+		return nil, fmt.Errorf("line number must be positive")
+	}
+
+	lineType := opts.LineType
+	if opts.LineType == "" {
+		lineType = LineTypeAdded
+	}
+
+	fileType := opts.FileType
+	if opts.FileType == "" {
+		fileType = FileTypeTo
+	}
+
+	diffType := opts.DiffType
+	if diffType == "" {
+		diffType = DiffTypeEffective
+	}
+
+	text, err := pr.buildCommentText(commentText, opts.Attachments)
+	if err != nil {
+		return nil, err
+	}
+
+	anchor := map[string]interface{}{
+		"path":     filePath,
+		"line":     line,
+		"diffType": diffType,
+		"lineType": lineType,
+		"fileType": fileType,
+	}
+
+	if diffType != DiffTypeEffective {
+		anchor["fromHash"] = pr.FromReference.LatestCommit
+		anchor["toHash"] = pr.ToReference.LatestCommit
+	}
+
+	if opts.SrcPath != "" {
+		anchor["srcPath"] = opts.SrcPath
+	}
+	if opts.SrcLine > 0 {
+		anchor["srcLine"] = opts.SrcLine
+	}
+
+	body := map[string]interface{}{
+		"text":   text,
+		"anchor": anchor,
+	}
+
+	resp, err := pr.client.post(fmt.Sprintf("%s/comments", pr.Links.Self[0].Href), nil, body)
+	if err != nil {
+		return nil, fmt.Errorf("error leaving inline comment: %w", err)
+	}
+
+	var comment Comment
+	if err := unmarshalResponse(resp, &comment); err != nil {
+		return nil, err
+	}
+	return &comment, nil
+}
+
+func (pr *PullRequest) buildCommentText(base string, attachmentPaths []string) (string, error) {
+	if len(attachmentPaths) == 0 {
+		return base, nil
+	}
+
+	var attachmentsText strings.Builder
+	attachmentsText.WriteString("\n**Report(s):**")
+
+	for _, p := range attachmentPaths {
+		attachment, filename, err := pr.AttachFileToRepository(p)
+		if err != nil {
+			pr.client.Logger.Error("failed to attach file to the repository",
+				"file-path", p,
+				"repository", pr.FromReference.DisplayID,
+				"error", err,
+			)
+			return "", fmt.Errorf("failed to attach file to the repository: %w", err)
+		}
+		attachmentsText.WriteString("\n* [" + filename + "](" + attachment.Links.Attachment.Href + ")")
+	}
+
+	return base + attachmentsText.String(), nil
 }
 
 // AttachFileToRepository uploads a file to a specific repository and returns the attachment details and file name.
