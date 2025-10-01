@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
@@ -83,40 +82,6 @@ func buildWebURLToRef(url *vcsurl.VCSURL, refName, refType string) string {
 	return filepath.Join(url.HTTPRepoLink, midder, refName)
 }
 
-// buildGenericLocationURL constructs webURL for a report location
-func buildGenericLocationURL(location *sarif.Location, url vcsurl.VCSURL, repoMetadata *git.RepositoryMetadata) string {
-	// verify that location.PhysicalLocation.ArtifactLocation.Properties["URI"] is not nil
-	if location.PhysicalLocation.ArtifactLocation.Properties["URI"] == nil {
-		return ""
-	}
-	locationWebURL := filepath.Join(url.HTTPRepoLink, "blob", *repoMetadata.CommitHash, location.PhysicalLocation.ArtifactLocation.Properties["URI"].(string))
-	if location.PhysicalLocation.Region.StartLine != nil {
-		locationWebURL += "#L" + strconv.Itoa(*location.PhysicalLocation.Region.StartLine)
-	}
-	if location.PhysicalLocation.Region.EndLine != nil && *location.PhysicalLocation.Region.EndLine != *location.PhysicalLocation.Region.StartLine {
-		locationWebURL += "-L" + strconv.Itoa(*location.PhysicalLocation.Region.EndLine)
-	}
-	return locationWebURL
-}
-
-// buildBitbucketLocationURL constructs webURL for a report location for bitbucket
-func buildBitbucketLocationURL(location *sarif.Location, url vcsurl.VCSURL, repoMetadata *git.RepositoryMetadata) string {
-	// url example: https://bitbucket.onprem.example/projects/<project_name>/repos/<repo_name>/browse/<path>/<vuln.file>?at=<commit_hash>#<line>
-	// verify that location.PhysicalLocation.ArtifactLocation.Properties["URI"] is not nil
-	if location.PhysicalLocation.ArtifactLocation.Properties["URI"] == nil {
-		return ""
-	}
-	locationWebURL := filepath.Join(url.HTTPRepoLink, "browse", location.PhysicalLocation.ArtifactLocation.Properties["URI"].(string))
-	locationWebURL += "?at=" + *repoMetadata.CommitHash
-	if location.PhysicalLocation.Region.StartLine != nil {
-		locationWebURL += "#" + strconv.Itoa(*location.PhysicalLocation.Region.StartLine)
-	}
-	if location.PhysicalLocation.Region.EndLine != nil && *location.PhysicalLocation.Region.EndLine != *location.PhysicalLocation.Region.StartLine {
-		locationWebURL += "-" + strconv.Itoa(*location.PhysicalLocation.Region.EndLine)
-	}
-	return locationWebURL
-}
-
 // Init initializes the global configuration variable.
 func Init(cfg *config.Config, l hclog.Logger) {
 	AppConfig = cfg
@@ -164,9 +129,9 @@ var ToHtmlCmd = &cobra.Command{
 				return ""
 			}
 			if vcsType == vcsurl.Bitbucket {
-				return buildBitbucketLocationURL(location, *url, repositoryMetadata)
+				return scaniosarif.BuildBitbucketLocationURL(location, *url, repositoryMetadata)
 			}
-			return buildGenericLocationURL(location, *url, repositoryMetadata)
+			return scaniosarif.BuildGenericLocationURL(location, *url, repositoryMetadata)
 		}
 
 		// enrich sarif report with additional properties and remove duplicates from dataflow results
