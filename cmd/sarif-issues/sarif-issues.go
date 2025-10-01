@@ -5,13 +5,13 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 
 	internalsarif "github.com/scan-io-git/scan-io/internal/sarif"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
-	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 // scanioManagedAnnotation is appended to issue bodies created by this command
@@ -36,6 +36,7 @@ type RunOptions struct {
 var (
 	AppConfig *config.Config
 	opts      RunOptions
+	logger    hclog.Logger
 
 	// Example usage for the sarif-issues command
 	exampleSarifIssuesUsage = `  # Create issues from SARIF report with basic configuration
@@ -66,8 +67,9 @@ var (
 )
 
 // Init wires config into this command.
-func Init(cfg *config.Config) {
+func Init(cfg *config.Config, l hclog.Logger) {
 	AppConfig = cfg
+	logger = l
 }
 
 // runSarifIssues is the main execution function for the sarif-issues command.
@@ -76,9 +78,6 @@ func runSarifIssues(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 && !shared.HasFlags(cmd.Flags()) {
 		return cmd.Help()
 	}
-
-	// 2. Initialize logger
-	lg := logger.NewLogger(AppConfig, "sarif-issues")
 
 	// 3. Handle environment variable fallbacks
 	// Fallback: if --namespace not provided, try $GITHUB_REPOSITORY_OWNER
@@ -109,14 +108,14 @@ func runSarifIssues(cmd *cobra.Command, args []string) error {
 
 	// 4. Validate arguments
 	if err := validate(&opts); err != nil {
-		lg.Error("invalid arguments", "error", err)
+		logger.Error("invalid arguments", "error", err)
 		return errors.NewCommandError(opts, nil, fmt.Errorf("invalid arguments: %w", err), 1)
 	}
 
 	// 5. Read and process SARIF report
-	report, err := internalsarif.ReadReport(opts.SarifPath, lg, opts.SourceFolder, true)
+	report, err := internalsarif.ReadReport(opts.SarifPath, logger, opts.SourceFolder, true)
 	if err != nil {
-		lg.Error("failed to read SARIF report", "error", err)
+		logger.Error("failed to read SARIF report", "error", err)
 		return errors.NewCommandError(opts, nil, fmt.Errorf("failed to read SARIF report: %w", err), 2)
 	}
 
@@ -127,20 +126,20 @@ func runSarifIssues(cmd *cobra.Command, args []string) error {
 	// 6. Get all open GitHub issues
 	openIssues, err := listOpenIssues(opts)
 	if err != nil {
-		lg.Error("failed to list open issues", "error", err)
+		logger.Error("failed to list open issues", "error", err)
 		return errors.NewCommandError(opts, nil, fmt.Errorf("failed to list open issues: %w", err), 2)
 	}
-	lg.Info("fetched open issues from repository", "count", len(openIssues))
+	logger.Info("fetched open issues from repository", "count", len(openIssues))
 
 	// 7. Process SARIF report and create/close issues
-	created, err := processSARIFReport(report, opts, lg, openIssues)
+	created, err := processSARIFReport(report, opts, logger, openIssues)
 	if err != nil {
-		lg.Error("failed to process SARIF report", "error", err)
+		logger.Error("failed to process SARIF report", "error", err)
 		return err
 	}
 
 	// 8. Log success and handle output
-	lg.Info("issues created from SARIF high severity findings", "count", created)
+	logger.Info("issues created from SARIF high severity findings", "count", created)
 	fmt.Printf("Created %d issue(s) from SARIF high severity findings\n", created)
 
 	return nil
