@@ -2,17 +2,17 @@ package sarif
 
 import (
 	"bufio"
-	"crypto/md5"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/owenrumney/go-sarif/v2/sarif"
+
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 )
 
@@ -57,7 +57,6 @@ func removeSuppressedResults(report *sarif.Report) {
 }
 
 func ReadReport(inputPath string, logger hclog.Logger, sourceFolder string, noSuppressions bool) (*Report, error) {
-
 	sarifReport, err := readSarifReport(inputPath)
 	if err != nil {
 		return nil, err
@@ -86,11 +85,13 @@ func ReadReport(inputPath string, logger hclog.Logger, sourceFolder string, noSu
 
 // ExtractToolNameAndVersion function extracts tool name and version from a sarif report
 func (r Report) ExtractToolNameAndVersion() (*ToolMetadata, error) {
-	toolName := r.Runs[0].Tool.Driver.Name
-	toolVersion := r.Runs[0].Tool.Driver.SemanticVersion
+	if len(r.Runs) == 0 || r.Runs[0].Tool.Driver == nil {
+		return &ToolMetadata{}, nil
+	}
+
 	return &ToolMetadata{
-		Name:    toolName,
-		Version: toolVersion,
+		Name:    strings.TrimSpace(r.Runs[0].Tool.Driver.Name),
+		Version: r.Runs[0].Tool.Driver.SemanticVersion,
 	}, nil
 }
 
@@ -106,7 +107,10 @@ func (r Report) CollectSeverityInfo() map[string]int {
 
 	for _, run := range r.Runs {
 		for _, result := range run.Results {
-			severity := result.Properties["Level"].(string)
+			if result.Properties == nil {
+				result.Properties = make(map[string]interface{})
+			}
+			severity, _ := result.Properties["Level"].(string)
 			switch severity {
 			case "error":
 				severityInfo["high"]++
@@ -137,10 +141,10 @@ func (r Report) EnrichResultsTitleProperty() {
 			if rule.ShortDescription != nil {
 				result.Properties["Title"] = rule.ShortDescription.Text
 			}
-			if rule.FullDescription != nil && rule.FullDescription.Text != nil {
-				result.Properties["Description"] = *rule.FullDescription.Text
-			} else if result.Message.Text != nil {
+			if result.Message.Text != nil {
 				result.Properties["Description"] = *result.Message.Text
+			} else if rule.FullDescription != nil && rule.FullDescription.Text != nil {
+				result.Properties["Description"] = *rule.FullDescription.Text
 			}
 		}
 	}
@@ -291,6 +295,10 @@ func (r Report) EnrichResultsLevelProperty() {
 	}
 
 	for _, result := range r.Runs[0].Results {
+		if result.Properties == nil {
+			result.Properties = make(map[string]interface{})
+		}
+
 		if rule, ok := rulesMap[*result.RuleID]; ok {
 			if result.Properties["Level"] == nil {
 				if result.Level != nil {
@@ -313,6 +321,9 @@ func (r Report) EnrichResultsLevelProperty() {
 
 func (r Report) EnrichResultsLocationURIProperty(locationWebURLCallback func(artifactLocation *sarif.Location) string) {
 	for _, result := range r.Runs[0].Results {
+		if result.Properties == nil {
+			result.Properties = make(map[string]interface{})
+		}
 		// if result location length is at least 1
 		if len(result.Locations) > 0 {
 			// get the first location
@@ -324,6 +335,9 @@ func (r Report) EnrichResultsLocationURIProperty(locationWebURLCallback func(art
 				// set the URI to the artifact location properties
 				// set artifactLocation.Properties["URI"] to be *artifactLocation.URI if it's a relative path,
 				// otherwise trim prefix of r.sourceFolder from *artifactLocation.URI
+				if artifactLocation.Properties == nil {
+					artifactLocation.Properties = make(map[string]interface{})
+				}
 				if !filepath.IsAbs(*artifactLocation.URI) {
 					artifactLocation.Properties["URI"] = *artifactLocation.URI
 				} else {
@@ -345,10 +359,9 @@ func (r Report) EnrichResultsLocationURIProperty(locationWebURLCallback func(art
 
 // SortResultsByLevel function sorts sarif results by level
 func (r Report) SortResultsByLevel() {
-
+	// sort results by level
+	// order: error, warning, note, none
 	for _, run := range r.Runs {
-		// sort results by level
-		// order: error, warning, note, none
 		levelOrder := map[string]int{
 			"error":   0,
 			"warning": 1,
@@ -360,7 +373,19 @@ func (r Report) SortResultsByLevel() {
 		// sort results by level
 		// order: error, warning, note, none, unknown
 		sort.Slice(run.Results, func(i, j int) bool {
-			return levelOrder[run.Results[i].Properties["Level"].(string)] < levelOrder[run.Results[j].Properties["Level"].(string)]
+			left := "unknown"
+			if run.Results[i].Properties != nil {
+				if v, ok := run.Results[i].Properties["Level"].(string); ok {
+					left = strings.ToLower(v)
+				}
+			}
+			right := "unknown"
+			if run.Results[j].Properties != nil {
+				if v, ok := run.Results[j].Properties["Level"].(string); ok {
+					right = strings.ToLower(v)
+				}
+			}
+			return levelOrder[left] < levelOrder[right]
 		})
 	}
 }
@@ -412,9 +437,20 @@ func calculateThreadFlowFingerprint(threadFlow *sarif.ThreadFlow) string {
 	return calculateMD5Hash(fingerprint)
 }
 
-// function that calculates md5 hash for a given text
-func calculateMD5Hash(text string) string {
-	hash := md5.New()
-	io.WriteString(hash, text)
-	return hex.EncodeToString(hash.Sum(nil))
+// ExtractToolNameAndVersionFromRun returns tool metadata for the provided run.
+// The second return value is false when the run (or driver) is missing.
+func extractToolNameAndVersionFromRun(run *sarif.Run, fallback *ToolMetadata) (*ToolMetadata, bool) {
+	if run != nil && run.Tool.Driver != nil {
+		name := strings.TrimSpace(run.Tool.Driver.Name)
+		version := run.Tool.Driver.SemanticVersion
+		if name != "" || version != nil {
+			return &ToolMetadata{Name: name, Version: version}, true
+		}
+	}
+
+	if fallback != nil && (fallback.Name != "" || fallback.Version != nil) {
+		return fallback, true
+	}
+
+	return nil, false
 }
