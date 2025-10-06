@@ -175,7 +175,7 @@ type Comment struct {
 	FilePaths []string `json:"file_paths"`
 }
 
-type VCSAddSarifCommentsRequest struct {
+type VCSAddInLineCommentsListRequest struct {
 	VCSRequestBase
 	Comments []Comment `json:"comments"`
 	Summary  string    `json:"summary,omitempty"` // Summary will be added as the last comment on top of the comments list
@@ -222,7 +222,7 @@ type VCS interface {
 	ListIssues(req VCSListIssuesRequest) ([]IssueParams, error)
 	UpdateIssue(req VCSIssueUpdateRequest) (bool, error)
 	CreateIssueComment(req VCSCreateIssueCommentRequest) (bool, error)
-	AddCommentsFromSarif(req VCSAddSarifCommentsRequest) (bool, error)
+	AddInLineCommentsList(req VCSAddInLineCommentsListRequest) (bool, error)
 }
 
 // VCSRPCClient implements the VCS interface for RPC clients.
@@ -341,11 +341,11 @@ func (c *VCSRPCClient) CreateIssueComment(req VCSCreateIssueCommentRequest) (boo
 	return resp, nil
 }
 
-func (c *VCSRPCClient) AddCommentsFromSarif(req VCSAddSarifCommentsRequest) (bool, error) {
+func (c *VCSRPCClient) AddInLineCommentsList(req VCSAddInLineCommentsListRequest) (bool, error) {
 	var resp bool
-	err := c.client.Call("Plugin.AddCommentsFromSarif", req, &resp)
+	err := c.client.Call("Plugin.AddInLineCommentsList", req, &resp)
 	if err != nil {
-		return false, fmt.Errorf("RPC client AddCommentsFromSarif call failed: %w", err)
+		return false, fmt.Errorf("RPC client AddInLineCommentsList call failed: %w", err)
 	}
 	return resp, nil
 }
@@ -465,14 +465,14 @@ func (s *VCSRPCServer) CreateIssueComment(args VCSCreateIssueCommentRequest, res
 	return nil
 }
 
-// AddCommentToPR calls the AddCommentToPR method on the VCS implementation.
-func (s *VCSRPCServer) AddCommentsFromSarif(args VCSAddSarifCommentsRequest, resp *bool) error {
+// AddInLineCommentsList calls the AddInLineCommentsList method on the VCS implementation.
+func (s *VCSRPCServer) AddInLineCommentsList(args VCSAddInLineCommentsListRequest, resp *bool) error {
 	var err error
-	*resp, err = s.Impl.AddCommentsFromSarif(args)
+	*resp, err = s.Impl.AddInLineCommentsList(args)
 	if err != nil {
-		return fmt.Errorf("VCS AddCommentsFromSarif failed: %w", err)
+		return fmt.Errorf("VCS AddInLineCommentsList failed: %w", err)
 	}
-	return err
+	return nil
 }
 
 // VCSPlugin is the implementation of the plugin.Plugin interface for VCS.

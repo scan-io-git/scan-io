@@ -403,8 +403,8 @@ func (g *VCSGithub) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (bool, 
 	return true, nil
 }
 
-func (g *VCSGithub) AddCommentsFromSarif(req shared.VCSAddSarifCommentsRequest) (bool, error) {
-	return false, errors.NewNotImplementedError("AddCommentsFromSarif", g.name)
+func (g *VCSGithub) AddInLineCommentsList(req shared.VCSAddInLineCommentsListRequest) (bool, error) {
+	return false, errors.NewNotImplementedError("AddInLineCommentsList", g.name)
 }
 
 // fetchPR handles fetching pull request changes.

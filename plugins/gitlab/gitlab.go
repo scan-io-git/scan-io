@@ -460,8 +460,8 @@ func (g *VCSGitlab) CreateIssueComment(args shared.VCSCreateIssueCommentRequest)
 	return false, fmt.Errorf("CreateIssueComment not implemented for GitLab")
 }
 
-func (g *VCSGitlab) AddCommentsFromSarif(req shared.VCSAddSarifCommentsRequest) (bool, error) {
-	return false, errors.NewNotImplementedError("AddCommentsFromSarif", g.name)
+func (g *VCSGitlab) AddInLineCommentsList(req shared.VCSAddInLineCommentsListRequest) (bool, error) {
+	return false, errors.NewNotImplementedError("AddInLineCommentsList", g.name)
 }
 
 // buildCommentWithAttachments constructs the full comment text with file attachments.

@@ -126,8 +126,34 @@ func ValidateAddCommentToPRArgs(args *shared.VCSAddCommentToPRRequest) error {
 		return err
 	}
 
-	if args.Comment.Body == "" {
+	if strings.TrimSpace(args.Comment.Body) == "" {
 		return fmt.Errorf("comment is required")
+	}
+	return nil
+}
+
+// ValidateAddInLineCommentsListArgs checks the necessary fields in VCSAddInLineCommentsListRequest.
+func ValidateAddInLineCommentsListArgs(args *shared.VCSAddInLineCommentsListRequest) error {
+	if err := ValidateBaseArgs(&args.VCSRequestBase); err != nil {
+		return err
+	}
+
+	trimmedSummary := strings.TrimSpace(args.Summary)
+	if len(args.Comments) == 0 {
+		if trimmedSummary == "" {
+			return fmt.Errorf("no comments to post")
+		}
+		return nil
+	}
+
+	for _, comment := range args.Comments {
+		if strings.TrimSpace(comment.Body) != "" {
+			return nil
+		}
+	}
+
+	if trimmedSummary == "" {
+		return fmt.Errorf("no comments to post")
 	}
 	return nil
 }

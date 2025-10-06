@@ -78,3 +78,11 @@ func (g *VCSBitbucket) validateAddCommentToPR(args *shared.VCSAddCommentToPRRequ
 	}
 	return g.validateCommonCredentials()
 }
+
+// validateAddSarifComments checks the necessary fields in VCSAddInLineCommentsListRequest and returns errors if they are not set.
+func (g *VCSBitbucket) validateAddSarifComments(req *shared.VCSAddInLineCommentsListRequest) error {
+	if err := validation.ValidateAddInLineCommentsListArgs(req); err != nil {
+		return err
+	}
+	return g.validateCommonCredentials()
+}

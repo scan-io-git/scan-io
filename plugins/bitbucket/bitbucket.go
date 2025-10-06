@@ -306,7 +306,7 @@ func (g *VCSBitbucket) CreateIssueComment(args shared.VCSCreateIssueCommentReque
 	return false, fmt.Errorf("CreateIssueComment not implemented for Bitbucket")
 }
 
-func (g *VCSBitbucket) AddCommentsFromSarif(req shared.VCSAddSarifCommentsRequest) (bool, error) {
+func (g *VCSBitbucket) AddInLineCommentsList(req shared.VCSAddInLineCommentsListRequest) (bool, error) {
 	g.logger.Debug("adding sarif comments to PR", "args", req)
 
 	if err := g.validateAddSarifComments(&req); err != nil {

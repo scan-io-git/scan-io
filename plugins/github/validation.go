@@ -89,3 +89,11 @@ func (g *VCSGithub) validateAddCommentToPR(args *shared.VCSAddCommentToPRRequest
 	}
 	return g.validateAPICommonCredentials()
 }
+
+// validateAddSarifComments checks the necessary fields in VCSAddInLineCommentsListRequest and returns errors if they are not set.
+func (g *VCSGithub) validateAddSarifComments(req *shared.VCSAddInLineCommentsListRequest) error {
+	if err := validation.ValidateAddInLineCommentsListArgs(req); err != nil {
+		return err
+	}
+	return g.validateCommonCredentials()
+}

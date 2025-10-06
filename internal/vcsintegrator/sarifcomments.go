@@ -10,9 +10,17 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared"
 )
 
-// PrepareSarifComments builds a VCSAddSarifCommentsRequest by parsing a SARIF
-// file and converting findings into VCS comment structures.
-func PrepareSarifComments(
+// SarifCommentStats describes how many findings were processed versus included.
+type SarifCommentStats struct {
+	Total    int
+	Included int
+}
+
+// PrepareSarifComments builds a VCSAddInLineCommentsListRequest by parsing a SARIF
+// file and converting findings into VCS comment structures. It also returns
+// statistics about how many findings were processed versus included in the
+// resulting request.
+func prepareSarifComments(
 	logger hclog.Logger,
 	pluginName string,
 	repo shared.RepositoryParams,
@@ -20,10 +28,10 @@ func PrepareSarifComments(
 	sourceRoot string,
 	limit int,
 	summary string,
-) (shared.VCSAddSarifCommentsRequest, error) {
+) (shared.VCSAddInLineCommentsListRequest, SarifCommentStats, error) {
 	collected, err := sarif.CollectIssuesFromFile(logger, sarifPath, sourceRoot, pluginName, repo.HTTPLink, true)
 	if err != nil {
-		return shared.VCSAddSarifCommentsRequest{}, fmt.Errorf("collect issues from sarif: %w", err)
+		return shared.VCSAddInLineCommentsListRequest{}, SarifCommentStats{}, fmt.Errorf("collect issues from sarif: %w", err)
 	}
 
 	comments := make([]shared.Comment, 0, len(collected))
@@ -41,14 +49,15 @@ func PrepareSarifComments(
 		comments = append(comments, comment)
 	}
 
-	total := len(comments)
-	if limit > 0 && limit < total {
+	stats := SarifCommentStats{Total: len(comments)}
+	if limit > 0 && limit < stats.Total {
 		comments = comments[:limit]
 	}
+	stats.Included = len(comments)
 
 	summaryText := strings.TrimSpace(summary)
-	if total > len(comments) {
-		info := fmt.Sprintf("Only the first %d findings out of %d were commented automatically.", len(comments), total)
+	if stats.Total > stats.Included {
+		info := fmt.Sprintf("Only the first %d findings out of %d were commented automatically.", stats.Included, stats.Total)
 		if summaryText != "" {
 			summaryText = summaryText + "\n\n" + info
 		} else {
@@ -56,12 +65,12 @@ func PrepareSarifComments(
 		}
 	}
 
-	return shared.VCSAddSarifCommentsRequest{
+	return shared.VCSAddInLineCommentsListRequest{
 		VCSRequestBase: shared.VCSRequestBase{
 			RepoParam: repo,
-			Action:    VCSAddCommentsSarif,
+			Action:    VCSAddInLineCommentsSarif,
 		},
 		Comments: comments,
 		Summary:  summaryText,
-	}, nil
+	}, stats, nil
 }
