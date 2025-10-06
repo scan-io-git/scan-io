@@ -68,6 +68,29 @@ func ParseCIKind(raw string) (CIKind, error) {
 	}
 }
 
+// DetectCIKind attempts to infer the CI provider from well-known environment variables.
+func DetectCIKind() CIKind {
+	return detectCIKindWithLookup(os.Getenv)
+}
+
+func detectCIKindWithLookup(lookup LookupFunc) CIKind {
+	if lookup == nil {
+		lookup = os.Getenv
+	}
+
+	if lookup("GITHUB_REPOSITORY") != "" || lookup("GITHUB_SHA") != "" {
+		return CIGitHub
+	}
+	if strings.EqualFold(lookup("GITLAB_CI"), "true") || lookup("CI_PROJECT_PATH") != "" {
+		return CIGitLab
+	}
+	if lookup("BITBUCKET_WORKSPACE") != "" || lookup("BITBUCKET_REPO_SLUG") != "" {
+		return CIBitbucket
+	}
+
+	return CIUnknown
+}
+
 // GetCIDefaultEnvVars returns CI environment variables for the provided kind using the process environment.
 func GetCIDefaultEnvVars(kind CIKind) (CIEnvironment, error) {
 	return getCIDefaultEnvVars(kind, os.Getenv)
@@ -182,7 +205,7 @@ func extractBitbucketVariables(lookup LookupFunc) CIEnvironment {
 	origin := lookup("BITBUCKET_GIT_HTTP_ORIGIN")
 	u, err := url.Parse(origin)
 	var serverURL string
-	if err == nil {
+	if err == nil && u.Scheme != "" && u.Host != "" {
 		serverURL = u.Scheme + "://" + u.Host
 	}
 

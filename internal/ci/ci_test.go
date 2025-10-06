@@ -182,3 +182,40 @@ func mapLookup(values map[string]string) LookupFunc {
 		return values[key]
 	}
 }
+
+func TestDetectCIKindWithLookup(t *testing.T) {
+	testCases := []struct {
+		name string
+		tenv map[string]string
+		want CIKind
+	}{
+		{
+			name: "GitHub",
+			tenv: map[string]string{"GITHUB_REPOSITORY": "octocat/hello"},
+			want: CIGitHub,
+		},
+		{
+			name: "GitLab",
+			tenv: map[string]string{"CI_PROJECT_PATH": "group/project"},
+			want: CIGitLab,
+		},
+		{
+			name: "Bitbucket",
+			tenv: map[string]string{"BITBUCKET_WORKSPACE": "workspace"},
+			want: CIBitbucket,
+		},
+		{
+			name: "Unknown",
+			tenv: map[string]string{},
+			want: CIUnknown,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := detectCIKindWithLookup(mapLookup(tc.tenv)); got != tc.want {
+				t.Fatalf("detectCIKindWithLookup() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
