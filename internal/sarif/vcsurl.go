@@ -1,6 +1,7 @@
 package sarif
 
 import (
+	"fmt"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -66,26 +67,28 @@ func NewLocationURLBuilder(meta *git.RepositoryMetadata, vcs string) (LocationUR
 }
 
 func buildBitbucketLocationURL(location *sarif.Location, repoURL *vcsurl.VCSURL, meta *git.RepositoryMetadata) string {
-	artifact := normalisedArtifactPath(location)
+	artifact := normalisedArtifactPath(location, meta)
 	if artifact == "" {
 		return ""
 	}
 
 	anchor := buildBitbucketAnchor(location)
-	return strings.Join([]string{path.Join(repoURL.HTTPRepoLink, "browse", artifact) + "?at=" + *meta.CommitHash, anchor}, "")
+	base := strings.TrimRight(repoURL.HTTPRepoLink, "/")
+	return fmt.Sprintf("%s/browse/%s?at=%s%s", base, artifact, *meta.CommitHash, anchor)
 }
 
 func buildGenericLocationURL(location *sarif.Location, repoURL *vcsurl.VCSURL, meta *git.RepositoryMetadata) string {
-	artifact := normalisedArtifactPath(location)
+	artifact := normalisedArtifactPath(location, meta)
 	if artifact == "" {
 		return ""
 	}
 
 	anchor := buildGenericAnchor(location)
-	return strings.Join([]string{path.Join(repoURL.HTTPRepoLink, "blob", *meta.CommitHash, artifact), anchor}, "")
+	base := strings.TrimRight(repoURL.HTTPRepoLink, "/")
+	return fmt.Sprintf("%s/blob/%s/%s%s", base, *meta.CommitHash, artifact, anchor)
 }
 
-func normalisedArtifactPath(location *sarif.Location) string {
+func normalisedArtifactPath(location *sarif.Location, meta *git.RepositoryMetadata) string {
 	if location == nil || location.PhysicalLocation == nil || location.PhysicalLocation.ArtifactLocation == nil {
 		return ""
 	}
@@ -95,16 +98,23 @@ func normalisedArtifactPath(location *sarif.Location) string {
 		artifact.Properties = make(map[string]interface{})
 	}
 
+	pathComponent := ""
 	if val, ok := artifact.Properties["URI"].(string); ok && val != "" {
-		return filepath.ToSlash(val)
+		pathComponent = filepath.ToSlash(val)
+	} else {
+		if artifact.URI == nil || *artifact.URI == "" {
+			return ""
+		}
+		pathComponent = filepath.ToSlash(*artifact.URI)
+		artifact.Properties["URI"] = pathComponent
 	}
 
-	if artifact.URI == nil || *artifact.URI == "" {
-		return ""
+	if meta != nil {
+		sub := strings.Trim(meta.Subfolder, "/\\")
+		if sub != "" {
+			pathComponent = path.Join(sub, pathComponent)
+		}
 	}
-
-	pathComponent := filepath.ToSlash(*artifact.URI)
-	artifact.Properties["URI"] = pathComponent
 	return pathComponent
 }
 
