@@ -57,8 +57,6 @@ func CollectIssues(report *Report, vcs string) ([]IssueData, error) {
 	report.EnrichResultsLevelProperty()
 	report.EnrichResultsTitleProperty()
 	report.EnrichResultsCodeFlowProperty(locationWebURLCallback)
-
-	// todo support case when provied variable from env
 	report.EnrichResultsLocationURIProperty(locationWebURLCallback)
 	report.SortResultsByLevel()
 
@@ -105,7 +103,7 @@ func CollectIssues(report *Report, vcs string) ([]IssueData, error) {
 				report.logger.Warn("SARIF result missing file URI, using placeholder", "rule_id", ruleID)
 			}
 
-			line, endLine := extractRegionFromResult(res) // todo: take from parsed meta
+			line, endLine := extractRegionFromResult(res)
 			snippetHash := computeSnippetHash(fileURI, line, endLine, report.sourceFolder)
 			if snippetHash == "" && fileURI != "<unknown>" && line > 0 {
 				report.logger.Warn("failed to compute snippet hash", "rule_id", ruleID, "file", fileURI, "line", line)
