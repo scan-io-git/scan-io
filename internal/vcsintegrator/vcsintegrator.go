@@ -10,12 +10,12 @@ import (
 )
 
 const (
-	VCSListing          = "list"
-	VCSCheckPR          = "checkPR"
-	VCSCommentPR        = "addComment"
-	VCSAddRoleToPR      = "addRoleToPR"
-	VCSSetStatusOfPR    = "setStatusOfPR"
-	VCSAddCommentsSarif = "addCommentsFromSarif"
+	VCSListing                = "list"
+	VCSCheckPR                = "checkPR"
+	VCSCommentPR              = "addComment"
+	VCSAddRoleToPR            = "addRoleToPR"
+	VCSSetStatusOfPR          = "setStatusOfPR"
+	VCSAddInLineCommentsSarif = "addInLineCommentsFromSarif"
 )
 
 // VCSIntegrator represents the configuration and behavior of VCS integration actions.
@@ -27,23 +27,23 @@ type VCSIntegrator struct {
 
 // RunOptionsIntegrationVCS holds the arguments for VCS integration actions.
 type RunOptionsIntegrationVCS struct {
-	VCSPluginName string   `json:"vcs_plugin_name,omitempty"`
-	Domain        string   `json:"domain,omitempty"`
-	Namespace     string   `json:"namespace,omitempty"`
-	Repository    string   `json:"repository,omitempty"`
-	PullRequestID string   `json:"pull_request_id,omitempty"`
-	Action        string   `json:"action,omitempty"`
-	Login         string   `json:"login,omitempty"`
-	Language      string   `json:"language,omitempty"`
-	OutputPath    string   `json:"output_path,omitempty"`
-	Role          string   `json:"role,omitempty"`
-	Status        string   `json:"status,omitempty"`
-	Comment       string   `json:"comment,omitempty"`
-	CommentFile   string   `json:"comment_file,omitempty"`
-	AttachFiles   []string `json:"attach_files,omitempty"`
-	SarifInput    string   `json:"sarif_input,omitempty"`
-	SourceFolder  string   `json:"source_folder,omitempty"`
-	SarifLimit    int      `json:"sarif_limit,omitempty"`
+	VCSPluginName    string   `json:"vcs_plugin_name,omitempty"`
+	Domain           string   `json:"domain,omitempty"`
+	Namespace        string   `json:"namespace,omitempty"`
+	Repository       string   `json:"repository,omitempty"`
+	PullRequestID    string   `json:"pull_request_id,omitempty"`
+	Action           string   `json:"action,omitempty"`
+	Login            string   `json:"login,omitempty"`
+	Language         string   `json:"language,omitempty"`
+	OutputPath       string   `json:"output_path,omitempty"`
+	Role             string   `json:"role,omitempty"`
+	Status           string   `json:"status,omitempty"`
+	Comment          string   `json:"comment,omitempty"`
+	CommentFile      string   `json:"comment_file,omitempty"`
+	AttachFiles      []string `json:"attach_files,omitempty"`
+	SarifInput       string   `json:"sarif_input,omitempty"`
+	SourceFolder     string   `json:"source_folder,omitempty"`
+	SarifIssuesLimit int      `json:"sarif_issues_limit,omitempty"`
 }
 
 // New creates a new VCSIntegrator instance with the provided configuration.
@@ -151,20 +151,20 @@ func (i *VCSIntegrator) PrepIntegrationRequest(cfg *config.Config, options *RunO
 		arguments = i.createAddRoleToPRRequest(repo, options)
 	case VCSSetStatusOfPR:
 		arguments = i.createSetStatusOfPRRequest(repo, options)
-	case VCSAddCommentsSarif:
-		reqSarif, err := PrepareSarifComments(
+	case VCSAddInLineCommentsSarif:
+		reqSarif, stats, err := prepareSarifComments(
 			i.logger,
 			i.PluginName,
 			repo,
 			options.SarifInput,
 			options.SourceFolder,
-			1, // options.SarifLimit,
+			options.SarifIssuesLimit,
 			options.Comment,
 		)
 		if err != nil {
 			return nil, err
 		}
-
+		i.logger.Debug("sarif comments prepared", "total_findings", stats.Total, "included", stats.Included)
 		arguments = reqSarif
 	default:
 		return arguments, fmt.Errorf("action is not implemented: %v", i.Action)
@@ -194,13 +194,13 @@ func performAction(vcsPlugin shared.VCS, options interface{}, action string) (in
 			return nil, fmt.Errorf("invalid argument type for action '%v'", VCSCommentPR)
 		}
 		return vcsPlugin.AddCommentToPR(addCommentRequest)
-	case VCSAddCommentsSarif:
-		addCommentsRequest, ok := options.(shared.VCSAddSarifCommentsRequest)
+	case VCSAddInLineCommentsSarif:
+		addCommentsRequest, ok := options.(shared.VCSAddInLineCommentsListRequest)
 		if !ok {
-			return nil, fmt.Errorf("invalid argument type for action '%v'", VCSAddCommentsSarif)
+			return nil, fmt.Errorf("invalid argument type for action '%v'", VCSAddInLineCommentsSarif)
 		}
 
-		return vcsPlugin.AddCommentsFromSarif(addCommentsRequest)
+		return vcsPlugin.AddInLineCommentsList(addCommentsRequest)
 	case VCSAddRoleToPR:
 		addRoleRequest, ok := options.(shared.VCSAddRoleToPRRequest)
 		if !ok {

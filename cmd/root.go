@@ -9,9 +9,7 @@ import (
 
 	"github.com/scan-io-git/scan-io/cmd/analyse"
 	"github.com/scan-io-git/scan-io/cmd/fetch"
-	integrationvcs "github.com/scan-io-git/scan-io/cmd/integration-vcs"
 	"github.com/scan-io-git/scan-io/cmd/list"
-	sarifissues "github.com/scan-io-git/scan-io/cmd/sarif-issues"
 	"github.com/scan-io-git/scan-io/cmd/upload"
 	"github.com/scan-io-git/scan-io/cmd/version"
 	"github.com/scan-io-git/scan-io/pkg/shared"
@@ -19,6 +17,9 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 
+	integrationvcs "github.com/scan-io-git/scan-io/cmd/integration-vcs"
+	sarifcomments "github.com/scan-io-git/scan-io/cmd/sarif-comments"
+	sarifissues "github.com/scan-io-git/scan-io/cmd/sarif-issues"
 	tohtml "github.com/scan-io-git/scan-io/cmd/to-html"
 )
 
@@ -92,6 +93,7 @@ func initConfig() {
 	tohtml.Init(AppConfig, Logger.Named("to-html"))
 	upload.Init(AppConfig, Logger.Named("upload"))
 	sarifissues.Init(AppConfig, Logger.Named("sarif-issues"))
+	sarifcomments.Init(AppConfig, Logger.Named("sarif-comments"))
 }
 
 func init() {
@@ -103,6 +105,7 @@ func init() {
 	rootCmd.AddCommand(analyse.AnalyseCmd)
 	rootCmd.AddCommand(integrationvcs.IntegrationVCSCmd)
 	rootCmd.AddCommand(sarifissues.SarifIssuesCmd)
+	rootCmd.AddCommand(sarifcomments.SarifCommentsCmd)
 	rootCmd.AddCommand(version.NewVersionCmd())
 	rootCmd.AddCommand(tohtml.ToHtmlCmd)
 	rootCmd.AddCommand(upload.UploadCmd)
