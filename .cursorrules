@@ -1,0 +1,15 @@
+# Scan-io Cursor Rules
+
+## Development workflow
+- When implementing new features or making changes to the codebase, always check the `docs/engineering/` directory first for established patterns and guidelines:
+- When in doubt about implementation details, always refer to the engineering documentation first, then examine similar existing implementations in the codebase.
+
+## Commands
+- Build cli with: `make build-cli`
+- Build plugins with: `make build-plugins`
+- Build everything with: `make build`
+- Test with: `make test`
+- Use `go fmt` for formatting
+
+## Code style
+- Use early returns when handling errors or special cases to reduce nesting and improve readability.
