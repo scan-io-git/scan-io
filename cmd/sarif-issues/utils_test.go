@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/scan-io-git/scan-io/internal/git"
+	internalsarif "github.com/scan-io-git/scan-io/internal/sarif"
 )
 
 func TestDisplaySeverity(t *testing.T) {
@@ -397,7 +399,7 @@ func TestExtractFileURIFromResult(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	repoRoot := filepath.Join(tempDir, "repo")
+	repoRoot := filepath.Join(tempDir, "scanio-test")
 	subfolder := filepath.Join(repoRoot, "apps", "demo")
 	if err := os.MkdirAll(subfolder, 0o755); err != nil {
 		t.Fatalf("Failed to create subfolder: %v", err)
@@ -432,6 +434,14 @@ func TestExtractFileURIFromResult(t *testing.T) {
 		{
 			name:          "relative URI with metadata",
 			uri:           "main.py",
+			meta:          metadata,
+			expectedRepo:  filepath.ToSlash(filepath.Join("apps", "demo", "main.py")),
+			expectedLocal: filepath.Join(repoRoot, "apps", "demo", "main.py"),
+			sourceFolder:  subfolder,
+		},
+		{
+			name:          "relative URI with parent segments",
+			uri:           filepath.ToSlash(filepath.Join("..", "scanio-test", "apps", "demo", "main.py")),
 			meta:          metadata,
 			expectedRepo:  filepath.ToSlash(filepath.Join("apps", "demo", "main.py")),
 			expectedLocal: filepath.Join(repoRoot, "apps", "demo", "main.py"),
@@ -517,6 +527,171 @@ func TestBuildGitHubPermalink(t *testing.T) {
 	}
 }
 
+func TestBuildNewIssuesFromSARIFManualScenarios(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "sarif_scenarios")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	repoRoot := filepath.Join(tempDir, "scanio-test")
+	subfolder := filepath.Join(repoRoot, "apps", "demo")
+	if err := os.MkdirAll(subfolder, 0o755); err != nil {
+		t.Fatalf("Failed to create repo subfolder: %v", err)
+	}
+
+	mainFile := filepath.Join(subfolder, "main.py")
+	var builder strings.Builder
+	for i := 1; i <= 60; i++ {
+		builder.WriteString(fmt.Sprintf("line %d\n", i))
+	}
+	if err := os.WriteFile(mainFile, []byte(builder.String()), 0o644); err != nil {
+		t.Fatalf("Failed to write main.py: %v", err)
+	}
+
+	logger := hclog.NewNullLogger()
+	commit := "aec0b795c350ff53fe9ab01adf862408aa34c3fd"
+
+	metadata := &git.RepositoryMetadata{
+		RepoRootFolder: repoRoot,
+		Subfolder:      filepath.ToSlash(filepath.Join("apps", "demo")),
+		CommitHash:     &commit,
+	}
+
+	options := RunOptions{
+		Namespace:    "scan-io-git",
+		Repository:   "scanio-test",
+		Ref:          commit,
+		SourceFolder: subfolder,
+	}
+
+	expectedRepoPath := filepath.ToSlash(filepath.Join("apps", "demo", "main.py"))
+	permalink := fmt.Sprintf("https://github.com/%s/%s/blob/%s/%s#L%d-L%d",
+		options.Namespace,
+		options.Repository,
+		commit,
+		expectedRepoPath,
+		11,
+		29,
+	)
+
+	scenarios := []struct {
+		name            string
+		uri             string
+		sourceFolderCLI string
+		sourceFolderAbs string
+	}{
+		{
+			name:            "outside project absolute",
+			uri:             mainFile,
+			sourceFolderCLI: subfolder,
+			sourceFolderAbs: subfolder,
+		},
+		{
+			name:            "outside project relative",
+			uri:             filepath.ToSlash(filepath.Join("..", "scanio-test", "apps", "demo", "main.py")),
+			sourceFolderCLI: filepath.Join("..", "scanio-test", "apps", "demo"),
+			sourceFolderAbs: subfolder,
+		},
+		{
+			name:            "from root absolute",
+			uri:             mainFile,
+			sourceFolderCLI: subfolder,
+			sourceFolderAbs: subfolder,
+		},
+		{
+			name:            "from root relative",
+			uri:             filepath.ToSlash(filepath.Join("apps", "demo", "main.py")),
+			sourceFolderCLI: filepath.Join("apps", "demo"),
+			sourceFolderAbs: subfolder,
+		},
+		{
+			name:            "from subfolder absolute",
+			uri:             mainFile,
+			sourceFolderCLI: subfolder,
+			sourceFolderAbs: subfolder,
+		},
+		{
+			name:            "from subfolder relative",
+			uri:             "main.py",
+			sourceFolderCLI: ".",
+			sourceFolderAbs: subfolder,
+		},
+	}
+
+	for _, scenario := range scenarios {
+		scenario := scenario
+		t.Run(scenario.name, func(t *testing.T) {
+			ruleID := "test.rule"
+			uriValue := scenario.uri
+			startLine := 11
+			endLine := 29
+			message := "Test finding"
+			baseID := "%SRCROOT%"
+
+			result := &sarif.Result{
+				RuleID: &ruleID,
+				Message: sarif.Message{
+					Text: &message,
+				},
+				Locations: []*sarif.Location{
+					{
+						PhysicalLocation: &sarif.PhysicalLocation{
+							ArtifactLocation: &sarif.ArtifactLocation{
+								URI:       &uriValue,
+								URIBaseId: &baseID,
+							},
+							Region: &sarif.Region{
+								StartLine: &startLine,
+								EndLine:   &endLine,
+							},
+						},
+					},
+				},
+			}
+			result.PropertyBag = *sarif.NewPropertyBag()
+			result.Add("Level", "error")
+
+			report := &internalsarif.Report{
+				Report: &sarif.Report{
+					Runs: []*sarif.Run{
+						{
+							Tool: sarif.Tool{
+								Driver: &sarif.ToolComponent{
+									Name: "Semgrep",
+									Rules: []*sarif.ReportingDescriptor{
+										{ID: ruleID},
+									},
+								},
+							},
+							Results: []*sarif.Result{result},
+						},
+					},
+				},
+			}
+
+			scenarioOptions := options
+			scenarioOptions.SourceFolder = scenario.sourceFolderCLI
+
+			issues := buildNewIssuesFromSARIF(report, scenarioOptions, scenario.sourceFolderAbs, metadata, logger)
+			if len(issues) == 0 {
+				t.Fatalf("expected issues for scenario %q", scenario.name)
+			}
+
+			issue := issues[0]
+			if issue.Metadata.Filename != expectedRepoPath {
+				t.Fatalf("scenario %q expected repo path %q, got %q", scenario.name, expectedRepoPath, issue.Metadata.Filename)
+			}
+			if issue.Metadata.SnippetHash == "" {
+				t.Fatalf("scenario %q expected snippet hash to be populated", scenario.name)
+			}
+			if !strings.Contains(issue.Body, permalink) {
+				t.Fatalf("scenario %q issue body missing permalink %q", scenario.name, permalink)
+			}
+		})
+	}
+}
+
 func TestResolveSourceFolder(t *testing.T) {
 	// Create a test logger
 	logger := hclog.NewNullLogger()
@@ -573,16 +748,17 @@ func TestResolveSourceFolder(t *testing.T) {
 			input:    "~/testdir",
 			expected: "", // Will be resolved to actual home directory path
 			setup: func() (string, func()) {
-				homeDir, err := os.UserHomeDir()
+				tempHome, err := os.MkdirTemp("", "sarif-home-*")
 				if err != nil {
-					t.Fatalf("failed to get home dir: %v", err)
+					t.Fatalf("failed to create temp home dir: %v", err)
 				}
-				testDir := filepath.Join(homeDir, "testdir")
-				err = os.Mkdir(testDir, 0755)
-				if err != nil {
+				t.Setenv("HOME", tempHome)
+				testDir := filepath.Join(tempHome, "testdir")
+				if err := os.MkdirAll(testDir, 0o755); err != nil {
+					os.RemoveAll(tempHome)
 					t.Fatalf("failed to create test dir: %v", err)
 				}
-				return testDir, func() { os.RemoveAll(testDir) }
+				return testDir, func() { os.RemoveAll(tempHome) }
 			},
 		},
 		{

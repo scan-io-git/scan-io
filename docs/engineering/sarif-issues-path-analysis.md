@@ -66,7 +66,7 @@ cd /home/jekos/ghq/github.com/scan-io-git/scan-io
 scanio analyse --scanner semgrep ../scanio-test/apps/demo --format sarif --output data/outside-project-rel.sarif
 scanio sarif-issues --namespace scan-io-git --repository scanio-test --ref aec0b795c350ff53fe9ab01adf862408aa34c3fd --sarif data/outside-project-rel.sarif --source-folder ../scanio-test/apps/demo
 # validate here: 2 issues with correct permalinks
-# incorrect: https://github.com/scan-io-git/scanio-test/blob/aec0b795c350ff53fe9ab01adf862408aa34c3fd/apps/demo/scanio-test/apps/demo/main.py
+# correct: https://github.com/scan-io-git/scanio-test/blob/aec0b795c350ff53fe9ab01adf862408aa34c3fd/apps/demo/main.py
 
 # 3. From root absolute path
 cd /home/jekos/ghq/github.com/scan-io-git/scanio-test
@@ -81,6 +81,7 @@ scanio analyse --scanner semgrep apps/demo --format sarif --output /home/jekos/g
 scanio sarif-issues --namespace scan-io-git --repository scanio-test --ref aec0b795c350ff53fe9ab01adf862408aa34c3fd --sarif /home/jekos/ghq/github.com/scan-io-git/scan-io/data/from-root-rel.sarif --source-folder apps/demo
 # validate here: 2 issues with correct permalinks
 # correct https://github.com/scan-io-git/scanio-test/blob/aec0b795c350ff53fe9ab01adf862408aa34c3fd/apps/demo/main.py
+# correct even when .git folder is not there
 
 # 5. From subfolder absolute paths
 cd /home/jekos/ghq/github.com/scan-io-git/scanio-test/apps/demo

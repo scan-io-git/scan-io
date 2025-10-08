@@ -271,46 +271,59 @@ func extractFileURIFromResult(res *sarif.Result, absSourceFolder string, repoMet
 	repoPath := ""
 	localPath := ""
 	subfolder := normalisedSubfolder(repoMetadata)
+	var repoRoot string
+	if repoMetadata != nil && strings.TrimSpace(repoMetadata.RepoRootFolder) != "" {
+		repoRoot = filepath.Clean(repoMetadata.RepoRootFolder)
+	}
+	absSource := strings.TrimSpace(absSourceFolder)
+	if absSource != "" {
+		if abs, err := filepath.Abs(absSource); err == nil {
+			absSource = abs
+		} else {
+			absSource = filepath.Clean(absSource)
+		}
+	}
 
-	if filepath.IsAbs(rawURI) {
-		localPath = filepath.Clean(rawURI)
-		repoPath = filepath.ToSlash(rawURI)
-		if repoMetadata != nil && repoMetadata.RepoRootFolder != "" {
-			repoPath = filepath.ToSlash(trimPathPrefix(localPath, repoMetadata.RepoRootFolder))
-		} else if absSourceFolder != "" {
-			repoPath = filepath.ToSlash(trimPathPrefix(localPath, absSourceFolder))
+	// Normalise URI to the host OS path representation
+	osURI := filepath.FromSlash(rawURI)
+	osURI = strings.TrimPrefix(osURI, "file://")
+	cleanURI := filepath.Clean(osURI)
+
+	if filepath.IsAbs(cleanURI) {
+		localPath = cleanURI
+		if repoRoot != "" {
+			if rel, err := filepath.Rel(repoRoot, localPath); err == nil {
+				if rel != "." && !strings.HasPrefix(rel, "..") {
+					repoPath = filepath.ToSlash(rel)
+				}
+			}
+		}
+		if repoPath == "" && absSource != "" {
+			if rel, err := filepath.Rel(absSource, localPath); err == nil {
+				repoPath = filepath.ToSlash(rel)
+			}
+		}
+		if repoPath == "" {
+			repoPath = filepath.ToSlash(strings.TrimPrefix(localPath, string(filepath.Separator)))
 		}
 	} else {
-		normalised := strings.TrimLeft(rawURI, "./")
-		repoPath = filepath.ToSlash(normalised)
+		localPath = resolveRelativeLocalPath(cleanURI, repoRoot, subfolder, absSource)
 
-		if subfolder != "" && !strings.HasPrefix(repoPath, subfolder+"/") && repoPath != subfolder {
-			repoPath = filepath.ToSlash(filepath.Join(subfolder, repoPath))
-		}
-
-		if repoMetadata != nil && repoMetadata.RepoRootFolder != "" {
-			candidate := filepath.Join(repoMetadata.RepoRootFolder, filepath.FromSlash(repoPath))
-			if _, err := os.Stat(candidate); err == nil {
-				localPath = candidate
+		if repoRoot != "" && localPath != "" && pathWithin(localPath, repoRoot) {
+			if rel, err := filepath.Rel(repoRoot, localPath); err == nil {
+				if rel != "." {
+					repoPath = filepath.ToSlash(rel)
+				}
 			}
 		}
 
-		if localPath == "" && absSourceFolder != "" {
-			candidate := filepath.Join(absSourceFolder, filepath.FromSlash(normalised))
-			if _, err := os.Stat(candidate); err == nil {
-				localPath = candidate
+		if repoPath == "" {
+			normalised := strings.TrimLeft(filepath.ToSlash(cleanURI), "./")
+			if subfolder != "" && !strings.HasPrefix(normalised, subfolder+"/") && normalised != subfolder {
+				repoPath = filepath.ToSlash(filepath.Join(subfolder, normalised))
+			} else {
+				repoPath = filepath.ToSlash(normalised)
 			}
-		}
-
-		if localPath == "" && repoMetadata != nil && repoMetadata.RepoRootFolder != "" && subfolder != "" {
-			candidate := filepath.Join(repoMetadata.RepoRootFolder, filepath.FromSlash(subfolder), filepath.FromSlash(normalised))
-			if _, err := os.Stat(candidate); err == nil {
-				localPath = candidate
-			}
-		}
-
-		if localPath == "" && absSourceFolder != "" {
-			localPath = filepath.Join(absSourceFolder, filepath.FromSlash(normalised))
 		}
 	}
 
@@ -319,32 +332,71 @@ func extractFileURIFromResult(res *sarif.Result, absSourceFolder string, repoMet
 	return repoPath, localPath
 }
 
-func trimPathPrefix(path, prefix string) string {
-	if prefix == "" {
-		return path
+func resolveRelativeLocalPath(cleanURI, repoRoot, subfolder, absSource string) string {
+	candidateRel := cleanURI
+	var bases []string
+	seen := map[string]struct{}{}
+
+	addBase := func(base string) {
+		if base == "" {
+			return
+		}
+		if abs, err := filepath.Abs(base); err == nil {
+			base = abs
+		} else {
+			base = filepath.Clean(base)
+		}
+		if _, ok := seen[base]; ok {
+			return
+		}
+		seen[base] = struct{}{}
+		bases = append(bases, base)
 	}
 
-	cleanPath := filepath.Clean(path)
-	cleanPrefix := filepath.Clean(prefix)
+	addBase(repoRoot)
+	if repoRoot != "" && subfolder != "" {
+		addBase(filepath.Join(repoRoot, filepath.FromSlash(subfolder)))
+	}
+	addBase(absSource)
 
-	if rel, err := filepath.Rel(cleanPrefix, cleanPath); err == nil && rel != "" && !strings.HasPrefix(rel, "..") {
-		return rel
+	for _, base := range bases {
+		candidate := filepath.Clean(filepath.Join(base, candidateRel))
+		if repoRoot != "" && !pathWithin(candidate, repoRoot) {
+			continue
+		}
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
 	}
 
-	prefixWithSep := cleanPrefix + string(filepath.Separator)
-	if strings.HasPrefix(cleanPath, prefixWithSep) {
-		return strings.TrimPrefix(cleanPath, prefixWithSep)
+	if len(bases) > 0 {
+		candidate := filepath.Clean(filepath.Join(bases[0], candidateRel))
+		if repoRoot == "" || pathWithin(candidate, repoRoot) {
+			return candidate
+		}
 	}
 
-	if strings.HasPrefix(cleanPath, cleanPrefix) {
-		return strings.TrimPrefix(cleanPath, cleanPrefix)
+	if absSource != "" {
+		return filepath.Clean(filepath.Join(absSource, candidateRel))
 	}
+	return ""
+}
 
-	trimmed := strings.TrimPrefix(cleanPath, prefix)
-	if strings.HasPrefix(trimmed, string(filepath.Separator)) {
-		return trimmed[1:]
+func pathWithin(path, root string) bool {
+	if root == "" {
+		return true
 	}
-	return trimmed
+	cleanPath, err1 := filepath.Abs(path)
+	cleanRoot, err2 := filepath.Abs(root)
+	if err1 != nil || err2 != nil {
+		cleanPath = filepath.Clean(path)
+		cleanRoot = filepath.Clean(root)
+	}
+	if cleanPath == cleanRoot {
+		return true
+	}
+	rootWithSep := cleanRoot + string(filepath.Separator)
+	return strings.HasPrefix(cleanPath, rootWithSep)
 }
 
 func normalisedSubfolder(md *git.RepositoryMetadata) string {
