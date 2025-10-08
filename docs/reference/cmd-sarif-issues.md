@@ -84,6 +84,8 @@ For detailed GitHub plugin configuration, refer to [GitHub Plugin Documentation]
 
 ## Usage Examples
 
+> **Recommendation:** Run the command from your repository root and pass `--source-folder` as repo-relative paths (for example `--source-folder apps/demo`). This keeps permalinks and snippet hashing consistent across environments. Even when .git repo is corrupted or is missing.
+
 ### Basic Usage in GitHub Actions
 Create issues from SARIF report using environment variables:
 ```bash

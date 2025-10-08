@@ -39,7 +39,10 @@ var (
 	opts      RunOptions
 
 	// Example usage for the sarif-issues command
-	exampleSarifIssuesUsage = `  # Create issues from SARIF report with basic configuration
+	exampleSarifIssuesUsage = `  # Recommended: run from repository root and use relative paths
+  scanio sarif-issues --namespace scan-io-git --repository scan-io --sarif /path/to/report.sarif --source-folder apps/demo
+
+  # Create issues from SARIF report with basic configuration
   scanio sarif-issues --namespace scan-io-git --repository scan-io --sarif /path/to/report.sarif
 
   # Create issues with labels and assignees
