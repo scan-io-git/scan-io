@@ -2,11 +2,12 @@ package sarifissues
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 
+	"github.com/scan-io-git/scan-io/internal/git"
 	internalsarif "github.com/scan-io-git/scan-io/internal/sarif"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
@@ -81,31 +82,7 @@ func runSarifIssues(cmd *cobra.Command, args []string) error {
 	lg := logger.NewLogger(AppConfig, "sarif-issues")
 
 	// 3. Handle environment variable fallbacks
-	// Fallback: if --namespace not provided, try $GITHUB_REPOSITORY_OWNER
-	if strings.TrimSpace(opts.Namespace) == "" {
-		if ns := strings.TrimSpace(os.Getenv("GITHUB_REPOSITORY_OWNER")); ns != "" {
-			opts.Namespace = ns
-		}
-	}
-
-	// Fallback: if --repository not provided, try ${GITHUB_REPOSITORY#*/}
-	if strings.TrimSpace(opts.Repository) == "" {
-		if gr := strings.TrimSpace(os.Getenv("GITHUB_REPOSITORY")); gr != "" {
-			if idx := strings.Index(gr, "/"); idx >= 0 && idx < len(gr)-1 {
-				opts.Repository = gr[idx+1:]
-			} else {
-				// No slash present; fall back to the whole value
-				opts.Repository = gr
-			}
-		}
-	}
-
-	// Fallback: if --ref not provided, try $GITHUB_SHA
-	if strings.TrimSpace(opts.Ref) == "" {
-		if sha := strings.TrimSpace(os.Getenv("GITHUB_SHA")); sha != "" {
-			opts.Ref = sha
-		}
-	}
+	ApplyEnvironmentFallbacks(&opts)
 
 	// 4. Validate arguments
 	if err := validate(&opts); err != nil {
@@ -120,6 +97,12 @@ func runSarifIssues(cmd *cobra.Command, args []string) error {
 		return errors.NewCommandError(opts, nil, fmt.Errorf("failed to read SARIF report: %w", err), 2)
 	}
 
+	// Resolve source folder to absolute form for path calculations
+	sourceFolderAbs := ResolveSourceFolder(opts.SourceFolder, lg)
+
+	// Collect repository metadata to understand repo root vs. subfolder layout
+	repoMetadata := resolveRepositoryMetadata(sourceFolderAbs, lg)
+
 	// Enrich to ensure Levels and Titles are present
 	report.EnrichResultsLevelProperty()
 	report.EnrichResultsTitleProperty()
@@ -133,7 +116,7 @@ func runSarifIssues(cmd *cobra.Command, args []string) error {
 	lg.Info("fetched open issues from repository", "count", len(openIssues))
 
 	// 7. Process SARIF report and create/close issues
-	created, err := processSARIFReport(report, opts, lg, openIssues)
+	created, err := processSARIFReport(report, opts, sourceFolderAbs, repoMetadata, lg, openIssues)
 	if err != nil {
 		lg.Error("failed to process SARIF report", "error", err)
 		return err
@@ -157,4 +140,16 @@ func init() {
 	// --assignees supports multiple usages or comma-separated values
 	SarifIssuesCmd.Flags().StringSliceVar(&opts.Assignees, "assignees", nil, "Optional: assignees (GitHub logins) to assign to created issues (repeat flag or use comma-separated values)")
 	SarifIssuesCmd.Flags().BoolP("help", "h", false, "Show help for sarif-issues command.")
+}
+
+func resolveRepositoryMetadata(sourceFolderAbs string, lg hclog.Logger) *git.RepositoryMetadata {
+	if strings.TrimSpace(sourceFolderAbs) == "" {
+		return nil
+	}
+
+	md, err := git.CollectRepositoryMetadata(sourceFolderAbs)
+	if err != nil {
+		lg.Debug("unable to collect repository metadata", "error", err)
+	}
+	return md
 }

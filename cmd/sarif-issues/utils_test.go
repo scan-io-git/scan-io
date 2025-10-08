@@ -6,6 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/hashicorp/go-hclog"
+	"github.com/owenrumney/go-sarif/v2/sarif"
+	"github.com/scan-io-git/scan-io/internal/git"
 )
 
 func TestDisplaySeverity(t *testing.T) {
@@ -184,180 +188,130 @@ line 5`
 	}
 
 	tests := []struct {
-		name         string
-		fileURI      string
-		line         int
-		endLine      int
-		sourceFolder string
-		expected     string
+		name      string
+		localPath string
+		line      int
+		endLine   int
+		expected  string
 	}{
 		// Valid cases
 		{
-			name:         "single line from middle",
-			fileURI:      "test.txt",
-			line:         2,
-			endLine:      2,
-			sourceFolder: tempDir,
-			expected:     computeExpectedHash("line 2"),
+			name:      "single line from middle",
+			localPath: testFilePath,
+			line:      2,
+			endLine:   2,
+			expected:  computeExpectedHash("line 2"),
 		},
 		{
-			name:         "multiple lines range",
-			fileURI:      "test.txt",
-			line:         2,
-			endLine:      4,
-			sourceFolder: tempDir,
-			expected:     computeExpectedHash("line 2\nline 3\nline 4"),
+			name:      "multiple lines range",
+			localPath: testFilePath,
+			line:      2,
+			endLine:   4,
+			expected:  computeExpectedHash("line 2\nline 3\nline 4"),
 		},
 		{
-			name:         "first line only",
-			fileURI:      "test.txt",
-			line:         1,
-			endLine:      1,
-			sourceFolder: tempDir,
-			expected:     computeExpectedHash("line 1"),
+			name:      "first line only",
+			localPath: testFilePath,
+			line:      1,
+			endLine:   1,
+			expected:  computeExpectedHash("line 1"),
 		},
 		{
-			name:         "last line only",
-			fileURI:      "test.txt",
-			line:         5,
-			endLine:      5,
-			sourceFolder: tempDir,
-			expected:     computeExpectedHash("line 5"),
+			name:      "last line only",
+			localPath: testFilePath,
+			line:      5,
+			endLine:   5,
+			expected:  computeExpectedHash("line 5"),
 		},
 		{
-			name:         "entire file",
-			fileURI:      "test.txt",
-			line:         1,
-			endLine:      5,
-			sourceFolder: tempDir,
-			expected:     computeExpectedHash(testFileContent),
+			name:      "entire file",
+			localPath: testFilePath,
+			line:      1,
+			endLine:   5,
+			expected:  computeExpectedHash(testFileContent),
 		},
 		{
-			name:         "single line file",
-			fileURI:      "single.txt",
-			line:         1,
-			endLine:      1,
-			sourceFolder: tempDir,
-			expected:     computeExpectedHash(singleLineContent),
+			name:      "single line file",
+			localPath: singleLineFilePath,
+			line:      1,
+			endLine:   1,
+			expected:  computeExpectedHash(singleLineContent),
 		},
 		{
-			name:         "endLine same as line (no range)",
-			fileURI:      "test.txt",
-			line:         3,
-			endLine:      3,
-			sourceFolder: tempDir,
-			expected:     computeExpectedHash("line 3"),
+			name:      "endLine same as line (no range)",
+			localPath: testFilePath,
+			line:      3,
+			endLine:   3,
+			expected:  computeExpectedHash("line 3"),
 		},
 		{
-			name:         "endLine less than line (should use single line)",
-			fileURI:      "test.txt",
-			line:         3,
-			endLine:      2,
-			sourceFolder: tempDir,
-			expected:     computeExpectedHash("line 3"),
+			name:      "endLine less than line (should use single line)",
+			localPath: testFilePath,
+			line:      3,
+			endLine:   2,
+			expected:  computeExpectedHash("line 3"),
 		},
 
 		// Edge cases that should return empty string
 		{
-			name:         "empty fileURI",
-			fileURI:      "",
-			line:         1,
-			endLine:      1,
-			sourceFolder: tempDir,
-			expected:     "",
+			name:      "empty path",
+			localPath: "",
+			line:      1,
+			endLine:   1,
+			expected:  "",
 		},
 		{
-			name:         "unknown fileURI",
-			fileURI:      "<unknown>",
-			line:         1,
-			endLine:      1,
-			sourceFolder: tempDir,
-			expected:     "",
+			name:      "zero line number",
+			localPath: testFilePath,
+			line:      0,
+			endLine:   1,
+			expected:  "",
 		},
 		{
-			name:         "zero line number",
-			fileURI:      "test.txt",
-			line:         0,
-			endLine:      1,
-			sourceFolder: tempDir,
-			expected:     "",
+			name:      "negative line number",
+			localPath: testFilePath,
+			line:      -1,
+			endLine:   1,
+			expected:  "",
 		},
 		{
-			name:         "negative line number",
-			fileURI:      "test.txt",
-			line:         -1,
-			endLine:      1,
-			sourceFolder: tempDir,
-			expected:     "",
+			name:      "line number beyond file length",
+			localPath: testFilePath,
+			line:      10,
+			endLine:   10,
+			expected:  "",
 		},
 		{
-			name:         "empty sourceFolder",
-			fileURI:      "test.txt",
-			line:         1,
-			endLine:      1,
-			sourceFolder: "",
-			expected:     "",
-		},
-		{
-			name:         "line number beyond file length",
-			fileURI:      "test.txt",
-			line:         10,
-			endLine:      10,
-			sourceFolder: tempDir,
-			expected:     "",
-		},
-		{
-			name:         "file does not exist",
-			fileURI:      "nonexistent.txt",
-			line:         1,
-			endLine:      1,
-			sourceFolder: tempDir,
-			expected:     "",
-		},
-		{
-			name:         "invalid sourceFolder",
-			fileURI:      "test.txt",
-			line:         1,
-			endLine:      1,
-			sourceFolder: "/nonexistent/path",
-			expected:     "",
+			name:      "file does not exist",
+			localPath: filepath.Join(tempDir, "nonexistent.txt"),
+			line:      1,
+			endLine:   1,
+			expected:  "",
 		},
 
 		// Boundary cases
 		{
-			name:         "endLine beyond file length (should clamp)",
-			fileURI:      "test.txt",
-			line:         4,
-			endLine:      10,
-			sourceFolder: tempDir,
-			expected:     computeExpectedHash("line 4\nline 5"),
+			name:      "endLine beyond file length (should clamp)",
+			localPath: testFilePath,
+			line:      4,
+			endLine:   10,
+			expected:  computeExpectedHash("line 4\nline 5"),
 		},
 		{
-			name:         "empty file",
-			fileURI:      "empty.txt",
-			line:         1,
-			endLine:      1,
-			sourceFolder: tempDir,
-			expected:     computeExpectedHash(""), // Empty file has one empty line
-		},
-
-		// Path handling
-		{
-			name:         "fileURI with forward slashes",
-			fileURI:      "test.txt",
-			line:         1,
-			endLine:      1,
-			sourceFolder: tempDir,
-			expected:     computeExpectedHash("line 1"),
+			name:      "empty file",
+			localPath: emptyFilePath,
+			line:      1,
+			endLine:   1,
+			expected:  computeExpectedHash(""), // Empty file has one empty line
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := computeSnippetHash(tt.fileURI, tt.line, tt.endLine, tt.sourceFolder)
+			result := computeSnippetHash(tt.localPath, tt.line, tt.endLine)
 			if result != tt.expected {
-				t.Errorf("computeSnippetHash(%q, %d, %d, %q) = %q, want %q",
-					tt.fileURI, tt.line, tt.endLine, tt.sourceFolder, result, tt.expected)
+				t.Errorf("computeSnippetHash(%q, %d, %d) = %q, want %q",
+					tt.localPath, tt.line, tt.endLine, result, tt.expected)
 			}
 		})
 	}
@@ -387,8 +341,8 @@ func TestComputeSnippetHash_DifferentContentDifferentHash(t *testing.T) {
 		t.Fatalf("Failed to create file2: %v", err)
 	}
 
-	hash1 := computeSnippetHash("file1.txt", 1, 1, tempDir)
-	hash2 := computeSnippetHash("file2.txt", 1, 1, tempDir)
+	hash1 := computeSnippetHash(file1Path, 1, 1)
+	hash2 := computeSnippetHash(file2Path, 1, 1)
 
 	if hash1 == hash2 {
 		t.Errorf("Different content produced same hash: %q", hash1)
@@ -424,8 +378,8 @@ func TestComputeSnippetHash_SameContentSameHash(t *testing.T) {
 		t.Fatalf("Failed to create file2: %v", err)
 	}
 
-	hash1 := computeSnippetHash("identical1.txt", 1, 2, tempDir)
-	hash2 := computeSnippetHash("identical2.txt", 1, 2, tempDir)
+	hash1 := computeSnippetHash(file1Path, 1, 2)
+	hash2 := computeSnippetHash(file2Path, 1, 2)
 
 	if hash1 != hash2 {
 		t.Errorf("Identical content produced different hashes: %q vs %q", hash1, hash2)
@@ -434,4 +388,608 @@ func TestComputeSnippetHash_SameContentSameHash(t *testing.T) {
 	if hash1 == "" {
 		t.Error("Hash was empty for valid content")
 	}
+}
+
+func TestExtractFileURIFromResult(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "sarif_extract")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	repoRoot := filepath.Join(tempDir, "repo")
+	subfolder := filepath.Join(repoRoot, "apps", "demo")
+	if err := os.MkdirAll(subfolder, 0o755); err != nil {
+		t.Fatalf("Failed to create subfolder: %v", err)
+	}
+
+	absoluteFile := filepath.Join(subfolder, "main.py")
+	metadata := &git.RepositoryMetadata{
+		RepoRootFolder: repoRoot,
+		Subfolder:      filepath.ToSlash(filepath.Join("apps", "demo")),
+	}
+
+	if err := os.WriteFile(absoluteFile, []byte("print('demo')\n"), 0o644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	tests := []struct {
+		name          string
+		uri           string
+		meta          *git.RepositoryMetadata
+		expectedRepo  string
+		expectedLocal string
+		sourceFolder  string
+	}{
+		{
+			name:          "absolute URI with metadata",
+			uri:           absoluteFile,
+			meta:          metadata,
+			expectedRepo:  filepath.ToSlash(filepath.Join("apps", "demo", "main.py")),
+			expectedLocal: absoluteFile,
+			sourceFolder:  subfolder,
+		},
+		{
+			name:          "relative URI with metadata",
+			uri:           "main.py",
+			meta:          metadata,
+			expectedRepo:  filepath.ToSlash(filepath.Join("apps", "demo", "main.py")),
+			expectedLocal: filepath.Join(repoRoot, "apps", "demo", "main.py"),
+			sourceFolder:  subfolder,
+		},
+		{
+			name:          "relative URI already prefixed",
+			uri:           filepath.ToSlash(filepath.Join("apps", "demo", "main.py")),
+			meta:          metadata,
+			expectedRepo:  filepath.ToSlash(filepath.Join("apps", "demo", "main.py")),
+			expectedLocal: filepath.Join(repoRoot, "apps", "demo", "main.py"),
+			sourceFolder:  subfolder,
+		},
+		{
+			name:          "absolute URI without metadata falls back to source folder",
+			uri:           absoluteFile,
+			meta:          nil,
+			expectedRepo:  "main.py",
+			expectedLocal: absoluteFile,
+			sourceFolder:  subfolder,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			uri := tt.uri
+			result := &sarif.Result{
+				Locations: []*sarif.Location{
+					{
+						PhysicalLocation: &sarif.PhysicalLocation{
+							ArtifactLocation: &sarif.ArtifactLocation{
+								URI: &uri,
+							},
+						},
+					},
+				},
+			}
+
+			repoPath, localPath := extractFileURIFromResult(result, tt.sourceFolder, tt.meta)
+			if repoPath != tt.expectedRepo {
+				t.Fatalf("expected repo path %q, got %q", tt.expectedRepo, repoPath)
+			}
+			if localPath != tt.expectedLocal {
+				t.Fatalf("expected local path %q, got %q", tt.expectedLocal, localPath)
+			}
+		})
+	}
+}
+
+func TestBuildGitHubPermalink(t *testing.T) {
+	fileURI := filepath.ToSlash(filepath.Join("apps", "demo", "main.py"))
+	options := RunOptions{
+		Namespace:  "scan-io-git",
+		Repository: "scanio-test",
+		Ref:        "aec0b795c350ff53fe9ab01adf862408aa34c3fd",
+	}
+
+	link := buildGitHubPermalink(options, nil, fileURI, 11, 29)
+	expected := "https://github.com/scan-io-git/scanio-test/blob/aec0b795c350ff53fe9ab01adf862408aa34c3fd/apps/demo/main.py#L11-L29"
+	if link != expected {
+		t.Fatalf("expected permalink %q, got %q", expected, link)
+	}
+
+	// Ref fallback to repository metadata
+	options.Ref = ""
+	commit := "1234567890abcdef"
+	metadata := &git.RepositoryMetadata{
+		RepoRootFolder: "/tmp/repo",
+		CommitHash:     &commit,
+	}
+	link = buildGitHubPermalink(options, metadata, fileURI, 5, 5)
+	expected = "https://github.com/scan-io-git/scanio-test/blob/1234567890abcdef/apps/demo/main.py#L5"
+	if link != expected {
+		t.Fatalf("expected metadata permalink %q, got %q", expected, link)
+	}
+
+	// Missing ref and metadata commit should return empty string
+	options.Ref = ""
+	metadata.CommitHash = nil
+	link = buildGitHubPermalink(options, metadata, fileURI, 1, 1)
+	if link != "" {
+		t.Fatalf("expected empty permalink when ref and metadata are missing, got %q", link)
+	}
+}
+
+func TestResolveSourceFolder(t *testing.T) {
+	// Create a test logger
+	logger := hclog.NewNullLogger()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+		setup    func() (string, func()) // setup function that returns a test path and cleanup function
+	}{
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "whitespace only",
+			input:    "   \t\n  ",
+			expected: "",
+		},
+		{
+			name:     "relative path",
+			input:    "",
+			expected: "", // Will be resolved to absolute path
+			setup: func() (string, func()) {
+				// Create a temporary directory and change to it
+				tempDir, err := os.MkdirTemp("", "sarif-test-*")
+				if err != nil {
+					t.Fatalf("failed to create temp dir: %v", err)
+				}
+				testDir := filepath.Join(tempDir, "testdir")
+				err = os.Mkdir(testDir, 0755)
+				if err != nil {
+					os.RemoveAll(tempDir)
+					t.Fatalf("failed to create test dir: %v", err)
+				}
+				return testDir, func() { os.RemoveAll(tempDir) }
+			},
+		},
+		{
+			name:     "absolute path",
+			input:    "",
+			expected: "", // Will be set by setup
+			setup: func() (string, func()) {
+				tempDir, err := os.MkdirTemp("", "sarif-test-*")
+				if err != nil {
+					t.Fatalf("failed to create temp dir: %v", err)
+				}
+				return tempDir, func() { os.RemoveAll(tempDir) }
+			},
+		},
+		{
+			name:     "path with tilde expansion",
+			input:    "~/testdir",
+			expected: "", // Will be resolved to actual home directory path
+			setup: func() (string, func()) {
+				homeDir, err := os.UserHomeDir()
+				if err != nil {
+					t.Fatalf("failed to get home dir: %v", err)
+				}
+				testDir := filepath.Join(homeDir, "testdir")
+				err = os.Mkdir(testDir, 0755)
+				if err != nil {
+					t.Fatalf("failed to create test dir: %v", err)
+				}
+				return testDir, func() { os.RemoveAll(testDir) }
+			},
+		},
+		{
+			name:     "path with dots and slashes",
+			input:    "",
+			expected: "", // Will be cleaned and resolved
+			setup: func() (string, func()) {
+				tempDir, err := os.MkdirTemp("", "sarif-test-*")
+				if err != nil {
+					t.Fatalf("failed to create temp dir: %v", err)
+				}
+				// Create a parent directory structure
+				parentDir := filepath.Join(tempDir, "parent")
+				err = os.Mkdir(parentDir, 0755)
+				if err != nil {
+					os.RemoveAll(tempDir)
+					t.Fatalf("failed to create parent dir: %v", err)
+				}
+				testDir := filepath.Join(parentDir, "testdir")
+				err = os.Mkdir(testDir, 0755)
+				if err != nil {
+					os.RemoveAll(tempDir)
+					t.Fatalf("failed to create test dir: %v", err)
+				}
+				return testDir, func() { os.RemoveAll(tempDir) }
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cleanup func()
+			var expectedPath string
+
+			if tt.setup != nil {
+				testPath, cleanupFunc := tt.setup()
+				cleanup = cleanupFunc
+				expectedPath = filepath.Clean(testPath)
+
+				// Set the input based on test type
+				if tt.name == "relative path" {
+					// Use absolute path for relative path test since we can't control working directory
+					tt.input = testPath
+				} else if tt.name == "absolute path" {
+					tt.input = testPath
+				} else if tt.name == "path with tilde expansion" {
+					tt.input = "~/testdir"
+				} else if tt.name == "path with dots and slashes" {
+					// Use absolute path for this test too
+					tt.input = testPath
+				}
+			} else {
+				expectedPath = tt.expected
+			}
+
+			result := ResolveSourceFolder(tt.input, logger)
+
+			if tt.setup != nil {
+				// For tests with setup, verify the result is an absolute path
+				if !filepath.IsAbs(result) {
+					t.Errorf("expected absolute path, got relative path: %s", result)
+				}
+				// Verify the resolved path points to the same directory
+				if result != expectedPath {
+					t.Errorf("expected %s, got %s", expectedPath, result)
+				}
+			} else {
+				// For tests without setup, verify exact match
+				if result != expectedPath {
+					t.Errorf("expected %s, got %s", expectedPath, result)
+				}
+			}
+
+			if cleanup != nil {
+				cleanup()
+			}
+		})
+	}
+}
+
+func TestResolveSourceFolderErrorHandling(t *testing.T) {
+	logger := hclog.NewNullLogger()
+
+	t.Run("non-existent path", func(t *testing.T) {
+		// Test with a path that doesn't exist - should still resolve to absolute path
+		result := ResolveSourceFolder("/non/existent/path", logger)
+
+		// Should still return an absolute path even if it doesn't exist
+		if !filepath.IsAbs(result) {
+			t.Errorf("expected absolute path even for non-existent path, got: %s", result)
+		}
+
+		expected := "/non/existent/path"
+		if result != expected {
+			t.Errorf("expected %s, got %s", expected, result)
+		}
+	})
+
+	t.Run("invalid characters in path", func(t *testing.T) {
+		// Test with path containing invalid characters
+		result := ResolveSourceFolder("/tmp/test\x00invalid", logger)
+
+		// Should handle gracefully and return the path as-is
+		if result == "" {
+			t.Error("expected non-empty result for invalid path")
+		}
+	})
+}
+
+func TestResolveSourceFolderRelativePaths(t *testing.T) {
+	logger := hclog.NewNullLogger()
+
+	t.Run("relative path with working directory change", func(t *testing.T) {
+		// Create a temporary directory structure
+		tempDir, err := os.MkdirTemp("", "sarif-test-*")
+		if err != nil {
+			t.Fatalf("failed to create temp dir: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+
+		// Create a test directory
+		testDir := filepath.Join(tempDir, "testdir")
+		err = os.Mkdir(testDir, 0755)
+		if err != nil {
+			t.Fatalf("failed to create test dir: %v", err)
+		}
+
+		// Change to the temp directory
+		originalDir, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("failed to get current directory: %v", err)
+		}
+		defer os.Chdir(originalDir)
+
+		err = os.Chdir(tempDir)
+		if err != nil {
+			t.Fatalf("failed to change directory: %v", err)
+		}
+
+		// Test relative path
+		result := ResolveSourceFolder("./testdir", logger)
+		expected := filepath.Clean(testDir)
+
+		if result != expected {
+			t.Errorf("expected %s, got %s", expected, result)
+		}
+
+		if !filepath.IsAbs(result) {
+			t.Errorf("expected absolute path, got relative path: %s", result)
+		}
+	})
+}
+
+func TestApplyEnvironmentFallbacks(t *testing.T) {
+	tests := []struct {
+		name         string
+		initialOpts  RunOptions
+		envVars      map[string]string
+		expectedOpts RunOptions
+	}{
+		{
+			name: "no environment variables set",
+			initialOpts: RunOptions{
+				Namespace:  "test-namespace",
+				Repository: "test-repo",
+				Ref:        "test-ref",
+			},
+			envVars: map[string]string{},
+			expectedOpts: RunOptions{
+				Namespace:  "test-namespace",
+				Repository: "test-repo",
+				Ref:        "test-ref",
+			},
+		},
+		{
+			name: "all options already set - no fallbacks applied",
+			initialOpts: RunOptions{
+				Namespace:  "existing-namespace",
+				Repository: "existing-repo",
+				Ref:        "existing-ref",
+			},
+			envVars: map[string]string{
+				"GITHUB_REPOSITORY_OWNER": "env-namespace",
+				"GITHUB_REPOSITORY":       "env-owner/env-repo",
+				"GITHUB_SHA":              "env-sha",
+			},
+			expectedOpts: RunOptions{
+				Namespace:  "existing-namespace",
+				Repository: "existing-repo",
+				Ref:        "existing-ref",
+			},
+		},
+		{
+			name: "namespace fallback applied",
+			initialOpts: RunOptions{
+				Namespace:  "",
+				Repository: "test-repo",
+				Ref:        "test-ref",
+			},
+			envVars: map[string]string{
+				"GITHUB_REPOSITORY_OWNER": "env-namespace",
+			},
+			expectedOpts: RunOptions{
+				Namespace:  "env-namespace",
+				Repository: "test-repo",
+				Ref:        "test-ref",
+			},
+		},
+		{
+			name: "repository fallback applied with slash",
+			initialOpts: RunOptions{
+				Namespace:  "test-namespace",
+				Repository: "",
+				Ref:        "test-ref",
+			},
+			envVars: map[string]string{
+				"GITHUB_REPOSITORY": "env-owner/env-repo",
+			},
+			expectedOpts: RunOptions{
+				Namespace:  "test-namespace",
+				Repository: "env-repo",
+				Ref:        "test-ref",
+			},
+		},
+		{
+			name: "repository fallback applied without slash",
+			initialOpts: RunOptions{
+				Namespace:  "test-namespace",
+				Repository: "",
+				Ref:        "test-ref",
+			},
+			envVars: map[string]string{
+				"GITHUB_REPOSITORY": "env-repo-only",
+			},
+			expectedOpts: RunOptions{
+				Namespace:  "test-namespace",
+				Repository: "env-repo-only",
+				Ref:        "test-ref",
+			},
+		},
+		{
+			name: "ref fallback applied",
+			initialOpts: RunOptions{
+				Namespace:  "test-namespace",
+				Repository: "test-repo",
+				Ref:        "",
+			},
+			envVars: map[string]string{
+				"GITHUB_SHA": "env-sha-123",
+			},
+			expectedOpts: RunOptions{
+				Namespace:  "test-namespace",
+				Repository: "test-repo",
+				Ref:        "env-sha-123",
+			},
+		},
+		{
+			name: "all fallbacks applied",
+			initialOpts: RunOptions{
+				Namespace:  "",
+				Repository: "",
+				Ref:        "",
+			},
+			envVars: map[string]string{
+				"GITHUB_REPOSITORY_OWNER": "env-namespace",
+				"GITHUB_REPOSITORY":       "env-owner/env-repo",
+				"GITHUB_SHA":              "env-sha-123",
+			},
+			expectedOpts: RunOptions{
+				Namespace:  "env-namespace",
+				Repository: "env-repo",
+				Ref:        "env-sha-123",
+			},
+		},
+		{
+			name: "whitespace handling",
+			initialOpts: RunOptions{
+				Namespace:  "   ",
+				Repository: "\t",
+				Ref:        "\n",
+			},
+			envVars: map[string]string{
+				"GITHUB_REPOSITORY_OWNER": "  env-namespace  ",
+				"GITHUB_REPOSITORY":       "\tenv-owner/env-repo\t",
+				"GITHUB_SHA":              "\nenv-sha-123\n",
+			},
+			expectedOpts: RunOptions{
+				Namespace:  "env-namespace",
+				Repository: "env-repo",
+				Ref:        "env-sha-123",
+			},
+		},
+		{
+			name: "repository with multiple slashes",
+			initialOpts: RunOptions{
+				Namespace:  "test-namespace",
+				Repository: "",
+				Ref:        "test-ref",
+			},
+			envVars: map[string]string{
+				"GITHUB_REPOSITORY": "env-owner/subdir/env-repo",
+			},
+			expectedOpts: RunOptions{
+				Namespace:  "test-namespace",
+				Repository: "subdir/env-repo",
+				Ref:        "test-ref",
+			},
+		},
+		{
+			name: "repository with slash at end",
+			initialOpts: RunOptions{
+				Namespace:  "test-namespace",
+				Repository: "",
+				Ref:        "test-ref",
+			},
+			envVars: map[string]string{
+				"GITHUB_REPOSITORY": "env-owner/env-repo/",
+			},
+			expectedOpts: RunOptions{
+				Namespace:  "test-namespace",
+				Repository: "env-repo/",
+				Ref:        "test-ref",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set up environment variables
+			for key, value := range tt.envVars {
+				t.Setenv(key, value)
+			}
+
+			// Create a copy of initial options
+			opts := tt.initialOpts
+
+			// Apply environment fallbacks
+			ApplyEnvironmentFallbacks(&opts)
+
+			// Verify results
+			if opts.Namespace != tt.expectedOpts.Namespace {
+				t.Errorf("Namespace: expected %q, got %q", tt.expectedOpts.Namespace, opts.Namespace)
+			}
+			if opts.Repository != tt.expectedOpts.Repository {
+				t.Errorf("Repository: expected %q, got %q", tt.expectedOpts.Repository, opts.Repository)
+			}
+			if opts.Ref != tt.expectedOpts.Ref {
+				t.Errorf("Ref: expected %q, got %q", tt.expectedOpts.Ref, opts.Ref)
+			}
+		})
+	}
+}
+
+func TestApplyEnvironmentFallbacksEdgeCases(t *testing.T) {
+	t.Run("empty environment variables", func(t *testing.T) {
+		opts := RunOptions{
+			Namespace:  "",
+			Repository: "",
+			Ref:        "",
+		}
+
+		// Set empty environment variables
+		t.Setenv("GITHUB_REPOSITORY_OWNER", "")
+		t.Setenv("GITHUB_REPOSITORY", "")
+		t.Setenv("GITHUB_SHA", "")
+
+		ApplyEnvironmentFallbacks(&opts)
+
+		// Should remain empty
+		if opts.Namespace != "" {
+			t.Errorf("Expected empty namespace, got %q", opts.Namespace)
+		}
+		if opts.Repository != "" {
+			t.Errorf("Expected empty repository, got %q", opts.Repository)
+		}
+		if opts.Ref != "" {
+			t.Errorf("Expected empty ref, got %q", opts.Ref)
+		}
+	})
+
+	t.Run("repository with only slash", func(t *testing.T) {
+		opts := RunOptions{
+			Repository: "",
+		}
+
+		t.Setenv("GITHUB_REPOSITORY", "/")
+
+		ApplyEnvironmentFallbacks(&opts)
+
+		// Should fall back to the whole value
+		if opts.Repository != "/" {
+			t.Errorf("Expected repository to be '/', got %q", opts.Repository)
+		}
+	})
+
+	t.Run("repository with slash at beginning", func(t *testing.T) {
+		opts := RunOptions{
+			Repository: "",
+		}
+
+		t.Setenv("GITHUB_REPOSITORY", "/env-repo")
+
+		ApplyEnvironmentFallbacks(&opts)
+
+		// Should extract the part after the slash since idx=0 and idx < len(gr)-1
+		if opts.Repository != "env-repo" {
+			t.Errorf("Expected repository to be 'env-repo', got %q", opts.Repository)
+		}
+	})
 }

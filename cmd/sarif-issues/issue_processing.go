@@ -9,6 +9,7 @@ import (
 
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/owenrumney/go-sarif/v2/sarif"
+	"github.com/scan-io-git/scan-io/internal/git"
 	internalsarif "github.com/scan-io-git/scan-io/internal/sarif"
 	issuecorrelation "github.com/scan-io-git/scan-io/pkg/issuecorrelation"
 	"github.com/scan-io-git/scan-io/pkg/shared"
@@ -166,7 +167,7 @@ func listOpenIssues(options RunOptions) (map[int]OpenIssueEntry, error) {
 
 // buildNewIssuesFromSARIF processes SARIF report and extracts high severity findings,
 // returning structured data for creating new issues.
-func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, lg hclog.Logger) []NewIssueData {
+func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, sourceFolderAbs string, repoMetadata *git.RepositoryMetadata, lg hclog.Logger) []NewIssueData {
 	var newIssueData []NewIssueData
 
 	for _, run := range report.Runs {
@@ -202,7 +203,8 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, l
 				continue
 			}
 
-			fileURI := filepath.ToSlash(extractFileURIFromResult(res, options.SourceFolder))
+			fileURI, localPath := extractFileURIFromResult(res, sourceFolderAbs, repoMetadata)
+			fileURI = filepath.ToSlash(strings.TrimSpace(fileURI))
 			if fileURI == "" {
 				fileURI = "<unknown>"
 				lg.Warn("SARIF result missing file URI, using placeholder", "rule_id", ruleID)
@@ -214,9 +216,9 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, l
 				lg.Warn("SARIF result missing line information", "rule_id", ruleID, "file", fileURI)
 			}
 
-			snippetHash := computeSnippetHash(fileURI, line, endLine, options.SourceFolder)
+			snippetHash := computeSnippetHash(localPath, line, endLine)
 			if snippetHash == "" && fileURI != "<unknown>" && line > 0 {
-				lg.Warn("failed to compute snippet hash", "rule_id", ruleID, "file", fileURI, "line", line)
+				lg.Warn("failed to compute snippet hash", "rule_id", ruleID, "file", fileURI, "line", line, "local_path", localPath)
 			}
 
 			scannerName := getScannerName(run)
@@ -265,7 +267,7 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, l
 			}
 
 			// Append permalink if available
-			if link := buildGitHubPermalink(options, fileURI, line, endLine); link != "" {
+			if link := buildGitHubPermalink(options, repoMetadata, fileURI, line, endLine); link != "" {
 				body += fmt.Sprintf("\n%s\n", link)
 			}
 
@@ -473,9 +475,9 @@ func closeUnmatchedIssues(unmatchedKnown []issuecorrelation.IssueMetadata, optio
 
 // processSARIFReport iterates runs/results in the SARIF report and creates VCS issues for
 // high severity findings. Returns number of created issues or an error.
-func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hclog.Logger, openIssues map[int]OpenIssueEntry) (int, error) {
+func processSARIFReport(report *internalsarif.Report, options RunOptions, sourceFolderAbs string, repoMetadata *git.RepositoryMetadata, lg hclog.Logger, openIssues map[int]OpenIssueEntry) (int, error) {
 	// Build list of new issues from SARIF using extracted function
-	newIssueData := buildNewIssuesFromSARIF(report, options, lg)
+	newIssueData := buildNewIssuesFromSARIF(report, options, sourceFolderAbs, repoMetadata, lg)
 
 	// Extract metadata, bodies, and titles for correlation and issue creation
 	newIssues := make([]issuecorrelation.IssueMetadata, len(newIssueData))

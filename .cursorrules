@@ -3,6 +3,7 @@
 ## Development workflow
 - When implementing new features or making changes to the codebase, always check the `docs/engineering/` directory first for established patterns and guidelines:
 - When in doubt about implementation details, always refer to the engineering documentation first, then examine similar existing implementations in the codebase.
+- Try to reuse internal packages if relevant. Extend if required functionality does not exist.
 
 ## Commands
 - Build cli with: `make build-cli`
@@ -13,3 +14,9 @@
 
 ## Code style
 - Use early returns when handling errors or special cases to reduce nesting and improve readability.
+
+## Planning
+- When generating a plan for new features, refactoring and so on, make an analysis of codebase, then write a plan in phases.
+- The plan may contain one or more phases. Each phase contains tasks. Write inputs and deliverables for each phase, task or group of tasks.
+- Ensure that new functionality has tasks related to having tests for that functionality.
+- Default plan file is `PLAN.md` in the root.

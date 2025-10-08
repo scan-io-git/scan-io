@@ -11,8 +11,10 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/scan-io-git/scan-io/internal/git"
+	"github.com/scan-io-git/scan-io/pkg/shared/files"
 )
 
 // parseLineRange parses line range from strings like "123" or "123-456".
@@ -125,14 +127,13 @@ func buildIssueTitle(scannerName, severity, ruleID, fileURI string, line, endLin
 	return fmt.Sprintf("%s at %s", title, fileURI)
 }
 
-// computeSnippetHash reads the snippet (single line or range) from sourceFolder + fileURI
+// computeSnippetHash reads the snippet (single line or range) from a local filesystem path
 // and returns its SHA256 hex string. Returns empty string on any error or if inputs are invalid.
-func computeSnippetHash(fileURI string, line, endLine int, sourceFolder string) string {
-	if fileURI == "" || fileURI == "<unknown>" || line <= 0 || sourceFolder == "" {
+func computeSnippetHash(localPath string, line, endLine int) string {
+	if strings.TrimSpace(localPath) == "" || line <= 0 {
 		return ""
 	}
-	absPath := filepath.Join(sourceFolder, filepath.FromSlash(fileURI))
-	data, err := os.ReadFile(absPath)
+	data, err := os.ReadFile(localPath)
 	if err != nil {
 		return ""
 	}
@@ -213,15 +214,20 @@ func getScannerName(run *sarif.Run) string {
 
 // buildGitHubPermalink builds a permalink to a file and region in GitHub.
 // It prefers the CLI --ref when provided; otherwise attempts to read the
-// current commit hash from --source-folder using git metadata. When neither
-// is available, returns an empty string.
-func buildGitHubPermalink(options RunOptions, fileURI string, start, end int) string {
+// current commit hash from repo metadata (falling back to collecting it
+// directly when metadata is not provided). Returns empty string when any
+// critical component is missing.
+func buildGitHubPermalink(options RunOptions, repoMetadata *git.RepositoryMetadata, fileURI string, start, end int) string {
 	base := fmt.Sprintf("https://github.com/%s/%s", options.Namespace, options.Repository)
 	ref := strings.TrimSpace(options.Ref)
 
-	if ref == "" && options.SourceFolder != "" {
-		if md, err := git.CollectRepositoryMetadata(options.SourceFolder); err == nil && md.CommitHash != nil && *md.CommitHash != "" {
-			ref = *md.CommitHash
+	if ref == "" {
+		if repoMetadata != nil && repoMetadata.CommitHash != nil && *repoMetadata.CommitHash != "" {
+			ref = *repoMetadata.CommitHash
+		} else if options.SourceFolder != "" {
+			if md, err := git.CollectRepositoryMetadata(options.SourceFolder); err == nil && md.CommitHash != nil && *md.CommitHash != "" {
+				ref = *md.CommitHash
+			}
 		}
 	}
 
@@ -241,56 +247,112 @@ func buildGitHubPermalink(options RunOptions, fileURI string, start, end int) st
 	return fmt.Sprintf("%s/blob/%s/%s%s", base, ref, path, anchor)
 }
 
-// extractFileURIFromResult returns a file path derived from the SARIF result's first location.
-// If the URI is absolute and a non-empty sourceFolder is provided, the returned path will be
-// made relative to sourceFolder (matching previous behaviour).
-func extractFileURIFromResult(res *sarif.Result, sourceFolder string) string {
+// extractFileURIFromResult derives both the repository-relative path and local filesystem path
+// for the first location in a SARIF result. When repository metadata is available the repo-relative
+// path is anchored at the repository root; otherwise the function falls back to trimming the
+// provided source folder (preserving legacy behaviour).
+func extractFileURIFromResult(res *sarif.Result, absSourceFolder string, repoMetadata *git.RepositoryMetadata) (string, string) {
 	if res == nil || len(res.Locations) == 0 {
-		return ""
+		return "", ""
 	}
 	loc := res.Locations[0]
 	if loc.PhysicalLocation == nil {
-		return ""
+		return "", ""
 	}
 	art := loc.PhysicalLocation.ArtifactLocation
 	if art == nil || art.URI == nil {
-		return ""
+		return "", ""
 	}
-	uri := *art.URI
-	// If URI is not absolute or there's no sourceFolder provided, return it unchanged.
-	if !filepath.IsAbs(uri) || sourceFolder == "" {
-		return uri
+	rawURI := strings.TrimSpace(*art.URI)
+	if rawURI == "" {
+		return "", ""
 	}
 
-	// Normalize sourceFolder to an absolute, cleaned path so relative inputs like
-	// "../scanio-test" match absolute URIs such as "/home/jekos/.../scanio-test/...".
-	if absSource, err := filepath.Abs(sourceFolder); err == nil {
-		absSource = filepath.Clean(absSource)
+	repoPath := ""
+	localPath := ""
+	subfolder := normalisedSubfolder(repoMetadata)
 
-		// Prefer filepath.Rel which will produce a relative path when uri is under absSource.
-		if rel, err := filepath.Rel(absSource, uri); err == nil {
-			// If rel does not escape to parent directories, it's a proper subpath.
-			if rel != "" && !strings.HasPrefix(rel, "..") {
-				return rel
+	if filepath.IsAbs(rawURI) {
+		localPath = filepath.Clean(rawURI)
+		repoPath = filepath.ToSlash(rawURI)
+		if repoMetadata != nil && repoMetadata.RepoRootFolder != "" {
+			repoPath = filepath.ToSlash(trimPathPrefix(localPath, repoMetadata.RepoRootFolder))
+		} else if absSourceFolder != "" {
+			repoPath = filepath.ToSlash(trimPathPrefix(localPath, absSourceFolder))
+		}
+	} else {
+		normalised := strings.TrimLeft(rawURI, "./")
+		repoPath = filepath.ToSlash(normalised)
+
+		if subfolder != "" && !strings.HasPrefix(repoPath, subfolder+"/") && repoPath != subfolder {
+			repoPath = filepath.ToSlash(filepath.Join(subfolder, repoPath))
+		}
+
+		if repoMetadata != nil && repoMetadata.RepoRootFolder != "" {
+			candidate := filepath.Join(repoMetadata.RepoRootFolder, filepath.FromSlash(repoPath))
+			if _, err := os.Stat(candidate); err == nil {
+				localPath = candidate
 			}
 		}
 
-		// Fallback: trim the absolute source prefix explicitly when possible.
-		prefix := absSource + string(filepath.Separator)
-		if strings.HasPrefix(uri, prefix) {
-			return strings.TrimPrefix(uri, prefix)
+		if localPath == "" && absSourceFolder != "" {
+			candidate := filepath.Join(absSourceFolder, filepath.FromSlash(normalised))
+			if _, err := os.Stat(candidate); err == nil {
+				localPath = candidate
+			}
 		}
-		if strings.HasPrefix(uri, absSource) {
-			return strings.TrimPrefix(uri, absSource)
+
+		if localPath == "" && repoMetadata != nil && repoMetadata.RepoRootFolder != "" && subfolder != "" {
+			candidate := filepath.Join(repoMetadata.RepoRootFolder, filepath.FromSlash(subfolder), filepath.FromSlash(normalised))
+			if _, err := os.Stat(candidate); err == nil {
+				localPath = candidate
+			}
+		}
+
+		if localPath == "" && absSourceFolder != "" {
+			localPath = filepath.Join(absSourceFolder, filepath.FromSlash(normalised))
 		}
 	}
 
-	// Last-resort: try trimming the raw sourceFolder string provided by the user.
-	rel := strings.TrimPrefix(uri, sourceFolder)
-	if strings.HasPrefix(rel, string(filepath.Separator)) {
-		return rel[1:]
+	repoPath = strings.TrimLeft(repoPath, "/")
+	repoPath = filepath.ToSlash(repoPath)
+	return repoPath, localPath
+}
+
+func trimPathPrefix(path, prefix string) string {
+	if prefix == "" {
+		return path
 	}
-	return rel
+
+	cleanPath := filepath.Clean(path)
+	cleanPrefix := filepath.Clean(prefix)
+
+	if rel, err := filepath.Rel(cleanPrefix, cleanPath); err == nil && rel != "" && !strings.HasPrefix(rel, "..") {
+		return rel
+	}
+
+	prefixWithSep := cleanPrefix + string(filepath.Separator)
+	if strings.HasPrefix(cleanPath, prefixWithSep) {
+		return strings.TrimPrefix(cleanPath, prefixWithSep)
+	}
+
+	if strings.HasPrefix(cleanPath, cleanPrefix) {
+		return strings.TrimPrefix(cleanPath, cleanPrefix)
+	}
+
+	trimmed := strings.TrimPrefix(cleanPath, prefix)
+	if strings.HasPrefix(trimmed, string(filepath.Separator)) {
+		return trimmed[1:]
+	}
+	return trimmed
+}
+
+func normalisedSubfolder(md *git.RepositoryMetadata) string {
+	if md == nil {
+		return ""
+	}
+	sub := strings.Trim(md.Subfolder, "/\\")
+	return filepath.ToSlash(sub)
 }
 
 // extractRegionFromResult returns start and end line numbers (0 when not present)
@@ -312,4 +374,54 @@ func extractRegionFromResult(res *sarif.Result) (int, int) {
 		end = *loc.PhysicalLocation.Region.EndLine
 	}
 	return start, end
+}
+
+// ResolveSourceFolder resolves a source folder path to its absolute form for path calculations.
+// It handles path expansion (e.g., ~) and absolute path resolution with graceful fallbacks.
+// Returns an empty string if the input folder is empty or whitespace-only.
+func ResolveSourceFolder(folder string, logger hclog.Logger) string {
+	if folder := strings.TrimSpace(folder); folder != "" {
+		expandedFolder, expandErr := files.ExpandPath(folder)
+		if expandErr != nil {
+			logger.Debug("failed to expand source folder; using raw value", "error", expandErr)
+			expandedFolder = folder
+		}
+		if absFolder, absErr := filepath.Abs(expandedFolder); absErr != nil {
+			logger.Debug("failed to resolve absolute source folder; using expanded value", "error", absErr)
+			return expandedFolder
+		} else {
+			return filepath.Clean(absFolder)
+		}
+	}
+	return ""
+}
+
+// ApplyEnvironmentFallbacks applies environment variable fallbacks to the run options.
+// It sets namespace, repository, and ref from GitHub environment variables if not already provided.
+func ApplyEnvironmentFallbacks(opts *RunOptions) {
+	// Fallback: if --namespace not provided, try $GITHUB_REPOSITORY_OWNER
+	if strings.TrimSpace(opts.Namespace) == "" {
+		if ns := strings.TrimSpace(os.Getenv("GITHUB_REPOSITORY_OWNER")); ns != "" {
+			opts.Namespace = ns
+		}
+	}
+
+	// Fallback: if --repository not provided, try ${GITHUB_REPOSITORY#*/}
+	if strings.TrimSpace(opts.Repository) == "" {
+		if gr := strings.TrimSpace(os.Getenv("GITHUB_REPOSITORY")); gr != "" {
+			if idx := strings.Index(gr, "/"); idx >= 0 && idx < len(gr)-1 {
+				opts.Repository = gr[idx+1:]
+			} else {
+				// No slash present; fall back to the whole value
+				opts.Repository = gr
+			}
+		}
+	}
+
+	// Fallback: if --ref not provided, try $GITHUB_SHA
+	if strings.TrimSpace(opts.Ref) == "" {
+		if sha := strings.TrimSpace(os.Getenv("GITHUB_SHA")); sha != "" {
+			opts.Ref = sha
+		}
+	}
 }
