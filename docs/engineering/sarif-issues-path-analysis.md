@@ -53,6 +53,7 @@ The CLI assumes `--source-folder` equals the repository root. When the user poin
 6. Evaluate whether `internal/sarif`’s enrichment should adopt the same metadata-aware logic; if so, share the helper to keep `to-html` and future commands consistent.
 
 # Manual testing
+## Semgrep scan of subfolder (monorepo like use case)
 ```sh
 # 1. Outside folder absolute paths
 cd /home/jekos/ghq/github.com/scan-io-git/scan-io
@@ -96,4 +97,30 @@ scanio analyse --scanner semgrep . --format sarif --output /home/jekos/ghq/githu
 scanio sarif-issues --namespace scan-io-git --repository scanio-test --ref aec0b795c350ff53fe9ab01adf862408aa34c3fd --sarif /home/jekos/ghq/github.com/scan-io-git/scan-io/data/from-subfolder-rel.sarif --source-folder .
 # validate here: 2 issues with correct permalinks
 # correct: https://github.com/scan-io-git/scanio-test/blob/aec0b795c350ff53fe9ab01adf862408aa34c3fd/apps/demo/main.py
+```
+## snyk
+```sh
+cd /home/jekos/ghq/github.com/scan-io-git/scanio-test
+
+# 1. scan root
+snyk code test --sarif-file-output=/home/jekos/ghq/github.com/scan-io-git/scan-io/data/snyk-root.sarif
+scanio sarif-issues --namespace scan-io-git --repository scanio-test --ref aec0b795c350ff53fe9ab01adf862408aa34c3fd --sarif /home/jekos/ghq/github.com/scan-io-git/scan-io/data/snyk-root.sarif --source-folder .
+
+# 2. scan subfolder from root
+snyk code test --sarif-file-output=/home/jekos/ghq/github.com/scan-io-git/scan-io/data/snyk-subfolder-from-root.sarif apps/demo
+scanio sarif-issues --namespace scan-io-git --repository scanio-test --ref aec0b795c350ff53fe9ab01adf862408aa34c3fd --sarif /home/jekos/ghq/github.com/scan-io-git/scan-io/data/snyk-subfolder-from-root.sarif --source-folder apps/demo
+```
+## codeql
+```sh
+cd /home/jekos/ghq/github.com/scan-io-git/scanio-test
+
+# 1. scan root
+/tmp/codeql/codeql database create /home/jekos/ghq/github.com/scan-io-git/scan-io/data/codeql-database-root --language=python --source-root=.
+/tmp/codeql/codeql database analyze /home/jekos/ghq/github.com/scan-io-git/scan-io/data/codeql-database-root --format=sarif-latest --output=/home/jekos/ghq/github.com/scan-io-git/scan-io/data/codeql-root.sarif
+scanio sarif-issues --namespace scan-io-git --repository scanio-test --ref aec0b795c350ff53fe9ab01adf862408aa34c3fd --sarif /home/jekos/ghq/github.com/scan-io-git/scan-io/data/codeql-root.sarif --source-folder .
+
+# 1. scan subfolder
+/tmp/codeql/codeql database create /home/jekos/ghq/github.com/scan-io-git/scan-io/data/codeql-database-subfolder --language=python --source-root=apps/demo
+/tmp/codeql/codeql database analyze /home/jekos/ghq/github.com/scan-io-git/scan-io/data/codeql-database-subfolder --format=sarif-latest --output=/home/jekos/ghq/github.com/scan-io-git/scan-io/data/codeql-subfolder.sarif
+scanio sarif-issues --namespace scan-io-git --repository scanio-test --ref aec0b795c350ff53fe9ab01adf862408aa34c3fd --sarif /home/jekos/ghq/github.com/scan-io-git/scan-io/data/codeql-subfolder.sarif --source-folder apps/demo
 ```

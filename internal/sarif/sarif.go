@@ -291,6 +291,9 @@ func (r Report) EnrichResultsLevelProperty() {
 	}
 
 	for _, result := range r.Runs[0].Results {
+		if result.Properties == nil {
+			result.Properties = make(map[string]interface{})
+		}
 		if rule, ok := rulesMap[*result.RuleID]; ok {
 			if result.Properties["Level"] == nil {
 				if result.Level != nil {
