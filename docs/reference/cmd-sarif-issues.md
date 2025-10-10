@@ -177,8 +177,9 @@ Only specific types of open issues are considered for correlation:
 
 **Header**
 ```markdown
-## 🐞 <ruleID>
+## 🐞 <Rule Short Description>
 ```
+Scanio prefers the SARIF rule's short description for the heading; if that is missing it falls back to the rule name, then to the raw rule ID.
 
 **Compact Metadata (Blockquote)**
 ```markdown
