@@ -240,7 +240,8 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, s
 			sev := displaySeverity(level)
 
 			// build body and title with scanner name label
-			titleText := buildIssueTitle(scannerName, sev, ruleID, fileURI, line, endLine)
+			ruleTitleComponent := displayRuleTitleComponent(ruleID, ruleDescriptor)
+			titleText := buildIssueTitle(scannerName, sev, ruleTitleComponent, fileURI, line, endLine)
 
 			// New body header and compact metadata blockquote
 			header := ""
@@ -276,10 +277,9 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, s
 				body += fmt.Sprintf("\n%s\n", link)
 			}
 
-			// Append rule help markdown if available
-			if r, ok := rulesByID[ruleID]; ok && r != nil && r.Help != nil && r.Help.Markdown != nil {
-				if hm := strings.TrimSpace(*r.Help.Markdown); hm != "" {
-					detail, helpRefs := parseRuleHelpMarkdown(hm)
+			// Append rule detail/help content
+			if ruleDescriptor != nil {
+				if detail, helpRefs := extractRuleDetail(ruleDescriptor); detail != "" || len(helpRefs) > 0 {
 					if detail != "" {
 						body += "\n\n" + detail
 					}
@@ -360,6 +360,40 @@ func displayRuleHeading(ruleID string, rule *sarif.ReportingDescriptor) string {
 		}
 	}
 	return strings.TrimSpace(ruleID)
+}
+
+// displayRuleTitleComponent returns the identifier segment to embed in the GitHub issue title.
+// Prefers rule.Name when available; falls back to ruleID.
+func displayRuleTitleComponent(ruleID string, rule *sarif.ReportingDescriptor) string {
+	if rule != nil && rule.Name != nil {
+		if name := strings.TrimSpace(*rule.Name); name != "" {
+			return name
+		}
+	}
+	return strings.TrimSpace(ruleID)
+}
+
+// extractRuleDetail returns a detail string (markdown/plain) and optional reference links.
+// Prefers rule.Help.Markdown when available; falls back to rule.FullDescription.Text.
+func extractRuleDetail(rule *sarif.ReportingDescriptor) (string, []string) {
+	if rule == nil {
+		return "", nil
+	}
+
+	if rule.Help != nil && rule.Help.Markdown != nil {
+		if hm := strings.TrimSpace(*rule.Help.Markdown); hm != "" {
+			if detail, refs := parseRuleHelpMarkdown(hm); strings.TrimSpace(detail) != "" || len(refs) > 0 {
+				return detail, refs
+			}
+		}
+	}
+
+	if rule.FullDescription != nil && rule.FullDescription.Text != nil {
+		if fd := strings.TrimSpace(*rule.FullDescription.Text); fd != "" {
+			return fd, nil
+		}
+	}
+	return "", nil
 }
 
 // buildKnownIssuesFromOpen converts open GitHub issues into correlation metadata,

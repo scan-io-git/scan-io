@@ -86,3 +86,62 @@ func TestDisplayRuleHeadingFallsBackToID(t *testing.T) {
 		t.Fatalf("expected rule id fallback heading, got %q", got)
 	}
 }
+
+func TestDisplayRuleTitleComponentPrefersName(t *testing.T) {
+	name := "Descriptive Rule"
+	rule := &sarif.ReportingDescriptor{
+		Name: &name,
+	}
+	got := displayRuleTitleComponent("rule.id", rule)
+	if got != "Descriptive Rule" {
+		t.Fatalf("expected rule name for title component, got %q", got)
+	}
+}
+
+func TestDisplayRuleTitleComponentFallsBackToID(t *testing.T) {
+	got := displayRuleTitleComponent("rule.id", nil)
+	if got != "rule.id" {
+		t.Fatalf("expected rule id fallback for title component, got %q", got)
+	}
+}
+
+func TestExtractRuleDetailPrefersHelpMarkdown(t *testing.T) {
+	markdown := "Detailed explanation"
+	rule := &sarif.ReportingDescriptor{
+		Help: &sarif.MultiformatMessageString{
+			Markdown: &markdown,
+		},
+	}
+
+	detail, refs := extractRuleDetail(rule)
+	if detail != "Detailed explanation" {
+		t.Fatalf("expected help markdown detail, got %q", detail)
+	}
+	if len(refs) != 0 {
+		t.Fatalf("expected no references for plain markdown, got %d", len(refs))
+	}
+}
+
+func TestExtractRuleDetailFallsBackToFullDescription(t *testing.T) {
+	full := "Full description text"
+	rule := &sarif.ReportingDescriptor{
+		FullDescription: &sarif.MultiformatMessageString{
+			Text: &full,
+		},
+	}
+
+	detail, refs := extractRuleDetail(rule)
+	if detail != "Full description text" {
+		t.Fatalf("expected full description fallback, got %q", detail)
+	}
+	if refs != nil {
+		t.Fatalf("expected nil references for full description fallback, got %#v", refs)
+	}
+}
+
+func TestExtractRuleDetailEmptyWhenNoContent(t *testing.T) {
+	detail, refs := extractRuleDetail(nil)
+	if detail != "" || refs != nil {
+		t.Fatalf("expected empty detail and nil refs, got %q %#v", detail, refs)
+	}
+}

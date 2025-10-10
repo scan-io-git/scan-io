@@ -169,9 +169,10 @@ Only specific types of open issues are considered for correlation:
 
 ### Issue Title Format
 ```
-[<scanner>][<severity>][<ruleID>] at <file>:<line>[-<endLine>]
+[<scanner>][<severity>][<rule name or ID>] at <file>:<line>[-<endLine>]
 ```
-**Example**: `[Semgrep OSS][High][javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage] at app.js:42-45`
+**Example**: `[Semgrep OSS][High][Express Missing CSRF Protection] at app.js:42-45`
+When a rule provides a human-friendly `name`, Scanio uses it; otherwise the rule ID is shown.
 
 ### Issue Body Structure
 
@@ -191,6 +192,7 @@ Scanio prefers the SARIF rule's short description for the heading; if that is mi
 **Rule Description**
 - Includes help text from SARIF rule definitions
 - Parses and formats reference links
+- Falls back to the rule's full description when markdown help is not available
 
 **GitHub Permalink**
 - Direct link to vulnerable code in repository
