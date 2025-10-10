@@ -51,17 +51,13 @@ type NewIssueData struct {
 }
 
 // parseIssueBody attempts to read the body produced by this command and extract
-// known metadata from blockquote format lines. Only supports the new format:
+// known metadata from blockquote format lines. Supports the new format:
+// "> **Rule ID**: semgrep.rule.id"
 // "> **Severity**: Error,  **Scanner**: Semgrep OSS"
 // "> **File**: app.py, **Lines**: 11-29"
 // Returns an OpenIssueReport with zero values when fields are missing.
 func parseIssueBody(body string) OpenIssueReport {
 	rep := OpenIssueReport{}
-
-	// Extract rule ID from header format: "## 🐞 <ruleID>"
-	if rid := extractRuleIDFromBody(body); rid != "" {
-		rep.RuleID = rid
-	}
 
 	for _, line := range strings.Split(body, "\n") {
 		line = strings.TrimSpace(line)
@@ -88,6 +84,10 @@ func parseIssueBody(body string) OpenIssueReport {
 		for _, part := range parts {
 			segment := strings.TrimSpace(part)
 
+			if strings.HasPrefix(segment, "Rule ID:") {
+				rep.RuleID = strings.TrimSpace(strings.TrimPrefix(segment, "Rule ID:"))
+				continue
+			}
 			if strings.HasPrefix(segment, "Severity:") {
 				rep.Severity = strings.TrimSpace(strings.TrimPrefix(segment, "Severity:"))
 			} else if strings.HasPrefix(segment, "Scanner:") {
@@ -100,6 +100,12 @@ func parseIssueBody(body string) OpenIssueReport {
 			} else if strings.HasPrefix(segment, "Snippet SHA256:") {
 				rep.Hash = strings.TrimSpace(strings.TrimPrefix(segment, "Snippet SHA256:"))
 			}
+		}
+	}
+	// Prefer the metadata-provided Rule ID and fall back to the legacy header format.
+	if strings.TrimSpace(rep.RuleID) == "" {
+		if rid := extractRuleIDFromBody(body); rid != "" {
+			rep.RuleID = rid
 		}
 	}
 	return rep
@@ -245,13 +251,25 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, s
 			if endLine > line {
 				linesDisp = fmt.Sprintf("%d-%d", line, endLine)
 			}
-			meta := fmt.Sprintf(
-				"> **Severity**: %s,  **Scanner**: %s\n> **File**: %s, **Lines**: %s\n",
-				sev, scannerDisp, fileDisp, linesDisp,
-			)
+			var metaBuilder strings.Builder
+			if trimmedID := strings.TrimSpace(ruleID); trimmedID != "" {
+				metaBuilder.WriteString(fmt.Sprintf("> **Rule ID**: %s\n", trimmedID))
+			}
+			metaBuilder.WriteString(fmt.Sprintf(
+				"> **Severity**: %s,  **Scanner**: %s\n", sev, scannerDisp,
+			))
+			metaBuilder.WriteString(fmt.Sprintf(
+				"> **File**: %s, **Lines**: %s\n", fileDisp, linesDisp,
+			))
+			meta := metaBuilder.String()
 			// Only use the new header and blockquote metadata
 			body := header + meta + "\n"
 			var references []string
+
+			// Append permalink if available
+			if link := buildGitHubPermalink(options, repoMetadata, fileURI, line, endLine); link != "" {
+				body += fmt.Sprintf("\n%s\n", link)
+			}
 
 			// Append rule help markdown if available
 			if r, ok := rulesByID[ruleID]; ok && r != nil && r.Help != nil && r.Help.Markdown != nil {
@@ -264,11 +282,6 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, s
 						references = append(references, helpRefs...)
 					}
 				}
-			}
-
-			// Append permalink if available
-			if link := buildGitHubPermalink(options, repoMetadata, fileURI, line, endLine); link != "" {
-				body += fmt.Sprintf("\n%s\n", link)
 			}
 
 			// Append security identifier tags (CWE, OWASP) with links if available in rule properties
@@ -306,7 +319,7 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, s
 
 			newIssueData = append(newIssueData, NewIssueData{
 				Metadata: issuecorrelation.IssueMetadata{
-					IssueID:     "",
+					IssueID:     ruleID,
 					Scanner:     scannerName,
 					RuleID:      ruleID,
 					Severity:    level,

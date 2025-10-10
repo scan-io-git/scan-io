@@ -182,6 +182,7 @@ Only specific types of open issues are considered for correlation:
 
 **Compact Metadata (Blockquote)**
 ```markdown
+> **Rule ID**: <ruleID>
 > **Severity**: High,  **Scanner**: Semgrep OSS
 > **File**: app.js, **Lines**: 42-45
 ```
