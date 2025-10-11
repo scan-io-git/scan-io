@@ -42,6 +42,9 @@ var (
 	exampleSarifIssuesUsage = `  # Recommended: run from repository root and use relative paths
   scanio sarif-issues --namespace scan-io-git --repository scan-io --sarif /path/to/report.sarif --source-folder apps/demo
 
+  # Run inside git repository (auto-detects namespace, repository, ref)
+  scanio sarif-issues --sarif semgrep-demo.sarif --source-folder apps/demo
+
   # Create issues from SARIF report with basic configuration
   scanio sarif-issues --namespace scan-io-git --repository scan-io --sarif /path/to/report.sarif
 
@@ -87,13 +90,16 @@ func runSarifIssues(cmd *cobra.Command, args []string) error {
 	// 3. Handle environment variable fallbacks
 	ApplyEnvironmentFallbacks(&opts)
 
-	// 4. Validate arguments
+	// 4. Handle git metadata fallbacks
+	ApplyGitMetadataFallbacks(&opts, lg)
+
+	// 5. Validate arguments
 	if err := validate(&opts); err != nil {
 		lg.Error("invalid arguments", "error", err)
 		return errors.NewCommandError(opts, nil, fmt.Errorf("invalid arguments: %w", err), 1)
 	}
 
-	// 5. Read and process SARIF report
+	// 6. Read and process SARIF report
 	report, err := internalsarif.ReadReport(opts.SarifPath, lg, opts.SourceFolder, true)
 	if err != nil {
 		lg.Error("failed to read SARIF report", "error", err)
@@ -110,7 +116,7 @@ func runSarifIssues(cmd *cobra.Command, args []string) error {
 	report.EnrichResultsLevelProperty()
 	report.EnrichResultsTitleProperty()
 
-	// 6. Get all open GitHub issues
+	// 7. Get all open GitHub issues
 	openIssues, err := listOpenIssues(opts)
 	if err != nil {
 		lg.Error("failed to list open issues", "error", err)
@@ -118,14 +124,14 @@ func runSarifIssues(cmd *cobra.Command, args []string) error {
 	}
 	lg.Info("fetched open issues from repository", "count", len(openIssues))
 
-	// 7. Process SARIF report and create/close issues
+	// 8. Process SARIF report and create/close issues
 	created, err := processSARIFReport(report, opts, sourceFolderAbs, repoMetadata, lg, openIssues)
 	if err != nil {
 		lg.Error("failed to process SARIF report", "error", err)
 		return err
 	}
 
-	// 8. Log success and handle output
+	// 9. Log success and handle output
 	lg.Info("issues created from SARIF high severity findings", "count", created)
 	fmt.Printf("Created %d issue(s) from SARIF high severity findings\n", created)
 

@@ -15,6 +15,7 @@ import (
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/scan-io-git/scan-io/internal/git"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
+	"github.com/scan-io-git/scan-io/pkg/shared/vcsurl"
 )
 
 // parseLineRange parses line range from strings like "123" or "123-456".
@@ -474,6 +475,61 @@ func ApplyEnvironmentFallbacks(opts *RunOptions) {
 	if strings.TrimSpace(opts.Ref) == "" {
 		if sha := strings.TrimSpace(os.Getenv("GITHUB_SHA")); sha != "" {
 			opts.Ref = sha
+		}
+	}
+}
+
+// ApplyGitMetadataFallbacks applies git metadata fallbacks to the run options.
+// It extracts namespace, repository, and ref from local git repository metadata
+// when the corresponding flags are not already provided.
+func ApplyGitMetadataFallbacks(opts *RunOptions, logger hclog.Logger) {
+	// Determine the base folder for git metadata extraction
+	baseFolder := strings.TrimSpace(opts.SourceFolder)
+	if baseFolder == "" {
+		// Use current working directory if source-folder is not provided
+		if cwd, err := os.Getwd(); err == nil {
+			baseFolder = cwd
+		} else {
+			logger.Debug("failed to get current working directory for git metadata extraction", "error", err)
+			return
+		}
+	}
+
+	// Collect git repository metadata
+	repoMetadata, err := git.CollectRepositoryMetadata(baseFolder)
+	if err != nil {
+		logger.Debug("unable to collect git repository metadata", "error", err, "baseFolder", baseFolder)
+		return
+	}
+
+	// Extract namespace and repository from git remote URL if not already set
+	if strings.TrimSpace(opts.Namespace) == "" || strings.TrimSpace(opts.Repository) == "" {
+		if repoMetadata.RepositoryFullName != nil && *repoMetadata.RepositoryFullName != "" {
+			// Parse the repository URL to extract namespace and repository
+			vcsURL, err := vcsurl.ParseForVCSType(*repoMetadata.RepositoryFullName, vcsurl.UnknownVCS)
+			if err != nil {
+				logger.Debug("failed to parse git repository URL", "error", err, "url", *repoMetadata.RepositoryFullName)
+			} else {
+				// Apply namespace if not already set
+				if strings.TrimSpace(opts.Namespace) == "" && vcsURL.Namespace != "" {
+					opts.Namespace = vcsURL.Namespace
+					logger.Debug("auto-detected namespace from git metadata", "namespace", vcsURL.Namespace)
+				}
+
+				// Apply repository if not already set
+				if strings.TrimSpace(opts.Repository) == "" && vcsURL.Repository != "" {
+					opts.Repository = vcsURL.Repository
+					logger.Debug("auto-detected repository from git metadata", "repository", vcsURL.Repository)
+				}
+			}
+		}
+	}
+
+	// Extract commit hash for ref if not already set
+	if strings.TrimSpace(opts.Ref) == "" {
+		if repoMetadata.CommitHash != nil && *repoMetadata.CommitHash != "" {
+			opts.Ref = *repoMetadata.CommitHash
+			logger.Debug("auto-detected ref from git metadata", "ref", *repoMetadata.CommitHash)
 		}
 	}
 }
