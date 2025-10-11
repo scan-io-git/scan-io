@@ -1169,3 +1169,379 @@ func TestApplyEnvironmentFallbacksEdgeCases(t *testing.T) {
 		}
 	})
 }
+
+func TestBuildIssueBodyWithCodeQLMessage(t *testing.T) {
+	// Test integration with CodeQL-style SARIF data using mocks
+	tempDir, err := os.MkdirTemp("", "sarif_codeql_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create test file structure
+	repoRoot := filepath.Join(tempDir, "scanio-test")
+	subfolder := filepath.Join(repoRoot, "apps", "demo")
+	if err := os.MkdirAll(subfolder, 0o755); err != nil {
+		t.Fatalf("Failed to create repo subfolder: %v", err)
+	}
+
+	mainFile := filepath.Join(subfolder, "main.py")
+	if err := os.WriteFile(mainFile, []byte("line 1\nline 2\nline 3\n"), 0o644); err != nil {
+		t.Fatalf("Failed to write main.py: %v", err)
+	}
+
+	logger := hclog.NewNullLogger()
+	commit := "aec0b795c350ff53fe9ab01adf862408aa34c3fd"
+
+	metadata := &git.RepositoryMetadata{
+		RepoRootFolder: repoRoot,
+		Subfolder:      filepath.ToSlash(filepath.Join("apps", "demo")),
+		CommitHash:     &commit,
+	}
+
+	options := RunOptions{
+		Namespace:    "test-org",
+		Repository:   "test-repo",
+		Ref:          commit,
+		SourceFolder: subfolder,
+	}
+
+	// Create mock SARIF report with CodeQL-style message
+	sarifReport := &sarif.Report{
+		Runs: []*sarif.Run{
+			{
+				Tool: sarif.Tool{
+					Driver: &sarif.ToolComponent{
+						Rules: []*sarif.ReportingDescriptor{
+							{
+								ID: "py/template-injection",
+								Properties: map[string]interface{}{
+									"problem.severity": "error",
+								},
+							},
+						},
+					},
+				},
+				Results: []*sarif.Result{
+					{
+						RuleID: stringPtr("py/template-injection"),
+						Level:  stringPtr("error"),
+						Message: sarif.Message{
+							Text: stringPtr("This template construction depends on a [user-provided value](1)."),
+						},
+						RelatedLocations: []*sarif.Location{
+							{
+								Id: uintPtr(1),
+								PhysicalLocation: &sarif.PhysicalLocation{
+									ArtifactLocation: &sarif.ArtifactLocation{
+										URI: stringPtr("main.py"),
+									},
+									Region: &sarif.Region{
+										StartLine:   intPtr(1),
+										StartColumn: intPtr(50),
+										EndLine:     intPtr(1),
+										EndColumn:   intPtr(57),
+									},
+								},
+							},
+						},
+						Locations: []*sarif.Location{
+							{
+								PhysicalLocation: &sarif.PhysicalLocation{
+									ArtifactLocation: &sarif.ArtifactLocation{
+										URI: stringPtr("main.py"),
+									},
+									Region: &sarif.Region{
+										StartLine:   intPtr(10),
+										StartColumn: intPtr(5),
+										EndLine:     intPtr(10),
+										EndColumn:   intPtr(15),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	report := &internalsarif.Report{
+		Report: sarifReport,
+	}
+
+	// Enrich results with level property
+	report.EnrichResultsLevelProperty()
+
+	// Process SARIF results
+	issues := buildNewIssuesFromSARIF(report, options, subfolder, metadata, logger)
+
+	// Verify that formatted messages are included in issue bodies
+	if len(issues) == 0 {
+		t.Fatalf("Expected at least one issue, got 0")
+	}
+
+	issue := issues[0]
+	if !strings.Contains(issue.Body, "### Description") {
+		t.Errorf("Expected issue body to contain '### Description' section")
+	}
+
+	// Check that the formatted message contains a hyperlink
+	if !strings.Contains(issue.Body, "https://github.com/test-org/test-repo/blob/") {
+		t.Errorf("Expected issue body to contain GitHub permalink")
+	}
+
+	// Check for CodeQL-style formatting (single reference)
+	if !strings.Contains(issue.Body, "[user-provided value](") {
+		t.Errorf("Expected issue body to contain CodeQL-style formatted reference")
+	}
+}
+
+func TestBuildIssueBodyWithSnykMessage(t *testing.T) {
+	// Test integration with Snyk-style SARIF data using mocks
+	tempDir, err := os.MkdirTemp("", "sarif_snyk_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create test file structure
+	repoRoot := filepath.Join(tempDir, "scanio-test")
+	subfolder := filepath.Join(repoRoot, "apps", "demo")
+	if err := os.MkdirAll(subfolder, 0o755); err != nil {
+		t.Fatalf("Failed to create repo subfolder: %v", err)
+	}
+
+	mainFile := filepath.Join(subfolder, "main.py")
+	if err := os.WriteFile(mainFile, []byte("line 1\nline 2\nline 3\n"), 0o644); err != nil {
+		t.Fatalf("Failed to write main.py: %v", err)
+	}
+
+	logger := hclog.NewNullLogger()
+	commit := "aec0b795c350ff53fe9ab01adf862408aa34c3fd"
+
+	metadata := &git.RepositoryMetadata{
+		RepoRootFolder: repoRoot,
+		Subfolder:      filepath.ToSlash(filepath.Join("apps", "demo")),
+		CommitHash:     &commit,
+	}
+
+	options := RunOptions{
+		Namespace:    "test-org",
+		Repository:   "test-repo",
+		Ref:          commit,
+		SourceFolder: subfolder,
+	}
+
+	// Create mock SARIF report with Snyk-style message
+	sarifReport := &sarif.Report{
+		Runs: []*sarif.Run{
+			{
+				Tool: sarif.Tool{
+					Driver: &sarif.ToolComponent{
+						Rules: []*sarif.ReportingDescriptor{
+							{
+								ID: "python/Ssti",
+								Properties: map[string]interface{}{
+									"problem.severity": "error",
+								},
+							},
+						},
+					},
+				},
+				Results: []*sarif.Result{
+					{
+						RuleID: stringPtr("python/Ssti"),
+						Level:  stringPtr("error"),
+						Message: sarif.Message{
+							Markdown: stringPtr("Unsanitized input from {0} {1} into {2}, where it is used to render an HTML page returned to the user. This may result in a Cross-Site Scripting attack (XSS)."),
+							Arguments: []string{
+								"[an HTTP parameter](0)",
+								"[flows](1),(2),(3),(4),(5),(6)",
+								"[flask.render_template_string](7)",
+							},
+						},
+						RelatedLocations: []*sarif.Location{
+							{
+								Id: uintPtr(0),
+								PhysicalLocation: &sarif.PhysicalLocation{
+									ArtifactLocation: &sarif.ArtifactLocation{
+										URI: stringPtr("main.py"),
+									},
+									Region: &sarif.Region{
+										StartLine:   intPtr(1),
+										StartColumn: intPtr(50),
+										EndLine:     intPtr(1),
+										EndColumn:   intPtr(57),
+									},
+								},
+							},
+							{
+								Id: uintPtr(1),
+								PhysicalLocation: &sarif.PhysicalLocation{
+									ArtifactLocation: &sarif.ArtifactLocation{
+										URI: stringPtr("main.py"),
+									},
+									Region: &sarif.Region{
+										StartLine:   intPtr(8),
+										StartColumn: intPtr(18),
+										EndLine:     intPtr(8),
+										EndColumn:   intPtr(25),
+									},
+								},
+							},
+							{
+								Id: uintPtr(2),
+								PhysicalLocation: &sarif.PhysicalLocation{
+									ArtifactLocation: &sarif.ArtifactLocation{
+										URI: stringPtr("main.py"),
+									},
+									Region: &sarif.Region{
+										StartLine:   intPtr(8),
+										StartColumn: intPtr(18),
+										EndLine:     intPtr(8),
+										EndColumn:   intPtr(30),
+									},
+								},
+							},
+							{
+								Id: uintPtr(3),
+								PhysicalLocation: &sarif.PhysicalLocation{
+									ArtifactLocation: &sarif.ArtifactLocation{
+										URI: stringPtr("main.py"),
+									},
+									Region: &sarif.Region{
+										StartLine:   intPtr(8),
+										StartColumn: intPtr(18),
+										EndLine:     intPtr(8),
+										EndColumn:   intPtr(46),
+									},
+								},
+							},
+							{
+								Id: uintPtr(4),
+								PhysicalLocation: &sarif.PhysicalLocation{
+									ArtifactLocation: &sarif.ArtifactLocation{
+										URI: stringPtr("main.py"),
+									},
+									Region: &sarif.Region{
+										StartLine:   intPtr(8),
+										StartColumn: intPtr(5),
+										EndLine:     intPtr(8),
+										EndColumn:   intPtr(15),
+									},
+								},
+							},
+							{
+								Id: uintPtr(5),
+								PhysicalLocation: &sarif.PhysicalLocation{
+									ArtifactLocation: &sarif.ArtifactLocation{
+										URI: stringPtr("main.py"),
+									},
+									Region: &sarif.Region{
+										StartLine:   intPtr(11),
+										StartColumn: intPtr(5),
+										EndLine:     intPtr(11),
+										EndColumn:   intPtr(13),
+									},
+								},
+							},
+							{
+								Id: uintPtr(6),
+								PhysicalLocation: &sarif.PhysicalLocation{
+									ArtifactLocation: &sarif.ArtifactLocation{
+										URI: stringPtr("main.py"),
+									},
+									Region: &sarif.Region{
+										StartLine:   intPtr(29),
+										StartColumn: intPtr(35),
+										EndLine:     intPtr(29),
+										EndColumn:   intPtr(43),
+									},
+								},
+							},
+							{
+								Id: uintPtr(7),
+								PhysicalLocation: &sarif.PhysicalLocation{
+									ArtifactLocation: &sarif.ArtifactLocation{
+										URI: stringPtr("main.py"),
+									},
+									Region: &sarif.Region{
+										StartLine:   intPtr(29),
+										StartColumn: intPtr(12),
+										EndLine:     intPtr(29),
+										EndColumn:   intPtr(44),
+									},
+								},
+							},
+						},
+						Locations: []*sarif.Location{
+							{
+								PhysicalLocation: &sarif.PhysicalLocation{
+									ArtifactLocation: &sarif.ArtifactLocation{
+										URI: stringPtr("main.py"),
+									},
+									Region: &sarif.Region{
+										StartLine:   intPtr(29),
+										StartColumn: intPtr(12),
+										EndLine:     intPtr(29),
+										EndColumn:   intPtr(44),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	report := &internalsarif.Report{
+		Report: sarifReport,
+	}
+
+	// Enrich results with level property
+	report.EnrichResultsLevelProperty()
+
+	// Process SARIF results
+	issues := buildNewIssuesFromSARIF(report, options, subfolder, metadata, logger)
+
+	// Verify that formatted messages are included in issue bodies
+	if len(issues) == 0 {
+		t.Fatalf("Expected at least one issue, got 0")
+	}
+
+	issue := issues[0]
+
+	if !strings.Contains(issue.Body, "### Description") {
+		t.Errorf("Expected issue body to contain '### Description' section")
+	}
+
+	// Check that the formatted message contains hyperlinks
+	if !strings.Contains(issue.Body, "https://github.com/test-org/test-repo/blob/") {
+		t.Errorf("Expected issue body to contain GitHub permalink")
+	}
+
+	// Check for flow chain formatting (multiple references)
+	if !strings.Contains(issue.Body, " > ") {
+		t.Errorf("Expected issue body to contain flow chain formatting")
+	}
+
+	// Check for Snyk-style formatting (multiple references in flow chain)
+	if !strings.Contains(issue.Body, "flows (") {
+		t.Errorf("Expected issue body to contain Snyk-style formatted flow reference")
+	}
+}
+
+// Helper functions for creating test data
+func stringPtr(s string) *string {
+	return &s
+}
+
+func intPtr(i int) *int {
+	return &i
+}
+
+func uintPtr(u uint) *uint {
+	return &u
+}

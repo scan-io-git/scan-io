@@ -277,6 +277,19 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, s
 				body += fmt.Sprintf("\n%s\n", link)
 			}
 
+			// Add formatted result message if available
+			if res.Message.Markdown != nil || res.Message.Text != nil {
+				formatOpts := internalsarif.MessageFormatOptions{
+					Namespace:    options.Namespace,
+					Repository:   options.Repository,
+					Ref:          options.Ref,
+					SourceFolder: sourceFolderAbs,
+				}
+				if formatted := internalsarif.FormatResultMessage(res, repoMetadata, formatOpts); formatted != "" {
+					body += fmt.Sprintf("\n\n### Description\n\n%s\n", formatted)
+				}
+			}
+
 			// Append rule detail/help content
 			if ruleDescriptor != nil {
 				if detail, helpRefs := extractRuleDetail(ruleDescriptor); detail != "" || len(helpRefs) > 0 {

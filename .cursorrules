@@ -4,6 +4,7 @@
 - When implementing new features or making changes to the codebase, always check the `docs/engineering/` directory first for established patterns and guidelines:
 - When in doubt about implementation details, always refer to the engineering documentation first, then examine similar existing implementations in the codebase.
 - Try to reuse internal packages if relevant. Extend if required functionality does not exist.
+- Don't use `data` folder in tests, it will not be available in other environment. But feel free to read content to make proper mocks.
 
 ## Commands
 - Build cli with: `make build-cli`
