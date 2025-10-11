@@ -1533,6 +1533,320 @@ func TestBuildIssueBodyWithSnykMessage(t *testing.T) {
 	}
 }
 
+func TestFormatCodeFlows(t *testing.T) {
+	tests := []struct {
+		name     string
+		result   *sarif.Result
+		expected string
+	}{
+		{
+			name:     "no code flows",
+			result:   &sarif.Result{},
+			expected: "",
+		},
+		{
+			name: "nil code flows",
+			result: &sarif.Result{
+				CodeFlows: nil,
+			},
+			expected: "",
+		},
+		{
+			name: "empty code flows",
+			result: &sarif.Result{
+				CodeFlows: []*sarif.CodeFlow{},
+			},
+			expected: "",
+		},
+		{
+			name: "single thread flow with message text",
+			result: &sarif.Result{
+				CodeFlows: []*sarif.CodeFlow{
+					{
+						ThreadFlows: []*sarif.ThreadFlow{
+							{
+								Locations: []*sarif.ThreadFlowLocation{
+									{
+										Location: &sarif.Location{
+											PhysicalLocation: &sarif.PhysicalLocation{
+												ArtifactLocation: &sarif.ArtifactLocation{
+													URI: stringPtr("main.py"),
+												},
+												Region: &sarif.Region{
+													StartLine: intPtr(1),
+													EndLine:   intPtr(1),
+												},
+											},
+											Message: &sarif.Message{
+												Text: stringPtr("ControlFlowNode for ImportMember"),
+											},
+										},
+									},
+									{
+										Location: &sarif.Location{
+											PhysicalLocation: &sarif.PhysicalLocation{
+												ArtifactLocation: &sarif.ArtifactLocation{
+													URI: stringPtr("main.py"),
+												},
+												Region: &sarif.Region{
+													StartLine: intPtr(8),
+													EndLine:   intPtr(8),
+												},
+											},
+											Message: &sarif.Message{
+												Text: stringPtr("ControlFlowNode for request"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: `<details>
+<summary>Code Flow 1</summary>
+
+Step 1: ControlFlowNode for ImportMember
+https://github.com/test-org/test-repo/blob/test-ref/main.py#L1
+
+Step 2: ControlFlowNode for request
+https://github.com/test-org/test-repo/blob/test-ref/main.py#L8
+</details>`,
+		},
+		{
+			name: "single thread flow without message text",
+			result: &sarif.Result{
+				CodeFlows: []*sarif.CodeFlow{
+					{
+						ThreadFlows: []*sarif.ThreadFlow{
+							{
+								Locations: []*sarif.ThreadFlowLocation{
+									{
+										Location: &sarif.Location{
+											PhysicalLocation: &sarif.PhysicalLocation{
+												ArtifactLocation: &sarif.ArtifactLocation{
+													URI: stringPtr("app.py"),
+												},
+												Region: &sarif.Region{
+													StartLine: intPtr(5),
+													EndLine:   intPtr(5),
+												},
+											},
+											Message: &sarif.Message{
+												Text: stringPtr(""),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: `<details>
+<summary>Code Flow 1</summary>
+
+Step 1:
+https://github.com/test-org/test-repo/blob/test-ref/app.py#L5
+</details>`,
+		},
+		{
+			name: "multiple thread flows",
+			result: &sarif.Result{
+				CodeFlows: []*sarif.CodeFlow{
+					{
+						ThreadFlows: []*sarif.ThreadFlow{
+							{
+								Locations: []*sarif.ThreadFlowLocation{
+									{
+										Location: &sarif.Location{
+											PhysicalLocation: &sarif.PhysicalLocation{
+												ArtifactLocation: &sarif.ArtifactLocation{
+													URI: stringPtr("file1.py"),
+												},
+												Region: &sarif.Region{
+													StartLine: intPtr(1),
+													EndLine:   intPtr(1),
+												},
+											},
+											Message: &sarif.Message{
+												Text: stringPtr("First flow step"),
+											},
+										},
+									},
+								},
+							},
+							{
+								Locations: []*sarif.ThreadFlowLocation{
+									{
+										Location: &sarif.Location{
+											PhysicalLocation: &sarif.PhysicalLocation{
+												ArtifactLocation: &sarif.ArtifactLocation{
+													URI: stringPtr("file2.py"),
+												},
+												Region: &sarif.Region{
+													StartLine: intPtr(10),
+													EndLine:   intPtr(10),
+												},
+											},
+											Message: &sarif.Message{
+												Text: stringPtr("Second flow step"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: `<details>
+<summary>Code Flow 1</summary>
+
+Step 1: First flow step
+https://github.com/test-org/test-repo/blob/test-ref/file1.py#L1
+</details>
+
+<details>
+<summary>Code Flow 2</summary>
+
+Step 1: Second flow step
+https://github.com/test-org/test-repo/blob/test-ref/file2.py#L10
+</details>`,
+		},
+		{
+			name: "thread flow with line range",
+			result: &sarif.Result{
+				CodeFlows: []*sarif.CodeFlow{
+					{
+						ThreadFlows: []*sarif.ThreadFlow{
+							{
+								Locations: []*sarif.ThreadFlowLocation{
+									{
+										Location: &sarif.Location{
+											PhysicalLocation: &sarif.PhysicalLocation{
+												ArtifactLocation: &sarif.ArtifactLocation{
+													URI: stringPtr("main.py"),
+												},
+												Region: &sarif.Region{
+													StartLine: intPtr(10),
+													EndLine:   intPtr(15),
+												},
+											},
+											Message: &sarif.Message{
+												Text: stringPtr("Multi-line location"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: `<details>
+<summary>Code Flow 1</summary>
+
+Step 1: Multi-line location
+https://github.com/test-org/test-repo/blob/test-ref/main.py#L10-L15
+</details>`,
+		},
+		{
+			name: "duplicate steps with same permalink and message",
+			result: &sarif.Result{
+				CodeFlows: []*sarif.CodeFlow{
+					{
+						ThreadFlows: []*sarif.ThreadFlow{
+							{
+								Locations: []*sarif.ThreadFlowLocation{
+									{
+										Location: &sarif.Location{
+											PhysicalLocation: &sarif.PhysicalLocation{
+												ArtifactLocation: &sarif.ArtifactLocation{
+													URI: stringPtr("main.py"),
+												},
+												Region: &sarif.Region{
+													StartLine: intPtr(1),
+													EndLine:   intPtr(1),
+												},
+											},
+											Message: &sarif.Message{
+												Text: stringPtr("First step"),
+											},
+										},
+									},
+									{
+										Location: &sarif.Location{
+											PhysicalLocation: &sarif.PhysicalLocation{
+												ArtifactLocation: &sarif.ArtifactLocation{
+													URI: stringPtr("main.py"),
+												},
+												Region: &sarif.Region{
+													StartLine: intPtr(1),
+													EndLine:   intPtr(1),
+												},
+											},
+											Message: &sarif.Message{
+												Text: stringPtr("First step"), // Same message as previous
+											},
+										},
+									},
+									{
+										Location: &sarif.Location{
+											PhysicalLocation: &sarif.PhysicalLocation{
+												ArtifactLocation: &sarif.ArtifactLocation{
+													URI: stringPtr("main.py"),
+												},
+												Region: &sarif.Region{
+													StartLine: intPtr(2),
+													EndLine:   intPtr(2),
+												},
+											},
+											Message: &sarif.Message{
+												Text: stringPtr("Second step"), // Different message
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: `<details>
+<summary>Code Flow 1</summary>
+
+Step 1: First step
+https://github.com/test-org/test-repo/blob/test-ref/main.py#L1
+
+Step 2: Second step
+https://github.com/test-org/test-repo/blob/test-ref/main.py#L2
+</details>`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := RunOptions{
+				Namespace:  "test-org",
+				Repository: "test-repo",
+				Ref:        "test-ref",
+			}
+
+			repoMetadata := &git.RepositoryMetadata{
+				RepoRootFolder: "/test/repo",
+			}
+
+			result := FormatCodeFlows(tt.result, options, repoMetadata, "/test/repo")
+
+			if result != tt.expected {
+				t.Errorf("Expected:\n%s\nGot:\n%s", tt.expected, result)
+			}
+		})
+	}
+}
+
 // Helper functions for creating test data
 func stringPtr(s string) *string {
 	return &s

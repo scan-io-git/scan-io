@@ -479,6 +479,113 @@ func ApplyEnvironmentFallbacks(opts *RunOptions) {
 	}
 }
 
+// FormatCodeFlows formats code flows from SARIF results into collapsible markdown sections.
+// Each thread flow is displayed in a separate <details> block with numbered steps and GitHub permalinks.
+func FormatCodeFlows(result *sarif.Result, options RunOptions, repoMetadata *git.RepositoryMetadata, sourceFolderAbs string) string {
+	if result == nil || len(result.CodeFlows) == 0 {
+		return ""
+	}
+
+	var sections []string
+	threadFlowCounter := 0
+
+	for _, codeFlow := range result.CodeFlows {
+		if codeFlow == nil || len(codeFlow.ThreadFlows) == 0 {
+			continue
+		}
+
+		for _, threadFlow := range codeFlow.ThreadFlows {
+			if threadFlow == nil || len(threadFlow.Locations) == 0 {
+				continue
+			}
+
+			threadFlowCounter++
+			var steps []string
+			seenSteps := make(map[string]bool) // Track seen permalink+message combinations
+			actualStepNum := 0                 // Track actual step number for sequential numbering
+
+			for _, threadFlowLocation := range threadFlow.Locations {
+				if threadFlowLocation == nil || threadFlowLocation.Location == nil {
+					continue
+				}
+
+				location := threadFlowLocation.Location
+				if location.PhysicalLocation == nil || location.PhysicalLocation.ArtifactLocation == nil {
+					continue
+				}
+
+				// Extract file path and line information
+				fileURI, _ := extractFileURIFromResult(&sarif.Result{
+					Locations: []*sarif.Location{location},
+				}, sourceFolderAbs, repoMetadata)
+
+				if fileURI == "" {
+					continue
+				}
+
+				// Extract line numbers
+				startLine := 0
+				endLine := 0
+				if location.PhysicalLocation.Region != nil {
+					if location.PhysicalLocation.Region.StartLine != nil {
+						startLine = *location.PhysicalLocation.Region.StartLine
+					}
+					if location.PhysicalLocation.Region.EndLine != nil {
+						endLine = *location.PhysicalLocation.Region.EndLine
+					}
+				}
+
+				// Create GitHub permalink
+				permalink := buildGitHubPermalink(options, repoMetadata, fileURI, startLine, endLine)
+
+				// Format step with optional message text
+				messageText := ""
+				if location.Message != nil && location.Message.Text != nil && strings.TrimSpace(*location.Message.Text) != "" {
+					messageText = strings.TrimSpace(*location.Message.Text)
+				}
+
+				// Create unique key for deduplication (permalink + message text)
+				dedupKey := fmt.Sprintf("%s|%s", permalink, messageText)
+
+				// Skip if we've already seen this exact combination
+				if seenSteps[dedupKey] {
+					continue
+				}
+				seenSteps[dedupKey] = true
+
+				// Increment actual step number only when we add a step
+				actualStepNum++
+
+				// Format step with optional message text
+				stepText := fmt.Sprintf("Step %d:", actualStepNum)
+				if messageText != "" {
+					stepText = fmt.Sprintf("Step %d: %s", actualStepNum, messageText)
+				}
+
+				// Add step text and permalink on separate lines
+				if permalink != "" {
+					steps = append(steps, stepText+"\n"+permalink)
+				} else {
+					steps = append(steps, stepText)
+				}
+			}
+
+			if len(steps) > 0 {
+				summary := fmt.Sprintf("Code Flow %d", threadFlowCounter)
+				section := fmt.Sprintf("<details>\n<summary>%s</summary>\n\n%s\n</details>",
+					summary, strings.Join(steps, "\n\n"))
+				sections = append(sections, section)
+			}
+		}
+	}
+
+	if len(sections) == 0 {
+		return ""
+	}
+
+	return strings.Join(sections, "\n\n")
+}
+
 // ApplyGitMetadataFallbacks applies git metadata fallbacks to the run options.
 // It extracts namespace, repository, and ref from local git repository metadata
 // when the corresponding flags are not already provided.

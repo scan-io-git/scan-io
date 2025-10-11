@@ -302,6 +302,11 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, s
 				}
 			}
 
+			// Add code flow section if available
+			if codeFlowSection := FormatCodeFlows(res, options, repoMetadata, sourceFolderAbs); codeFlowSection != "" {
+				body += "\n\n---\n\n" + codeFlowSection + "\n\n---\n\n"
+			}
+
 			// Append security identifier tags (CWE, OWASP) with links if available in rule properties
 			if r, ok := rulesByID[ruleID]; ok && r != nil && r.Properties != nil {
 				var tags []string
