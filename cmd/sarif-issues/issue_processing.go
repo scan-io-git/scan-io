@@ -444,6 +444,36 @@ func buildKnownIssuesFromOpen(openIssues map[int]OpenIssueEntry, lg hclog.Logger
 	return knownIssues
 }
 
+// filterIssuesBySourceFolder filters open issues to only those within the current source folder scope.
+// This enables independent issue management for different subfolders in monorepo CI workflows.
+// Issues are filtered based on their FilePath metadata matching the normalized subfolder path.
+func filterIssuesBySourceFolder(openIssues map[int]OpenIssueEntry, repoMetadata *git.RepositoryMetadata, lg hclog.Logger) map[int]OpenIssueEntry {
+	// Determine the subfolder scope from repo metadata
+	subfolder := normalisedSubfolder(repoMetadata)
+
+	// If no subfolder (scanning from root), include all issues
+	if subfolder == "" {
+		lg.Debug("no subfolder scope, including all issues")
+		return openIssues
+	}
+
+	// Filter issues: keep only those whose FilePath starts with subfolder
+	filtered := make(map[int]OpenIssueEntry)
+	for num, entry := range openIssues {
+		filePath := filepath.ToSlash(entry.OpenIssueReport.FilePath)
+		if strings.HasPrefix(filePath, subfolder+"/") || filePath == subfolder {
+			filtered[num] = entry
+		} else {
+			lg.Debug("excluding issue outside source folder scope",
+				"number", num, "file", filePath, "scope", subfolder)
+		}
+	}
+
+	lg.Info("filtered issues by source folder scope",
+		"total", len(openIssues), "scoped", len(filtered), "subfolder", subfolder)
+	return filtered
+}
+
 // createUnmatchedIssues creates GitHub issues for new findings that don't correlate with existing issues.
 // Returns the number of successfully created issues.
 func createUnmatchedIssues(unmatchedNew []issuecorrelation.IssueMetadata, newIssues []issuecorrelation.IssueMetadata, newBodies, newTitles []string, options RunOptions, lg hclog.Logger) (int, error) {
@@ -575,8 +605,11 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, source
 		newTitles[i] = data.Title
 	}
 
-	// Build list of known issues from the provided open issues data
-	knownIssues := buildKnownIssuesFromOpen(openIssues, lg)
+	// Filter open issues to only those within the current source folder scope
+	scopedOpenIssues := filterIssuesBySourceFolder(openIssues, repoMetadata, lg)
+
+	// Build list of known issues from the filtered open issues data
+	knownIssues := buildKnownIssuesFromOpen(scopedOpenIssues, lg)
 
 	// correlate
 	corr := issuecorrelation.NewCorrelator(newIssues, knownIssues)

@@ -21,3 +21,4 @@
 - The plan may contain one or more phases. Each phase contains tasks. Write inputs and deliverables for each phase, task or group of tasks.
 - Ensure that new functionality has tasks related to having tests for that functionality.
 - Default plan file is `PLAN.md` in the root.
+- Add documentation and help message update when necessary.

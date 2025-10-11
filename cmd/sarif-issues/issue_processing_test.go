@@ -3,7 +3,9 @@ package sarifissues
 import (
 	"testing"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/owenrumney/go-sarif/v2/sarif"
+	"github.com/scan-io-git/scan-io/internal/git"
 )
 
 func TestParseIssueBodyUsesMetadataRuleID(t *testing.T) {
@@ -143,5 +145,122 @@ func TestExtractRuleDetailEmptyWhenNoContent(t *testing.T) {
 	detail, refs := extractRuleDetail(nil)
 	if detail != "" || refs != nil {
 		t.Fatalf("expected empty detail and nil refs, got %q %#v", detail, refs)
+	}
+}
+
+func TestFilterIssuesBySourceFolder(t *testing.T) {
+	// Create test logger
+	logger := hclog.NewNullLogger()
+
+	// Test cases
+	tests := []struct {
+		name           string
+		repoMetadata   *git.RepositoryMetadata
+		openIssues     map[int]OpenIssueEntry
+		expectedCount  int
+		expectedIssues []int // issue numbers that should be included
+	}{
+		{
+			name: "no subfolder - include all issues",
+			repoMetadata: &git.RepositoryMetadata{
+				Subfolder: "",
+			},
+			openIssues: map[int]OpenIssueEntry{
+				1: {OpenIssueReport: OpenIssueReport{FilePath: "apps/demo/main.py"}},
+				2: {OpenIssueReport: OpenIssueReport{FilePath: "apps/another/main.py"}},
+				3: {OpenIssueReport: OpenIssueReport{FilePath: "root/file.py"}},
+			},
+			expectedCount:  3,
+			expectedIssues: []int{1, 2, 3},
+		},
+		{
+			name: "subfolder scope - filter correctly",
+			repoMetadata: &git.RepositoryMetadata{
+				Subfolder: "apps/demo",
+			},
+			openIssues: map[int]OpenIssueEntry{
+				1: {OpenIssueReport: OpenIssueReport{FilePath: "apps/demo/main.py"}},
+				2: {OpenIssueReport: OpenIssueReport{FilePath: "apps/another/main.py"}},
+				3: {OpenIssueReport: OpenIssueReport{FilePath: "apps/demo/utils.py"}},
+				4: {OpenIssueReport: OpenIssueReport{FilePath: "root/file.py"}},
+			},
+			expectedCount:  2,
+			expectedIssues: []int{1, 3},
+		},
+		{
+			name: "exact subfolder match",
+			repoMetadata: &git.RepositoryMetadata{
+				Subfolder: "apps/demo",
+			},
+			openIssues: map[int]OpenIssueEntry{
+				1: {OpenIssueReport: OpenIssueReport{FilePath: "apps/demo"}},
+				2: {OpenIssueReport: OpenIssueReport{FilePath: "apps/demo/main.py"}},
+				3: {OpenIssueReport: OpenIssueReport{FilePath: "apps/demo/subdir/file.py"}},
+			},
+			expectedCount:  3,
+			expectedIssues: []int{1, 2, 3},
+		},
+		{
+			name:         "nil repo metadata - include all",
+			repoMetadata: nil,
+			openIssues: map[int]OpenIssueEntry{
+				1: {OpenIssueReport: OpenIssueReport{FilePath: "any/path/file.py"}},
+				2: {OpenIssueReport: OpenIssueReport{FilePath: "another/path/file.py"}},
+			},
+			expectedCount:  2,
+			expectedIssues: []int{1, 2},
+		},
+		{
+			name: "empty open issues",
+			repoMetadata: &git.RepositoryMetadata{
+				Subfolder: "apps/demo",
+			},
+			openIssues:     map[int]OpenIssueEntry{},
+			expectedCount:  0,
+			expectedIssues: []int{},
+		},
+		{
+			name: "subfolder with trailing slashes",
+			repoMetadata: &git.RepositoryMetadata{
+				Subfolder: "/apps/demo/",
+			},
+			openIssues: map[int]OpenIssueEntry{
+				1: {OpenIssueReport: OpenIssueReport{FilePath: "apps/demo/main.py"}},
+				2: {OpenIssueReport: OpenIssueReport{FilePath: "apps/another/main.py"}},
+			},
+			expectedCount:  1,
+			expectedIssues: []int{1},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			filtered := filterIssuesBySourceFolder(tt.openIssues, tt.repoMetadata, logger)
+
+			if len(filtered) != tt.expectedCount {
+				t.Fatalf("expected %d filtered issues, got %d", tt.expectedCount, len(filtered))
+			}
+
+			// Check that only expected issues are present
+			for _, expectedNum := range tt.expectedIssues {
+				if _, exists := filtered[expectedNum]; !exists {
+					t.Fatalf("expected issue %d to be included in filtered results", expectedNum)
+				}
+			}
+
+			// Check that no unexpected issues are present
+			for num := range filtered {
+				found := false
+				for _, expectedNum := range tt.expectedIssues {
+					if num == expectedNum {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Fatalf("unexpected issue %d found in filtered results", num)
+				}
+			}
+		})
 	}
 }

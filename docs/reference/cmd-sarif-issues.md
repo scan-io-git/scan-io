@@ -165,6 +165,24 @@ Only specific types of open issues are considered for correlation:
 - **Scanio-managed issues**: Must contain the scanio-managed annotation
 - **Malformed issues are skipped**: Issues without proper metadata are ignored to prevent accidental closure of manually created issues
 
+### Subfolder Scoping
+The command supports independent issue management for different subfolders in monorepo workflows:
+
+- **Scoped Correlation**: When `--source-folder` points to a subfolder, only open issues whose file paths fall within that subfolder are considered for correlation
+- **Independent Management**: Issues from different subfolders are managed independently, preventing cross-subfolder interference
+- **Root Scope**: When scanning from repository root (no `--source-folder` or `--source-folder` points to root), all issues are considered
+
+**Example Monorepo Workflow**:
+```bash
+# Frontend CI job - manages issues in apps/frontend only
+scanio sarif-issues --sarif frontend-results.sarif --source-folder apps/frontend
+
+# Backend CI job - manages issues in apps/backend only  
+scanio sarif-issues --sarif backend-results.sarif --source-folder apps/backend
+```
+
+This enables separate CI jobs for different parts of a monorepo without issues from one subfolder affecting the other.
+
 ## Issue Format
 
 ### Issue Title Format

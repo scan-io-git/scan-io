@@ -137,3 +137,13 @@ snyk code test --sarif-file-output=snyk-another.sarif apps/another
 scanio sarif-issues --sarif semgrep-demo.sarif --source-folder apps/demo
 scanio sarif-issues --sarif snyk-another.sarif --source-folder apps/another
 ```
+
+**Solution Implemented**: The `sarif-issues` command now filters open issues by source folder scope before correlation. Issues are scoped based on their file path metadata matching the normalized subfolder path. This enables independent issue management for different subfolders in monorepo CI workflows.
+
+**Key Changes**:
+- Added `filterIssuesBySourceFolder()` function that filters open issues to only those within the current `--source-folder` scope
+- Issues are filtered before correlation, ensuring each subfolder's issues are managed independently
+- When `--source-folder` points to a subfolder, only issues whose file paths start with that subfolder are considered
+- When scanning from root (no subfolder), all issues are included as before
+
+**Expected Behavior**: Both sets of issues remain open and are managed independently. Issues from `apps/demo` won't be closed when running the second command for `apps/another`.
