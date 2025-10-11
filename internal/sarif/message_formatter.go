@@ -269,14 +269,6 @@ func buildLocationLink(location *sarif.Location, repoMetadata *git.RepositoryMet
 		endLine = startLine
 	}
 
-	// Build GitHub permalink
-	// Format: https://github.com/{namespace}/{repo}/blob/{ref}/{file}#L{start}-L{end}
-	baseURL := fmt.Sprintf("https://github.com/%s/%s/blob/%s/%s",
-		options.Namespace, options.Repository, options.Ref, repoPath)
-
-	if startLine == endLine {
-		return fmt.Sprintf("%s#L%d", baseURL, startLine)
-	} else {
-		return fmt.Sprintf("%s#L%d-L%d", baseURL, startLine, endLine)
-	}
+	// Build GitHub permalink using shared helper
+	return BuildGitHubPermalink(options.Namespace, options.Repository, options.Ref, repoPath, startLine, endLine)
 }

@@ -388,3 +388,137 @@ func TestConvertToRepoRelativePathCrossPlatform(t *testing.T) {
 		t.Errorf("expected %q, got %q", expected, result)
 	}
 }
+
+func TestBuildGitHubPermalink(t *testing.T) {
+	tests := []struct {
+		name             string
+		namespace        string
+		repository       string
+		ref              string
+		repoRelativePath string
+		startLine        int
+		endLine          int
+		expected         string
+	}{
+		{
+			name:             "single line",
+			namespace:        "scan-io-git",
+			repository:       "scan-io",
+			ref:              "main",
+			repoRelativePath: "src/main.go",
+			startLine:        42,
+			endLine:          0,
+			expected:         "https://github.com/scan-io-git/scan-io/blob/main/src/main.go#L42",
+		},
+		{
+			name:             "line range",
+			namespace:        "scan-io-git",
+			repository:       "scan-io",
+			ref:              "abc123",
+			repoRelativePath: "internal/sarif/path_helpers.go",
+			startLine:        10,
+			endLine:          15,
+			expected:         "https://github.com/scan-io-git/scan-io/blob/abc123/internal/sarif/path_helpers.go#L10-L15",
+		},
+		{
+			name:             "same start and end line",
+			namespace:        "scan-io-git",
+			repository:       "scan-io",
+			ref:              "main",
+			repoRelativePath: "cmd/sarif-issues/utils.go",
+			startLine:        5,
+			endLine:          5,
+			expected:         "https://github.com/scan-io-git/scan-io/blob/main/cmd/sarif-issues/utils.go#L5",
+		},
+		{
+			name:             "no line numbers",
+			namespace:        "scan-io-git",
+			repository:       "scan-io",
+			ref:              "main",
+			repoRelativePath: "README.md",
+			startLine:        0,
+			endLine:          0,
+			expected:         "https://github.com/scan-io-git/scan-io/blob/main/README.md",
+		},
+		{
+			name:             "negative start line",
+			namespace:        "scan-io-git",
+			repository:       "scan-io",
+			ref:              "main",
+			repoRelativePath: "src/main.go",
+			startLine:        -1,
+			endLine:          0,
+			expected:         "https://github.com/scan-io-git/scan-io/blob/main/src/main.go",
+		},
+		{
+			name:             "empty namespace",
+			namespace:        "",
+			repository:       "scan-io",
+			ref:              "main",
+			repoRelativePath: "src/main.go",
+			startLine:        1,
+			endLine:          0,
+			expected:         "",
+		},
+		{
+			name:             "empty repository",
+			namespace:        "scan-io-git",
+			repository:       "",
+			ref:              "main",
+			repoRelativePath: "src/main.go",
+			startLine:        1,
+			endLine:          0,
+			expected:         "",
+		},
+		{
+			name:             "empty ref",
+			namespace:        "scan-io-git",
+			repository:       "scan-io",
+			ref:              "",
+			repoRelativePath: "src/main.go",
+			startLine:        1,
+			endLine:          0,
+			expected:         "",
+		},
+		{
+			name:             "empty file path",
+			namespace:        "scan-io-git",
+			repository:       "scan-io",
+			ref:              "main",
+			repoRelativePath: "",
+			startLine:        1,
+			endLine:          0,
+			expected:         "",
+		},
+		{
+			name:             "file with subdirectory",
+			namespace:        "scan-io-git",
+			repository:       "scan-io",
+			ref:              "feature-branch",
+			repoRelativePath: "internal/sarif/message_formatter.go",
+			startLine:        25,
+			endLine:          30,
+			expected:         "https://github.com/scan-io-git/scan-io/blob/feature-branch/internal/sarif/message_formatter.go#L25-L30",
+		},
+		{
+			name:             "end line less than start line",
+			namespace:        "scan-io-git",
+			repository:       "scan-io",
+			ref:              "main",
+			repoRelativePath: "src/main.go",
+			startLine:        10,
+			endLine:          5,
+			expected:         "https://github.com/scan-io-git/scan-io/blob/main/src/main.go#L10",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := BuildGitHubPermalink(tt.namespace, tt.repository, tt.ref, tt.repoRelativePath, tt.startLine, tt.endLine)
+			if result != tt.expected {
+				t.Errorf("BuildGitHubPermalink(%q, %q, %q, %q, %d, %d) = %q, expected %q",
+					tt.namespace, tt.repository, tt.ref, tt.repoRelativePath, tt.startLine, tt.endLine, result, tt.expected)
+			}
+		})
+	}
+}

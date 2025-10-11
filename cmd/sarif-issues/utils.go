@@ -220,7 +220,6 @@ func getScannerName(run *sarif.Run) string {
 // directly when metadata is not provided). Returns empty string when any
 // critical component is missing.
 func buildGitHubPermalink(options RunOptions, repoMetadata *git.RepositoryMetadata, fileURI string, start, end int) string {
-	base := fmt.Sprintf("https://github.com/%s/%s", options.Namespace, options.Repository)
 	ref := strings.TrimSpace(options.Ref)
 
 	if ref == "" {
@@ -238,15 +237,7 @@ func buildGitHubPermalink(options RunOptions, repoMetadata *git.RepositoryMetada
 	}
 
 	path := filepath.ToSlash(fileURI)
-	anchor := ""
-	if start > 0 {
-		anchor = fmt.Sprintf("#L%d", start)
-		if end > start {
-			anchor = fmt.Sprintf("%s-L%d", anchor, end)
-		}
-	}
-
-	return fmt.Sprintf("%s/blob/%s/%s%s", base, ref, path, anchor)
+	return internalsarif.BuildGitHubPermalink(options.Namespace, options.Repository, ref, path, start, end)
 }
 
 // extractFileURIFromResult derives both the repository-relative path and local filesystem path

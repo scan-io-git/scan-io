@@ -1,6 +1,7 @@
 package sarif
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -195,4 +196,40 @@ func ConvertToRepoRelativePath(rawURI string, repoMetadata *git.RepositoryMetada
 	repoPath = strings.TrimLeft(repoPath, "/")
 	repoPath = filepath.ToSlash(repoPath)
 	return repoPath
+}
+
+// BuildGitHubPermalink constructs a GitHub permalink for a file and line range.
+// It takes the core components needed for URL construction and handles the anchor format.
+// Returns empty string if any critical component is missing.
+//
+// Parameters:
+//   - namespace: GitHub namespace/organization
+//   - repository: GitHub repository name
+//   - ref: Git reference (commit hash, branch, or tag)
+//   - repoRelativePath: file path relative to repository root (forward slashes)
+//   - startLine: starting line number (1-based)
+//   - endLine: ending line number (1-based, defaults to startLine if 0)
+//
+// Returns:
+//   - GitHub permalink string in format: https://github.com/{namespace}/{repo}/blob/{ref}/{file}#L{start}-L{end}
+//   - Empty string if any required parameter is missing
+func BuildGitHubPermalink(namespace, repository, ref, repoRelativePath string, startLine, endLine int) string {
+	// Validate required parameters
+	if namespace == "" || repository == "" || ref == "" || repoRelativePath == "" {
+		return ""
+	}
+
+	// Build base URL
+	baseURL := fmt.Sprintf("https://github.com/%s/%s/blob/%s/%s", namespace, repository, ref, repoRelativePath)
+
+	// Handle line anchor
+	if startLine <= 0 {
+		return baseURL
+	}
+
+	if endLine <= 0 || endLine == startLine || endLine < startLine {
+		return fmt.Sprintf("%s#L%d", baseURL, startLine)
+	}
+
+	return fmt.Sprintf("%s#L%d-L%d", baseURL, startLine, endLine)
 }
