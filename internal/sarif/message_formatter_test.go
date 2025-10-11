@@ -1,6 +1,8 @@
 package sarif
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/owenrumney/go-sarif/v2/sarif"
@@ -357,10 +359,29 @@ func TestBuildLocationLinkAbsolutePath(t *testing.T) {
 
 func TestBuildLocationLinkWithSubfolder(t *testing.T) {
 	// Test the specific case mentioned in the issue: subfolder path resolution
+	// Create a temporary directory structure to simulate the repository
+	tempDir, err := os.MkdirTemp("", "sarif_test")
+	if err != nil {
+		t.Fatalf("failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	repoRoot := filepath.Join(tempDir, "scanio-test")
+	subfolder := filepath.Join(repoRoot, "apps", "demo")
+	if err := os.MkdirAll(subfolder, 0755); err != nil {
+		t.Fatalf("failed to create subfolder: %v", err)
+	}
+
+	// Create the file so path resolution works correctly
+	mainFile := filepath.Join(subfolder, "main.py")
+	if err := os.WriteFile(mainFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
 	location := createTestLocation("main.py", 34, 1, 34, 10)
 
 	repoMetadata := &git.RepositoryMetadata{
-		RepoRootFolder: "/tmp/scanio-test",
+		RepoRootFolder: repoRoot,
 		Subfolder:      "apps/demo",
 		CommitHash:     stringPtr("aec0b795c350ff53fe9ab01adf862408aa34c3fd"),
 	}
@@ -369,7 +390,7 @@ func TestBuildLocationLinkWithSubfolder(t *testing.T) {
 		Namespace:    "scan-io-git",
 		Repository:   "scanio-test",
 		Ref:          "aec0b795c350ff53fe9ab01adf862408aa34c3fd",
-		SourceFolder: "/tmp/scanio-test/apps/demo",
+		SourceFolder: subfolder,
 	}
 
 	result := buildLocationLink(location, repoMetadata, options)

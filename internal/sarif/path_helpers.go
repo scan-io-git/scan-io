@@ -1,0 +1,198 @@
+package sarif
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/scan-io-git/scan-io/internal/git"
+)
+
+// NormalisedSubfolder extracts and normalizes the subfolder from repository metadata.
+// It returns the subfolder path with forward slashes and no leading/trailing slashes.
+// Returns empty string if metadata is nil or subfolder is empty.
+func NormalisedSubfolder(md *git.RepositoryMetadata) string {
+	if md == nil {
+		return ""
+	}
+	sub := strings.Trim(md.Subfolder, "/\\")
+	// Replace all backslashes with forward slashes for cross-platform compatibility
+	sub = strings.ReplaceAll(sub, "\\", "/")
+	return sub
+}
+
+// PathWithin checks if a path is within another path (root).
+// It handles both absolute and relative paths, attempting to resolve them first.
+// Returns true if path is within root, or if root is empty.
+func PathWithin(path, root string) bool {
+	if root == "" {
+		return true
+	}
+	cleanPath, err1 := filepath.Abs(path)
+	cleanRoot, err2 := filepath.Abs(root)
+	if err1 != nil || err2 != nil {
+		cleanPath = filepath.Clean(path)
+		cleanRoot = filepath.Clean(root)
+	}
+	if cleanPath == cleanRoot {
+		return true
+	}
+	rootWithSep := cleanRoot + string(filepath.Separator)
+	return strings.HasPrefix(cleanPath, rootWithSep)
+}
+
+// ResolveRelativeLocalPath resolves a relative URI to a local filesystem path.
+// It tries multiple base directories in order of preference:
+// 1. repoRoot
+// 2. repoRoot/subfolder (if subfolder is provided)
+// 3. absSource
+//
+// For each base, it checks if the resolved path exists on the filesystem and is within repoRoot.
+// If no path exists, it returns the first candidate that would be within repoRoot.
+// Falls back to absSource-based path if all else fails.
+//
+// Parameters:
+//   - cleanURI: the relative URI path (already cleaned)
+//   - repoRoot: the repository root directory (optional)
+//   - subfolder: the subfolder within the repository (optional)
+//   - absSource: the absolute source folder path (optional)
+func ResolveRelativeLocalPath(cleanURI, repoRoot, subfolder, absSource string) string {
+	candidateRel := cleanURI
+	var bases []string
+	seen := map[string]struct{}{}
+
+	addBase := func(base string) {
+		if base == "" {
+			return
+		}
+		if abs, err := filepath.Abs(base); err == nil {
+			base = abs
+		} else {
+			base = filepath.Clean(base)
+		}
+		if _, ok := seen[base]; ok {
+			return
+		}
+		seen[base] = struct{}{}
+		bases = append(bases, base)
+	}
+
+	addBase(repoRoot)
+	if repoRoot != "" && subfolder != "" {
+		addBase(filepath.Join(repoRoot, filepath.FromSlash(subfolder)))
+	}
+	addBase(absSource)
+
+	// Try each base directory, checking if the file exists
+	for _, base := range bases {
+		candidate := filepath.Clean(filepath.Join(base, candidateRel))
+		if repoRoot != "" && !PathWithin(candidate, repoRoot) {
+			continue
+		}
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+
+	// If no file exists, return the first valid candidate path
+	if len(bases) > 0 {
+		candidate := filepath.Clean(filepath.Join(bases[0], candidateRel))
+		if repoRoot == "" || PathWithin(candidate, repoRoot) {
+			return candidate
+		}
+	}
+
+	// Final fallback to absSource
+	if absSource != "" {
+		return filepath.Clean(filepath.Join(absSource, candidateRel))
+	}
+	return ""
+}
+
+// ConvertToRepoRelativePath converts a SARIF artifact URI to a repository-relative path.
+// This function handles both absolute and relative URIs, normalizing them to repo-relative paths.
+//
+// The conversion process:
+// 1. Normalizes the URI (removes file:// prefix, converts to OS path separators)
+// 2. For absolute paths: calculates relative path from repoRoot or sourceFolder
+// 3. For relative paths: resolves to absolute first, then calculates repo-relative path
+// 4. Ensures subfolder prefix is included when scanning from a subdirectory
+//
+// Parameters:
+//   - rawURI: the artifact URI from SARIF (may be absolute or relative, may have file:// prefix)
+//   - repoMetadata: repository metadata containing RepoRootFolder and Subfolder (optional)
+//   - sourceFolder: the source folder provided by the user (optional)
+//
+// Returns:
+//   - A forward-slash separated path relative to the repository root
+//   - Empty string if the URI is invalid or empty
+func ConvertToRepoRelativePath(rawURI string, repoMetadata *git.RepositoryMetadata, sourceFolder string) string {
+	rawURI = strings.TrimSpace(rawURI)
+	if rawURI == "" {
+		return ""
+	}
+
+	repoPath := ""
+	subfolder := NormalisedSubfolder(repoMetadata)
+	var repoRoot string
+	if repoMetadata != nil && strings.TrimSpace(repoMetadata.RepoRootFolder) != "" {
+		repoRoot = filepath.Clean(repoMetadata.RepoRootFolder)
+	}
+	absSource := strings.TrimSpace(sourceFolder)
+	if absSource != "" {
+		if abs, err := filepath.Abs(absSource); err == nil {
+			absSource = abs
+		} else {
+			absSource = filepath.Clean(absSource)
+		}
+	}
+
+	// Normalize URI to the host OS path representation
+	osURI := filepath.FromSlash(rawURI)
+	osURI = strings.TrimPrefix(osURI, "file://")
+	cleanURI := filepath.Clean(osURI)
+
+	if filepath.IsAbs(cleanURI) {
+		// Absolute path: calculate repo-relative path
+		localPath := cleanURI
+		if repoRoot != "" {
+			if rel, err := filepath.Rel(repoRoot, localPath); err == nil {
+				if rel != "." && !strings.HasPrefix(rel, "..") {
+					repoPath = filepath.ToSlash(rel)
+				}
+			}
+		}
+		if repoPath == "" && absSource != "" {
+			if rel, err := filepath.Rel(absSource, localPath); err == nil {
+				repoPath = filepath.ToSlash(rel)
+			}
+		}
+		if repoPath == "" {
+			repoPath = filepath.ToSlash(strings.TrimPrefix(localPath, string(filepath.Separator)))
+		}
+	} else {
+		// Relative path: resolve to absolute first
+		localPath := ResolveRelativeLocalPath(cleanURI, repoRoot, subfolder, absSource)
+
+		if repoRoot != "" && localPath != "" && PathWithin(localPath, repoRoot) {
+			if rel, err := filepath.Rel(repoRoot, localPath); err == nil {
+				if rel != "." {
+					repoPath = filepath.ToSlash(rel)
+				}
+			}
+		}
+
+		if repoPath == "" {
+			normalised := strings.TrimLeft(filepath.ToSlash(cleanURI), "./")
+			if subfolder != "" && !strings.HasPrefix(normalised, subfolder+"/") && normalised != subfolder {
+				repoPath = filepath.ToSlash(filepath.Join(subfolder, normalised))
+			} else {
+				repoPath = filepath.ToSlash(normalised)
+			}
+		}
+	}
+
+	repoPath = strings.TrimLeft(repoPath, "/")
+	repoPath = filepath.ToSlash(repoPath)
+	return repoPath
+}

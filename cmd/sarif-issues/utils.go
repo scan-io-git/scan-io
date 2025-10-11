@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/scan-io-git/scan-io/internal/git"
+	internalsarif "github.com/scan-io-git/scan-io/internal/sarif"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/vcsurl"
 )
@@ -269,9 +270,19 @@ func extractFileURIFromResult(res *sarif.Result, absSourceFolder string, repoMet
 		return "", ""
 	}
 
-	repoPath := ""
-	localPath := ""
-	subfolder := normalisedSubfolder(repoMetadata)
+	// Use shared function to get repo-relative path
+	repoPath := internalsarif.ConvertToRepoRelativePath(rawURI, repoMetadata, absSourceFolder)
+
+	// Calculate local path for file operations (snippet hashing, etc.)
+	localPath := calculateLocalPath(rawURI, repoMetadata, absSourceFolder)
+
+	return repoPath, localPath
+}
+
+// calculateLocalPath determines the absolute local filesystem path for a SARIF URI.
+// This is used for reading files for snippet hashing and other local file operations.
+func calculateLocalPath(rawURI string, repoMetadata *git.RepositoryMetadata, absSourceFolder string) string {
+	subfolder := internalsarif.NormalisedSubfolder(repoMetadata)
 	var repoRoot string
 	if repoMetadata != nil && strings.TrimSpace(repoMetadata.RepoRootFolder) != "" {
 		repoRoot = filepath.Clean(repoMetadata.RepoRootFolder)
@@ -285,127 +296,17 @@ func extractFileURIFromResult(res *sarif.Result, absSourceFolder string, repoMet
 		}
 	}
 
-	// Normalise URI to the host OS path representation
+	// Normalize URI to the host OS path representation
 	osURI := filepath.FromSlash(rawURI)
 	osURI = strings.TrimPrefix(osURI, "file://")
 	cleanURI := filepath.Clean(osURI)
 
 	if filepath.IsAbs(cleanURI) {
-		localPath = cleanURI
-		if repoRoot != "" {
-			if rel, err := filepath.Rel(repoRoot, localPath); err == nil {
-				if rel != "." && !strings.HasPrefix(rel, "..") {
-					repoPath = filepath.ToSlash(rel)
-				}
-			}
-		}
-		if repoPath == "" && absSource != "" {
-			if rel, err := filepath.Rel(absSource, localPath); err == nil {
-				repoPath = filepath.ToSlash(rel)
-			}
-		}
-		if repoPath == "" {
-			repoPath = filepath.ToSlash(strings.TrimPrefix(localPath, string(filepath.Separator)))
-		}
-	} else {
-		localPath = resolveRelativeLocalPath(cleanURI, repoRoot, subfolder, absSource)
-
-		if repoRoot != "" && localPath != "" && pathWithin(localPath, repoRoot) {
-			if rel, err := filepath.Rel(repoRoot, localPath); err == nil {
-				if rel != "." {
-					repoPath = filepath.ToSlash(rel)
-				}
-			}
-		}
-
-		if repoPath == "" {
-			normalised := strings.TrimLeft(filepath.ToSlash(cleanURI), "./")
-			if subfolder != "" && !strings.HasPrefix(normalised, subfolder+"/") && normalised != subfolder {
-				repoPath = filepath.ToSlash(filepath.Join(subfolder, normalised))
-			} else {
-				repoPath = filepath.ToSlash(normalised)
-			}
-		}
+		return cleanURI
 	}
 
-	repoPath = strings.TrimLeft(repoPath, "/")
-	repoPath = filepath.ToSlash(repoPath)
-	return repoPath, localPath
-}
-
-func resolveRelativeLocalPath(cleanURI, repoRoot, subfolder, absSource string) string {
-	candidateRel := cleanURI
-	var bases []string
-	seen := map[string]struct{}{}
-
-	addBase := func(base string) {
-		if base == "" {
-			return
-		}
-		if abs, err := filepath.Abs(base); err == nil {
-			base = abs
-		} else {
-			base = filepath.Clean(base)
-		}
-		if _, ok := seen[base]; ok {
-			return
-		}
-		seen[base] = struct{}{}
-		bases = append(bases, base)
-	}
-
-	addBase(repoRoot)
-	if repoRoot != "" && subfolder != "" {
-		addBase(filepath.Join(repoRoot, filepath.FromSlash(subfolder)))
-	}
-	addBase(absSource)
-
-	for _, base := range bases {
-		candidate := filepath.Clean(filepath.Join(base, candidateRel))
-		if repoRoot != "" && !pathWithin(candidate, repoRoot) {
-			continue
-		}
-		if _, err := os.Stat(candidate); err == nil {
-			return candidate
-		}
-	}
-
-	if len(bases) > 0 {
-		candidate := filepath.Clean(filepath.Join(bases[0], candidateRel))
-		if repoRoot == "" || pathWithin(candidate, repoRoot) {
-			return candidate
-		}
-	}
-
-	if absSource != "" {
-		return filepath.Clean(filepath.Join(absSource, candidateRel))
-	}
-	return ""
-}
-
-func pathWithin(path, root string) bool {
-	if root == "" {
-		return true
-	}
-	cleanPath, err1 := filepath.Abs(path)
-	cleanRoot, err2 := filepath.Abs(root)
-	if err1 != nil || err2 != nil {
-		cleanPath = filepath.Clean(path)
-		cleanRoot = filepath.Clean(root)
-	}
-	if cleanPath == cleanRoot {
-		return true
-	}
-	rootWithSep := cleanRoot + string(filepath.Separator)
-	return strings.HasPrefix(cleanPath, rootWithSep)
-}
-
-func normalisedSubfolder(md *git.RepositoryMetadata) string {
-	if md == nil {
-		return ""
-	}
-	sub := strings.Trim(md.Subfolder, "/\\")
-	return filepath.ToSlash(sub)
+	// Relative path - resolve to absolute
+	return internalsarif.ResolveRelativeLocalPath(cleanURI, repoRoot, subfolder, absSource)
 }
 
 // extractRegionFromResult returns start and end line numbers (0 when not present)

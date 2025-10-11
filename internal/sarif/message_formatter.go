@@ -2,7 +2,6 @@ package sarif
 
 import (
 	"fmt"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -250,7 +249,7 @@ func buildLocationLink(location *sarif.Location, repoMetadata *git.RepositoryMet
 
 	// Get file path and convert to repository-relative path
 	filePath := *artifact.URI
-	repoPath := convertToRepoRelativePath(filePath, repoMetadata, options.SourceFolder)
+	repoPath := ConvertToRepoRelativePath(filePath, repoMetadata, options.SourceFolder)
 
 	// Get line information
 	region := location.PhysicalLocation.Region
@@ -280,100 +279,4 @@ func buildLocationLink(location *sarif.Location, repoMetadata *git.RepositoryMet
 	} else {
 		return fmt.Sprintf("%s#L%d-L%d", baseURL, startLine, endLine)
 	}
-}
-
-// convertToRepoRelativePath converts a SARIF artifact URI to a repository-relative path
-// This mimics the logic from extractFileURIFromResult in cmd/sarif-issues/utils.go
-func convertToRepoRelativePath(rawURI string, repoMetadata *git.RepositoryMetadata, sourceFolder string) string {
-	rawURI = strings.TrimSpace(rawURI)
-	if rawURI == "" {
-		return ""
-	}
-
-	repoPath := ""
-	subfolder := normalisedSubfolder(repoMetadata)
-	var repoRoot string
-	if repoMetadata != nil && strings.TrimSpace(repoMetadata.RepoRootFolder) != "" {
-		repoRoot = filepath.Clean(repoMetadata.RepoRootFolder)
-	}
-	absSource := strings.TrimSpace(sourceFolder)
-	if absSource != "" {
-		if abs, err := filepath.Abs(absSource); err == nil {
-			absSource = abs
-		} else {
-			absSource = filepath.Clean(absSource)
-		}
-	}
-
-	// Normalise URI to the host OS path representation
-	osURI := filepath.FromSlash(rawURI)
-	osURI = strings.TrimPrefix(osURI, "file://")
-	cleanURI := filepath.Clean(osURI)
-
-	if filepath.IsAbs(cleanURI) {
-		localPath := cleanURI
-		if repoRoot != "" {
-			if rel, err := filepath.Rel(repoRoot, localPath); err == nil {
-				if rel != "." && !strings.HasPrefix(rel, "..") {
-					repoPath = filepath.ToSlash(rel)
-				}
-			}
-		}
-		if repoPath == "" && absSource != "" {
-			if rel, err := filepath.Rel(absSource, localPath); err == nil {
-				repoPath = filepath.ToSlash(rel)
-			}
-		}
-		if repoPath == "" {
-			repoPath = filepath.ToSlash(strings.TrimPrefix(localPath, string(filepath.Separator)))
-		}
-	} else {
-		localPath := resolveRelativeLocalPath(cleanURI, repoRoot, subfolder, absSource)
-
-		if repoRoot != "" && localPath != "" && pathWithin(localPath, repoRoot) {
-			if rel, err := filepath.Rel(repoRoot, localPath); err == nil {
-				if rel != "." {
-					repoPath = filepath.ToSlash(rel)
-				}
-			}
-		}
-
-		if repoPath == "" && subfolder != "" {
-			repoPath = filepath.ToSlash(filepath.Join(subfolder, cleanURI))
-		}
-		if repoPath == "" {
-			repoPath = filepath.ToSlash(cleanURI)
-		}
-	}
-
-	return repoPath
-}
-
-// normalisedSubfolder extracts and normalizes the subfolder from repository metadata
-func normalisedSubfolder(md *git.RepositoryMetadata) string {
-	if md == nil {
-		return ""
-	}
-	sub := strings.Trim(md.Subfolder, "/\\")
-	return filepath.ToSlash(sub)
-}
-
-// resolveRelativeLocalPath resolves a relative URI to a local filesystem path
-func resolveRelativeLocalPath(cleanURI, repoRoot, subfolder, absSource string) string {
-	if repoRoot != "" {
-		if subfolder != "" {
-			return filepath.Join(repoRoot, subfolder, cleanURI)
-		}
-		return filepath.Join(repoRoot, cleanURI)
-	}
-	if absSource != "" {
-		return filepath.Join(absSource, cleanURI)
-	}
-	return cleanURI
-}
-
-// pathWithin checks if a path is within another path
-func pathWithin(path, within string) bool {
-	rel, err := filepath.Rel(within, path)
-	return err == nil && !strings.HasPrefix(rel, "..")
 }

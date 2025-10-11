@@ -454,7 +454,7 @@ func buildKnownIssuesFromOpen(openIssues map[int]OpenIssueEntry, lg hclog.Logger
 // Issues are filtered based on their FilePath metadata matching the normalized subfolder path.
 func filterIssuesBySourceFolder(openIssues map[int]OpenIssueEntry, repoMetadata *git.RepositoryMetadata, lg hclog.Logger) map[int]OpenIssueEntry {
 	// Determine the subfolder scope from repo metadata
-	subfolder := normalisedSubfolder(repoMetadata)
+	subfolder := internalsarif.NormalisedSubfolder(repoMetadata)
 
 	// If no subfolder (scanning from root), include all issues
 	if subfolder == "" {
