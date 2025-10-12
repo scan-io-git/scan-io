@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/owenrumney/go-sarif/v2/sarif"
@@ -283,33 +284,72 @@ func (r Report) EnrichResultsCodeFlowProperty(locationWebURLCallback func(artifa
 	}
 }
 
-// EnrichResultsLevelProperty function to enrich results properties with level taken from corersponding rules propertiues "problem.severity" field
+// EnrichResultsLevelProperty enriches result properties with level information taken from either
+// the result itself or the corresponding rule metadata. Supports multi-run SARIF reports.
 func (r Report) EnrichResultsLevelProperty() {
-	rulesMap := map[string]*sarif.ReportingDescriptor{}
-	for _, rule := range r.Runs[0].Tool.Driver.Rules {
-		rulesMap[rule.ID] = rule
-	}
-
-	for _, result := range r.Runs[0].Results {
-		if result.Properties == nil {
-			result.Properties = make(map[string]interface{})
+	for _, run := range r.Runs {
+		rulesMap := map[string]*sarif.ReportingDescriptor{}
+		if run.Tool.Driver != nil {
+			for _, rule := range run.Tool.Driver.Rules {
+				if rule == nil {
+					continue
+				}
+				rulesMap[rule.ID] = rule
+			}
 		}
-		if rule, ok := rulesMap[*result.RuleID]; ok {
-			if result.Properties["Level"] == nil {
-				if result.Level != nil {
-					// used by snyk
-					result.Properties["Level"] = *result.Level
-				} else if rule.Properties["problem.severity"] != nil {
-					// used by codeql
-					result.Properties["Level"] = rule.Properties["problem.severity"]
-				} else if rule.DefaultConfiguration != nil {
-					// used by all tools?
-					result.Properties["Level"] = rule.DefaultConfiguration.Level
-				} else {
-					// just a fallback, should never happen
-					result.Properties["Level"] = "unknown"
+
+		for _, result := range run.Results {
+			if result == nil {
+				continue
+			}
+
+			if result.Properties == nil {
+				result.Properties = make(map[string]interface{})
+			}
+
+			if result.Properties["Level"] != nil {
+				continue
+			}
+
+			// Prefer explicit level on the result when available.
+			if result.Level != nil {
+				if lvl := strings.TrimSpace(*result.Level); lvl != "" {
+					result.Properties["Level"] = lvl
+					continue
 				}
 			}
+
+			var ruleDescriptor *sarif.ReportingDescriptor
+			if result.RuleID != nil {
+				if rule, ok := rulesMap[*result.RuleID]; ok {
+					ruleDescriptor = rule
+				}
+			}
+
+			if ruleDescriptor != nil && ruleDescriptor.Properties != nil {
+				if level, ok := ruleDescriptor.Properties["problem.severity"]; ok {
+					if str, ok := level.(string); ok {
+						if trimmed := strings.TrimSpace(str); trimmed != "" {
+							result.Properties["Level"] = trimmed
+							continue
+						}
+					} else if level != nil {
+						// Preserve non-string values (legacy behaviour) if provided.
+						result.Properties["Level"] = level
+						continue
+					}
+				}
+			}
+
+			if ruleDescriptor != nil && ruleDescriptor.DefaultConfiguration != nil {
+				if lvl := strings.TrimSpace(ruleDescriptor.DefaultConfiguration.Level); lvl != "" {
+					result.Properties["Level"] = lvl
+					continue
+				}
+			}
+
+			// Fallback when no metadata provides a level.
+			result.Properties["Level"] = "unknown"
 		}
 	}
 }

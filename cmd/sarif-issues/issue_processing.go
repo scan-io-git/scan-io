@@ -487,7 +487,11 @@ func createUnmatchedIssues(unmatchedNew []issuecorrelation.IssueMetadata, newIss
 				fmt.Printf("-%d", u.EndLine)
 			}
 			fmt.Printf("\n")
-			fmt.Printf("  Severity: %s\n", u.Severity)
+			severityDisplay := displaySeverity(u.Severity)
+			if strings.TrimSpace(severityDisplay) == "" {
+				severityDisplay = u.Severity
+			}
+			fmt.Printf("  Severity: %s\n", severityDisplay)
 			fmt.Printf("  Scanner: %s\n", u.Scanner)
 			fmt.Printf("  Rule ID: %s\n", u.RuleID)
 			fmt.Printf("\n")
