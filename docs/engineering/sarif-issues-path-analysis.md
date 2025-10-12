@@ -147,3 +147,14 @@ scanio sarif-issues --sarif snyk-another.sarif --source-folder apps/another
 - When scanning from root (no subfolder), all issues are included as before
 
 **Expected Behavior**: Both sets of issues remain open and are managed independently. Issues from `apps/demo` won't be closed when running the second command for `apps/another`.
+
+## empty source-folder test
+```sh
+cd /home/jekos/ghq/github.com/scan-io-git/scanio-test
+
+snyk code test --sarif-file-output=snyk.sarif
+
+# create issues
+scanio sarif-issues --sarif snyk.sarif --source-folder .
+scanio sarif-issues --sarif snyk.sarif
+```

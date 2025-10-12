@@ -93,6 +93,12 @@ func runSarifIssues(cmd *cobra.Command, args []string) error {
 	// 4. Handle git metadata fallbacks
 	ApplyGitMetadataFallbacks(&opts, lg)
 
+	// 4.5. Default source-folder to current directory when empty
+	if strings.TrimSpace(opts.SourceFolder) == "" {
+		opts.SourceFolder = "."
+		lg.Debug("defaulted source-folder to current directory")
+	}
+
 	// 5. Validate arguments
 	if err := validate(&opts); err != nil {
 		lg.Error("invalid arguments", "error", err)
@@ -158,7 +164,13 @@ func resolveRepositoryMetadata(sourceFolderAbs string, lg hclog.Logger) *git.Rep
 
 	md, err := git.CollectRepositoryMetadata(sourceFolderAbs)
 	if err != nil {
-		lg.Debug("unable to collect repository metadata", "error", err)
+		// If we defaulted to current directory and git metadata collection fails,
+		// log a concise warning but don't fail hard (preserve existing error guidance)
+		if sourceFolderAbs == "." {
+			lg.Warn("unable to collect git metadata from current directory - snippet hashes may not be computed")
+		} else {
+			lg.Debug("unable to collect repository metadata", "error", err)
+		}
 	}
 	return md
 }

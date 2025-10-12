@@ -1502,6 +1502,190 @@ https://github.com/test-org/test-repo/blob/test-ref/main.py#L2
 	}
 }
 
+// TestDefaultSourceFolderRegression tests the fix for the issue where omitting --source-folder
+// causes snippet hash computation to fail. This validates the documented workflow:
+// "Run inside git repository (auto-detects namespace, repository, ref)"
+func TestDefaultSourceFolderRegression(t *testing.T) {
+	// Create a temporary directory structure that mimics a git repository
+	tempDir, err := os.MkdirTemp("", "sarif-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create a git repository structure
+	repoRoot := filepath.Join(tempDir, "test-repo")
+	if err := os.Mkdir(repoRoot, 0755); err != nil {
+		t.Fatalf("failed to create repo root: %v", err)
+	}
+
+	// Create a test file with content for snippet hashing
+	testFile := filepath.Join(repoRoot, "main.py")
+	var builder strings.Builder
+	for i := 1; i <= 30; i++ {
+		builder.WriteString(fmt.Sprintf("line %d\n", i))
+	}
+	if err := os.WriteFile(testFile, []byte(builder.String()), 0o644); err != nil {
+		t.Fatalf("failed to write test file: %v", err)
+	}
+
+	// Initialize git repository
+	gitDir := filepath.Join(repoRoot, ".git")
+	if err := os.Mkdir(gitDir, 0755); err != nil {
+		t.Fatalf("failed to create .git dir: %v", err)
+	}
+
+	// Create a mock git config file
+	configFile := filepath.Join(gitDir, "config")
+	configContent := `[remote "origin"]
+	url = https://github.com/test-org/test-repo.git`
+	if err := os.WriteFile(configFile, []byte(configContent), 0o644); err != nil {
+		t.Fatalf("failed to write git config: %v", err)
+	}
+
+	// Create a mock HEAD file
+	headFile := filepath.Join(gitDir, "HEAD")
+	if err := os.WriteFile(headFile, []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+		t.Fatalf("failed to write HEAD file: %v", err)
+	}
+
+	// Create refs/heads directory and main branch file
+	refsDir := filepath.Join(gitDir, "refs", "heads")
+	if err := os.MkdirAll(refsDir, 0755); err != nil {
+		t.Fatalf("failed to create refs dir: %v", err)
+	}
+	mainBranchFile := filepath.Join(refsDir, "main")
+	commitHash := "aec0b795c350ff53fe9ab01adf862408aa34c3fd"
+	if err := os.WriteFile(mainBranchFile, []byte(commitHash+"\n"), 0o644); err != nil {
+		t.Fatalf("failed to write main branch file: %v", err)
+	}
+
+	// Change to the repository directory to simulate running from inside the repo
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get current directory: %v", err)
+	}
+	defer os.Chdir(originalDir)
+
+	if err := os.Chdir(repoRoot); err != nil {
+		t.Fatalf("failed to change to repo directory: %v", err)
+	}
+
+	// Create test logger
+	logger := hclog.NewNullLogger()
+
+	// Create repository metadata (simulating successful git metadata collection)
+	metadata := &git.RepositoryMetadata{
+		RepoRootFolder:     repoRoot,
+		Subfolder:          "", // No subfolder when running from root
+		CommitHash:         &commitHash,
+		RepositoryFullName: stringPtr("test-org/test-repo"),
+	}
+
+	// Create SARIF result pointing to our test file
+	ruleID := "test.rule"
+	uriValue := "main.py" // Relative URI as would be in SARIF when scanning from repo root
+	startLine := 11
+	endLine := 29
+	message := "Test finding"
+
+	result := &sarif.Result{
+		RuleID: &ruleID,
+		Message: sarif.Message{
+			Text: &message,
+		},
+		Locations: []*sarif.Location{
+			{
+				PhysicalLocation: &sarif.PhysicalLocation{
+					ArtifactLocation: &sarif.ArtifactLocation{
+						URI: &uriValue,
+					},
+					Region: &sarif.Region{
+						StartLine: &startLine,
+						EndLine:   &endLine,
+					},
+				},
+			},
+		},
+	}
+	result.PropertyBag = *sarif.NewPropertyBag()
+	result.Add("Level", "error")
+
+	// Create SARIF report
+	report := &internalsarif.Report{
+		Report: &sarif.Report{
+			Runs: []*sarif.Run{
+				{
+					Tool: sarif.Tool{
+						Driver: &sarif.ToolComponent{
+							Name: "Test Scanner",
+							Rules: []*sarif.ReportingDescriptor{
+								{ID: ruleID},
+							},
+						},
+					},
+					Results: []*sarif.Result{result},
+				},
+			},
+		},
+	}
+
+	// Test with empty source folder (simulating omitted --source-folder flag)
+	options := RunOptions{
+		Namespace:    "test-org",
+		Repository:   "test-repo",
+		Ref:          commitHash,
+		SourceFolder: "", // Empty source folder - should default to current directory
+	}
+
+	// Build issues from SARIF
+	issues := buildNewIssuesFromSARIF(report, options, repoRoot, metadata, logger)
+
+	// Verify results
+	if len(issues) == 0 {
+		t.Fatal("expected at least one issue to be created")
+	}
+
+	issue := issues[0]
+
+	// Verify snippet hash was computed successfully
+	if issue.Metadata.SnippetHash == "" {
+		t.Fatal("expected snippet hash to be computed when source-folder defaults to current directory")
+	}
+
+	// Verify snippet hash is included in issue body
+	if !strings.Contains(issue.Body, "Snippet SHA256") {
+		t.Fatal("expected issue body to contain Snippet SHA256 block")
+	}
+
+	// Verify the snippet hash in the body matches the metadata
+	expectedHash := issue.Metadata.SnippetHash
+	if !strings.Contains(issue.Body, expectedHash) {
+		t.Fatalf("expected issue body to contain snippet hash %q", expectedHash)
+	}
+
+	// Verify file path is correctly resolved
+	expectedRepoPath := "main.py"
+	if issue.Metadata.Filename != expectedRepoPath {
+		t.Fatalf("expected repo path %q, got %q", expectedRepoPath, issue.Metadata.Filename)
+	}
+
+	// Verify permalink is generated correctly
+	expectedPermalink := fmt.Sprintf("https://github.com/%s/%s/blob/%s/%s#L%d-L%d",
+		options.Namespace,
+		options.Repository,
+		commitHash,
+		expectedRepoPath,
+		startLine,
+		endLine,
+	)
+	if !strings.Contains(issue.Body, expectedPermalink) {
+		t.Fatalf("expected issue body to contain permalink %q", expectedPermalink)
+	}
+
+	t.Logf("Successfully computed snippet hash: %s", issue.Metadata.SnippetHash)
+}
+
 // Helper functions for creating test data
 func stringPtr(s string) *string {
 	return &s
