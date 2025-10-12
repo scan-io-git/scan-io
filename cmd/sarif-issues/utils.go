@@ -59,6 +59,80 @@ func displaySeverity(level string) string {
 	}
 }
 
+// normalizeAndValidateLevels validates and normalizes severity levels input.
+// Accepts both SARIF levels (error, warning, note, none) and display levels (High, Medium, Low, Info).
+// Returns normalized SARIF levels and an error if mixing formats is detected.
+func normalizeAndValidateLevels(levels []string) ([]string, error) {
+	if len(levels) == 0 {
+		return []string{"error"}, nil
+	}
+
+	var sarifLevels []string
+	var displayLevels []string
+	var normalized []string
+
+	// Check each level and categorize
+	for _, level := range levels {
+		normalizedLevel := strings.ToLower(strings.TrimSpace(level))
+
+		// Check if it's a SARIF level
+		if isSARIFLevel(normalizedLevel) {
+			sarifLevels = append(sarifLevels, normalizedLevel)
+			normalized = append(normalized, normalizedLevel)
+		} else if isDisplayLevel(normalizedLevel) {
+			displayLevels = append(displayLevels, normalizedLevel)
+			// Convert display level to SARIF level
+			sarifLevel := displayToSARIFLevel(normalizedLevel)
+			normalized = append(normalized, sarifLevel)
+		} else {
+			return nil, fmt.Errorf("invalid severity level '%s'. Valid SARIF levels: error, warning, note, none. Valid display levels: high, medium, low, info", level)
+		}
+	}
+
+	// Check for mixing formats
+	if len(sarifLevels) > 0 && len(displayLevels) > 0 {
+		return nil, fmt.Errorf("cannot mix SARIF levels (error, warning, note, none) with display levels (High, Medium, Low, Info)")
+	}
+
+	return normalized, nil
+}
+
+// isSARIFLevel checks if the normalized level is a valid SARIF level
+func isSARIFLevel(level string) bool {
+	switch level {
+	case "error", "warning", "note", "none":
+		return true
+	default:
+		return false
+	}
+}
+
+// isDisplayLevel checks if the normalized level is a valid display level
+func isDisplayLevel(level string) bool {
+	switch level {
+	case "high", "medium", "low", "info":
+		return true
+	default:
+		return false
+	}
+}
+
+// displayToSARIFLevel converts a display level to its corresponding SARIF level
+func displayToSARIFLevel(displayLevel string) string {
+	switch displayLevel {
+	case "high":
+		return "error"
+	case "medium":
+		return "warning"
+	case "low":
+		return "note"
+	case "info":
+		return "none"
+	default:
+		return displayLevel
+	}
+}
+
 // generateOWASPSlug creates a URL-safe slug from OWASP title text.
 // Converts spaces to underscores and removes non-alphanumeric characters except hyphens and underscores.
 func generateOWASPSlug(title string) string {

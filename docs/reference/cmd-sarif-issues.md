@@ -1,5 +1,5 @@
 # SARIF Issues Command
-The `sarif-issues` command creates GitHub issues from high severity findings in SARIF reports. It implements intelligent issue correlation to avoid duplicates and automatically closes issues that are no longer present in recent scans.
+The `sarif-issues` command creates GitHub issues from SARIF findings with configurable severity levels. It implements intelligent issue correlation to avoid duplicates and automatically closes issues that are no longer present in recent scans.
 
 This command is designed and recommended for CI/CD integration and automated security issue management, enabling teams to track and manage security findings directly in their GitHub repositories.
 
@@ -8,6 +8,7 @@ This command is designed and recommended for CI/CD integration and automated sec
 - [Key Features](#key-features)
 - [Syntax](#syntax)
 - [Options](#options)
+- [Severity Level Configuration](#severity-level-configuration)
 - [Core Validation](#core-validation)
 - [GitHub Authentication Setup](#github-authentication-setup)
 - [Usage Examples](#usage-examples)
@@ -19,14 +20,14 @@ This command is designed and recommended for CI/CD integration and automated sec
 
 | Feature                                   | Description                                              |
 |-------------------------------------------|----------------------------------------------------------|
-| Create issues from high severity findings | Automatically creates GitHub issues for SARIF findings with "error" level |
+| Create issues from configurable severity levels | Automatically creates GitHub issues for SARIF findings with specified severity levels (default: "error") |
 | Correlate with existing issues           | Matches new findings against open issues to prevent duplicates |
 | Auto-close resolved issues               | Closes open issues that are no longer present in current scan results |
 | Add metadata and permalinks              | Enriches issues with file links, severity, scanner info, and code snippets |
 
 ## Syntax
 ```bash
-scanio sarif-issues --sarif PATH [--namespace NAMESPACE] [--repository REPO] [--source-folder PATH] [--ref REF] [--labels label[,label...]] [--assignees user[,user...]]
+scanio sarif-issues --sarif PATH [--namespace NAMESPACE] [--repository REPO] [--source-folder PATH] [--ref REF] [--labels label[,label...]] [--assignees user[,user...]] [--levels level[,level...]]
 ```
 
 ## Options
@@ -40,6 +41,7 @@ scanio sarif-issues --sarif PATH [--namespace NAMESPACE] [--repository REPO] [--
 | `--ref`             | string   | No          | `$GITHUB_SHA`                    | Git ref (branch or commit SHA) for building permalinks to vulnerable code. |
 | `--labels`          | strings  | No          | `none`                           | Labels to assign to created GitHub issues (comma-separated or repeat flag). |
 | `--assignees`       | strings  | No          | `none`                           | GitHub usernames to assign to created issues (comma-separated or repeat flag). |
+| `--levels`          | strings  | No          | `["error"]`                      | SARIF severity levels to process. Accepts SARIF levels (error, warning, note, none) or display levels (High, Medium, Low, Info). Cannot mix formats. Case-insensitive. |
 | `--help`, `-h`      | flag     | No          | `false`                          | Displays help for the `sarif-issues` command.                              |
 
 **Environment Variable Fallbacks**<br>
@@ -50,12 +52,57 @@ The command automatically uses GitHub Actions environment variables when flags a
 
 This enables seamless integration with GitHub Actions workflows without explicit configuration.
 
+## Severity Level Configuration
+
+The `--levels` flag allows you to specify which SARIF severity levels should trigger issue creation. This provides flexibility in managing different types of security findings based on your team's priorities.
+
+### Supported Level Formats
+
+**SARIF Levels** (native SARIF format):
+- `error` - High severity findings (default)
+- `warning` - Medium severity findings  
+- `note` - Low severity findings
+- `none` - Informational findings
+
+**Display Levels** (human-readable format):
+- `High` - Maps to SARIF `error`
+- `Medium` - Maps to SARIF `warning`
+- `Low` - Maps to SARIF `note` 
+- `Info` - Maps to SARIF `none`
+
+### Usage Rules
+
+- **Case-insensitive**: All level comparisons are case-insensitive
+- **Format consistency**: Cannot mix SARIF and display levels in the same command
+- **Multiple values**: Use comma-separated values or repeat the flag
+- **Default behavior**: When `--levels` is not specified, only `error` level findings create issues
+
+### Examples
+
+```bash
+# Default behavior (error level only)
+scanio sarif-issues --sarif report.sarif
+
+# Multiple SARIF levels
+scanio sarif-issues --sarif report.sarif --levels error,warning
+
+# Multiple display levels  
+scanio sarif-issues --sarif report.sarif --levels High,Medium
+
+# All severity levels using SARIF format
+scanio sarif-issues --sarif report.sarif --levels error,warning,note,none
+
+# Invalid mixing (will error)
+scanio sarif-issues --sarif report.sarif --levels error,High
+```
+
 ## Core Validation
 The `sarif-issues` command includes several validation layers to ensure robust execution:
 - **Required Parameters**: Validates that `--sarif`, `--namespace`, and `--repository` are provided either via flags or environment variables.
 - **SARIF File Validation**: Ensures the SARIF file exists and can be parsed successfully.
 - **GitHub Authentication**: Requires valid GitHub credentials configured through the GitHub plugin.
-- **High Severity Filtering**: Only processes SARIF results with `Level: "error"` to focus on critical findings.
+- **Severity Level Validation**: Validates and normalizes severity levels, preventing mixing of SARIF and display level formats.
+- **Configurable Severity Filtering**: Processes SARIF results based on specified severity levels (default: "error" only).
 
 ## GitHub Authentication Setup
 
@@ -104,6 +151,17 @@ Create issues with source code snippets, labels, and assignees:
 scanio sarif-issues --sarif results/semgrep.sarif --source-folder . --labels bug,security --assignees alice,bob
 ```
 
+### Configurable Severity Levels
+Create issues for multiple severity levels using SARIF levels:
+```bash
+scanio sarif-issues --sarif results/semgrep.sarif --levels error,warning
+```
+
+Create issues for multiple severity levels using display levels:
+```bash
+scanio sarif-issues --sarif results/semgrep.sarif --levels High,Medium
+```
+
 ### With Custom Git Reference
 Create issues with specific commit reference for permalinks:
 ```bash
@@ -129,7 +187,7 @@ The command provides some logging information including:
 The command implements intelligent issue correlation to manage the lifecycle of security findings:
 
 ### New Issue Creation
-- **High Severity Only**: Only creates issues for SARIF findings with `Level: "error"`
+- **Configurable Severity Levels**: Creates issues for SARIF findings with specified severity levels (default: "error" only)
 - **Duplicate Prevention**: Uses hierarchical correlation to match new findings against existing open issues
 - **Unmatched Findings**: Creates GitHub issues only for findings that don't match existing open issues through any correlation stage
 

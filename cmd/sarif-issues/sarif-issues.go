@@ -32,6 +32,7 @@ type RunOptions struct {
 	Ref          string   `json:"ref,omitempty"`
 	Labels       []string `json:"labels,omitempty"`
 	Assignees    []string `json:"assignees,omitempty"`
+	Levels       []string `json:"levels,omitempty"`
 }
 
 var (
@@ -45,8 +46,14 @@ var (
   # Run inside git repository (auto-detects namespace, repository, ref)
   scanio sarif-issues --sarif semgrep-demo.sarif --source-folder apps/demo
 
-  # Create issues from SARIF report with basic configuration
+  # Create issues from SARIF report with basic configuration (default: error level only)
   scanio sarif-issues --namespace scan-io-git --repository scan-io --sarif /path/to/report.sarif
+
+  # Create issues for multiple severity levels using SARIF levels
+  scanio sarif-issues --namespace scan-io-git --repository scan-io --sarif /path/to/report.sarif --levels error,warning
+
+  # Create issues for multiple severity levels using display levels
+  scanio sarif-issues --namespace scan-io-git --repository scan-io --sarif /path/to/report.sarif --levels High,Medium
 
   # Create issues with labels and assignees
   scanio sarif-issues --namespace scan-io-git --repository scan-io --sarif /path/to/report.sarif --labels bug,security --assignees alice,bob
@@ -62,8 +69,8 @@ var (
 
 	// SarifIssuesCmd represents the command to create GitHub issues from a SARIF file.
 	SarifIssuesCmd = &cobra.Command{
-		Use:                   "sarif-issues --sarif PATH [--namespace NAMESPACE] [--repository REPO] [--source-folder PATH] [--ref REF] [--labels label[,label...]] [--assignees user[,user...]]",
-		Short:                 "Create GitHub issues for high severity SARIF findings",
+		Use:                   "sarif-issues --sarif PATH [--namespace NAMESPACE] [--repository REPO] [--source-folder PATH] [--ref REF] [--labels label[,label...]] [--assignees user[,user...]] [--levels level[,level...]]",
+		Short:                 "Create GitHub issues for SARIF findings with configurable severity levels",
 		Example:               exampleSarifIssuesUsage,
 		SilenceUsage:          false,
 		Hidden:                false,
@@ -98,6 +105,15 @@ func runSarifIssues(cmd *cobra.Command, args []string) error {
 		opts.SourceFolder = "."
 		lg.Info("no --source-folder provided; defaulting to current directory", "source_folder", opts.SourceFolder)
 	}
+
+	// 4.6. Validate and normalize severity levels
+	normalizedLevels, err := normalizeAndValidateLevels(opts.Levels)
+	if err != nil {
+		lg.Error("invalid severity levels", "error", err)
+		return errors.NewCommandError(opts, nil, fmt.Errorf("invalid severity levels: %w", err), 1)
+	}
+	opts.Levels = normalizedLevels
+	lg.Debug("normalized severity levels", "levels", opts.Levels)
 
 	// 5. Validate arguments
 	if err := validate(&opts); err != nil {
@@ -157,6 +173,7 @@ func init() {
 	SarifIssuesCmd.Flags().StringSliceVar(&opts.Labels, "labels", nil, "Optional: labels to assign to created GitHub issues (repeat flag or use comma-separated values)")
 	// --assignees supports multiple usages or comma-separated values
 	SarifIssuesCmd.Flags().StringSliceVar(&opts.Assignees, "assignees", nil, "Optional: assignees (GitHub logins) to assign to created issues (repeat flag or use comma-separated values)")
+	SarifIssuesCmd.Flags().StringSliceVar(&opts.Levels, "levels", []string{"error"}, "SARIF severity levels to process: SARIF levels (error, warning, note, none) or display levels (High, Medium, Low, Info). Cannot mix formats. (repeat flag or use comma-separated values)")
 	SarifIssuesCmd.Flags().BoolP("help", "h", false, "Show help for sarif-issues command.")
 }
 

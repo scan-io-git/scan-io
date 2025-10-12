@@ -194,7 +194,7 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, s
 
 		for _, res := range run.Results {
 			level, _ := res.Properties["Level"].(string)
-			if strings.ToLower(level) != "error" {
+			if !isLevelAllowed(strings.ToLower(level), options.Levels) {
 				continue
 			}
 
@@ -617,4 +617,19 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, source
 	}
 
 	return created, closed, nil
+}
+
+// isLevelAllowed checks if a SARIF level is in the allowed levels list
+func isLevelAllowed(level string, allowedLevels []string) bool {
+	// If no levels specified, default to "error" for backward compatibility
+	if allowedLevels == nil || len(allowedLevels) == 0 {
+		return strings.ToLower(level) == "error"
+	}
+
+	for _, allowed := range allowedLevels {
+		if strings.ToLower(level) == strings.ToLower(allowed) {
+			return true
+		}
+	}
+	return false
 }
