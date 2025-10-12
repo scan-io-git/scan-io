@@ -222,7 +222,7 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, s
 				lg.Warn("SARIF result missing line information", "rule_id", ruleID, "file", fileURI)
 			}
 
-			snippetHash := computeSnippetHash(localPath, line, endLine)
+			snippetHash := issuecorrelation.ComputeSnippetHash(localPath, line, endLine)
 			if snippetHash == "" && fileURI != "<unknown>" && line > 0 {
 				lg.Warn("failed to compute snippet hash", "rule_id", ruleID, "file", fileURI, "line", line, "local_path", localPath)
 			}
