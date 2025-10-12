@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/scan-io-git/scan-io/internal/git"
 )
 
@@ -232,4 +233,85 @@ func BuildGitHubPermalink(namespace, repository, ref, repoRelativePath string, s
 	}
 
 	return fmt.Sprintf("%s#L%d-L%d", baseURL, startLine, endLine)
+}
+
+// ExtractFileURIFromResult derives both the repository-relative path and local filesystem path
+// for the first location in a SARIF result. When repository metadata is available the repo-relative
+// path is anchored at the repository root; otherwise the function falls back to trimming the
+// provided source folder (preserving legacy behaviour).
+func ExtractFileURIFromResult(res *sarif.Result, absSourceFolder string, repoMetadata *git.RepositoryMetadata) (string, string) {
+	if res == nil || len(res.Locations) == 0 {
+		return "", ""
+	}
+	loc := res.Locations[0]
+	if loc.PhysicalLocation == nil {
+		return "", ""
+	}
+	art := loc.PhysicalLocation.ArtifactLocation
+	if art == nil || art.URI == nil {
+		return "", ""
+	}
+	rawURI := strings.TrimSpace(*art.URI)
+	if rawURI == "" {
+		return "", ""
+	}
+
+	// Use shared function to get repo-relative path
+	repoPath := ConvertToRepoRelativePath(rawURI, repoMetadata, absSourceFolder)
+
+	// Calculate local path for file operations (snippet hashing, etc.)
+	localPath := CalculateLocalPath(rawURI, repoMetadata, absSourceFolder)
+
+	return repoPath, localPath
+}
+
+// CalculateLocalPath determines the absolute local filesystem path for a SARIF URI.
+// This is used for reading files for snippet hashing and other local file operations.
+func CalculateLocalPath(rawURI string, repoMetadata *git.RepositoryMetadata, absSourceFolder string) string {
+	subfolder := NormalisedSubfolder(repoMetadata)
+	var repoRoot string
+	if repoMetadata != nil && strings.TrimSpace(repoMetadata.RepoRootFolder) != "" {
+		repoRoot = filepath.Clean(repoMetadata.RepoRootFolder)
+	}
+	absSource := strings.TrimSpace(absSourceFolder)
+	if absSource != "" {
+		if abs, err := filepath.Abs(absSource); err == nil {
+			absSource = abs
+		} else {
+			absSource = filepath.Clean(absSource)
+		}
+	}
+
+	// Normalize URI to the host OS path representation
+	osURI := filepath.FromSlash(rawURI)
+	osURI = strings.TrimPrefix(osURI, "file://")
+	cleanURI := filepath.Clean(osURI)
+
+	if filepath.IsAbs(cleanURI) {
+		return cleanURI
+	}
+
+	// Relative path - resolve to absolute
+	return ResolveRelativeLocalPath(cleanURI, repoRoot, subfolder, absSource)
+}
+
+// ExtractRegionFromResult returns start and end line numbers (0 when not present)
+// taken from the SARIF result's first location region.
+func ExtractRegionFromResult(res *sarif.Result) (int, int) {
+	if res == nil || len(res.Locations) == 0 {
+		return 0, 0
+	}
+	loc := res.Locations[0]
+	if loc.PhysicalLocation == nil || loc.PhysicalLocation.Region == nil {
+		return 0, 0
+	}
+	start := 0
+	end := 0
+	if loc.PhysicalLocation.Region.StartLine != nil {
+		start = *loc.PhysicalLocation.Region.StartLine
+	}
+	if loc.PhysicalLocation.Region.EndLine != nil {
+		end = *loc.PhysicalLocation.Region.EndLine
+	}
+	return start, end
 }

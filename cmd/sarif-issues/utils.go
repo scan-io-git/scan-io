@@ -240,87 +240,6 @@ func buildGitHubPermalink(options RunOptions, repoMetadata *git.RepositoryMetada
 	return internalsarif.BuildGitHubPermalink(options.Namespace, options.Repository, ref, path, start, end)
 }
 
-// extractFileURIFromResult derives both the repository-relative path and local filesystem path
-// for the first location in a SARIF result. When repository metadata is available the repo-relative
-// path is anchored at the repository root; otherwise the function falls back to trimming the
-// provided source folder (preserving legacy behaviour).
-func extractFileURIFromResult(res *sarif.Result, absSourceFolder string, repoMetadata *git.RepositoryMetadata) (string, string) {
-	if res == nil || len(res.Locations) == 0 {
-		return "", ""
-	}
-	loc := res.Locations[0]
-	if loc.PhysicalLocation == nil {
-		return "", ""
-	}
-	art := loc.PhysicalLocation.ArtifactLocation
-	if art == nil || art.URI == nil {
-		return "", ""
-	}
-	rawURI := strings.TrimSpace(*art.URI)
-	if rawURI == "" {
-		return "", ""
-	}
-
-	// Use shared function to get repo-relative path
-	repoPath := internalsarif.ConvertToRepoRelativePath(rawURI, repoMetadata, absSourceFolder)
-
-	// Calculate local path for file operations (snippet hashing, etc.)
-	localPath := calculateLocalPath(rawURI, repoMetadata, absSourceFolder)
-
-	return repoPath, localPath
-}
-
-// calculateLocalPath determines the absolute local filesystem path for a SARIF URI.
-// This is used for reading files for snippet hashing and other local file operations.
-func calculateLocalPath(rawURI string, repoMetadata *git.RepositoryMetadata, absSourceFolder string) string {
-	subfolder := internalsarif.NormalisedSubfolder(repoMetadata)
-	var repoRoot string
-	if repoMetadata != nil && strings.TrimSpace(repoMetadata.RepoRootFolder) != "" {
-		repoRoot = filepath.Clean(repoMetadata.RepoRootFolder)
-	}
-	absSource := strings.TrimSpace(absSourceFolder)
-	if absSource != "" {
-		if abs, err := filepath.Abs(absSource); err == nil {
-			absSource = abs
-		} else {
-			absSource = filepath.Clean(absSource)
-		}
-	}
-
-	// Normalize URI to the host OS path representation
-	osURI := filepath.FromSlash(rawURI)
-	osURI = strings.TrimPrefix(osURI, "file://")
-	cleanURI := filepath.Clean(osURI)
-
-	if filepath.IsAbs(cleanURI) {
-		return cleanURI
-	}
-
-	// Relative path - resolve to absolute
-	return internalsarif.ResolveRelativeLocalPath(cleanURI, repoRoot, subfolder, absSource)
-}
-
-// extractRegionFromResult returns start and end line numbers (0 when not present)
-// taken from the SARIF result's first location region.
-func extractRegionFromResult(res *sarif.Result) (int, int) {
-	if res == nil || len(res.Locations) == 0 {
-		return 0, 0
-	}
-	loc := res.Locations[0]
-	if loc.PhysicalLocation == nil || loc.PhysicalLocation.Region == nil {
-		return 0, 0
-	}
-	start := 0
-	end := 0
-	if loc.PhysicalLocation.Region.StartLine != nil {
-		start = *loc.PhysicalLocation.Region.StartLine
-	}
-	if loc.PhysicalLocation.Region.EndLine != nil {
-		end = *loc.PhysicalLocation.Region.EndLine
-	}
-	return start, end
-}
-
 // ResolveSourceFolder resolves a source folder path to its absolute form for path calculations.
 // It handles path expansion (e.g., ~) and absolute path resolution with graceful fallbacks.
 // Returns an empty string if the input folder is empty or whitespace-only.
@@ -407,7 +326,7 @@ func FormatCodeFlows(result *sarif.Result, options RunOptions, repoMetadata *git
 				}
 
 				// Extract file path and line information
-				fileURI, _ := extractFileURIFromResult(&sarif.Result{
+				fileURI, _ := internalsarif.ExtractFileURIFromResult(&sarif.Result{
 					Locations: []*sarif.Location{location},
 				}, sourceFolderAbs, repoMetadata)
 

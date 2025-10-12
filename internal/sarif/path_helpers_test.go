@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/scan-io-git/scan-io/internal/git"
 )
 
@@ -518,6 +519,105 @@ func TestBuildGitHubPermalink(t *testing.T) {
 			if result != tt.expected {
 				t.Errorf("BuildGitHubPermalink(%q, %q, %q, %q, %d, %d) = %q, expected %q",
 					tt.namespace, tt.repository, tt.ref, tt.repoRelativePath, tt.startLine, tt.endLine, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestExtractFileURIFromResult(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "sarif_extract")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	repoRoot := filepath.Join(tempDir, "scanio-test")
+	subfolder := filepath.Join(repoRoot, "apps", "demo")
+	if err := os.MkdirAll(subfolder, 0o755); err != nil {
+		t.Fatalf("Failed to create subfolder: %v", err)
+	}
+
+	absoluteFile := filepath.Join(subfolder, "main.py")
+	metadata := &git.RepositoryMetadata{
+		RepoRootFolder: repoRoot,
+		Subfolder:      filepath.ToSlash(filepath.Join("apps", "demo")),
+	}
+
+	if err := os.WriteFile(absoluteFile, []byte("print('demo')\n"), 0o644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	tests := []struct {
+		name          string
+		uri           string
+		meta          *git.RepositoryMetadata
+		expectedRepo  string
+		expectedLocal string
+		sourceFolder  string
+	}{
+		{
+			name:          "absolute URI with metadata",
+			uri:           absoluteFile,
+			meta:          metadata,
+			expectedRepo:  filepath.ToSlash(filepath.Join("apps", "demo", "main.py")),
+			expectedLocal: absoluteFile,
+			sourceFolder:  subfolder,
+		},
+		{
+			name:          "relative URI with metadata",
+			uri:           "main.py",
+			meta:          metadata,
+			expectedRepo:  filepath.ToSlash(filepath.Join("apps", "demo", "main.py")),
+			expectedLocal: filepath.Join(repoRoot, "apps", "demo", "main.py"),
+			sourceFolder:  subfolder,
+		},
+		{
+			name:          "relative URI with parent segments",
+			uri:           filepath.ToSlash(filepath.Join("..", "scanio-test", "apps", "demo", "main.py")),
+			meta:          metadata,
+			expectedRepo:  filepath.ToSlash(filepath.Join("apps", "demo", "main.py")),
+			expectedLocal: filepath.Join(repoRoot, "apps", "demo", "main.py"),
+			sourceFolder:  subfolder,
+		},
+		{
+			name:          "relative URI already prefixed",
+			uri:           filepath.ToSlash(filepath.Join("apps", "demo", "main.py")),
+			meta:          metadata,
+			expectedRepo:  filepath.ToSlash(filepath.Join("apps", "demo", "main.py")),
+			expectedLocal: filepath.Join(repoRoot, "apps", "demo", "main.py"),
+			sourceFolder:  subfolder,
+		},
+		{
+			name:          "absolute URI without metadata falls back to source folder",
+			uri:           absoluteFile,
+			meta:          nil,
+			expectedRepo:  "main.py",
+			expectedLocal: absoluteFile,
+			sourceFolder:  subfolder,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			uri := tt.uri
+			result := &sarif.Result{
+				Locations: []*sarif.Location{
+					{
+						PhysicalLocation: &sarif.PhysicalLocation{
+							ArtifactLocation: &sarif.ArtifactLocation{
+								URI: &uri,
+							},
+						},
+					},
+				},
+			}
+
+			repoPath, localPath := ExtractFileURIFromResult(result, tt.sourceFolder, tt.meta)
+			if repoPath != tt.expectedRepo {
+				t.Fatalf("expected repo path %q, got %q", tt.expectedRepo, repoPath)
+			}
+			if localPath != tt.expectedLocal {
+				t.Fatalf("expected local path %q, got %q", tt.expectedLocal, localPath)
 			}
 		})
 	}

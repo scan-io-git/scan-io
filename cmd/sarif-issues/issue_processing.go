@@ -209,13 +209,13 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, s
 				continue
 			}
 
-			fileURI, localPath := extractFileURIFromResult(res, sourceFolderAbs, repoMetadata)
+			fileURI, localPath := internalsarif.ExtractFileURIFromResult(res, sourceFolderAbs, repoMetadata)
 			fileURI = filepath.ToSlash(strings.TrimSpace(fileURI))
 			if fileURI == "" {
 				fileURI = "<unknown>"
 				lg.Warn("SARIF result missing file URI, using placeholder", "rule_id", ruleID)
 			}
-			line, endLine := extractRegionFromResult(res)
+			line, endLine := internalsarif.ExtractRegionFromResult(res)
 
 			// Warn about missing location information
 			if line <= 0 {
