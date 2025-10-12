@@ -510,7 +510,8 @@ func createUnmatchedIssues(unmatchedNew []issuecorrelation.IssueMetadata, newIss
 
 // closeUnmatchedIssues closes GitHub issues for known findings that don't correlate with current scan results.
 // Returns an error if any issue closure fails.
-func closeUnmatchedIssues(unmatchedKnown []issuecorrelation.IssueMetadata, options RunOptions, lg hclog.Logger) error {
+func closeUnmatchedIssues(unmatchedKnown []issuecorrelation.IssueMetadata, options RunOptions, lg hclog.Logger) (int, error) {
+	closed := 0
 	for _, k := range unmatchedKnown {
 		// known IssueID contains the number as string
 		num, err := strconv.Atoi(k.IssueID)
@@ -567,15 +568,16 @@ func closeUnmatchedIssues(unmatchedKnown []issuecorrelation.IssueMetadata, optio
 		if err != nil {
 			lg.Error("failed to close issue via plugin", "error", err, "number", num)
 			// continue closing others but report an error at end
-			return errors.NewCommandError(options, nil, fmt.Errorf("close issue failed: %w", err), 2)
+			return closed, errors.NewCommandError(options, nil, fmt.Errorf("close issue failed: %w", err), 2)
 		}
+		closed++
 	}
-	return nil
+	return closed, nil
 }
 
 // processSARIFReport iterates runs/results in the SARIF report and creates VCS issues for
 // high severity findings. Returns number of created issues or an error.
-func processSARIFReport(report *internalsarif.Report, options RunOptions, sourceFolderAbs string, repoMetadata *git.RepositoryMetadata, lg hclog.Logger, openIssues map[int]OpenIssueEntry) (int, error) {
+func processSARIFReport(report *internalsarif.Report, options RunOptions, sourceFolderAbs string, repoMetadata *git.RepositoryMetadata, lg hclog.Logger, openIssues map[int]OpenIssueEntry) (int, int, error) {
 	// Build list of new issues from SARIF using extracted function
 	newIssueData := buildNewIssuesFromSARIF(report, options, sourceFolderAbs, repoMetadata, lg)
 
@@ -604,14 +606,15 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, source
 	unmatchedNew := corr.UnmatchedNew()
 	created, err := createUnmatchedIssues(unmatchedNew, newIssues, newBodies, newTitles, options, lg)
 	if err != nil {
-		return created, err
+		return created, 0, err
 	}
 
 	// Close unmatched known issues (open issues that did not correlate)
 	unmatchedKnown := corr.UnmatchedKnown()
-	if err := closeUnmatchedIssues(unmatchedKnown, options, lg); err != nil {
-		return created, err
+	closed, err := closeUnmatchedIssues(unmatchedKnown, options, lg)
+	if err != nil {
+		return created, closed, err
 	}
 
-	return created, nil
+	return created, closed, nil
 }

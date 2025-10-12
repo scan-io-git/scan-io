@@ -36,7 +36,7 @@ scanio sarif-issues --sarif PATH [--namespace NAMESPACE] [--repository REPO] [--
 | `--sarif`           | string   | Yes         | `none`                           | Path to SARIF report file containing security findings.                    |
 | `--namespace`       | string   | Conditional | `$GITHUB_REPOSITORY_OWNER`       | GitHub organization or user name. Required if environment variable not set. |
 | `--repository`      | string   | Conditional | `${GITHUB_REPOSITORY#*/}`        | Repository name. Required if environment variable not set.                  |
-| `--source-folder`   | string   | No          | `none`                           | Path to source code folder for improved file path resolution and snippets. |
+| `--source-folder`   | string   | No          | `.`                              | Path to source code folder for improved file path resolution and snippets. |
 | `--ref`             | string   | No          | `$GITHUB_SHA`                    | Git ref (branch or commit SHA) for building permalinks to vulnerable code. |
 | `--labels`          | strings  | No          | `none`                           | Labels to assign to created GitHub issues (comma-separated or repeat flag). |
 | `--assignees`       | strings  | No          | `none`                           | GitHub usernames to assign to created issues (comma-separated or repeat flag). |
@@ -84,7 +84,7 @@ For detailed GitHub plugin configuration, refer to [GitHub Plugin Documentation]
 
 ## Usage Examples
 
-> **Recommendation:** Run the command from your repository root and pass `--source-folder` as repo-relative paths (for example `--source-folder apps/demo`). This keeps permalinks and snippet hashing consistent across environments. Even when .git repo is corrupted or is missing.
+> **Recommendation:** Run the command from your repository root and pass `--source-folder` as repo-relative paths (for example `--source-folder apps/demo`). The flag defaults to `.` when omitted; if git metadata cannot be detected, permalinks and snippet hashing may be incomplete.
 
 ### Basic Usage in GitHub Actions
 Create issues from SARIF report using environment variables:
@@ -114,7 +114,7 @@ scanio sarif-issues --sarif results/semgrep.sarif --source-folder . --ref featur
 
 ### User Mode Output
 ```
-Created 3 issue(s) from SARIF high severity findings
+Created 3 issue(s); closed 1 resolved issue(s)
 ```
 
 ### Logging Information
@@ -135,7 +135,7 @@ The command implements intelligent issue correlation to manage the lifecycle of 
 
 ### Automatic Issue Closure
 - **Resolved Findings**: Automatically closes open issues that don't correlate with current scan results
-- **Comment Before Closure**: Adds brief explanatory comment.
+- **Comment Before Closure**: Adds comment `Recent scan didn't see the issue; closing this as resolved.`.
 - **Managed Issues Only**: Only closes issues containing the scanio-managed annotation to avoid affecting manually created issues
 
 ### Correlation Criteria
@@ -237,6 +237,7 @@ Scanio prefers the SARIF rule's short description for the heading; if that is mi
 ```markdown
 ## 🐞 javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage
 
+> **Rule ID**: javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage
 > **Severity**: High,  **Scanner**: Semgrep OSS
 > **File**: app.js, **Lines**: 42-45
 

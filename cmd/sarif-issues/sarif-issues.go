@@ -96,7 +96,7 @@ func runSarifIssues(cmd *cobra.Command, args []string) error {
 	// 4.5. Default source-folder to current directory when empty
 	if strings.TrimSpace(opts.SourceFolder) == "" {
 		opts.SourceFolder = "."
-		lg.Debug("defaulted source-folder to current directory")
+		lg.Info("no --source-folder provided; defaulting to current directory", "source_folder", opts.SourceFolder)
 	}
 
 	// 5. Validate arguments
@@ -117,6 +117,9 @@ func runSarifIssues(cmd *cobra.Command, args []string) error {
 
 	// Collect repository metadata to understand repo root vs. subfolder layout
 	repoMetadata := resolveRepositoryMetadata(sourceFolderAbs, lg)
+	if repoMetadata == nil {
+		lg.Warn("git metadata unavailable; permalinks and snippet hashing may be degraded", "source_folder", sourceFolderAbs)
+	}
 
 	// Enrich to ensure Levels and Titles are present
 	report.EnrichResultsLevelProperty()
@@ -131,15 +134,15 @@ func runSarifIssues(cmd *cobra.Command, args []string) error {
 	lg.Info("fetched open issues from repository", "count", len(openIssues))
 
 	// 8. Process SARIF report and create/close issues
-	created, err := processSARIFReport(report, opts, sourceFolderAbs, repoMetadata, lg, openIssues)
+	created, closed, err := processSARIFReport(report, opts, sourceFolderAbs, repoMetadata, lg, openIssues)
 	if err != nil {
 		lg.Error("failed to process SARIF report", "error", err)
 		return err
 	}
 
 	// 9. Log success and handle output
-	lg.Info("issues created from SARIF high severity findings", "count", created)
-	fmt.Printf("Created %d issue(s) from SARIF high severity findings\n", created)
+	lg.Info("sarif-issues run completed", "created", created, "closed", closed)
+	fmt.Printf("Created %d issue(s); closed %d resolved issue(s)\n", created, closed)
 
 	return nil
 }
