@@ -24,7 +24,7 @@ This command is designed and recommended for CI/CD integration and automated sec
 | Create issues from configurable severity levels | Automatically creates GitHub issues for SARIF findings with specified severity levels (default: "error") |
 | Correlate with existing issues           | Matches new findings against open issues to prevent duplicates |
 | Auto-close resolved issues               | Closes open issues that are no longer present in current scan results |
-| Add metadata and permalinks              | Enriches issues with file links, severity, scanner info, and code snippets |
+| Add metadata and permalinks              | Enriches issues with file links, severity, scanner info, and snippet hashes |
 
 ## Syntax
 ```bash
@@ -99,7 +99,7 @@ scanio sarif-issues --sarif report.sarif --levels error,High
 
 ## Core Validation
 The `sarif-issues` command includes several validation layers to ensure robust execution:
-- **Required Parameters**: Validates that `--sarif`, `--namespace`, and `--repository` are provided either via flags or environment variables.
+- **Required Parameters**: Validates that `--sarif`, `--namespace`, and `--repository` are provided via flags, environment variables, or auto-detected git metadata.
 - **SARIF File Validation**: Ensures the SARIF file exists and can be parsed successfully.
 - **GitHub Authentication**: Requires valid GitHub credentials configured through the GitHub plugin.
 - **Severity Level Validation**: Validates and normalizes severity levels, preventing mixing of SARIF and display level formats.
@@ -356,7 +356,7 @@ Scanio prefers the SARIF rule's short description for the heading; if that is mi
 
 **GitHub Permalink**
 - Direct link to vulnerable code in repository
-- Uses commit SHA for permanent links
+- Uses the `--ref` value when supplied (branch or SHA), falling back to the current commit hash from git metadata for stable links
 - Includes line number anchors: `#L42-L45`
 
 **Security References**
