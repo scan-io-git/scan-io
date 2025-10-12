@@ -33,6 +33,7 @@ type RunOptions struct {
 	Labels       []string `json:"labels,omitempty"`
 	Assignees    []string `json:"assignees,omitempty"`
 	Levels       []string `json:"levels,omitempty"`
+	DryRun       bool     `json:"dry_run,omitempty"`
 }
 
 var (
@@ -65,7 +66,10 @@ var (
   scanio sarif-issues --namespace scan-io-git --repository scan-io --sarif /path/to/report.sarif --ref feature-branch
 
   # Using environment variables (GitHub Actions)
-  GITHUB_REPOSITORY_OWNER=scan-io-git GITHUB_REPOSITORY=scan-io-git/scan-io GITHUB_SHA=abc123 scanio sarif-issues --sarif /path/to/report.sarif`
+  GITHUB_REPOSITORY_OWNER=scan-io-git GITHUB_REPOSITORY=scan-io-git/scan-io GITHUB_SHA=abc123 scanio sarif-issues --sarif /path/to/report.sarif
+
+  # Preview what issues would be created/closed without making actual GitHub calls
+  scanio sarif-issues --sarif /path/to/report.sarif --dry-run`
 
 	// SarifIssuesCmd represents the command to create GitHub issues from a SARIF file.
 	SarifIssuesCmd = &cobra.Command{
@@ -158,7 +162,11 @@ func runSarifIssues(cmd *cobra.Command, args []string) error {
 
 	// 9. Log success and handle output
 	lg.Info("sarif-issues run completed", "created", created, "closed", closed)
-	fmt.Printf("Created %d issue(s); closed %d resolved issue(s)\n", created, closed)
+	if opts.DryRun {
+		fmt.Printf("[DRY RUN] Would create %d issue(s); would close %d resolved issue(s)\n", created, closed)
+	} else {
+		fmt.Printf("Created %d issue(s); closed %d resolved issue(s)\n", created, closed)
+	}
 
 	return nil
 }
@@ -174,6 +182,7 @@ func init() {
 	// --assignees supports multiple usages or comma-separated values
 	SarifIssuesCmd.Flags().StringSliceVar(&opts.Assignees, "assignees", nil, "Optional: assignees (GitHub logins) to assign to created issues (repeat flag or use comma-separated values)")
 	SarifIssuesCmd.Flags().StringSliceVar(&opts.Levels, "levels", []string{"error"}, "SARIF severity levels to process: SARIF levels (error, warning, note, none) or display levels (High, Medium, Low, Info). Cannot mix formats. (repeat flag or use comma-separated values)")
+	SarifIssuesCmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Show what issues would be created/closed without making actual GitHub API calls")
 	SarifIssuesCmd.Flags().BoolP("help", "h", false, "Show help for sarif-issues command.")
 }
 

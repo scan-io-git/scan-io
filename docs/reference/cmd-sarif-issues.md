@@ -10,6 +10,7 @@ This command is designed and recommended for CI/CD integration and automated sec
 - [Options](#options)
 - [Severity Level Configuration](#severity-level-configuration)
 - [Core Validation](#core-validation)
+- [Dry Run Mode](#dry-run-mode)
 - [GitHub Authentication Setup](#github-authentication-setup)
 - [Usage Examples](#usage-examples)
 - [Command Output Format](#command-output-format)
@@ -27,7 +28,7 @@ This command is designed and recommended for CI/CD integration and automated sec
 
 ## Syntax
 ```bash
-scanio sarif-issues --sarif PATH [--namespace NAMESPACE] [--repository REPO] [--source-folder PATH] [--ref REF] [--labels label[,label...]] [--assignees user[,user...]] [--levels level[,level...]]
+scanio sarif-issues --sarif PATH [--namespace NAMESPACE] [--repository REPO] [--source-folder PATH] [--ref REF] [--labels label[,label...]] [--assignees user[,user...]] [--levels level[,level...]] [--dry-run]
 ```
 
 ## Options
@@ -104,6 +105,49 @@ The `sarif-issues` command includes several validation layers to ensure robust e
 - **Severity Level Validation**: Validates and normalizes severity levels, preventing mixing of SARIF and display level formats.
 - **Configurable Severity Filtering**: Processes SARIF results based on specified severity levels (default: "error" only).
 
+## Dry Run Mode
+
+The `--dry-run` flag allows you to preview what the command would do without making actual GitHub API calls. This is particularly useful for:
+
+- **Testing and Validation**: Verify the command behavior before running in production
+- **Understanding Impact**: See exactly what issues would be created or closed
+- **Debugging**: Troubleshoot issue correlation logic and SARIF processing
+- **CI/CD Integration**: Validate SARIF files and command configuration
+
+### Dry Run Output Format
+
+When using `--dry-run`, the command provides detailed preview information:
+
+**For issues to be created:**
+```
+[DRY RUN] Would create issue:
+  Title: [Semgrep][High][sql-injection] at app.py:11-29
+  File: apps/demo/main.py
+  Lines: 11-29
+  Severity: High
+  Scanner: Semgrep
+  Rule ID: sql-injection
+```
+
+**For issues to be closed:**
+```
+[DRY RUN] Would close issue #42:
+  File: apps/demo/old-file.py
+  Lines: 5-10
+  Rule ID: deprecated-rule
+  Reason: Not found in current scan
+```
+
+**Final summary:**
+```
+[DRY RUN] Would create 3 issue(s); would close 1 resolved issue(s)
+```
+
+### Usage Example
+```bash
+scanio sarif-issues --sarif results/semgrep.sarif --dry-run
+```
+
 ## GitHub Authentication Setup
 
 The `sarif-issues` command requires GitHub authentication to create and manage issues. Configure authentication using one of the following methods:
@@ -168,11 +212,51 @@ Create issues with specific commit reference for permalinks:
 scanio sarif-issues --sarif results/semgrep.sarif --source-folder . --ref feature-branch
 ```
 
+### Dry Run Mode
+Preview what issues would be created/closed without making actual GitHub API calls:
+```bash
+scanio sarif-issues --sarif results/semgrep.sarif --dry-run
+```
+
+This is useful for:
+- Testing and validation before running in production
+- Understanding what the command would do without making changes
+- Debugging issue correlation logic
+- Verifying SARIF file processing
+
 ## Command Output Format
 
-### User Mode Output
+### Normal Mode Output
 ```
 Created 3 issue(s); closed 1 resolved issue(s)
+```
+
+### Dry Run Mode Output
+When using `--dry-run`, the command shows detailed preview information:
+
+**For issues to be created:**
+```
+[DRY RUN] Would create issue:
+  Title: [Semgrep][High][sql-injection] at app.py:11-29
+  File: apps/demo/main.py
+  Lines: 11-29
+  Severity: High
+  Scanner: Semgrep
+  Rule ID: sql-injection
+```
+
+**For issues to be closed:**
+```
+[DRY RUN] Would close issue #42:
+  File: apps/demo/old-file.py
+  Lines: 5-10
+  Rule ID: deprecated-rule
+  Reason: Not found in current scan
+```
+
+**Final summary:**
+```
+[DRY RUN] Would create 3 issue(s); would close 1 resolved issue(s)
 ```
 
 ### Logging Information

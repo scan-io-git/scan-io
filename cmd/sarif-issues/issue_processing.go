@@ -477,6 +477,24 @@ func createUnmatchedIssues(unmatchedNew []issuecorrelation.IssueMetadata, newIss
 			continue
 		}
 
+		if options.DryRun {
+			// Print dry-run information instead of making API call
+			fmt.Printf("[DRY RUN] Would create issue:\n")
+			fmt.Printf("  Title: %s\n", newTitles[idx])
+			fmt.Printf("  File: %s\n", u.Filename)
+			fmt.Printf("  Lines: %d", u.StartLine)
+			if u.EndLine > u.StartLine {
+				fmt.Printf("-%d", u.EndLine)
+			}
+			fmt.Printf("\n")
+			fmt.Printf("  Severity: %s\n", u.Severity)
+			fmt.Printf("  Scanner: %s\n", u.Scanner)
+			fmt.Printf("  Rule ID: %s\n", u.RuleID)
+			fmt.Printf("\n")
+			created++
+			continue
+		}
+
 		req := shared.VCSIssueCreationRequest{
 			VCSRequestBase: shared.VCSRequestBase{
 				RepoParam: shared.RepositoryParams{
@@ -519,6 +537,23 @@ func closeUnmatchedIssues(unmatchedKnown []issuecorrelation.IssueMetadata, optio
 			// skip if we can't parse number
 			continue
 		}
+
+		if options.DryRun {
+			// Print dry-run information instead of making API calls
+			fmt.Printf("[DRY RUN] Would close issue #%d:\n", num)
+			fmt.Printf("  File: %s\n", k.Filename)
+			fmt.Printf("  Lines: %d", k.StartLine)
+			if k.EndLine > k.StartLine {
+				fmt.Printf("-%d", k.EndLine)
+			}
+			fmt.Printf("\n")
+			fmt.Printf("  Rule ID: %s\n", k.RuleID)
+			fmt.Printf("  Reason: Not found in current scan\n")
+			fmt.Printf("\n")
+			closed++
+			continue
+		}
+
 		// Leave a comment before closing the issue to explain why it is being closed
 		commentReq := shared.VCSCreateIssueCommentRequest{
 			VCSRequestBase: shared.VCSRequestBase{

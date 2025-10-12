@@ -1,11 +1,14 @@
 package sarifissues
 
 import (
+	"bytes"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/scan-io-git/scan-io/internal/git"
+	issuecorrelation "github.com/scan-io-git/scan-io/pkg/issuecorrelation"
 )
 
 func TestParseIssueBodyUsesMetadataRuleID(t *testing.T) {
@@ -227,5 +230,177 @@ func TestFilterIssuesBySourceFolder(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestCreateUnmatchedIssuesDryRun(t *testing.T) {
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// Test data
+	unmatchedNew := []issuecorrelation.IssueMetadata{
+		{
+			IssueID:     "test-1",
+			Scanner:     "Semgrep",
+			RuleID:      "sql-injection",
+			Severity:    "error",
+			Filename:    "app.py",
+			StartLine:   11,
+			EndLine:     29,
+			SnippetHash: "abc123",
+		},
+		{
+			IssueID:     "test-2",
+			Scanner:     "Snyk",
+			RuleID:      "xss-vulnerability",
+			Severity:    "warning",
+			Filename:    "main.js",
+			StartLine:   5,
+			EndLine:     5,
+			SnippetHash: "def456",
+		},
+	}
+
+	newIssues := []issuecorrelation.IssueMetadata{
+		unmatchedNew[0], unmatchedNew[1],
+	}
+
+	newBodies := []string{
+		"Test body for issue 1",
+		"Test body for issue 2",
+	}
+
+	newTitles := []string{
+		"[Semgrep][High][sql-injection] at app.py:11-29",
+		"[Snyk][Medium][xss-vulnerability] at main.js:5",
+	}
+
+	options := RunOptions{
+		DryRun: true,
+	}
+
+	logger := hclog.NewNullLogger()
+
+	// Test dry-run mode
+	created, err := createUnmatchedIssues(unmatchedNew, newIssues, newBodies, newTitles, options, logger)
+
+	// Restore stdout
+	w.Close()
+	os.Stdout = oldStdout
+
+	// Read captured output
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := buf.String()
+
+	// Verify results
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if created != 2 {
+		t.Fatalf("expected 2 created issues, got %d", created)
+	}
+
+	// Check output contains expected dry-run information
+	expectedOutputs := []string{
+		"[DRY RUN] Would create issue:",
+		"Title: [Semgrep][High][sql-injection] at app.py:11-29",
+		"File: app.py",
+		"Lines: 11-29",
+		"Severity: error",
+		"Scanner: Semgrep",
+		"Rule ID: sql-injection",
+		"Title: [Snyk][Medium][xss-vulnerability] at main.js:5",
+		"File: main.js",
+		"Lines: 5",
+		"Severity: warning",
+		"Scanner: Snyk",
+		"Rule ID: xss-vulnerability",
+	}
+
+	for _, expected := range expectedOutputs {
+		if !bytes.Contains(buf.Bytes(), []byte(expected)) {
+			t.Fatalf("expected output to contain %q, got:\n%s", expected, output)
+		}
+	}
+}
+
+func TestCloseUnmatchedIssuesDryRun(t *testing.T) {
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// Test data
+	unmatchedKnown := []issuecorrelation.IssueMetadata{
+		{
+			IssueID:     "42",
+			Scanner:     "Semgrep",
+			RuleID:      "deprecated-rule",
+			Severity:    "error",
+			Filename:    "old-file.py",
+			StartLine:   5,
+			EndLine:     10,
+			SnippetHash: "xyz789",
+		},
+		{
+			IssueID:     "123",
+			Scanner:     "Snyk",
+			RuleID:      "old-vulnerability",
+			Severity:    "warning",
+			Filename:    "legacy.js",
+			StartLine:   15,
+			EndLine:     15,
+			SnippetHash: "abc123",
+		},
+	}
+
+	options := RunOptions{
+		DryRun: true,
+	}
+
+	logger := hclog.NewNullLogger()
+
+	// Test dry-run mode
+	closed, err := closeUnmatchedIssues(unmatchedKnown, options, logger)
+
+	// Restore stdout
+	w.Close()
+	os.Stdout = oldStdout
+
+	// Read captured output
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := buf.String()
+
+	// Verify results
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if closed != 2 {
+		t.Fatalf("expected 2 closed issues, got %d", closed)
+	}
+
+	// Check output contains expected dry-run information
+	expectedOutputs := []string{
+		"[DRY RUN] Would close issue #42:",
+		"File: old-file.py",
+		"Lines: 5-10",
+		"Rule ID: deprecated-rule",
+		"Reason: Not found in current scan",
+		"[DRY RUN] Would close issue #123:",
+		"File: legacy.js",
+		"Lines: 15",
+		"Rule ID: old-vulnerability",
+	}
+
+	for _, expected := range expectedOutputs {
+		if !bytes.Contains(buf.Bytes(), []byte(expected)) {
+			t.Fatalf("expected output to contain %q, got:\n%s", expected, output)
+		}
 	}
 }
