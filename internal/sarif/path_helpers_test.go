@@ -622,3 +622,50 @@ func TestExtractFileURIFromResult(t *testing.T) {
 		})
 	}
 }
+
+func TestDisplayRuleHeadingPrefersShortDescription(t *testing.T) {
+	text := "Short desc"
+	name := "Rule Name"
+	rule := &sarif.ReportingDescriptor{
+		ShortDescription: &sarif.MultiformatMessageString{
+			Text: &text,
+		},
+		Name: &name,
+	}
+
+	got := DisplayRuleHeading(rule)
+	if got != "Short desc" {
+		t.Fatalf("expected short description heading, got %q", got)
+	}
+}
+
+func TestDisplayRuleHeadingFallsBackToName(t *testing.T) {
+	name := "Rule Name"
+	rule := &sarif.ReportingDescriptor{
+		Name: &name,
+	}
+
+	got := DisplayRuleHeading(rule)
+	if got != "Rule Name" {
+		t.Fatalf("expected name fallback heading, got %q", got)
+	}
+}
+
+func TestDisplayRuleHeadingFallsBackToID(t *testing.T) {
+	id := "rule.id"
+	rule := &sarif.ReportingDescriptor{
+		ID: id,
+	}
+
+	got := DisplayRuleHeading(rule)
+	if got != "rule.id" {
+		t.Fatalf("expected rule id fallback heading, got %q", got)
+	}
+}
+
+func TestDisplayRuleHeadingReturnsEmptyForNil(t *testing.T) {
+	got := DisplayRuleHeading(nil)
+	if got != "" {
+		t.Fatalf("expected empty string for nil rule, got %q", got)
+	}
+}

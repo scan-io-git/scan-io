@@ -315,3 +315,25 @@ func ExtractRegionFromResult(res *sarif.Result) (int, int) {
 	}
 	return start, end
 }
+
+// DisplayRuleHeading returns the preferred human-friendly rule heading for the issue body:
+// 1. rule.ShortDescription.Text when available.
+// 2. rule.Name when available.
+// 3. rule.ID as a fallback.
+func DisplayRuleHeading(rule *sarif.ReportingDescriptor) string {
+	if rule != nil {
+		if rule.ShortDescription != nil && rule.ShortDescription.Text != nil {
+			if heading := strings.TrimSpace(*rule.ShortDescription.Text); heading != "" {
+				return heading
+			}
+		}
+		if rule.Name != nil {
+			if heading := strings.TrimSpace(*rule.Name); heading != "" {
+				return heading
+			}
+		}
+		// Parse ruleId from rule.ID instead of separate parameter
+		return strings.TrimSpace(rule.ID)
+	}
+	return ""
+}

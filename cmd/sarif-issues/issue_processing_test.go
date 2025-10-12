@@ -54,41 +54,6 @@ func TestParseIssueBodyFallsBackToHeaderRuleID(t *testing.T) {
 	}
 }
 
-func TestDisplayRuleHeadingPrefersShortDescription(t *testing.T) {
-	text := "Short desc"
-	name := "Rule Name"
-	rule := &sarif.ReportingDescriptor{
-		ShortDescription: &sarif.MultiformatMessageString{
-			Text: &text,
-		},
-		Name: &name,
-	}
-
-	got := displayRuleHeading("rule.id", rule)
-	if got != "Short desc" {
-		t.Fatalf("expected short description heading, got %q", got)
-	}
-}
-
-func TestDisplayRuleHeadingFallsBackToName(t *testing.T) {
-	name := "Rule Name"
-	rule := &sarif.ReportingDescriptor{
-		Name: &name,
-	}
-
-	got := displayRuleHeading("rule.id", rule)
-	if got != "Rule Name" {
-		t.Fatalf("expected name fallback heading, got %q", got)
-	}
-}
-
-func TestDisplayRuleHeadingFallsBackToID(t *testing.T) {
-	got := displayRuleHeading("rule.id", nil)
-	if got != "rule.id" {
-		t.Fatalf("expected rule id fallback heading, got %q", got)
-	}
-}
-
 func TestDisplayRuleTitleComponentPrefersName(t *testing.T) {
 	name := "Descriptive Rule"
 	rule := &sarif.ReportingDescriptor{

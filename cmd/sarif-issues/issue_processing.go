@@ -245,7 +245,7 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, s
 
 			// New body header and compact metadata blockquote
 			header := ""
-			if h := displayRuleHeading(ruleID, ruleDescriptor); strings.TrimSpace(h) != "" {
+			if h := internalsarif.DisplayRuleHeading(ruleDescriptor); strings.TrimSpace(h) != "" {
 				header = fmt.Sprintf("## 🐞 %s\n\n", h)
 			}
 			scannerDisp := scannerName
@@ -358,26 +358,6 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, s
 	}
 
 	return newIssueData
-}
-
-// displayRuleHeading returns the preferred human-friendly rule heading for the issue body:
-// 1. rule.ShortDescription.Text when available.
-// 2. rule.Name when available.
-// 3. ruleID as a fallback.
-func displayRuleHeading(ruleID string, rule *sarif.ReportingDescriptor) string {
-	if rule != nil {
-		if rule.ShortDescription != nil && rule.ShortDescription.Text != nil {
-			if heading := strings.TrimSpace(*rule.ShortDescription.Text); heading != "" {
-				return heading
-			}
-		}
-		if rule.Name != nil {
-			if heading := strings.TrimSpace(*rule.Name); heading != "" {
-				return heading
-			}
-		}
-	}
-	return strings.TrimSpace(ruleID)
 }
 
 // displayRuleTitleComponent returns the identifier segment to embed in the GitHub issue title.
