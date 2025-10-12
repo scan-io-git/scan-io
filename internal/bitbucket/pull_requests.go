@@ -123,7 +123,7 @@ func (pr *PullRequest) AttachFileToRepository(path string) (*Attachment, string,
 
 	fileName, err := files.GetValidatedFileName(path)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to get filename for %s: %w", path, err)
+		return nil, "", fmt.Errorf("failed to get filename for %q: %w", path, err)
 	}
 
 	pr.client.Logger.Debug("uploading file",
@@ -132,12 +132,12 @@ func (pr *PullRequest) AttachFileToRepository(path string) (*Attachment, string,
 	)
 	response, err := pr.client.upload(uploadPath, nil, path, "")
 	if err != nil {
-		return nil, "", fmt.Errorf("error uploading file %s: %w", path, err)
+		return nil, "", fmt.Errorf("error uploading file %q: %w", path, err)
 	}
 
 	var attachmentRoot AttachmentRoot
 	if err := unmarshalResponse(response, &attachmentRoot); err != nil {
-		return nil, "", fmt.Errorf("failed to unmarshal response for %s: %w", path, err)
+		return nil, "", fmt.Errorf("failed to unmarshal response for %q: %w", path, err)
 	}
 
 	return &attachmentRoot.Attachments[0], fileName, nil

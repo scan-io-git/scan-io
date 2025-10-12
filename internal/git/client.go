@@ -22,6 +22,7 @@ type Client struct {
 	auth         transport.AuthMethod
 	timeout      time.Duration
 	globalConfig *config.Config
+	vcs          string
 }
 
 // Authenticator defines an interface for different authentication methods.
@@ -126,12 +127,12 @@ func getAuthenticator(authType string) (Authenticator, error) {
 	case "http":
 		return &HTTPAuthenticator{}, nil
 	default:
-		return nil, fmt.Errorf("unknown auth type: %s", authType)
+		return nil, fmt.Errorf("unknown auth type: %q", authType)
 	}
 }
 
 // New initializes a new Git Client with the given parameters.
-func New(logger hclog.Logger, globalConfig *config.Config, pluginConfig interface{}, args *shared.VCSFetchRequest) (*Client, error) {
+func New(logger hclog.Logger, globalConfig *config.Config, pluginConfig interface{}, args *shared.VCSFetchRequest, pluginName string) (*Client, error) {
 
 	cfg, ok := pluginConfig.(map[string]string)
 	if !ok {
@@ -163,5 +164,6 @@ func New(logger hclog.Logger, globalConfig *config.Config, pluginConfig interfac
 		auth:         auth,
 		timeout:      timeout,
 		globalConfig: globalConfig,
+		vcs:          pluginName,
 	}, nil
 }

@@ -6,11 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/pflag"
-
-	"github.com/scan-io-git/scan-io/pkg/shared/config"
-	"github.com/scan-io-git/scan-io/pkg/shared/files"
 )
 
 func ContainsSubstring(target string, substrings []string) bool {
@@ -26,7 +22,7 @@ func ContainsSubstring(target string, substrings []string) bool {
 func StructToMap(data interface{}) (map[string]string, error) {
 	val := reflect.ValueOf(data)
 	if val.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("expected a struct but got %s", val.Kind())
+		return nil, fmt.Errorf("expected a struct but got %q", val.Kind())
 	}
 
 	result := make(map[string]string)
@@ -40,23 +36,6 @@ func StructToMap(data interface{}) (map[string]string, error) {
 	}
 
 	return result, nil
-}
-
-// WriteGenericResult writes the provided result to a JSON file.
-func WriteGenericResult(cfg *config.Config, logger hclog.Logger, result GenericLaunchesResult, commandName string) error {
-	outputFilePath := fmt.Sprintf("%v/%s.scanio-result", config.GetScanioHome(cfg), commandName)
-
-	resultData, err := json.MarshalIndent(result, "", "    ")
-	if err != nil {
-		return fmt.Errorf("error marshaling the result data: %w", err)
-	}
-
-	if err := files.WriteJsonFile(outputFilePath, resultData); err != nil {
-		return fmt.Errorf("error writing result to log file: %w", err)
-	}
-	logger.Info("results saved to file", "path", outputFilePath)
-
-	return nil
 }
 
 // IsInList checks if the target string is in the list of strings.
@@ -81,11 +60,11 @@ func HasFlags(flags *pflag.FlagSet) bool {
 }
 
 // PrintResultAsJSON serializes the result as JSON and prints it.
-func PrintResultAsJSON(logger hclog.Logger, result interface{}) {
+func PrintResultAsJSON(result interface{}) error {
 	resultJSON, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
-		logger.Error("error serializing JSON result", "error", err)
-		return
+		return err
 	}
 	fmt.Println(string(resultJSON))
+	return nil
 }

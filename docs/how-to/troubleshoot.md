@@ -5,11 +5,16 @@ When using Scanio, you may encounter issues. This section outlines common troubl
 
 ## Table of Contents
 
+- [Logs](#logs)
 - [Using Debug Mode](#using-debug-mode)
   - [Example: Running in Debug Mode via Docker](#example-running-in-debug-mode-via-docker)
   - [Example: Running in Debug Mode for Go CLI](#example-running-in-debug-mode-for-go-cli)
 - [Command Metadata Files](#command-metadata-files)
 - [Using Docker Interactive Bash Mode ](#using-docker-interactive-bash-mode)
+
+## Logs
+
+Logs are stored in `{home_folder}/log` by default.
 
 ## Using Debug Mode
 
@@ -48,7 +53,7 @@ scanio analyse --scanner semgrep -f sarif -c /scanio/rules/semgrep/developer /da
 
 ## Command Metadata Files
 
-Scanio generates structured metadata files that capture information about each command executed.
+Scanio generates structured metadata files that capture information about each command executed and writes it in CI mode in a dedicated `<scanio_home>/artifacts` folder.
 
 Each metadata file contains:
 ```json
@@ -70,12 +75,12 @@ Each metadata file contains:
 
 These files are stored at `/scanio` inside the Docker container and in `~/.scanio` for Go CLI. Filenames follow the format:
 ```bash
-<COMMAND>_<PLUGIN>.scanio-result
+<command>_<plugin>_<timestamp>.scanio-artifact.json
 ```
 
 For example:
 ```bash
-FETCH_GITHUB.scanio-result
+fetch_github_2025-09-15T09:21:20Z.scanio-artifact.json 
 ```
 
 ## Using Docker Interactive Bash Mode 

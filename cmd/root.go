@@ -12,19 +12,23 @@ import (
 	integrationvcs "github.com/scan-io-git/scan-io/cmd/integration-vcs"
 	"github.com/scan-io-git/scan-io/cmd/list"
 	sarifissues "github.com/scan-io-git/scan-io/cmd/sarif-issues"
+	"github.com/scan-io-git/scan-io/cmd/upload"
 	"github.com/scan-io-git/scan-io/cmd/version"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 	"github.com/scan-io-git/scan-io/pkg/shared/logger"
+
+	tohtml "github.com/scan-io-git/scan-io/cmd/to-html"
 )
 
 // Global variables for configuration and the command.
 var (
-	AppConfig *config.Config
-	Logger    hclog.Logger
-	cfgFile   string
-	rootCmd   = &cobra.Command{
+	AppConfig  *config.Config
+	Logger     hclog.Logger
+	closeLogFn logger.Close = func() error { return nil }
+	cfgFile    string
+	rootCmd    = &cobra.Command{
 		Use:                   "scanio [command]",
 		SilenceUsage:          true,
 		SilenceErrors:         true,
@@ -37,42 +41,57 @@ var (
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
-func Execute() {
+func Execute() int {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
+	defer func() {
+		if closeLogFn != nil {
+			_ = closeLogFn()
+		}
+	}()
 	if err := rootCmd.Execute(); err != nil {
 		if commandErr, ok := err.(*errors.CommandError); ok {
 			if config.IsCI(AppConfig) {
-				shared.PrintResultAsJSON(Logger, commandErr.Result)
+				if err := shared.PrintResultAsJSON(commandErr.Result); err != nil {
+					Logger.Error("error serializing JSON result", "error", err)
+				}
 			} else {
-				fmt.Printf("Error: %v\n", err.Error())
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err.Error())
 			}
-			os.Exit(commandErr.ExitCode)
+			return commandErr.ExitCode
 		}
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
 
 // initConfig reads the configuration file and initializes the commands with the loaded configuration.
 func initConfig() {
 	var err error
 	AppConfig, err = config.LoadConfig(cfgFile)
-	Logger = logger.NewLogger(AppConfig, "core")
 	if err != nil {
-		Logger.Warn("failed to load config file", "error", err)
-		Logger.Warn("using default empty configuration")
+		fmt.Fprintf(os.Stderr, "failed to load config file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "using default empty configuration")
 	}
 
 	if err := config.ValidateConfig(AppConfig); err != nil {
-		Logger.Error("failed to validate Scanio config", "error", err)
+		fmt.Fprintf(os.Stderr, "failed to validate Scanio config: %v\n", err)
 		os.Exit(1)
 	}
 
-	list.Init(AppConfig)
-	fetch.Init(AppConfig)
-	analyse.Init(AppConfig)
-	integrationvcs.Init(AppConfig)
+	var logErr error
+	Logger, closeLogFn, logErr = logger.NewLogger(AppConfig, "core")
+	if logErr != nil {
+		Logger.Warn("file logging disabled", "err", logErr)
+	}
+
+	list.Init(AppConfig, Logger.Named("list"))
+	fetch.Init(AppConfig, Logger.Named("fetch"))
+	analyse.Init(AppConfig, Logger.Named("analyse"))
+	integrationvcs.Init(AppConfig, Logger.Named("integration-vcs"))
 	sarifissues.Init(AppConfig)
-	version.Init(AppConfig)
+	version.Init(AppConfig, Logger.Named("version"))
+	tohtml.Init(AppConfig, Logger.Named("to-html"))
+	upload.Init(AppConfig, Logger.Named("upload"))
 }
 
 func init() {
@@ -85,5 +104,7 @@ func init() {
 	rootCmd.AddCommand(integrationvcs.IntegrationVCSCmd)
 	rootCmd.AddCommand(sarifissues.SarifIssuesCmd)
 	rootCmd.AddCommand(version.NewVersionCmd())
+	rootCmd.AddCommand(tohtml.ToHtmlCmd)
+	rootCmd.AddCommand(upload.UploadCmd)
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file")
 }

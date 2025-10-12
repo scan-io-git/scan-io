@@ -3,15 +3,15 @@ package integrationvcs
 import (
 	"fmt"
 	"strings"
-	"time"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/internal/vcsintegrator"
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/artifacts"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
-	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 type Arguments interface{}
@@ -19,6 +19,7 @@ type Arguments interface{}
 // Global variables for configuration and command arguments
 var (
 	AppConfig                  *config.Config
+	logger                     hclog.Logger
 	integrationVCSOptions      vcsintegrator.RunOptionsIntegrationVCS
 	exampleIntegrationVCSUsage = `# Check the existence of a PR
   scanio integration-vcs --vcs github --action checkPR --domain github.com --namespace scan-io-git --repository scan-io --pull-request-id 1
@@ -68,8 +69,9 @@ var IntegrationVCSCmd = &cobra.Command{
 }
 
 // Init initializes the global configuration variable and sets the long description for the IntegrationVCSCmd command.
-func Init(cfg *config.Config) {
+func Init(cfg *config.Config, l hclog.Logger) {
 	AppConfig = cfg
+	logger = l
 	IntegrationVCSCmd.Long = generateLongDescription(AppConfig)
 }
 
@@ -78,8 +80,6 @@ func runIntegrationVCSCommand(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 && !shared.HasFlags(cmd.Flags()) {
 		return cmd.Help()
 	}
-
-	logger := logger.NewLogger(AppConfig, "core-integration-vcs")
 
 	if err := validateIntegrationVCSArgs(&integrationVCSOptions, args); err != nil {
 		logger.Error("invalid integration VCS arguments", "error", err)
@@ -105,19 +105,12 @@ func runIntegrationVCSCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	resultIntegrationVCS, integrationVCSErr := i.IntegrationAction(AppConfig, integrationVCSRequest)
-	metaDataFileName := fmt.Sprintf("VCS-INTEGRATION_%s_%s",
-		strings.ToUpper(i.PluginName),
-		strings.ToUpper(integrationVCSOptions.Action))
-	if config.IsCI(AppConfig) {
-		startTime := time.Now().UTC().Format(time.RFC3339)
-		metaDataFileName = fmt.Sprintf("VCS-INTEGRATION_%s_%s_%v",
-			strings.ToUpper(i.PluginName),
-			strings.ToUpper(integrationVCSOptions.Action),
-			startTime)
-	}
 
-	if err := shared.WriteGenericResult(AppConfig, logger, resultIntegrationVCS, metaDataFileName); err != nil {
-		logger.Error("failed to write result", "error", err)
+	if config.IsCI(AppConfig) {
+		cmd := fmt.Sprintf("integration-vcs-%s", integrationVCSOptions.Action)
+		if _, err := artifacts.SaveArtifactJSON(AppConfig, logger, cmd, i.PluginName, resultIntegrationVCS); err != nil {
+			logger.Error("failed to write artifact", "error", err)
+		}
 	}
 
 	if integrationVCSErr != nil {
@@ -128,7 +121,9 @@ func runIntegrationVCSCommand(cmd *cobra.Command, args []string) error {
 	logger.Info("integration-vcs command completed successfully")
 	logger.Debug("integration-vcs result", "result", resultIntegrationVCS)
 	if config.IsCI(AppConfig) {
-		shared.PrintResultAsJSON(logger, resultIntegrationVCS)
+		if err := shared.PrintResultAsJSON(resultIntegrationVCS); err != nil {
+			logger.Error("error serializing JSON result", "error", err)
+		}
 	}
 	return nil
 }

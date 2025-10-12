@@ -13,6 +13,8 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
+const PluginName = "bandit"
+
 // TODO: Wrap it in a custom error handler to add to the stack trace.
 // Metadata of the plugin
 var (
@@ -25,12 +27,14 @@ var (
 type ScannerBandit struct {
 	logger       hclog.Logger
 	globalConfig *config.Config
+	name         string
 }
 
 // newScannerBandit creates a new instance of ScannerBandit.
 func newScannerBandit(logger hclog.Logger) *ScannerBandit {
 	return &ScannerBandit{
 		logger: logger,
+		name:   PluginName,
 	}
 }
 

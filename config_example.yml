@@ -8,6 +8,7 @@ scanio:
   projects_folder: ""         # The directory where Scanio project files are stored. Default: <home_folder>/projects. Can be overridden with the environment variable SCANIO_PROJECTS_FOLDER.
   results_folder: ""          # The directory where Scanio results are stored. Default: <home_folder>/results. Can be overridden with the environment variable SCANIO_RESULTS_FOLDER.
   temp_folder: ""             # The directory for temporary files used by Scanio. Default: <home_folder>/tmp. Can be overridden with the environment variable SCANIO_TEMP_FOLDER.
+  artifacts_folder: ""        # The directory for CI artifacts files used by Scanio. Default: <home_folder>/artifacts. Can be overridden with the environment variable SCANIO_ARTIFACTS_FOLDER.
 
 ## Bitbucket plugin config
 bitbucket_plugin:
@@ -51,6 +52,7 @@ logger:
   disable_time: true        # Whether to disable time in logs. Default: true.
   json_format: false        # Whether to format logs in JSON. Default: false.
   include_location: false   # Whether to include file and line number in logs. Default: false.
+  folder_path: "" # Path to a log file. Default: <home_folder>/log.
 
 ## HttpClient config
 http_client:
@@ -65,9 +67,9 @@ http_client:
     port: 8080          # Proxy server port. Default: none.
   custom_headers:                          # Custom headers to be added to each HTTP request.
     Authorization: "Bearer ${TOKEN}"      # Example custom header 1 with its corresponding value.
+  debug: false # Http client debug mode.  Default: false.
   
 ## GitClient config
 git_client:
-  depth: 0              # Default: 0. Full gclone is 0 (usefull if you need to search secrets in git history).
   insecure_tls: false   # Turning off verification of TLS certificates. Default: false.
-  timeout: 10m            # The maximum duration for the Git request before timing it out. Default: 10m.
+  timeout: 10m          # The maximum duration for the Git request before timing it out. Default: 10m.

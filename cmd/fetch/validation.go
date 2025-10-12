@@ -42,11 +42,11 @@ func validateFetchArgs(options *RunOptionsFetch, args []string) error {
 	if options.AuthType == AuthTypeSSHKey && options.SSHKey != "" {
 		expandedPath, err := files.ExpandPath(options.SSHKey)
 		if err != nil {
-			return fmt.Errorf("failed to expand path '%s': %w", options.SSHKey, err)
+			return fmt.Errorf("failed to expand path %q: %w", options.SSHKey, err)
 		}
 
 		if err := files.ValidatePath(expandedPath); err != nil {
-			return fmt.Errorf("failed to validate path '%s': %w", expandedPath, err)
+			return fmt.Errorf("failed to validate path %q: %w", expandedPath, err)
 		}
 
 		keyData, err := os.ReadFile(expandedPath)

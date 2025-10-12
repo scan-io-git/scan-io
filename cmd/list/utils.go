@@ -38,7 +38,7 @@ func prepareListTarget(options *vcsintegrator.RunOptionsIntegrationVCS, args []s
 			SSHLink:       url.SSHRepoLink,
 		}
 		if err != nil {
-			return repoInfo, fmt.Errorf("failed to extract data from provided URL '%s': %w", targetURL, err)
+			return repoInfo, fmt.Errorf("failed to extract data from provided URL %q: %w", targetURL, err)
 		}
 		return repoInfo, nil
 
@@ -49,6 +49,6 @@ func prepareListTarget(options *vcsintegrator.RunOptionsIntegrationVCS, args []s
 		}, nil
 
 	default:
-		return shared.RepositoryParams{}, fmt.Errorf("invalid listing mode: %s", mode)
+		return shared.RepositoryParams{}, fmt.Errorf("invalid listing mode: %q", mode)
 	}
 }

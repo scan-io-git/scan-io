@@ -100,7 +100,7 @@ func determineVCSType(host string) (VCSType, error) {
 	} else if strings.Contains(host, "bitbucket") {
 		return Bitbucket, nil
 	} else {
-		return GenericVCS, fmt.Errorf("unknown VCS type for host: %s", host)
+		return GenericVCS, fmt.Errorf("unknown VCS type for host: %q", host)
 	}
 }
 
@@ -132,7 +132,7 @@ func ParseForVCSType(raw string, vcsType VCSType) (*VCSURL, error) {
 
 	// validate scheme
 	if !isValidScheme(vcsURL.ParsedURL.Scheme) {
-		return nil, fmt.Errorf("invalid scheme: %s", vcsURL.Raw)
+		return nil, fmt.Errorf("invalid scheme: %q", vcsURL.Raw)
 	}
 
 	// determine VCS type either from the input or from the URL Hostname
@@ -222,7 +222,7 @@ func parseGitlab(u VCSURL) (*VCSURL, error) {
 		buildGenericURLs(&u)
 		return &u, nil
 	default:
-		return &u, fmt.Errorf("invalid Gitlab URL: %s", u.Raw)
+		return &u, fmt.Errorf("invalid Gitlab URL: %q", u.Raw)
 	}
 }
 
@@ -257,7 +257,7 @@ func parseGithub(u VCSURL) (*VCSURL, error) {
 		buildGenericURLs(&u)
 		return &u, nil
 	default:
-		return &u, fmt.Errorf("invalid Github URL: %s", u.Raw)
+		return &u, fmt.Errorf("invalid Github URL: %q", u.Raw)
 	}
 }
 
@@ -322,7 +322,7 @@ func parseBitbucket(u VCSURL) (*VCSURL, error) {
 		}
 		return &u, nil
 	default:
-		return &u, fmt.Errorf("invalid Bitbucket URL: %s", u.Raw)
+		return &u, fmt.Errorf("invalid Bitbucket URL: %q", u.Raw)
 	}
 }
 

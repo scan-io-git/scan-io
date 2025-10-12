@@ -90,6 +90,8 @@ The `scanio` directive defines the overall structure and storage locations for S
 | `projects_folder` | `{home_folder}/projects`  | Directory for project-specific files, organized by VCS domain, namespace, and repository.                               |
 | `results_folder`  | `{home_folder}/results`   | Directory for scan results, organized hierarchically by VCS domain, namespace, and repository.             |
 | `temp_folder`     | `{home_folder}/tmp`       | Directory for temporary files, such as files from PR scans.               |
+| `artifacts_folder`     | `{home_folder}/artifacts`       | Directory for CI artifacts files, such json results of commands.               |
+
 
 > [!IMPORTANT]  
 >  It is recommended to use the default behavior and avoid changing folder-related directives unless necessary.
@@ -106,6 +108,7 @@ The `logger` directive configures logging behavior for Scanio. Logger settings a
 | `disable_time`   | `true`        | Disables [timestamps](https://pkg.go.dev/github.com/hashicorp/go-hclog#LoggerOptions) in logs.                                                                     |
 | `json_format`    | `false`       | [Formats](https://pkg.go.dev/github.com/hashicorp/go-hclog#LoggerOptions) logs as JSON if enabled.                                                                |
 | `include_location` | `false`    | Includes file and line number [information](https://pkg.go.dev/github.com/hashicorp/go-hclog#LoggerOptions) in log entries.                                        |
+| `folder_path` | `{home_folder}/log`    | Path to a log file directory. Default: `{home_folder}/log`.                                        |
 
 
 ### Environment Variables
@@ -121,6 +124,7 @@ Scanio supports a range of environment variables for configuring core functional
 | `SCANIO_PROJECTS_FOLDER`  | `projects_folder`   | `{home_folder}/projects` | Overrides the directory for storing project-specific files.                                      |
 | `SCANIO_RESULTS_FOLDER`   | `results_folder`    | `{home_folder}/results` | Overrides the directory for storing scan results.                                                |
 | `SCANIO_TEMP_FOLDER`      | `temp_folder`       | `{home_folder}/tmp`  | Overrides the directory for temporary files.                                                     |
+| `SCANIO_ARTIFACTS_FOLDER` | `artifacts_folder`       | `{home_folder}/artifacts`  | Overrides the directory for CI artifacts files.                                          |
 | `SCANIO_LOG_LEVEL`        | `logger.level`      | `info`               | Sets the logging verbosity level. Supported values: `DEBUG`, `INFO`, `WARN`, `ERROR`, `TRACE`.   |
 
 ## Plugins Configuration
@@ -150,6 +154,7 @@ The `http_client` directive manages HTTP request behavior for plugins, allowing 
 | `proxy.host`            | `none`           | Proxy server address. If a scheme is unspecified, defaults to `http://`.                             |
 | `proxy.port`            | `none`           | Proxy server port.                                                              |
 | `custom_headers`        | `none`           | Custom headers to add to each HTTP request (e.g., `Authorization`).                     |
+| `debug`                 | `false`          | Debug mode.                     |
 
 > [!CAUTION]
 > Custom headers will be added to every HTTP request made by any tool or plugin that supports the `http_client` directive.
@@ -245,11 +250,14 @@ The Semgrep Plugin uses different default rule sets based on the mode:
 - User Mode: Templates follow the structure `scanio-report-<plugin_name>.<report_ext>`.
 - CI Mode: Templates include a timestamp for uniqueness: `scanio-report-<current_time.RFC3339>-<plugin_name>.<report_ext>`.
 
-#### Logging Behavior
-Log files differ in naming and location:
-- User Mode: Logs are named `<command>_<plugin_name>`.
-- CI Mode: Logs include a timestamp for uniqueness: `<command>_<plugin_name>_<current_time.RFC3339>`.
-Logs are stored in `{home_folder}/logs by default`.
+#### Artifacts
+Artifacts are special file that contains metadata about the command execution and results in the same format as [Result Output](#result-output). They are generated only in CI mode.
+
+Artifacts are stored in a dedicated folder instead of directly in the Scanio home directory: `<scanio_home_folder>/artifacts/`
+
+Filename format: `<command>_<plugin_name>_<current_time.RFC3339>.scanio-artifact.json`
+
+Example: analyse_semgrep_2025-09-15T08:28:46Z.scanio-artifact.json
 
 #### Command-Specific Adjustments
 For the `to-html` command, the `-s` (Source Folder) flag is ignored in CI Mode.
