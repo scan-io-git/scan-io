@@ -487,8 +487,8 @@ func createUnmatchedIssues(unmatchedNew []issuecorrelation.IssueMetadata, newIss
 			},
 			Title:     newTitles[idx],
 			Body:      newBodies[idx],
-			Labels:    opts.Labels,
-			Assignees: opts.Assignees,
+			Labels:    options.Labels,
+			Assignees: options.Assignees,
 		}
 
 		err := shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, "github", func(raw interface{}) error {
