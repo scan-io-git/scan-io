@@ -88,7 +88,7 @@ func initConfig() {
 	fetch.Init(AppConfig, Logger.Named("fetch"))
 	analyse.Init(AppConfig, Logger.Named("analyse"))
 	integrationvcs.Init(AppConfig, Logger.Named("integration-vcs"))
-	sarifissues.Init(AppConfig)
+	sarifissues.Init(AppConfig, Logger.Named("sarif-issues"))
 	version.Init(AppConfig, Logger.Named("version"))
 	tohtml.Init(AppConfig, Logger.Named("to-html"))
 	upload.Init(AppConfig, Logger.Named("upload"))

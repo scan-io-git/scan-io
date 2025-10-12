@@ -12,7 +12,6 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
-	"github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 // scanioManagedAnnotation is appended to issue bodies created by this command
@@ -38,6 +37,7 @@ type RunOptions struct {
 
 var (
 	AppConfig *config.Config
+	cmdLogger hclog.Logger
 	opts      RunOptions
 
 	// Example usage for the sarif-issues command
@@ -84,8 +84,9 @@ var (
 )
 
 // Init wires config into this command.
-func Init(cfg *config.Config) {
+func Init(cfg *config.Config, l hclog.Logger) {
 	AppConfig = cfg
+	cmdLogger = l
 }
 
 // runSarifIssues is the main execution function for the sarif-issues command.
@@ -95,8 +96,8 @@ func runSarifIssues(cmd *cobra.Command, args []string) error {
 		return cmd.Help()
 	}
 
-	// 2. Initialize logger
-	lg := logger.NewLogger(AppConfig, "sarif-issues")
+	// 2. Use global logger
+	lg := cmdLogger
 
 	// 3. Handle environment variable fallbacks
 	ApplyEnvironmentFallbacks(&opts)
@@ -146,7 +147,7 @@ func runSarifIssues(cmd *cobra.Command, args []string) error {
 	report.EnrichResultsTitleProperty()
 
 	// 7. Get all open GitHub issues
-	openIssues, err := listOpenIssues(opts)
+	openIssues, err := listOpenIssues(opts, lg)
 	if err != nil {
 		lg.Error("failed to list open issues", "error", err)
 		return errors.NewCommandError(opts, nil, fmt.Errorf("failed to list open issues: %w", err), 2)

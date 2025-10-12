@@ -131,7 +131,7 @@ func extractRuleIDFromBody(body string) string {
 
 // listOpenIssues calls the VCS plugin to list open issues for the configured repo
 // and parses their bodies into OpenIssueReport structures.
-func listOpenIssues(options RunOptions) (map[int]OpenIssueEntry, error) {
+func listOpenIssues(options RunOptions, lg hclog.Logger) (map[int]OpenIssueEntry, error) {
 	req := shared.VCSListIssuesRequest{
 		VCSRequestBase: shared.VCSRequestBase{
 			RepoParam: shared.RepositoryParams{
@@ -144,7 +144,7 @@ func listOpenIssues(options RunOptions) (map[int]OpenIssueEntry, error) {
 	}
 
 	var issues []shared.IssueParams
-	err := shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, "github", func(raw interface{}) error {
+	err := shared.WithPlugin(AppConfig, lg, shared.PluginTypeVCS, "github", func(raw interface{}) error {
 		vcs, ok := raw.(shared.VCS)
 		if !ok {
 			return fmt.Errorf("invalid VCS plugin type")
@@ -509,7 +509,7 @@ func createUnmatchedIssues(unmatchedNew []issuecorrelation.IssueMetadata, newIss
 			Assignees: options.Assignees,
 		}
 
-		err := shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, "github", func(raw interface{}) error {
+		err := shared.WithPlugin(AppConfig, lg, shared.PluginTypeVCS, "github", func(raw interface{}) error {
 			vcs, ok := raw.(shared.VCS)
 			if !ok {
 				return fmt.Errorf("invalid VCS plugin type")
@@ -567,7 +567,7 @@ func closeUnmatchedIssues(unmatchedKnown []issuecorrelation.IssueMetadata, optio
 			Body:   "Recent scan didn't see the issue; closing this as resolved.",
 		}
 
-		err = shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, "github", func(raw interface{}) error {
+		err = shared.WithPlugin(AppConfig, lg, shared.PluginTypeVCS, "github", func(raw interface{}) error {
 			vcs, ok := raw.(shared.VCS)
 			if !ok {
 				return fmt.Errorf("invalid VCS plugin type")
@@ -592,7 +592,7 @@ func closeUnmatchedIssues(unmatchedKnown []issuecorrelation.IssueMetadata, optio
 			State:  "closed",
 		}
 
-		err = shared.WithPlugin(AppConfig, "plugin-vcs", shared.PluginTypeVCS, "github", func(raw interface{}) error {
+		err = shared.WithPlugin(AppConfig, lg, shared.PluginTypeVCS, "github", func(raw interface{}) error {
 			vcs, ok := raw.(shared.VCS)
 			if !ok {
 				return fmt.Errorf("invalid VCS plugin type")
