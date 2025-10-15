@@ -12,6 +12,8 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/artifacts"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
+
+	ftutils "github.com/scan-io-git/scan-io/internal/fetcherutils"
 )
 
 // RunOptionsFetch holds the arguments for the fetch command.
@@ -23,6 +25,7 @@ type RunOptionsFetch struct {
 	Branch        string   `json:"branch,omitempty"`
 	OutputPath    string   `json:"output_path,omitempty"`
 	PrMode        string   `json:"pr_mode,omitempty"`
+	Diff          bool     `json:"diff_only,omitempty"`
 	SingleBranch  bool     `json:"single_branch,omitempty"`
 	Tags          bool     `json:"tags,omitempty"`
 	NoTags        bool     `json:"no_tags,omitempty"`
@@ -115,6 +118,7 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 		fetchOptions.AutoRepair,
 		fetchOptions.CleanWorkdir,
 		fetchOptions.Threads,
+		ftutils.ResolveFetchScope(fetchOptions.Diff),
 		logger,
 	)
 
@@ -168,6 +172,7 @@ func init() {
 	FetchCmd.Flags().StringVarP(&fetchOptions.Branch, "branch", "b", "", "Specific branch to fetch. Default: current default remote branch. Implies --single-branch.")
 	FetchCmd.Flags().StringVarP(&fetchOptions.OutputPath, "output", "o", "", "Directory where the fetched repository will be saved.")
 	FetchCmd.Flags().StringVarP(&fetchOptions.PrMode, "pr-mode", "", "", "PR fetching mode: 'branch', 'ref', or 'commit'.")
+	FetchCmd.Flags().BoolVar(&fetchOptions.Diff, "diff", false, "Derive a diff from fetched pull request into a tmp separated folder.")
 	FetchCmd.Flags().BoolVar(&fetchOptions.SingleBranch, "single-branch", false, "Fetch only the specified branch without history from other branches.")
 	FetchCmd.Flags().IntVar(&fetchOptions.Depth, "depth", -1, "Create a shallow clone with a history truncated to the specified number of commits. Default: 0")
 	FetchCmd.Flags().BoolVar(&fetchOptions.Tags, "tags", false, "Fetch all tags from the repository.")

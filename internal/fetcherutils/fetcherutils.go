@@ -2,6 +2,27 @@ package fetcherutils
 
 import "fmt"
 
+// FetchScope defines the amount of repository data materialised during fetch.
+type FetchScope string
+
+const (
+	// ScopeFull fetches full repository contents (default behaviour).
+	ScopeFull FetchScope = "full"
+	// ScopeDiff derive changes from a reference needed for diff-based scans and place it to a separated folder.
+	ScopeDiff FetchScope = "diff"
+)
+
+func (s FetchScope) String() string {
+	return string(s)
+}
+
+func ResolveFetchScope(diff bool) FetchScope {
+	if diff {
+		return ScopeDiff
+	}
+	return ScopeFull
+}
+
 // FetchMode defines the strategy used when fetching a repository.
 type FetchMode int
 
