@@ -253,30 +253,30 @@ func (g *VCSBitbucket) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (boo
 }
 
 // fetchPR handles fetching pull request changes.
-func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, map[string]string, error) {
+func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
 	g.logger.Info("handling PR changes fetching")
 
 	domain, err := utils.GetDomain(args.CloneURL)
 	if err != nil {
-		return "", nil, err
+		return shared.VCSFetchResponse{}, err
 	}
 
 	client, err := g.initializeBitbucketClient(domain)
 	if err != nil {
-		return "", nil, err
+		return shared.VCSFetchResponse{}, err
 	}
 
 	prID, _ := strconv.Atoi(args.RepoParam.PullRequestID)
 	prData, err := client.PullRequests.Get(args.RepoParam.Namespace, args.RepoParam.Repository, prID)
 	if err != nil {
 		g.logger.Error("failed to retrieve information about the PR", "PRID", prID, "error", err)
-		return "", nil, err
+		return shared.VCSFetchResponse{}, err
 	}
 
 	fromRefLink := prData.FromReference.Repository.Links.Self[0].Href
 	u, err := url.ParseRequestURI(fromRefLink)
 	if err != nil {
-		return "", nil, err
+		return shared.VCSFetchResponse{}, err
 	}
 
 	args.Branch = prData.FromReference.ID
@@ -300,7 +300,7 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, map[string
 	changes, err := prData.GetChanges()
 	if err != nil {
 		g.logger.Error("failed to retrieve PR changes", "PRID", prID, "error", err)
-		return "", nil, err
+		return shared.VCSFetchResponse{}, err
 	}
 	g.logger.Debug("PR", "data", prData)
 
@@ -316,26 +316,26 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, map[string
 	pluginConfigMap, err := shared.StructToMap(g.globalConfig.BitbucketPlugin)
 	if err != nil {
 		g.logger.Error("error converting struct to map", "error", err)
-		return "", nil, err
+		return shared.VCSFetchResponse{}, err
 	}
 
 	clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, args, PluginName)
 	if err != nil {
 		g.logger.Error("failed to initialize Git client", "error", err)
-		return "", nil, err
+		return shared.VCSFetchResponse{}, err
 	}
 
 	_, err = clientGit.CloneRepository(args)
 	if err != nil {
 		g.logger.Error("failed to clone repository", "error", err)
-		return "", nil, err
+		return shared.VCSFetchResponse{}, err
 	}
 
 	if args.FetchScope == ftutils.ScopeDiff {
 		baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, prID)
 		diffRoot := filepath.Join(baseDestPath, "diff")
 		if err := files.RemoveAndRecreate(diffRoot); err != nil {
-			return "", nil, fmt.Errorf("failed to prepare clean diff folder: %w", err)
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to prepare clean diff folder: %w", err)
 		}
 
 		headSHA := prData.FromReference.LatestCommit
@@ -347,11 +347,11 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, map[string
 		changedPaths := collectChangedFilePaths(changes, g.logger)
 
 		if err := git.MaterializeDiff(args.TargetFolder, diffRoot, baseSHA, headSHA, changedPaths, g.logger); err != nil {
-			return "", nil, err
+			return shared.VCSFetchResponse{}, err
 		}
 
 		if err := files.CopyDotFiles(args.TargetFolder, diffRoot, g.logger); err != nil {
-			return "", nil, fmt.Errorf("failed to copy dotfiles: %w", err)
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to copy dotfiles: %w", err)
 		}
 
 		extras := map[string]string{
@@ -366,11 +366,11 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, map[string
 		}
 
 		g.logger.Info("diff artifacts prepared", "folder", diffRoot)
-		return args.TargetFolder, extras, nil
+		return shared.VCSFetchResponse{Path: args.TargetFolder, Scope: args.FetchScope, Extras: extras}, nil
 	}
 
 	g.logger.Info("PR fetch completed, returning repository root", "path", args.TargetFolder)
-	return args.TargetFolder, map[string]string{"repo_root": args.TargetFolder}, nil
+	return shared.VCSFetchResponse{Path: args.TargetFolder, Scope: args.FetchScope, Extras: map[string]string{"repo_root": args.TargetFolder}}, nil
 }
 
 // findCloneURL searches for a valid clone URL, first in the fromRef, then in the toRef.
@@ -440,8 +440,6 @@ func collectChangedFilePaths(changes *[]bitbucket.Change, logger hclog.Logger) [
 
 // Fetch retrieves code based on the provided VCSFetchRequest.
 func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
-	var result shared.VCSFetchResponse
-
 	if err := g.validateFetch(&args); err != nil {
 		g.logger.Error("validation failed for fetch operation", "error", err)
 		return shared.VCSFetchResponse{}, err
@@ -449,41 +447,34 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchRespon
 
 	switch args.FetchMode {
 	case ftutils.PRBranchMode, ftutils.PRRefMode, ftutils.PRCommitMode:
-		path, extras, err := g.fetchPR(&args)
+		response, err := g.fetchPR(&args)
 		if err != nil {
 			g.logger.Error("failed to fetch pull request")
-			return result, err
+			return shared.VCSFetchResponse{}, err
 		}
-		result.Path = path
-		result.Scope = args.FetchScope
-		if len(extras) > 0 {
-			result.Extras = extras
-		}
-
+		return response, nil
 	default:
 		pluginConfigMap, err := shared.StructToMap(g.globalConfig.BitbucketPlugin)
 		if err != nil {
 			g.logger.Error("error converting struct to map", "error", err)
-			return result, err
+			return shared.VCSFetchResponse{}, err
 		}
 
 		clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, &args, PluginName)
 		if err != nil {
 			g.logger.Error("failed to initialize Git client", "error", err)
-			return result, err
+			return shared.VCSFetchResponse{}, err
 		}
 
 		path, err := clientGit.CloneRepository(&args)
 		if err != nil {
 			g.logger.Error("failed to clone repository", "error", err)
-			return result, err
+			return shared.VCSFetchResponse{}, err
 		}
 
-		result.Path = path
-		result.Scope = args.FetchScope
+		extras := map[string]string{"repo_root": path}
+		return shared.VCSFetchResponse{Path: path, Scope: args.FetchScope, Extras: extras}, nil
 	}
-
-	return result, nil
 }
 
 // Setup initializes the global configuration for the VCSBitbucket instance.

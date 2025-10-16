@@ -444,22 +444,21 @@ func (g *VCSGitlab) buildCommentWithAttachments(client *gitlab.Client, projectID
 }
 
 // fetchPR handles fetching pull request changes.
-func (g *VCSGitlab) fetchPR(args *shared.VCSFetchRequest) (string, error) {
+func (g *VCSGitlab) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
 	g.logger.Info("handling PR changes fetching", "MRID", args.RepoParam.PullRequestID)
 
 	client, err := g.initializeGitlabClient(args.RepoParam.Domain)
 	if err != nil {
 		g.logger.Error("failed to initialize GitLab client", "error", err)
-		return "", fmt.Errorf("GitLab client initialization failed: %w", err)
+		return shared.VCSFetchResponse{}, fmt.Errorf("GitLab client initialization failed: %w", err)
 	}
 
 	mrID, _ := strconv.Atoi(args.RepoParam.PullRequestID)
-	// TODO: need to handle the values safely
 	projectID := fmt.Sprintf("%s/%s", args.RepoParam.Namespace, args.RepoParam.Repository)
 	mrData, _, err := client.MergeRequests.GetMergeRequest(projectID, mrID, nil)
 	if err != nil {
 		g.logger.Error("failed to retrieve MR", "projectID", projectID, "MRID", mrID, "error", err)
-		return "", fmt.Errorf("failed to retrieve MR: %w", err)
+		return shared.VCSFetchResponse{}, fmt.Errorf("failed to retrieve MR: %w", err)
 	}
 	g.logger.Debug("MR Data", mrData)
 
@@ -467,14 +466,10 @@ func (g *VCSGitlab) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	if mrData.SourceProjectID != mrData.TargetProjectID {
 		args.Branch = mrData.SHA
 		g.logger.Warn("found merging from a fork", "fromUser", mrData.Author.Username)
-		g.logger.Warn("pr will be fetched as a detached latest commit",
-			"latest_commit", mrData.SHA,
-		)
+		g.logger.Warn("mr will be fetched as a detached latest commit", "latest_commit", mrData.SHA)
 	} else if args.FetchMode == ftutils.PRCommitMode {
 		args.Branch = mrData.SHA
-		g.logger.Info("fetching pull request by commit",
-			"latest_commit", mrData.SHA,
-		)
+		g.logger.Info("fetching merge request by commit", "latest_commit", mrData.SHA)
 	}
 
 	diffs, err := fetchPaginated(func(opts *gitlab.ListOptions) ([]*gitlab.MergeRequestDiff, *gitlab.Response, error) {
@@ -482,68 +477,76 @@ func (g *VCSGitlab) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	})
 	if err != nil {
 		g.logger.Error("failed to get MR changes", "MRID", mrData.IID, "error", err)
-		return "", fmt.Errorf("failed to get MR changes: %w", err)
+		return shared.VCSFetchResponse{}, fmt.Errorf("failed to get MR changes: %w", err)
 	}
 
 	projectData, _, err := client.Projects.GetProject(mrData.ProjectID, nil)
 	if err != nil {
 		g.logger.Error("failed to retrieve project details", "projectID", mrData.ProjectID, "error", err)
-		return "", fmt.Errorf("failed to retrieve project details: %w", err)
+		return shared.VCSFetchResponse{}, fmt.Errorf("failed to retrieve project details: %w", err)
 	}
 	args.CloneURL = projectData.SSHURLToRepo
-
-	g.logger.Debug("starting to fetch MR code")
 
 	pluginConfigMap, err := shared.StructToMap(g.globalConfig.GitlabPlugin)
 	if err != nil {
 		g.logger.Error("error converting struct to map", "error", err)
-		return "", fmt.Errorf("error converting struct to map: %w", err)
+		return shared.VCSFetchResponse{}, fmt.Errorf("error converting struct to map: %w", err)
 	}
 
 	clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, args, PluginName)
 	if err != nil {
 		g.logger.Error("failed to initialize Git client", "error", err)
-		return "", fmt.Errorf("failed to initialize Git client: %w", err)
+		return shared.VCSFetchResponse{}, fmt.Errorf("failed to initialize Git client: %w", err)
 	}
 
-	_, err = clientGit.CloneRepository(args)
-	if err != nil {
+	if _, err = clientGit.CloneRepository(args); err != nil {
 		g.logger.Error("failed to clone repository", "error", err)
-		return "", fmt.Errorf("failed to clone repository: %w", err)
+		return shared.VCSFetchResponse{}, fmt.Errorf("failed to clone repository: %w", err)
 	}
 
-	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, mrID)
-
-	g.logger.Debug("copying files that have changed")
-	for _, val := range diffs {
-		if val == nil {
-			continue
-		}
-		if val.DeletedFile {
-			g.logger.Debug("skipping file due to type", "type", "deletedFile", "path", val.NewPath)
-			continue
+	if args.FetchScope == ftutils.ScopeDiff {
+		baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, mrID)
+		diffRoot := filepath.Join(baseDestPath, "diff")
+		if err := files.RemoveAndRecreate(diffRoot); err != nil {
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to prepare clean diff folder: %w", err)
 		}
 
-		srcPath := filepath.Join(args.TargetFolder, val.NewPath)
-		destPath := filepath.Join(baseDestPath, val.NewPath)
-		if err := files.Copy(srcPath, destPath); err != nil {
-			g.logger.Error("error copying file", "error", err)
+		baseSHA := mrData.DiffRefs.BaseSha
+		headSHA := mrData.DiffRefs.HeadSha
+		if headSHA == "" {
+			headSHA = mrData.SHA
 		}
+
+		paths := collectGitlabChangedPaths(diffs)
+		if err := git.MaterializeDiff(args.TargetFolder, diffRoot, baseSHA, headSHA, paths, g.logger); err != nil {
+			return shared.VCSFetchResponse{}, err
+		}
+
+		if err := files.CopyDotFiles(args.TargetFolder, diffRoot, g.logger); err != nil {
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to copy dotfiles: %w", err)
+		}
+
+		extras := map[string]string{
+			"diff_root": diffRoot,
+			"repo_root": args.TargetFolder,
+		}
+		if baseSHA != "" {
+			extras["base_sha"] = baseSHA
+		}
+		if headSHA != "" {
+			extras["head_sha"] = headSHA
+		}
+
+		g.logger.Info("diff artifacts prepared", "folder", diffRoot)
+		return shared.VCSFetchResponse{Path: args.TargetFolder, Scope: args.FetchScope, Extras: extras}, nil
 	}
 
-	if err := files.CopyDotFiles(args.TargetFolder, baseDestPath, g.logger); err != nil {
-		g.logger.Error("failed to copy dot files", "error", err)
-		return "", fmt.Errorf("failed to copy dot files: %w", err)
-	}
-
-	g.logger.Info("files for MR scan are copied", "folder", baseDestPath)
-	return baseDestPath, nil
+	g.logger.Info("MR fetch completed, returning repository root", "path", args.TargetFolder)
+	return shared.VCSFetchResponse{Path: args.TargetFolder, Scope: args.FetchScope, Extras: map[string]string{"repo_root": args.TargetFolder}}, nil
 }
 
 // Fetch retrieves code based on the provided VCSFetchRequest.
 func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
-	var result shared.VCSFetchResponse
-
 	if err := g.validateFetch(&args); err != nil {
 		g.logger.Error("validation failed", "error", err)
 		return shared.VCSFetchResponse{}, fmt.Errorf("validation failed: %w", err)
@@ -551,35 +554,58 @@ func (g *VCSGitlab) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse,
 
 	switch args.FetchMode {
 	case ftutils.PRBranchMode, ftutils.PRRefMode, ftutils.PRCommitMode:
-		path, err := g.fetchPR(&args)
-		if err != nil {
-			g.logger.Error("failed to fetch files from pull request", "error", err)
-			return result, fmt.Errorf("failed to fetch files from pull request: %w", err)
-		}
-		result.Path = path
+		return g.fetchPR(&args)
 	default:
-		pluginConfigMap, err := shared.StructToMap(g.globalConfig.BitbucketPlugin)
+		pluginConfigMap, err := shared.StructToMap(g.globalConfig.GitlabPlugin)
 		if err != nil {
 			g.logger.Error("error converting struct to map", "error", err)
-			return result, fmt.Errorf("error converting struct to map: %w", err)
+			return shared.VCSFetchResponse{}, fmt.Errorf("error converting struct to map: %w", err)
 		}
 
 		clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, &args, PluginName)
 		if err != nil {
 			g.logger.Error("failed to initialize Git client", "error", err)
-			return result, fmt.Errorf("failed to initialize Git client: %w", err)
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to initialize Git client: %w", err)
 		}
 
 		path, err := clientGit.CloneRepository(&args)
 		if err != nil {
 			g.logger.Error("failed to clone repository", "error", err)
-			return result, fmt.Errorf("failed to clone repository: %w", err)
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to clone repository: %w", err)
 		}
 
-		result.Path = path
+		extras := map[string]string{"repo_root": path}
+		return shared.VCSFetchResponse{Path: path, Scope: args.FetchScope, Extras: extras}, nil
 	}
+}
 
-	return result, nil
+func collectGitlabChangedPaths(diffs []*gitlab.MergeRequestDiff) []string {
+	if len(diffs) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(diffs))
+	var result []string
+	for _, diffEntry := range diffs {
+		if diffEntry == nil {
+			continue
+		}
+		if diffEntry.DeletedFile {
+			continue
+		}
+		path := strings.TrimSpace(diffEntry.NewPath)
+		if path == "" {
+			path = strings.TrimSpace(diffEntry.OldPath)
+		}
+		if path == "" {
+			continue
+		}
+		if _, exists := seen[path]; exists {
+			continue
+		}
+		seen[path] = struct{}{}
+		result = append(result, path)
+	}
+	return result
 }
 
 // Setup initializes the global configuration for the VCSGitlab instance.
