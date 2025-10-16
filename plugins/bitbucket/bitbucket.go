@@ -253,30 +253,30 @@ func (g *VCSBitbucket) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (boo
 }
 
 // fetchPR handles fetching pull request changes.
-func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
+func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, map[string]string, error) {
 	g.logger.Info("handling PR changes fetching")
 
 	domain, err := utils.GetDomain(args.CloneURL)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	client, err := g.initializeBitbucketClient(domain)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	prID, _ := strconv.Atoi(args.RepoParam.PullRequestID)
 	prData, err := client.PullRequests.Get(args.RepoParam.Namespace, args.RepoParam.Repository, prID)
 	if err != nil {
 		g.logger.Error("failed to retrieve information about the PR", "PRID", prID, "error", err)
-		return "", err
+		return "", nil, err
 	}
 
 	fromRefLink := prData.FromReference.Repository.Links.Self[0].Href
 	u, err := url.ParseRequestURI(fromRefLink)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	args.Branch = prData.FromReference.ID
@@ -300,7 +300,7 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	changes, err := prData.GetChanges()
 	if err != nil {
 		g.logger.Error("failed to retrieve PR changes", "PRID", prID, "error", err)
-		return "", err
+		return "", nil, err
 	}
 	g.logger.Debug("PR", "data", prData)
 
@@ -316,44 +316,61 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	pluginConfigMap, err := shared.StructToMap(g.globalConfig.BitbucketPlugin)
 	if err != nil {
 		g.logger.Error("error converting struct to map", "error", err)
-		return "", err
+		return "", nil, err
 	}
 
 	clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, args, PluginName)
 	if err != nil {
 		g.logger.Error("failed to initialize Git client", "error", err)
-		return "", err
+		return "", nil, err
 	}
 
-	// TODO: Fix a strange bug when it fetches only PR changes without all other files in case of PR fetch
 	_, err = clientGit.CloneRepository(args)
 	if err != nil {
 		g.logger.Error("failed to clone repository", "error", err)
-		return "", err
+		return "", nil, err
 	}
 
-	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, prID)
-
-	g.logger.Debug("copying files that have changed")
-	for _, val := range *changes {
-		if !shared.ContainsSubstring(val.Type, bitbucket.ChangeTypes) {
-			g.logger.Debug("skipping", "type", val.Type, "path", val.Path.ToString)
-			continue
+	if args.FetchScope == ftutils.ScopeDiff {
+		baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, prID)
+		diffRoot := filepath.Join(baseDestPath, "diff")
+		if err := files.RemoveAndRecreate(diffRoot); err != nil {
+			return "", nil, fmt.Errorf("failed to prepare clean diff folder: %w", err)
 		}
 
-		srcPath := filepath.Join(args.TargetFolder, val.Path.ToString)
-		destPath := filepath.Join(baseDestPath, val.Path.ToString)
-		if err := files.Copy(srcPath, destPath); err != nil {
-			g.logger.Error("error copying file", "error", err)
+		headSHA := prData.FromReference.LatestCommit
+		if headSHA == "" {
+			headSHA = args.Branch
 		}
+		baseSHA := prData.ToReference.LatestCommit
+
+		changedPaths := collectChangedFilePaths(changes, g.logger)
+
+		if err := git.MaterializeDiff(args.TargetFolder, diffRoot, baseSHA, headSHA, changedPaths, g.logger); err != nil {
+			return "", nil, err
+		}
+
+		if err := files.CopyDotFiles(args.TargetFolder, diffRoot, g.logger); err != nil {
+			return "", nil, fmt.Errorf("failed to copy dotfiles: %w", err)
+		}
+
+		extras := map[string]string{
+			"diff_root": diffRoot,
+			"repo_root": args.TargetFolder,
+		}
+		if baseSHA != "" {
+			extras["base_sha"] = baseSHA
+		}
+		if headSHA != "" {
+			extras["head_sha"] = headSHA
+		}
+
+		g.logger.Info("diff artifacts prepared", "folder", diffRoot)
+		return args.TargetFolder, extras, nil
 	}
 
-	if err := files.CopyDotFiles(args.TargetFolder, baseDestPath, g.logger); err != nil {
-		return "", err
-	}
-
-	g.logger.Info("files for PR scan are copied", "folder", baseDestPath)
-	return baseDestPath, nil
+	g.logger.Info("PR fetch completed, returning repository root", "path", args.TargetFolder)
+	return args.TargetFolder, map[string]string{"repo_root": args.TargetFolder}, nil
 }
 
 // findCloneURL searches for a valid clone URL, first in the fromRef, then in the toRef.
@@ -394,6 +411,33 @@ func findCloneURL(prData *bitbucket.PullRequest, logger hclog.Logger) string {
 	return ""
 }
 
+// collectChangedFilePaths extracts unique file paths from Bitbucket change
+// metadata, restricting the list to change types we care about (add/modify).
+func collectChangedFilePaths(changes *[]bitbucket.Change, logger hclog.Logger) []string {
+	if changes == nil {
+		return nil
+	}
+	seen := make(map[string]struct{})
+	paths := make([]string, 0, len(*changes))
+	for _, change := range *changes {
+		if !shared.ContainsSubstring(change.Type, bitbucket.ChangeTypes) {
+			continue
+		}
+		if change.Path == nil || change.Path.ToString == "" {
+			continue
+		}
+		if _, exists := seen[change.Path.ToString]; exists {
+			continue
+		}
+		seen[change.Path.ToString] = struct{}{}
+		paths = append(paths, change.Path.ToString)
+	}
+	if len(paths) == 0 && logger != nil {
+		logger.Debug("no eligible file paths detected in change list")
+	}
+	return paths
+}
+
 // Fetch retrieves code based on the provided VCSFetchRequest.
 func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
 	var result shared.VCSFetchResponse
@@ -405,12 +449,16 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchRespon
 
 	switch args.FetchMode {
 	case ftutils.PRBranchMode, ftutils.PRRefMode, ftutils.PRCommitMode:
-		path, err := g.fetchPR(&args)
+		path, extras, err := g.fetchPR(&args)
 		if err != nil {
 			g.logger.Error("failed to fetch pull request")
 			return result, err
 		}
 		result.Path = path
+		result.Scope = args.FetchScope
+		if len(extras) > 0 {
+			result.Extras = extras
+		}
 
 	default:
 		pluginConfigMap, err := shared.StructToMap(g.globalConfig.BitbucketPlugin)
@@ -432,6 +480,7 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchRespon
 		}
 
 		result.Path = path
+		result.Scope = args.FetchScope
 	}
 
 	return result, nil
