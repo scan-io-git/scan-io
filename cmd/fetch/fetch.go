@@ -172,7 +172,7 @@ func init() {
 	FetchCmd.Flags().StringVarP(&fetchOptions.Branch, "branch", "b", "", "Specific branch to fetch. Default: current default remote branch. Implies --single-branch.")
 	FetchCmd.Flags().StringVarP(&fetchOptions.OutputPath, "output", "o", "", "Directory where the fetched repository will be saved.")
 	FetchCmd.Flags().StringVarP(&fetchOptions.PrMode, "pr-mode", "", "", "PR fetching mode: 'branch', 'ref', or 'commit'.")
-	FetchCmd.Flags().BoolVar(&fetchOptions.Diff, "diff", false, "Derive a diff from fetched pull request into a tmp separated folder.")
+	FetchCmd.Flags().BoolVar(&fetchOptions.Diff, "diff", false, "Derive a diff from fetched pull request into a tmp separated folder. 'rm-ext' flag is ignored for diff files folder.")
 	FetchCmd.Flags().BoolVar(&fetchOptions.SingleBranch, "single-branch", false, "Fetch only the specified branch without history from other branches.")
 	FetchCmd.Flags().IntVar(&fetchOptions.Depth, "depth", -1, "Create a shallow clone with a history truncated to the specified number of commits. Default: 0")
 	FetchCmd.Flags().BoolVar(&fetchOptions.Tags, "tags", false, "Fetch all tags from the repository.")
