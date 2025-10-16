@@ -51,6 +51,7 @@ scanio fetch --vcs/-p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [
 | `--threads`, `-j`| int     | No          | `1`                                                          | Number of concurrent threads to use for parallel fetching.                   |
 | `--vcs`, `-p`    | string  | Yes         | `none`                                                       | Specifies the VCS plugin to use (e.g., `bitbucket`, `gitlab`, `github`).     |
 | `--pr-mode`   | string  | No         | `branch`                                                       | Pull request fetch strategy. References are resolved automatically via the VCS provider API — users don’t need to specify refs manually. Possible values: branch (fetch the PR’s source branch), ref (fetch the provider’s PR ref, e.g., GitHub refs/pull/<id>/head), or commit (fetch the PR head’s latest commit in detached mode). Ignored if URL doesn't contain PR ID.     |
+| `--diff`      | bool    | No         | `false`                                                        | For pull-request URLs, persist only added/modified lines (plus dotfiles) into a dedicated diff folder instead of copying the entire repository tree. The fetch response includes metadata pointing at the diff artifacts. |
 | `--single-branch`   | bool  | No         | `false`                                                       | Fetch only the specified branch, without history from other branches.     |
 | `--depth`   | int  | No         | `0`                                                       | Create a shallow clone with history truncated to n commits. `0` = full history, `1` = shallowest. |
 | `--tags`   | bool  | No         | `false`                                                       | Fetch all tags from the repository. If neither `--tags` nor `--no-tags` is set, tag-following is used by default.    |
@@ -164,4 +165,6 @@ The `fetch` command generates a JSON file as output, capturing detailed informat
 ### Fields in the `result` List
 | Field       | Description                                                                 |
 |-------------|-----------------------------------------------------------------------------|
-| `path`      | Path to the folder where the fetched code is saved.                         |
+| `path`      | Path to the repository checkout on disk (always the repo root). When `--diff` is enabled use `extras.diff_root` to locate the sparse diff artifacts. |
+| `scope`     | Represents the fetch scope (`full` or `diff`). Mirrors the CLI flag and allows downstream automation to branch logic. |
+| `extras`    | Key/value metadata returned by the VCS plugin. For diff fetches this includes `diff_root`, `repo_root`, and the `base_sha`/`head_sha` pair when available. |
