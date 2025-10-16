@@ -77,6 +77,18 @@ func CopyDotFiles(src, dst string, logger hclog.Logger) error {
 	return nil
 }
 
+// RemoveAndRecreate removes the directory if it exists and then creates it again.
+// It guarantees the target is empty before population.
+func RemoveAndRecreate(path string) error {
+	if err := os.RemoveAll(path); err != nil {
+		return fmt.Errorf("failed to remove %q: %w", path, err)
+	}
+	if err := os.MkdirAll(path, os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create %q: %w", path, err)
+	}
+	return nil
+}
+
 // Copy determines the type of source (file, directory, or symlink) and copies it accordingly.
 func Copy(srcPath, destPath string) error {
 	srcInfo, err := os.Lstat(srcPath)
