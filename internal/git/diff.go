@@ -295,31 +295,17 @@ func fetchCommit(repo *git.Repository, hash plumbing.Hash, logger hclog.Logger) 
 		Tags:       git.NoTags,
 	})
 	if fetchErr != nil && fetchErr != git.NoErrAlreadyUpToDate {
-		if strings.Contains(fetchErr.Error(), "does not support exact SHA1 refspec") {
-			if logger != nil {
-				logger.Debug("remote rejected SHA fetch, falling back to default refspec", "remote", remoteName)
-			}
-			var fallbackSpecs []config.RefSpec
-			if remote, rErr := repo.Remote(remoteName); rErr == nil {
-				fallbackSpecs = remote.Config().Fetch
-			}
-			fallbackErr := repo.Fetch(&git.FetchOptions{
-				RemoteName: remoteName,
-				Depth:      1,
-				RefSpecs:   fallbackSpecs,
-				Tags:       git.NoTags,
-			})
-			if fallbackErr != nil && fallbackErr != git.NoErrAlreadyUpToDate {
+		if fetchErr != nil {
+			if fetchErr == git.NoErrAlreadyUpToDate {
 				if logger != nil {
-					logger.Warn("fallback fetch failed", "error", fallbackErr)
+					logger.Debug("commit already available", "hash", hash.String())
 				}
-				return fallbackErr
+			} else {
+				if logger != nil {
+					logger.Warn("fetch commit failed", "hash", hash.String(), "error", fetchErr)
+				}
+				return fetchErr
 			}
-		} else {
-			if logger != nil {
-				logger.Warn("fetch commit failed", "hash", hash.String(), "error", fetchErr)
-			}
-			return fetchErr
 		}
 	}
 
