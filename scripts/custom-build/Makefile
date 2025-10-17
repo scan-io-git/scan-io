@@ -3,6 +3,7 @@
 # Default variables
 SCANIO_REPO ?= https://github.com/scan-io-git/scan-io.git
 SCANIO_REPO_DIR ?= ./scan-io
+SCANIO_REPO_BRANCH ?=
 IMAGE_NAME ?= scanio
 RULES_CONFIG ?= scanio_rules.yaml
 SCANIO_CONFIG ?= config.yml
@@ -22,6 +23,7 @@ help: ## Display this help message
 	@echo "  SCANIO_REPO      - URL of the Scanio repo (default: https://github.com/scan-io-git/scan-io.git)"
 	@echo "  IMAGE_NAME		  - Tag name of the image  (default: scanio)"
 	@echo "  SCANIO_REPO_DIR  - Directory for cloning the Scanio repository  (default: ./scan-io)"
+	@echo "  SCANIO_REPO_BRANCH - Branch, tag, or commit to checkout after clone (default: repo default)"
 	@echo "  RULES_CONFIG     - Path to the custom rule set config (default: ./scanio_rules.yaml)"
 	@echo "  SCANIO_CONFIG     - Path to the custom Scanio core config (default: ./config.yml)"
 	@echo "  CLONED_CONFIG_PATH     - Destination path for Scanio core config file in the cloned repo (default: <SCANIO_REPO_DIR>/<SCANIO_CONFIG>)"
@@ -44,6 +46,10 @@ clone-scanio-repo: ## Clone the Scanio repository
 	fi
 	@echo "[Custom Makefile] Cloning Scanio repository to '$(SCANIO_REPO_DIR)'";
 	@git clone $(SCANIO_REPO) $(SCANIO_REPO_DIR) || { echo "Failed to clone $(SCANIO_REPO)"; exit 1; }
+	@if [ -n "$(SCANIO_REPO_BRANCH)" ]; then \
+		echo "[Custom Makefile] Checking out $(SCANIO_REPO_BRANCH)..."; \
+		cd $(SCANIO_REPO_DIR) && git checkout $(SCANIO_REPO_BRANCH) || { echo "Failed to checkout $(SCANIO_REPO_BRANCH)"; exit 1; }; \
+	fi
 
 # Copy custom config to cloned Scanio repo
 .PHONY: copy-config
