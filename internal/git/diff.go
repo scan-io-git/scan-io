@@ -262,9 +262,7 @@ func sortedKeys(m map[string]map[int]string) []string {
 
 func ensureCommitPresent(repo *git.Repository, hash plumbing.Hash, logger hclog.Logger) error {
 	if _, err := repo.CommitObject(hash); err != nil {
-		if logger != nil {
-			logger.Debug("commit missing locally, attempting fetch", "hash", hash.String())
-		}
+		logger.Debug("commit missing locally, attempting fetch", "hash", hash.String())
 		if err := fetchCommit(repo, hash, logger); err != nil {
 			return err
 		}
