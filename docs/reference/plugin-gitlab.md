@@ -401,7 +401,7 @@ scanio fetch --vcs gitlab --auth-type ssh-agent --rm-ext zip,tar.gz,log https://
 *Output Argument*  <br>
 By default, the `fetch` command saves fetched repositories and pull requests to predefined directories:
 - `{scanio_home_folder}/projects/<VCS_domain>/<namespace_name>/<repository_name>/` for fetched code.
-- `{scanio_home_folder}/tmp/<VCS_domain>/<namespace_name>/<repository_name>/scanio-pr-tmp/<pr_id>` for fetcfetched pull requests.
+- `{scanio_home_folder}/tmp/<VCS_domain>/<namespace_name>/<repository_name>/pr/<pr_id>` for fetcfetched pull requests.
 
 If you want to customize the output location for fetched data, you can use the `--output` or `-o` flag. This flag allows you to specify a different directory for storing fetched repositories or pull requests.
 ```bash
