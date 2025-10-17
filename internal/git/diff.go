@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/hashicorp/go-hclog"
 	"github.com/sourcegraph/go-diff/diff"
@@ -20,7 +21,7 @@ import (
 // new-file line numbers to the textual content that was added. Returned line
 // numbers are 1-based and only include additions; deletions and context lines are
 // ignored. Paths that are deleted or outside the optional filter list are skipped.
-func AddedLines(repoPath, baseHash, headHash string, filters []string) (map[string]map[int]string, error) {
+func AddedLines(repoPath, baseHash, headHash string, filters []string, logger hclog.Logger) (map[string]map[int]string, error) {
 	if baseHash == "" {
 		return nil, fmt.Errorf("base hash is required to compute diff")
 	}
@@ -33,13 +34,23 @@ func AddedLines(repoPath, baseHash, headHash string, filters []string) (map[stri
 		return nil, fmt.Errorf("failed to open repository %q: %w", repoPath, err)
 	}
 
-	baseCommit, err := repo.CommitObject(plumbing.NewHash(baseHash))
-	if err != nil {
+	baseHashObj := plumbing.NewHash(baseHash)
+	headHashObj := plumbing.NewHash(headHash)
+
+	if err := ensureCommitPresent(repo, baseHashObj, logger); err != nil {
 		return nil, fmt.Errorf("failed to resolve base commit %q: %w", baseHash, err)
 	}
-	headCommit, err := repo.CommitObject(plumbing.NewHash(headHash))
-	if err != nil {
+	if err := ensureCommitPresent(repo, headHashObj, logger); err != nil {
 		return nil, fmt.Errorf("failed to resolve head commit %q: %w", headHash, err)
+	}
+
+	baseCommit, err := repo.CommitObject(baseHashObj)
+	if err != nil {
+		return nil, err
+	}
+	headCommit, err := repo.CommitObject(headHashObj)
+	if err != nil {
+		return nil, err
 	}
 
 	baseTree, err := baseCommit.Tree()
@@ -122,7 +133,7 @@ func MaterializeDiff(repoRoot, diffRoot, baseSHA, headSHA string, files []string
 	}
 
 	paths := uniqueNonEmpty(files)
-	addedLines, err := AddedLines(repoRoot, baseSHA, headSHA, paths)
+	addedLines, err := AddedLines(repoRoot, baseSHA, headSHA, paths, logger)
 	if err != nil {
 		return err
 	}
@@ -187,7 +198,7 @@ func writeSparseFile(repoRoot, diffRoot, relPath string, lines map[int]string) e
 	}
 
 	output := strings.Join(diffLines, "\n")
-	if strings.HasSuffix(content, "\n") {
+	if strings.HasSuffix(content, "\n") && !strings.HasSuffix(output, "\n") {
 		output += "\n"
 	}
 
@@ -247,4 +258,80 @@ func sortedKeys(m map[string]map[int]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+func ensureCommitPresent(repo *git.Repository, hash plumbing.Hash, logger hclog.Logger) error {
+	if _, err := repo.CommitObject(hash); err != nil {
+		if logger != nil {
+			logger.Debug("commit missing locally, attempting fetch", "hash", hash.String())
+		}
+		if err := fetchCommit(repo, hash, logger); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func fetchCommit(repo *git.Repository, hash plumbing.Hash, logger hclog.Logger) error {
+	remoteName := "origin"
+	if _, err := repo.Remote(remoteName); err != nil {
+		remotes, rErr := repo.Remotes()
+		if rErr != nil || len(remotes) == 0 {
+			return fmt.Errorf("no remotes available to fetch commit %s", hash.String())
+		}
+		remoteName = remotes[0].Config().Name
+	}
+
+	tmpRef := plumbing.ReferenceName(fmt.Sprintf("refs/scanio/tmp/%s", hash.String()))
+	refspec := config.RefSpec(fmt.Sprintf("+%s:%s", hash.String(), tmpRef.String()))
+
+	if logger != nil {
+		logger.Debug("fetching commit", "remote", remoteName, "hash", hash.String())
+	}
+	fetchErr := repo.Fetch(&git.FetchOptions{
+		RemoteName: remoteName,
+		Depth:      1,
+		RefSpecs:   []config.RefSpec{refspec},
+		Tags:       git.NoTags,
+	})
+	if fetchErr != nil && fetchErr != git.NoErrAlreadyUpToDate {
+		if strings.Contains(fetchErr.Error(), "does not support exact SHA1 refspec") {
+			if logger != nil {
+				logger.Debug("remote rejected SHA fetch, falling back to default refspec", "remote", remoteName)
+			}
+			var fallbackSpecs []config.RefSpec
+			if remote, rErr := repo.Remote(remoteName); rErr == nil {
+				fallbackSpecs = remote.Config().Fetch
+			}
+			fallbackErr := repo.Fetch(&git.FetchOptions{
+				RemoteName: remoteName,
+				Depth:      1,
+				RefSpecs:   fallbackSpecs,
+				Tags:       git.NoTags,
+			})
+			if fallbackErr != nil && fallbackErr != git.NoErrAlreadyUpToDate {
+				if logger != nil {
+					logger.Warn("fallback fetch failed", "error", fallbackErr)
+				}
+				return fallbackErr
+			}
+		} else {
+			if logger != nil {
+				logger.Warn("fetch commit failed", "hash", hash.String(), "error", fetchErr)
+			}
+			return fetchErr
+		}
+	}
+
+	defer func() {
+		_ = repo.Storer.RemoveReference(tmpRef)
+	}()
+
+	if _, err := repo.CommitObject(hash); err != nil {
+		return err
+	}
+	if logger != nil {
+		logger.Debug("commit fetched", "hash", hash.String())
+	}
+	return nil
 }
