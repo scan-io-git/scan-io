@@ -296,6 +296,59 @@ The fetch response keeps `path` pointing to the repository checkout, sets `scope
 
 Without `--diff`, the plugin returns `scope: "full"` and `path`/`repo_root` both point to the repository checkout, matching the previous behaviour.
 
+Original file (`config/app.env` before the PR):
+```
+1 DATABASE_URL=postgres://localhost/db
+2 API_KEY=old-secret
+3 CACHE_ENABLED=true
+4 LOG_LEVEL=info
+5 FEATURE_FLAG_X=false
+```
+
+New file (after PR changes):
+```
+1 DATABASE_URL=postgres://mysql/prod
+2 API_KEY=new-rotated-secret
+3 CACHE_ENABLED=true
+4 LOG_LEVEL=debug
+5 ERROR_REPORTING=enabled
+6 FEATURE_FLAG_X=true
+```
+
+Unified diff between base and head:
+```
+diff --git a/config/app.env b/config/app.env
+index 2b1e2d1..5ef9c42 100644
+--- a/config/app.env
++++ b/config/app.env
+@@
+-DATABASE_URL=postgres://localhost/db
+-API_KEY=old-secret
+-CACHE_ENABLED=true
+-LOG_LEVEL=info
+-FEATURE_FLAG_X=false
++DATABASE_URL=postgres://mysql/prod
++API_KEY=new-rotated-secret
++CACHE_ENABLED=true
++LOG_LEVEL=debug
++ERROR_REPORTING=enabled
++FEATURE_FLAG_X=true
+```
+
+Sparse file written by diff mode (the file stored under `<diff_root>/config/app.env`; blank lines are intentional to preserve line numbers of unchanged lines).
+```
+1 DATABASE_URL=postgres://mysql/prod
+2 API_KEY=new-rotated-secret
+3 
+4 LOG_LEVEL=debug
+5 ERROR_REPORTING=enabled
+6 FEATURE_FLAG_X=true
+```
+
+- Lines 1-2, 4-5, 7 hold the new values introduced by the diff.
+- Line 3 was unchanged (`CACHE_ENABLED=true`), so it is left blank to keep offsets aligned.
+
+
 ### Actions
 The Bitbucket plugin supports the following actions for the `fetch` command:
 
