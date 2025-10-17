@@ -71,7 +71,7 @@ var (
 
 // FetchCmd represents the command for fetch command.
 var FetchCmd = &cobra.Command{
-	Use:                   "fetch --vcs/p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [--output/-o PATH] [--rm-ext LIST_OF_EXTENTIONS][-j THREADS_NUMBER, default=1][--pr-mode PR_MODE][--single-branch][--depth DEPTH, default=0][--tags][--no-tags] {--input-file/-i PATH | [-b/--branch BRANCH/HASH] URL}",
+	Use:                   "fetch --vcs/p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [--output/-o PATH] [--rm-ext LIST_OF_EXTENTIONS][-j THREADS_NUMBER, default=1][--pr-mode PR_MODE][--single-branch][--depth DEPTH, default=0][--tags][--no-tags][--diff] {--input-file/-i PATH | [-b/--branch BRANCH/HASH] URL}",
 	SilenceUsage:          true,
 	DisableFlagsInUseLine: true,
 	Example:               exampleFetchUsage,
