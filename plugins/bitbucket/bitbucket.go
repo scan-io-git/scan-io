@@ -332,6 +332,7 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRes
 	}
 
 	if args.FetchScope == ftutils.ScopeDiff {
+		g.logger.Info("getting diff")
 		baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, prID)
 		diffRoot := filepath.Join(baseDestPath, "diff")
 		if err := files.RemoveAndRecreate(diffRoot); err != nil {
@@ -449,7 +450,7 @@ func (g *VCSBitbucket) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchRespon
 	case ftutils.PRBranchMode, ftutils.PRRefMode, ftutils.PRCommitMode:
 		response, err := g.fetchPR(&args)
 		if err != nil {
-			g.logger.Error("failed to fetch pull request")
+			g.logger.Error("failed to fetch pull request", "error", err)
 			return shared.VCSFetchResponse{}, err
 		}
 		return response, nil
