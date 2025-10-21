@@ -11,12 +11,16 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/hashicorp/go-hclog"
+
+	"github.com/scan-io-git/scan-io/pkg/shared/config"
 )
 
 func TestAddedLines(t *testing.T) {
 	repoDir, baseHash, headHash := setupDiffRepo(t)
 
-	got, err := AddedLines(repoDir, baseHash, headHash, nil, hclog.NewNullLogger())
+	client := newTestGitClient()
+
+	got, err := AddedLines(client, repoDir, baseHash, headHash, nil)
 	if err != nil {
 		t.Fatalf("AddedLines returned error: %v", err)
 	}
@@ -43,7 +47,7 @@ func TestAddedLines(t *testing.T) {
 		t.Fatalf("unexpected additions for plain.txt:\n%s", diff)
 	}
 
-	filtered, err := AddedLines(repoDir, baseHash, headHash, []string{"new.txt"}, hclog.NewNullLogger())
+	filtered, err := AddedLines(client, repoDir, baseHash, headHash, []string{"new.txt"})
 	if err != nil {
 		t.Fatalf("AddedLines with filters returned error: %v", err)
 	}
@@ -59,8 +63,9 @@ func TestMaterializeDiff(t *testing.T) {
 	repoDir, baseHash, headHash := setupDiffRepo(t)
 	diffRoot := filepath.Join(t.TempDir(), "diff")
 
-	logger := hclog.NewNullLogger()
-	if err := MaterializeDiff(repoDir, diffRoot, baseHash, headHash, nil, logger); err != nil {
+	client := newTestGitClient()
+
+	if err := MaterializeDiff(client, repoDir, diffRoot, baseHash, headHash, nil); err != nil {
 		t.Fatalf("MaterializeDiff returned error: %v", err)
 	}
 
@@ -107,7 +112,8 @@ func TestMaterializeDiff(t *testing.T) {
 // 		t.Fatalf("expected base commit to be absent before AddedLines fetch")
 // 	}
 
-// 	got, err := AddedLines(repoDir, baseHash, headHash, nil, hclog.NewNullLogger())
+// 	client := newTestGitClient()
+// 	got, err := AddedLines(client, repoDir, baseHash, headHash, nil)
 // 	if err != nil {
 // 		t.Fatalf("AddedLines returned error: %v", err)
 // 	}
@@ -149,6 +155,14 @@ func setupDiffRepo(t *testing.T) (string, string, string) {
 	headHash := commitFiles(t, wt, headFiles, "head commit")
 
 	return repoDir, baseHash.String(), headHash.String()
+}
+
+func newTestGitClient() *Client {
+	return &Client{
+		logger:       hclog.NewNullLogger(),
+		timeout:      time.Minute,
+		globalConfig: &config.Config{},
+	}
 }
 
 // func setupDiffRepoWithRemote(t *testing.T) (string, string, string) {

@@ -347,7 +347,7 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRes
 
 		changedPaths := collectChangedFilePaths(changes, g.logger)
 
-		if err := git.MaterializeDiff(args.TargetFolder, diffRoot, baseSHA, headSHA, changedPaths, g.logger); err != nil {
+		if err := git.MaterializeDiff(clientGit, args.TargetFolder, diffRoot, baseSHA, headSHA, changedPaths); err != nil {
 			return shared.VCSFetchResponse{}, err
 		}
 

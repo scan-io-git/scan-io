@@ -518,7 +518,7 @@ func (g *VCSGitlab) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRespon
 		}
 
 		paths := collectGitlabChangedPaths(diffs)
-		if err := git.MaterializeDiff(args.TargetFolder, diffRoot, baseSHA, headSHA, paths, g.logger); err != nil {
+		if err := git.MaterializeDiff(clientGit, args.TargetFolder, diffRoot, baseSHA, headSHA, paths); err != nil {
 			return shared.VCSFetchResponse{}, err
 		}
 

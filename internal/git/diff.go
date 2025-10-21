@@ -2,7 +2,9 @@ package git
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -11,17 +13,17 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/hashicorp/go-hclog"
 	"github.com/sourcegraph/go-diff/diff"
 
 	sharedfiles "github.com/scan-io-git/scan-io/pkg/shared/files"
+	log "github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 // AddedLines returns, for every file touched between baseHash and headHash, a map of
 // new-file line numbers to the textual content that was added. Returned line
 // numbers are 1-based and only include additions; deletions and context lines are
 // ignored. Paths that are deleted or outside the optional filter list are skipped.
-func AddedLines(repoPath, baseHash, headHash string, filters []string, logger hclog.Logger) (map[string]map[int]string, error) {
+func AddedLines(gitClient *Client, repoPath, baseHash, headHash string, filters []string) (map[string]map[int]string, error) {
 	if baseHash == "" {
 		return nil, fmt.Errorf("base hash is required to compute diff")
 	}
@@ -37,10 +39,10 @@ func AddedLines(repoPath, baseHash, headHash string, filters []string, logger hc
 	baseHashObj := plumbing.NewHash(baseHash)
 	headHashObj := plumbing.NewHash(headHash)
 
-	if err := ensureCommitPresent(repo, baseHashObj, logger); err != nil {
+	if err := ensureCommitPresent(gitClient, repo, baseHashObj); err != nil {
 		return nil, fmt.Errorf("failed to resolve base commit %q: %w", baseHash, err)
 	}
-	if err := ensureCommitPresent(repo, headHashObj, logger); err != nil {
+	if err := ensureCommitPresent(gitClient, repo, headHashObj); err != nil {
 		return nil, fmt.Errorf("failed to resolve head commit %q: %w", headHash, err)
 	}
 
@@ -127,21 +129,19 @@ func AddedLines(repoPath, baseHash, headHash string, filters []string, logger hc
 // lines (other positions remain blank), allowing scanners to operate on diff
 // hunks without re-running git diff. When no additions are detected the function
 // exits early without writing anything.
-func MaterializeDiff(repoRoot, diffRoot, baseSHA, headSHA string, files []string, logger hclog.Logger) error {
+func MaterializeDiff(gitClient *Client, repoRoot, diffRoot, baseSHA, headSHA string, files []string) error {
 	if err := sharedfiles.CreateFolderIfNotExists(diffRoot); err != nil {
 		return fmt.Errorf("prepare diff folder: %w", err)
 	}
 
 	paths := uniqueNonEmpty(files)
-	addedLines, err := AddedLines(repoRoot, baseSHA, headSHA, paths, logger)
+	addedLines, err := AddedLines(gitClient, repoRoot, baseSHA, headSHA, paths)
 	if err != nil {
 		return err
 	}
 
 	if len(addedLines) == 0 {
-		if logger != nil {
-			logger.Info("no additions detected between commits", "base", baseSHA, "head", headSHA)
-		}
+		gitClient.logger.Info("no additions detected between commits", "base", baseSHA, "head", headSHA)
 		return nil
 	}
 
@@ -157,9 +157,7 @@ func MaterializeDiff(repoRoot, diffRoot, baseSHA, headSHA string, files []string
 
 		lines := addedLines[relPath]
 		if len(lines) == 0 {
-			if logger != nil {
-				logger.Debug("skipping file with no additions", "path", relPath)
-			}
+			gitClient.logger.Debug("skipping file with no additions", "path", relPath)
 			continue
 		}
 
@@ -260,18 +258,29 @@ func sortedKeys(m map[string]map[int]string) []string {
 	return keys
 }
 
-func ensureCommitPresent(repo *git.Repository, hash plumbing.Hash, logger hclog.Logger) error {
+func ensureCommitPresent(gitClient *Client, repo *git.Repository, hash plumbing.Hash) error {
 	if _, err := repo.CommitObject(hash); err != nil {
-		logger.Debug("commit missing locally, attempting fetch", "hash", hash.String())
-		if err := fetchCommit(repo, hash, logger); err != nil {
+		gitClient.logger.Debug("commit missing locally, attempting fetch", "hash", hash.String())
+		if err := fetchCommit(gitClient, repo, hash); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func fetchCommit(repo *git.Repository, hash plumbing.Hash, logger hclog.Logger) error {
-	remoteName := "origin"
+func fetchCommit(gitClient *Client, repo *git.Repository, hash plumbing.Hash) error {
+	ctx, cancel := context.WithTimeout(context.Background(), gitClient.timeout)
+	defer cancel()
+
+	gitLog := log.GetLoggerOutput(gitClient.logger)
+	output := io.MultiWriter(
+		gitLog,
+		os.Stderr,
+	)
+
+	insecure := InsecureFromCfg(gitClient.globalConfig)
+
+	remoteName := origin
 	if _, err := repo.Remote(remoteName); err != nil {
 		remotes, rErr := repo.Remotes()
 		if rErr != nil || len(remotes) == 0 {
@@ -280,28 +289,29 @@ func fetchCommit(repo *git.Repository, hash plumbing.Hash, logger hclog.Logger) 
 		remoteName = remotes[0].Config().Name
 	}
 
-	tmpRef := plumbing.ReferenceName(fmt.Sprintf("refs/scanio/tmp/%s", hash.String()))
+	tmpRef := plumbing.ReferenceName(fmt.Sprintf(tmpRefPrefix+"%s", hash.String()))
 	refspec := config.RefSpec(fmt.Sprintf("+%s:%s", hash.String(), tmpRef.String()))
 
-	if logger != nil {
-		logger.Debug("fetching commit", "remote", remoteName, "hash", hash.String())
+	if gitClient.logger != nil {
+		gitClient.logger.Debug("fetching commit", "remote", remoteName, "hash", hash.String())
 	}
-	fetchErr := repo.Fetch(&git.FetchOptions{
-		RemoteName: remoteName,
-		Depth:      1,
-		RefSpecs:   []config.RefSpec{refspec},
-		Tags:       git.NoTags,
+
+	fetchErr := repo.FetchContext(ctx, &git.FetchOptions{
+		RemoteName:      remoteName,
+		Auth:            gitClient.auth,
+		InsecureSkipTLS: insecure,
+		Progress:        output,
+		Depth:           1,
+		RefSpecs:        []config.RefSpec{refspec},
+		Tags:            git.NoTags,
 	})
+
 	if fetchErr != nil && fetchErr != git.NoErrAlreadyUpToDate {
 		if fetchErr != nil {
 			if fetchErr == git.NoErrAlreadyUpToDate {
-				if logger != nil {
-					logger.Debug("commit already available", "hash", hash.String())
-				}
+				gitClient.logger.Debug("commit already available", "hash", hash.String())
 			} else {
-				if logger != nil {
-					logger.Warn("fetch commit failed", "hash", hash.String(), "error", fetchErr)
-				}
+				gitClient.logger.Warn("fetch commit failed", "hash", hash.String(), "error", fetchErr)
 				return fetchErr
 			}
 		}
@@ -314,8 +324,6 @@ func fetchCommit(repo *git.Repository, hash plumbing.Hash, logger hclog.Logger) 
 	if _, err := repo.CommitObject(hash); err != nil {
 		return err
 	}
-	if logger != nil {
-		logger.Debug("commit fetched", "hash", hash.String())
-	}
+	gitClient.logger.Debug("commit fetched", "hash", hash.String())
 	return nil
 }
