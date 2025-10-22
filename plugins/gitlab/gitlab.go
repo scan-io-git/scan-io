@@ -507,26 +507,35 @@ func (g *VCSGitlab) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRespon
 	extras := map[string]string{"repo_root": args.TargetFolder}
 
 	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, mrID)
-	diffFilesRoot := filepath.Join(baseDestPath, "diff-files")
-	if err := files.RemoveAndRecreate(diffFilesRoot); err != nil {
-		return shared.VCSFetchResponse{}, fmt.Errorf("failed to prepare clean diff-files folder: %w", err)
+	needDiffFiles := args.FetchScope == ftutils.ScopeDiffFiles || args.FetchScope == ftutils.ScopeDiff
+	needDiffLines := args.FetchScope == ftutils.ScopeDiffLines || args.FetchScope == ftutils.ScopeDiff
+
+	var changedPaths []string
+	if needDiffFiles || needDiffLines {
+		changedPaths = collectGitlabChangedPaths(diffs)
 	}
 
-	changedPaths := collectGitlabChangedPaths(diffs)
-	for _, path := range changedPaths {
-		srcPath := filepath.Join(args.TargetFolder, path)
-		destPath := filepath.Join(diffFilesRoot, path)
-		if err := files.Copy(srcPath, destPath); err != nil {
-			g.logger.Error("error copying file", "error", err)
+	if needDiffFiles {
+		diffFilesRoot := filepath.Join(baseDestPath, "diff-files")
+		if err := files.RemoveAndRecreate(diffFilesRoot); err != nil {
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to prepare clean diff-files folder: %w", err)
 		}
+
+		for _, path := range changedPaths {
+			srcPath := filepath.Join(args.TargetFolder, path)
+			destPath := filepath.Join(diffFilesRoot, path)
+			if err := files.Copy(srcPath, destPath); err != nil {
+				g.logger.Error("error copying file", "error", err)
+			}
+		}
+
+		if err := files.CopyDotFiles(args.TargetFolder, diffFilesRoot, g.logger); err != nil {
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to copy dotfiles: %w", err)
+		}
+		extras["diff_files_root"] = diffFilesRoot
 	}
 
-	if err := files.CopyDotFiles(args.TargetFolder, diffFilesRoot, g.logger); err != nil {
-		return shared.VCSFetchResponse{}, fmt.Errorf("failed to copy dotfiles: %w", err)
-	}
-	extras["diff_files_root"] = diffFilesRoot
-
-	if args.FetchScope == ftutils.ScopeDiff {
+	if needDiffLines {
 		diffLinesRoot := filepath.Join(baseDestPath, "diff-lines")
 		if err := files.RemoveAndRecreate(diffLinesRoot); err != nil {
 			return shared.VCSFetchResponse{}, fmt.Errorf("failed to prepare clean diff-lines folder: %w", err)
