@@ -331,12 +331,31 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRes
 		return shared.VCSFetchResponse{}, err
 	}
 
+	extras := map[string]string{"repo_root": args.TargetFolder}
+
+	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, prID)
+	diffFilesRoot := filepath.Join(baseDestPath, "diff-files")
+	if err := files.RemoveAndRecreate(diffFilesRoot); err != nil {
+		return shared.VCSFetchResponse{}, fmt.Errorf("failed to prepare clean diff-files folder: %w", err)
+	}
+	changedPaths := collectChangedFilePaths(changes, g.logger)
+	for _, path := range changedPaths {
+		srcPath := filepath.Join(args.TargetFolder, path)
+		destPath := filepath.Join(diffFilesRoot, path)
+		if err := files.Copy(srcPath, destPath); err != nil {
+			g.logger.Error("error copying file", "error", err)
+		}
+	}
+
+	if err := files.CopyDotFiles(args.TargetFolder, diffFilesRoot, g.logger); err != nil {
+		return shared.VCSFetchResponse{}, fmt.Errorf("failed to copy dotfiles: %w", err)
+	}
+	extras["diff_files_root"] = diffFilesRoot
+
 	if args.FetchScope == ftutils.ScopeDiff {
-		g.logger.Info("getting diff")
-		baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, prID)
-		diffRoot := filepath.Join(baseDestPath, "diff")
-		if err := files.RemoveAndRecreate(diffRoot); err != nil {
-			return shared.VCSFetchResponse{}, fmt.Errorf("failed to prepare clean diff folder: %w", err)
+		diffLinesRoot := filepath.Join(baseDestPath, "diff-lines")
+		if err := files.RemoveAndRecreate(diffLinesRoot); err != nil {
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to prepare clean diff-lines folder: %w", err)
 		}
 
 		headSHA := prData.FromReference.LatestCommit
@@ -345,20 +364,15 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRes
 		}
 		baseSHA := prData.ToReference.LatestCommit
 
-		changedPaths := collectChangedFilePaths(changes, g.logger)
-
-		if err := git.MaterializeDiff(clientGit, args.TargetFolder, diffRoot, baseSHA, headSHA, changedPaths); err != nil {
+		if err := git.MaterializeDiff(clientGit, args.TargetFolder, diffLinesRoot, baseSHA, headSHA, changedPaths); err != nil {
 			return shared.VCSFetchResponse{}, err
 		}
 
-		if err := files.CopyDotFiles(args.TargetFolder, diffRoot, g.logger); err != nil {
+		if err := files.CopyDotFiles(args.TargetFolder, diffLinesRoot, g.logger); err != nil {
 			return shared.VCSFetchResponse{}, fmt.Errorf("failed to copy dotfiles: %w", err)
 		}
 
-		extras := map[string]string{
-			"diff_root": diffRoot,
-			"repo_root": args.TargetFolder,
-		}
+		extras["diff_lines_root"] = diffLinesRoot
 		if baseSHA != "" {
 			extras["base_sha"] = baseSHA
 		}
@@ -366,12 +380,12 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRes
 			extras["head_sha"] = headSHA
 		}
 
-		g.logger.Info("diff artifacts prepared", "folder", diffRoot)
+		g.logger.Info("diff artifacts prepared", "folder", diffLinesRoot)
 		return shared.VCSFetchResponse{Path: args.TargetFolder, Scope: args.FetchScope, Extras: extras}, nil
 	}
 
 	g.logger.Info("PR fetch completed, returning repository root", "path", args.TargetFolder)
-	return shared.VCSFetchResponse{Path: args.TargetFolder, Scope: args.FetchScope, Extras: map[string]string{"repo_root": args.TargetFolder}}, nil
+	return shared.VCSFetchResponse{Path: args.TargetFolder, Scope: args.FetchScope, Extras: extras}, nil
 }
 
 // findCloneURL searches for a valid clone URL, first in the fromRef, then in the toRef.
@@ -422,6 +436,7 @@ func collectChangedFilePaths(changes *[]bitbucket.Change, logger hclog.Logger) [
 	paths := make([]string, 0, len(*changes))
 	for _, change := range *changes {
 		if !shared.ContainsSubstring(change.Type, bitbucket.ChangeTypes) {
+			logger.Debug("skipping", "type", change.Type, "path", change.Path.ToString)
 			continue
 		}
 		if change.Path == nil || change.Path.ToString == "" {
