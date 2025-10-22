@@ -140,7 +140,8 @@ func listOpenIssues(options RunOptions, lg hclog.Logger) (map[int]OpenIssueEntry
 			},
 			Action: "listIssues",
 		},
-		State: "open",
+		State:      "open",
+		BodyFilter: scanioManagedAnnotation, // Filter for scanio-managed issues
 	}
 
 	var issues []shared.IssueParams

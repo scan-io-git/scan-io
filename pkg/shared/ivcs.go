@@ -148,7 +148,8 @@ type VCSAddCommentToPRRequest struct {
 // VCSListIssuesRequest represents a request to list issues in a repository.
 type VCSListIssuesRequest struct {
 	VCSRequestBase
-	State string `json:"state"` // open, closed, all; default open
+	State      string `json:"state"`       // open, closed, all; default open
+	BodyFilter string `json:"body_filter"` // optional: filter issues by body content (substring match)
 }
 
 // ListFuncResult holds the result of a list function.
