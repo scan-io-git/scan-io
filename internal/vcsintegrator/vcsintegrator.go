@@ -26,20 +26,21 @@ type VCSIntegrator struct {
 
 // RunOptionsIntegrationVCS holds the arguments for VCS integration actions.
 type RunOptionsIntegrationVCS struct {
-	VCSPluginName string   `json:"vcs_plugin_name,omitempty"`
-	Domain        string   `json:"domain,omitempty"`
-	Namespace     string   `json:"namespace,omitempty"`
-	Repository    string   `json:"repository,omitempty"`
-	PullRequestID string   `json:"pull_request_id,omitempty"`
-	Action        string   `json:"action,omitempty"`
-	Login         string   `json:"login,omitempty"`
-	Language      string   `json:"language,omitempty"`
-	OutputPath    string   `json:"output_path,omitempty"`
-	Role          string   `json:"role,omitempty"`
-	Status        string   `json:"status,omitempty"`
-	Comment       string   `json:"comment,omitempty"`
-	CommentFile   string   `json:"comment_file,omitempty"`
-	AttachFiles   []string `json:"attach_files,omitempty"`
+	VCSPluginName  string   `json:"vcs_plugin_name,omitempty"`
+	Domain         string   `json:"domain,omitempty"`
+	Namespace      string   `json:"namespace,omitempty"`
+	Repository     string   `json:"repository,omitempty"`
+	PullRequestID  string   `json:"pull_request_id,omitempty"`
+	Action         string   `json:"action,omitempty"`
+	Login          string   `json:"login,omitempty"`
+	Language       string   `json:"language,omitempty"`
+	OutputPath     string   `json:"output_path,omitempty"`
+	Role           string   `json:"role,omitempty"`
+	Status         string   `json:"status,omitempty"`
+	Comment        string   `json:"comment,omitempty"`
+	CommentFile    string   `json:"comment_file,omitempty"`
+	AttachFiles    []string `json:"attach_files,omitempty"`
+	LocalTipCommit string   `json:"local_tip_commit,omitempty"` // Tip commit hash to verify is local and remote tip commit are equal
 }
 
 // New creates a new VCSIntegrator instance with the provided configuration.
