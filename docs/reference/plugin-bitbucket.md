@@ -276,25 +276,27 @@ Example:
 https:///bitbucket.com/projects/SCANIO/repos/scan-io/pull-requests/1/overview # APIv1 http URL
 ```
 
-#### Diff mode (`--diff`)
+#### Diff artifacts (`--diff-lines`, `--diff-files`)
 
-When the `--diff` flag is supplied for a pull-request URL, the Bitbucket plugin:
+When `--diff-lines` or `--diff-files` is supplied for a pull-request URL, the Bitbucket plugin:
 
 - clones the PR head inside the standard repository cache and computes the diff between the provider-reported base and head commits;
-- writes only the added/modified lines for each changed file to a dedicated `diff` directory under the PR temp path (unchanged lines remain blank); 
-- copies dotfiles (for example `.gitignore`, scanner configuration files) even if they were not part of the change list; and
-- recreates the `diff` directory on every run so CI reruns do not accumulate stale artifacts.
+- materialises sparse diff files (only the added/modified lines) when `--diff-lines` is set, keeping unchanged lines blank for offset stability;
+- copies the fully changed files when `--diff-files` is set so scanners that need full context can run without touching the rest of the checkout;
+- copies dotfiles (for example `.gitignore`, scanner configuration files) into whichever diff folders are produced; and
+- recreates the diff folders on every run so CI reruns do not accumulate stale artifacts.
 
-The fetch response keeps `path` pointing to the repository checkout, sets `scope: "diff"`, and populates the following `extras` keys:
+The fetch response keeps `path` pointing to the repository checkout, sets `scope` to `diff-lines`, `diff-files`, or `diff` (when both flags are present), and populates the following `extras` keys:
 
-| Key         | Description                                                 |
-|-------------|-------------------------------------------------------------|
-| `diff_root` | Absolute path to the diff folder with sparse files.         |
-| `repo_root` | Path to the fully cloned repository (also returned as `path`).|
-| `base_sha`  | Provider base commit used for the diff (when available).     |
-| `head_sha`  | Provider head commit used for the diff.                      |
+| Key               | Description                                                 |
+|-------------------|-------------------------------------------------------------|
+| `diff_lines_root` | Absolute path to sparse diff artifacts (present with `--diff-lines`). |
+| `diff_files_root` | Absolute path to full diff files (present with `--diff-files`). |
+| `repo_root`       | Path to the fully cloned repository (also returned as `path`).|
+| `base_sha`        | Provider base commit used for the diff (when available).     |
+| `head_sha`        | Provider head commit used for the diff.                      |
 
-Without `--diff`, the plugin returns `scope: "full"` and `path`/`repo_root` both point to the repository checkout, matching the previous behaviour.
+Without diff flags, the plugin returns `scope: "full"` and `path`/`repo_root` both point to the repository checkout, matching the previous behaviour.
 
 Original file (`config/app.env` before the PR):
 ```
@@ -335,7 +337,7 @@ index 2b1e2d1..5ef9c42 100644
 +FEATURE_FLAG_X=true
 ```
 
-Sparse file written by diff mode (the file stored under `<diff_root>/config/app.env`; blank lines are intentional to preserve line numbers of unchanged lines).
+Sparse file written by diff-lines mode (the file stored under `<diff_lines_root>/config/app.env`; blank lines are intentional to preserve line numbers of unchanged lines).
 ```
 1 DATABASE_URL=postgres://mysql/prod
 2 API_KEY=new-rotated-secret
@@ -434,11 +436,18 @@ A PR can also be fetched directly via its tip commit hash. In this case, the com
 
 At the plugin level, the tip commit is resolved through the VCS API and then passed to the Git dependency for checkout.
 
-**Fetch only added/modified lines from a pull request** <br>
-Add the `--diff` flag to persist only the new content (and dotfiles) for PR scanning. The response will point to the diff folder and include commit metadata in `extras`.
+**Fetch diff artifacts for a pull request** <br>
+Add `--diff-lines` for sparse hunks, `--diff-files` for full file copies, or both to obtain every artifact in one run.
 
 ```bash
-scanio fetch --vcs bitbucket --auth-type ssh-agent --diff https:///bitbucket.com/projects/SCANIO/repos/scan-io/pull-requests/1/overview
+# Sparse diff lines
+scanio fetch --vcs bitbucket --auth-type ssh-agent --diff-lines https:///bitbucket.com/projects/SCANIO/repos/scan-io/pull-requests/1/overview
+
+# Full changed files
+scanio fetch --vcs bitbucket --auth-type ssh-agent --diff-files https:///bitbucket.com/projects/SCANIO/repos/scan-io/pull-requests/1/overview
+
+# Both outputs
+scanio fetch --vcs bitbucket --auth-type ssh-agent --diff-lines --diff-files https:///bitbucket.com/projects/SCANIO/repos/scan-io/pull-requests/1/overview
 ```
 
 **Bulk Fetch from Input File** <br>
