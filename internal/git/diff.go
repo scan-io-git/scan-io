@@ -19,10 +19,11 @@ import (
 	log "github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
-// AddedLines returns, for every file touched between baseHash and headHash, a map of
-// new-file line numbers to the textual content that was added. Returned line
+// AddedLines returns, for every file touched between baseHash and headHash, a map
+// of new-file line numbers to the textual content that was added. Returned line
 // numbers are 1-based and only include additions; deletions and context lines are
 // ignored. Paths that are deleted or outside the optional filter list are skipped.
+// The provided gitClient is used to ensure both commits are available locally.
 func AddedLines(gitClient *Client, repoPath, baseHash, headHash string, filters []string) (map[string]map[int]string, error) {
 	if baseHash == "" {
 		return nil, fmt.Errorf("base hash is required to compute diff")
@@ -124,11 +125,12 @@ func AddedLines(gitClient *Client, repoPath, baseHash, headHash string, filters 
 	return result, nil
 }
 
-// MaterializeDiff writes diff-focused copies of provided files into diffRoot. Every
-// output file mirrors the repository structure but contains only the newly added
-// lines (other positions remain blank), allowing scanners to operate on diff
+// MaterializeDiff writes diff-focused copies of the provided files into diffRoot.
+// Every output file mirrors the repository structure but contains only the newly
+// added lines (other positions remain blank), allowing scanners to operate on diff
 // hunks without re-running git diff. When no additions are detected the function
-// exits early without writing anything.
+// exits early without writing anything. The gitClient is used for commit lookups
+// and logging.
 func MaterializeDiff(gitClient *Client, repoRoot, diffRoot, baseSHA, headSHA string, files []string) error {
 	if err := sharedfiles.CreateFolderIfNotExists(diffRoot); err != nil {
 		return fmt.Errorf("prepare diff folder: %w", err)
@@ -258,6 +260,8 @@ func sortedKeys(m map[string]map[int]string) []string {
 	return keys
 }
 
+// ensureCommitPresent verifies that the given commit hash exists locally, using
+// the supplied gitClient to fetch it from the remote when required.
 func ensureCommitPresent(gitClient *Client, repo *git.Repository, hash plumbing.Hash) error {
 	if _, err := repo.CommitObject(hash); err != nil {
 		gitClient.logger.Debug("commit missing locally, attempting fetch", "hash", hash.String())
@@ -268,6 +272,8 @@ func ensureCommitPresent(gitClient *Client, repo *git.Repository, hash plumbing.
 	return nil
 }
 
+// fetchCommit synchronises the provided commit hash into the local repository
+// using the gitClient's authentication, TLS, and timeout settings.
 func fetchCommit(gitClient *Client, repo *git.Repository, hash plumbing.Hash) error {
 	ctx, cancel := context.WithTimeout(context.Background(), gitClient.timeout)
 	defer cancel()
@@ -292,9 +298,7 @@ func fetchCommit(gitClient *Client, repo *git.Repository, hash plumbing.Hash) er
 	tmpRef := plumbing.ReferenceName(fmt.Sprintf(tmpRefPrefix+"%s", hash.String()))
 	refspec := config.RefSpec(fmt.Sprintf("+%s:%s", hash.String(), tmpRef.String()))
 
-	if gitClient.logger != nil {
-		gitClient.logger.Debug("fetching commit", "remote", remoteName, "hash", hash.String())
-	}
+	gitClient.logger.Debug("fetching commit", "remote", remoteName, "hash", hash.String())
 
 	fetchErr := repo.FetchContext(ctx, &git.FetchOptions{
 		RemoteName:      remoteName,
