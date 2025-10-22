@@ -273,25 +273,27 @@ https://gitlab.com/testing_scanio/testing_scanio/-/merge_requests/1  # HTTP type
 https://gitlab.com/testing_scanio/testingsubgroup/subrouplevel2/projectlevel2/-/merge_requests/1  # HTTP type
 ```
 
-#### Diff mode (`--diff`)
+#### Diff artifacts (`--diff-lines`, `--diff-files`)
 
-When `--diff` is provided for a merge-request URL, the GitLab plugin:
+When `--diff-lines` or `--diff-files` is provided for a merge-request URL, the GitLab plugin:
 
 - clones the MR source branch/commit and produces a diff using GitLab’s `DiffRefs` (base and head SHAs) when available;
-- writes only added/modified lines for each changed file into a cleaned `diff` directory under the MR temp path while leaving unchanged lines blank;
-- copies dotfiles from the repository root into the diff directory so scanners retain configuration context; and
-- recreates the diff directory on each invocation to ensure stale artifacts are removed in CI reruns.
+- writes only added/modified lines for each changed file into a cleaned diff directory when `--diff-lines` is set, leaving unchanged lines blank for offset stability;
+- copies the fully changed files when `--diff-files` is set so scanners retain complete context;
+- copies dotfiles from the repository root into whichever diff directories are built; and
+- recreates those directories on each invocation to ensure stale artifacts are removed in CI reruns.
 
-The fetch response keeps `path` pointing to the repository checkout, sets `scope: "diff"`, and adds the following metadata:
+The fetch response keeps `path` pointing to the repository checkout, sets `scope` to `diff-lines`, `diff-files`, or `diff` (both flags), and adds the following metadata:
 
-| Key         | Description                                                                  |
-|-------------|------------------------------------------------------------------------------|
-| `diff_root` | Absolute path to the diff folder containing sparse files.                    |
-| `repo_root` | Path to the repository checkout used when computing the diff (and returned as `path`). |
-| `base_sha`  | Base commit SHA reported by GitLab (empty when the API omits it).            |
-| `head_sha`  | Head commit SHA from `DiffRefs` or the MR SHA.                               |
+| Key               | Description                                                                  |
+|-------------------|------------------------------------------------------------------------------|
+| `diff_lines_root` | Absolute path to the sparse diff folder (present when `--diff-lines` is used). |
+| `diff_files_root` | Absolute path to the full diff files folder (present when `--diff-files` is used). |
+| `repo_root`       | Path to the repository checkout used when computing the diff (and returned as `path`). |
+| `base_sha`        | Base commit SHA reported by GitLab (empty when the API omits it).            |
+| `head_sha`        | Head commit SHA from `DiffRefs` or the MR SHA.                               |
 
-Without `--diff`, the plugin returns `scope: "full"` and the `path`/`repo_root` both point to the repository checkout as in previous releases.
+Without diff flags, the plugin returns `scope: "full"` and the `path`/`repo_root` both point to the repository checkout as in previous releases.
 
 
 Original file (`config/app.env` before the PR):
@@ -333,7 +335,7 @@ index 2b1e2d1..5ef9c42 100644
 +FEATURE_FLAG_X=true
 ```
 
-Sparse file written by diff mode (the file stored under `<diff_root>/config/app.env`; blank lines are intentional to preserve line numbers of unchanged lines).
+Sparse file written by diff-lines mode (the file stored under `<diff_lines_root>/config/app.env`; blank lines are intentional to preserve line numbers of unchanged lines).
 ```
 1 DATABASE_URL=postgres://mysql/prod
 2 API_KEY=new-rotated-secret
@@ -427,11 +429,18 @@ A PR can also be fetched directly via its tip commit hash. In this case, the com
 
 At the plugin level, the tip commit is resolved through the VCS API and then passed to the Git dependency for checkout.
 
-**Fetch only added/modified lines from a merge request** <br>
-Use the `--diff` flag to persist only the new content and dotfiles required for scanning. The fetch response references the diff directory and provides base/head SHAs.
+**Fetch diff artifacts for a pull request** <br>
+Use `--diff-lines` for sparse hunks, `--diff-files` for full file copies, or both to persist every artifact the scanners might need.
 
 ```bash
-scanio fetch --vcs gitlab --auth-type ssh-agent --diff https://gitlab.com/testing_scanio/testing_scanio/-/merge_requests/1
+# Sparse diff lines
+scanio fetch --vcs gitlab --auth-type ssh-agent --diff-lines https://gitlab.com/testing_scanio/testing_scanio/-/merge_requests/1
+
+# Full changed files
+scanio fetch --vcs gitlab --auth-type ssh-agent --diff-files https://gitlab.com/testing_scanio/testing_scanio/-/merge_requests/1
+
+# Both outputs
+scanio fetch --vcs gitlab --auth-type ssh-agent --diff-lines --diff-files https://gitlab.com/testing_scanio/testing_scanio/-/merge_requests/1
 ```
 
 **Bulk Fetch from Input File** <br>

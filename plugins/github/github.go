@@ -361,30 +361,55 @@ func (g *VCSGithub) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRespon
 		return shared.VCSFetchResponse{}, err
 	}
 
-	if args.FetchScope == ftutils.ScopeDiff {
-		baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, prID)
-		diffRoot := filepath.Join(baseDestPath, "diff")
-		if err := ifiles.RemoveAndRecreate(diffRoot); err != nil {
-			return shared.VCSFetchResponse{}, fmt.Errorf("failed to prepare clean diff folder: %w", err)
+	extras := map[string]string{"repo_root": args.TargetFolder}
+
+	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, prID)
+	needDiffFiles := args.FetchScope == ftutils.ScopeDiffFiles || args.FetchScope == ftutils.ScopeDiff
+	needDiffLines := args.FetchScope == ftutils.ScopeDiffLines || args.FetchScope == ftutils.ScopeDiff
+
+	var changedPaths []string
+	if needDiffFiles || needDiffLines {
+		changedPaths = collectGithubChangedPaths(changes)
+	}
+
+	if needDiffFiles {
+		diffFilesRoot := filepath.Join(baseDestPath, "diff-files")
+		if err := ifiles.RemoveAndRecreate(diffFilesRoot); err != nil {
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to prepare clean diff-files folder: %w", err)
+		}
+
+		for _, path := range changedPaths {
+			srcPath := filepath.Join(args.TargetFolder, path)
+			destPath := filepath.Join(diffFilesRoot, path)
+			if err := ifiles.Copy(srcPath, destPath); err != nil {
+				g.logger.Error("error copying file", "error", err)
+			}
+		}
+
+		if err := ifiles.CopyDotFiles(args.TargetFolder, diffFilesRoot, g.logger); err != nil {
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to copy dotfiles: %w", err)
+		}
+		extras["diff_files_root"] = diffFilesRoot
+	}
+
+	if needDiffLines {
+		diffLinesRoot := filepath.Join(baseDestPath, "diff-lines")
+		if err := ifiles.RemoveAndRecreate(diffLinesRoot); err != nil {
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to prepare clean diff-lines folder: %w", err)
 		}
 
 		baseSHA := prData.Base.GetSHA()
 		headSHA := prData.Head.GetSHA()
 
-		paths := collectGithubChangedPaths(changes)
-
-		if err := git.MaterializeDiff(clientGit, args.TargetFolder, diffRoot, baseSHA, headSHA, paths); err != nil {
+		if err := git.MaterializeDiff(clientGit, args.TargetFolder, diffLinesRoot, baseSHA, headSHA, changedPaths); err != nil {
 			return shared.VCSFetchResponse{}, err
 		}
 
-		if err := ifiles.CopyDotFiles(args.TargetFolder, diffRoot, g.logger); err != nil {
+		if err := ifiles.CopyDotFiles(args.TargetFolder, diffLinesRoot, g.logger); err != nil {
 			return shared.VCSFetchResponse{}, fmt.Errorf("failed to copy dotfiles: %w", err)
 		}
 
-		extras := map[string]string{
-			"diff_root": diffRoot,
-			"repo_root": args.TargetFolder,
-		}
+		extras["diff_lines_root"] = diffLinesRoot
 		if baseSHA != "" {
 			extras["base_sha"] = baseSHA
 		}
@@ -392,13 +417,13 @@ func (g *VCSGithub) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRespon
 			extras["head_sha"] = headSHA
 		}
 
-		g.logger.Info("diff artifacts prepared", "folder", diffRoot)
+		g.logger.Info("diff artifacts prepared", "folder", diffLinesRoot)
 
 		return shared.VCSFetchResponse{Path: args.TargetFolder, Scope: args.FetchScope, Extras: extras}, nil
 	}
 
 	g.logger.Info("PR fetch completed, returning repository root", "path", args.TargetFolder)
-	return shared.VCSFetchResponse{Path: args.TargetFolder, Scope: args.FetchScope, Extras: map[string]string{"repo_root": args.TargetFolder}}, nil
+	return shared.VCSFetchResponse{Path: args.TargetFolder, Scope: args.FetchScope, Extras: extras}, nil
 }
 
 func collectGithubChangedPaths(files []*github.CommitFile) []string {
