@@ -124,9 +124,10 @@ func (i *VCSIntegrator) createSetStatusOfPRRequest(repo shared.RepositoryParams,
 			},
 			Action: i.Action,
 		},
-		Comment: options.Comment,
-		Login:   options.Login,
-		Status:  options.Status,
+		Comment:        options.Comment,
+		Login:          options.Login,
+		Status:         options.Status,
+		LocalTipCommit: options.LocalTipCommit,
 	}
 }
 
