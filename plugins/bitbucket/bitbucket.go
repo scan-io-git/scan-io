@@ -218,7 +218,7 @@ func (g *VCSBitbucket) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool,
 		} else {
 			g.logger.Debug("comparing remote and local tip commit", "remote_tip_hash", remoteTip, "local_tip_hash", localTip)
 			if remoteTip != localTip {
-				err := fmt.Errorf("remote head commit %q does not match --local-tip-commit %q; the PR head was updated", remoteTip, localTip)
+				err := fmt.Errorf("remote head commit %q does not match --require-head-sha %q; the PR head was updated", remoteTip, localTip)
 				g.logger.Error("refusing to set PR status because head moved", "error", err)
 				return false, err
 			}
