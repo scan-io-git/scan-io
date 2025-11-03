@@ -164,5 +164,6 @@ func init() {
 	IntegrationVCSCmd.Flags().StringVar(&integrationVCSOptions.Comment, "comment", "", "Comment text to be added to the pull request.")
 	IntegrationVCSCmd.Flags().StringVar(&integrationVCSOptions.CommentFile, "comment-file", "", "File containing the comment text to be added to the pull request.")
 	IntegrationVCSCmd.Flags().StringSliceVar(&integrationVCSOptions.AttachFiles, "files", nil, "Comma-separated list of paths to files to be uploaded and attached to the comment.")
+	IntegrationVCSCmd.Flags().StringVar(&integrationVCSOptions.LocalTipCommit, "require-head-sha", "", "Commit SHA from your scanned checkout. When using setStatusOfPR action the command aborts if the remote head tip commit no longer matches.")
 	IntegrationVCSCmd.Flags().BoolP("help", "h", false, "Show help for the integration command.")
 }

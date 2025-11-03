@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/scan-io-git/scan-io/internal/git"
 	"github.com/scan-io-git/scan-io/internal/vcsintegrator"
 )
 
@@ -62,6 +63,13 @@ func validateIntegrationVCSArgs(options *vcsintegrator.RunOptionsIntegrationVCS,
 		}
 		if options.Status == "" {
 			return fmt.Errorf("the 'status' flag must be specified")
+		}
+		if options.LocalTipCommit != "" {
+			normalized, err := git.NormalizeFullHash(options.LocalTipCommit)
+			if err != nil {
+				return fmt.Errorf("invalid --require-head-sha value: %w", err)
+			}
+			options.LocalTipCommit = normalized
 		}
 	default:
 		return fmt.Errorf("the action '%v' is not implemented", options.Action)

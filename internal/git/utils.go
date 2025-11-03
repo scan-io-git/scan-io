@@ -375,3 +375,16 @@ func TagModeToString(mode git.TagMode) string {
 		return fmt.Sprintf("unknown(%d)", mode)
 	}
 }
+
+func NormalizeFullHash(raw string) (string, error) {
+	trimmed := strings.TrimSpace(strings.ToLower(raw))
+	if len(trimmed) != 40 {
+		return "", fmt.Errorf("commit hash must be a 40-character SHA-1, got %d characters", len(trimmed))
+	}
+	for _, r := range trimmed {
+		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f')) {
+			return "", fmt.Errorf("commit hash must be hexadecimal, got %q", raw)
+		}
+	}
+	return trimmed, nil
+}

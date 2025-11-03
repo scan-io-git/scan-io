@@ -256,6 +256,25 @@ func (g *VCSGithub) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, er
 		return false, fmt.Errorf("failed to retrieve PR: %w", err)
 	}
 
+	if args.LocalTipCommit != "" {
+		localTip := strings.TrimSpace(strings.ToLower(args.LocalTipCommit))
+		head := prData.GetHead()
+		remoteTip := ""
+		if head != nil {
+			remoteTip = strings.TrimSpace(strings.ToLower(head.GetSHA()))
+		}
+		if remoteTip == "" {
+			g.logger.Warn("remote PR head hash not provided; skipping local tip validation", "PRID", prID)
+		} else {
+			g.logger.Debug("comparing remote and local tip commit", "remote_tip_hash", remoteTip, "local_tip_hash", localTip)
+			if remoteTip != localTip {
+				err := fmt.Errorf("remote head commit %q does not match --require-head-sha %q; the PR head was updated", remoteTip, localTip)
+				g.logger.Error("refusing to set PR status because head moved", "error", err)
+				return false, err
+			}
+		}
+	}
+
 	g.logger.Info("changing status of a particular PR", "PR", fmt.Sprintf("%v/%v/%v/%v", args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, prID))
 	review := &github.PullRequestReviewRequest{
 		Body:  github.String(args.Comment),

@@ -339,6 +339,21 @@ func (g *VCSGitlab) SetStatusOfPR(args shared.VCSSetStatusOfPRRequest) (bool, er
 		return false, fmt.Errorf("failed to retrieve MR: %w", err)
 	}
 
+	if args.LocalTipCommit != "" {
+		localTip := strings.TrimSpace(strings.ToLower(args.LocalTipCommit))
+		remoteTip := strings.TrimSpace(strings.ToLower(mrData.SHA))
+		if remoteTip == "" {
+			g.logger.Warn("remote MR head hash not provided; skipping local tip validation", "MRID", mrID, "projectID", projectID)
+		} else {
+			g.logger.Debug("comparing remote and local tip commit", "remote_tip_hash", remoteTip, "local_tip_hash", localTip)
+			if remoteTip != localTip {
+				err := fmt.Errorf("remote head commit %q does not match --require-head-sha %q; the MR head was updated", remoteTip, localTip)
+				g.logger.Error("refusing to set MR status because head moved", "error", err)
+				return false, err
+			}
+		}
+	}
+
 	g.logger.Info("changing status of a particular MR", "MR", fmt.Sprintf("%v/%v/%v/%v", args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, mrID))
 
 	switch strings.ToLower(args.Status) {
