@@ -16,10 +16,10 @@ import (
 	"github.com/scan-io-git/scan-io/internal/git"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
-	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/httpclient"
 
 	ftutils "github.com/scan-io-git/scan-io/internal/fetcherutils"
+	ifiles "github.com/scan-io-git/scan-io/pkg/shared/files"
 )
 
 const PluginName = "github"
@@ -303,19 +303,19 @@ func (g *VCSGithub) AddCommentToPR(args shared.VCSAddCommentToPRRequest) (bool, 
 }
 
 // fetchPR handles fetching pull request changes.
-func (g *VCSGithub) fetchPR(args *shared.VCSFetchRequest) (string, error) {
+func (g *VCSGithub) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
 	g.logger.Info("handling PR changes fetching")
 
 	client, err := g.initializeGithubClient()
 	if err != nil {
-		return "", err
+		return shared.VCSFetchResponse{}, err
 	}
 
 	prID, _ := strconv.Atoi(args.RepoParam.PullRequestID)
 	prData, _, err := client.PullRequests.Get(context.Background(), args.RepoParam.Namespace, args.RepoParam.Repository, prID)
 	if err != nil {
 		g.logger.Error("failed to retrieve information about the PR", "PRID", prID, "error", err)
-		return "", fmt.Errorf("failed to retrieve PR: %w", err)
+		return shared.VCSFetchResponse{}, fmt.Errorf("failed to retrieve PR: %w", err)
 	}
 
 	args.Branch = prData.Head.GetRef()
@@ -336,7 +336,7 @@ func (g *VCSGithub) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	changes, _, err := client.PullRequests.ListFiles(context.Background(), args.RepoParam.Namespace, args.RepoParam.Repository, prID, nil)
 	if err != nil {
 		g.logger.Error("failed to retrieve PR changes", "PRID", prID, "error", err)
-		return "", err
+		return shared.VCSFetchResponse{}, err
 	}
 	g.logger.Debug("PR Data", prData)
 
@@ -346,49 +346,121 @@ func (g *VCSGithub) fetchPR(args *shared.VCSFetchRequest) (string, error) {
 	pluginConfigMap, err := shared.StructToMap(g.globalConfig.GithubPlugin)
 	if err != nil {
 		g.logger.Error("error converting struct to map", "error", err)
-		return "", err
+		return shared.VCSFetchResponse{}, err
 	}
 
 	clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, args, PluginName)
 	if err != nil {
 		g.logger.Error("failed to initialize Git client", "error", err)
-		return "", err
+		return shared.VCSFetchResponse{}, err
 	}
 
 	_, err = clientGit.CloneRepository(args)
 	if err != nil {
 		g.logger.Error("failed to clone repository", "error", err)
-		return "", err
+		return shared.VCSFetchResponse{}, err
 	}
+
+	extras := map[string]string{"repo_root": args.TargetFolder}
 
 	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, prID)
+	needDiffFiles := args.FetchScope == ftutils.ScopeDiffFiles || args.FetchScope == ftutils.ScopeDiff
+	needDiffLines := args.FetchScope == ftutils.ScopeDiffLines || args.FetchScope == ftutils.ScopeDiff
 
-	g.logger.Debug("copying files that have changed")
-	for _, val := range changes {
-		if !shared.ContainsSubstring(val.GetStatus(), []string{"added", "modified", "copied", "changed"}) {
-			g.logger.Debug("skipping", "type", val.GetStatus(), "path", val.GetFilename())
+	var changedPaths []string
+	if needDiffFiles || needDiffLines {
+		changedPaths = collectGithubChangedPaths(changes)
+	}
+
+	if needDiffFiles {
+		diffFilesRoot := filepath.Join(baseDestPath, "diff-files")
+		if err := ifiles.RemoveAndRecreate(diffFilesRoot); err != nil {
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to prepare clean diff-files folder: %w", err)
+		}
+
+		for _, path := range changedPaths {
+			srcPath := filepath.Join(args.TargetFolder, path)
+			destPath := filepath.Join(diffFilesRoot, path)
+			if err := ifiles.Copy(srcPath, destPath); err != nil {
+				g.logger.Error("error copying file", "error", err)
+			}
+		}
+
+		if err := ifiles.CopyDotFiles(args.TargetFolder, diffFilesRoot, g.logger); err != nil {
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to copy dotfiles: %w", err)
+		}
+		extras["diff_files_root"] = diffFilesRoot
+	}
+
+	if needDiffLines {
+		diffLinesRoot := filepath.Join(baseDestPath, "diff-lines")
+		if err := ifiles.RemoveAndRecreate(diffLinesRoot); err != nil {
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to prepare clean diff-lines folder: %w", err)
+		}
+
+		baseSHA := prData.Base.GetSHA()
+		headSHA := prData.Head.GetSHA()
+
+		if err := git.MaterializeDiff(clientGit, args.TargetFolder, diffLinesRoot, baseSHA, headSHA, changedPaths); err != nil {
+			return shared.VCSFetchResponse{}, err
+		}
+
+		if err := ifiles.CopyDotFiles(args.TargetFolder, diffLinesRoot, g.logger); err != nil {
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to copy dotfiles: %w", err)
+		}
+
+		extras["diff_lines_root"] = diffLinesRoot
+		if baseSHA != "" {
+			extras["base_sha"] = baseSHA
+		}
+		if headSHA != "" {
+			extras["head_sha"] = headSHA
+		}
+
+		g.logger.Info("diff artifacts prepared", "folder", diffLinesRoot)
+
+		return shared.VCSFetchResponse{Path: args.TargetFolder, Scope: args.FetchScope, Extras: extras}, nil
+	}
+
+	g.logger.Info("PR fetch completed, returning repository root", "path", args.TargetFolder)
+	return shared.VCSFetchResponse{Path: args.TargetFolder, Scope: args.FetchScope, Extras: extras}, nil
+}
+
+func collectGithubChangedPaths(files []*github.CommitFile) []string {
+	if len(files) == 0 {
+		return nil
+	}
+	allowed := map[string]struct{}{
+		"added":    {},
+		"modified": {},
+		"renamed":  {},
+	}
+
+	seen := make(map[string]struct{}, len(files))
+	var result []string
+	for _, file := range files {
+		if file == nil {
 			continue
 		}
-
-		srcPath := filepath.Join(args.TargetFolder, val.GetFilename())
-		destPath := filepath.Join(baseDestPath, val.GetFilename())
-		if err := files.Copy(srcPath, destPath); err != nil {
-			g.logger.Error("error copying file", "error", err)
+		status := strings.ToLower(file.GetStatus())
+		if _, ok := allowed[status]; !ok {
+			continue
 		}
+		filename := file.GetFilename()
+		if filename == "" {
+			continue
+		}
+		if _, exists := seen[filename]; exists {
+			continue
+		}
+		seen[filename] = struct{}{}
+		result = append(result, filename)
 	}
-
-	if err := files.CopyDotFiles(args.TargetFolder, baseDestPath, g.logger); err != nil {
-		return "", err
-	}
-
-	g.logger.Info("files for PR scan are copied", "folder", baseDestPath)
-	return baseDestPath, nil
+	return result
 }
 
 // Fetch retrieves code based on the provided VCSFetchRequest.
 func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse, error) {
-	var result shared.VCSFetchResponse
-
 	if err := g.validateFetch(&args); err != nil {
 		g.logger.Error("validation failed for fetch operation", "error", err)
 		return shared.VCSFetchResponse{}, err
@@ -396,36 +468,29 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse,
 
 	switch args.FetchMode {
 	case ftutils.PRBranchMode, ftutils.PRRefMode, ftutils.PRCommitMode:
-		path, err := g.fetchPR(&args)
-		if err != nil {
-			g.logger.Error("failed to fetch pull request")
-			return result, err
-		}
-		result.Path = path
-
+		return g.fetchPR(&args)
 	default:
 		pluginConfigMap, err := shared.StructToMap(g.globalConfig.GithubPlugin)
 		if err != nil {
 			g.logger.Error("error converting struct to map", "error", err)
-			return result, err
+			return shared.VCSFetchResponse{}, err
 		}
 
 		clientGit, err := git.New(g.logger, g.globalConfig, pluginConfigMap, &args, PluginName)
 		if err != nil {
 			g.logger.Error("failed to initialize Git client", "error", err)
-			return result, err
+			return shared.VCSFetchResponse{}, err
 		}
 
 		path, err := clientGit.CloneRepository(&args)
 		if err != nil {
 			g.logger.Error("failed to clone repository", "error", err)
-			return result, err
+			return shared.VCSFetchResponse{}, err
 		}
 
-		result.Path = path
+		extras := map[string]string{"repo_root": path}
+		return shared.VCSFetchResponse{Path: path, Scope: args.FetchScope, Extras: extras}, nil
 	}
-
-	return result, nil
 }
 
 // Setup initializes the global configuration for the VCSGithub instance.

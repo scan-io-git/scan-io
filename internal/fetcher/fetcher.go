@@ -18,19 +18,20 @@ import (
 
 // Fetcher represents the configuration and behavior of a fetcher.
 type Fetcher struct {
-	PluginName     string       // Name of the VCS plugin to use
-	AuthType       string       // Authentication type (e.g., "http", "ssh")
-	SshKey         string       // Path to the SSH key
-	OutputPath     string       // Output path for fetching
-	RmListExts     []string     // List of extensions to remove after fetching
-	AutoRepair     bool         // Repair corrupted repositories by forcing a refetch or recloning
-	CleanWorkdir   bool         // Reset the working tree to HEAD and remove untracked files
-	ConcurrentJobs int          // Number of concurrent jobs to run
-	logger         hclog.Logger // Logger for logging messages and errors
+	PluginName     string             // Name of the VCS plugin to use
+	AuthType       string             // Authentication type (e.g., "http", "ssh")
+	SshKey         string             // Path to the SSH key
+	OutputPath     string             // Output path for fetching
+	RmListExts     []string           // List of extensions to remove after fetching
+	AutoRepair     bool               // Repair corrupted repositories by forcing a refetch or recloning
+	CleanWorkdir   bool               // Reset the working tree to HEAD and remove untracked files
+	ConcurrentJobs int                // Number of concurrent jobs to run
+	FetchScope     ftutils.FetchScope // Used to mark diff fetch mode.
+	logger         hclog.Logger       // Logger for logging messages and errors
 }
 
 // New creates a new Fetcher instance with the provided configuration.
-func New(pluginName, authType, sshKey, outputPath string, rmListExts []string, repair, clean bool, jobs int, logger hclog.Logger) *Fetcher {
+func New(pluginName, authType, sshKey, outputPath string, rmListExts []string, repair, clean bool, jobs int, scope ftutils.FetchScope, logger hclog.Logger) *Fetcher {
 	return &Fetcher{
 		PluginName:     pluginName,
 		AuthType:       authType,
@@ -40,6 +41,7 @@ func New(pluginName, authType, sshKey, outputPath string, rmListExts []string, r
 		AutoRepair:     repair,
 		CleanWorkdir:   clean,
 		ConcurrentJobs: jobs,
+		FetchScope:     scope,
 		logger:         logger,
 	}
 }
@@ -91,7 +93,7 @@ func (f *Fetcher) getCloneURL(repo shared.RepositoryParams) string {
 }
 
 // createFetchRequest creates a VCSFetchRequest with the specified parameters.
-func (f *Fetcher) createFetchRequest(repo shared.RepositoryParams, cloneURL, targetFolder string, fetchMode ftutils.FetchMode, depth int, singleBranch bool, TagMode git.TagMode) shared.VCSFetchRequest {
+func (f *Fetcher) createFetchRequest(repo shared.RepositoryParams, cloneURL, targetFolder string, fetchMode ftutils.FetchMode, depth int, singleBranch bool, tagMode git.TagMode) shared.VCSFetchRequest {
 	return shared.VCSFetchRequest{
 		CloneURL:     cloneURL,
 		Branch:       repo.Branch,
@@ -99,9 +101,10 @@ func (f *Fetcher) createFetchRequest(repo shared.RepositoryParams, cloneURL, tar
 		SSHKey:       f.SshKey,
 		TargetFolder: targetFolder,
 		FetchMode:    fetchMode,
+		FetchScope:   f.FetchScope,
 		Depth:        depth,
 		SingleBranch: singleBranch,
-		TagMode:      TagMode,
+		TagMode:      tagMode,
 		AutoRepair:   f.AutoRepair,
 		CleanWorkdir: f.CleanWorkdir,
 		RepoParam:    repo,

@@ -12,6 +12,8 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/artifacts"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
+
+	ftutils "github.com/scan-io-git/scan-io/internal/fetcherutils"
 )
 
 // RunOptionsFetch holds the arguments for the fetch command.
@@ -23,6 +25,8 @@ type RunOptionsFetch struct {
 	Branch        string   `json:"branch,omitempty"`
 	OutputPath    string   `json:"output_path,omitempty"`
 	PrMode        string   `json:"pr_mode,omitempty"`
+	DiffLines     bool     `json:"diff_lines,omitempty"`
+	DiffFiles     bool     `json:"diff_files,omitempty"`
 	SingleBranch  bool     `json:"single_branch,omitempty"`
 	Tags          bool     `json:"tags,omitempty"`
 	NoTags        bool     `json:"no_tags,omitempty"`
@@ -68,7 +72,7 @@ var (
 
 // FetchCmd represents the command for fetch command.
 var FetchCmd = &cobra.Command{
-	Use:                   "fetch --vcs/p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [--output/-o PATH] [--rm-ext LIST_OF_EXTENTIONS][-j THREADS_NUMBER, default=1][--pr-mode PR_MODE][--single-branch][--depth DEPTH, default=0][--tags][--no-tags] {--input-file/-i PATH | [-b/--branch BRANCH/HASH] URL}",
+	Use:                   "fetch --vcs/p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [--output/-o PATH] [--rm-ext LIST_OF_EXTENTIONS][-j THREADS_NUMBER, default=1][--pr-mode PR_MODE][--single-branch][--depth DEPTH, default=0][--tags][--no-tags][--diff-lines][--diff-files] {--input-file/-i PATH | [-b/--branch BRANCH/HASH] URL}",
 	SilenceUsage:          true,
 	DisableFlagsInUseLine: true,
 	Example:               exampleFetchUsage,
@@ -106,6 +110,8 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 		return errors.NewCommandError(fetchOptions, nil, fmt.Errorf("failed to prepare fetch targets: %w", err), 1)
 	}
 
+	scope := ftutils.ResolveFetchScope(fetchOptions.DiffLines, fetchOptions.DiffFiles)
+
 	f := fetcher.New(
 		fetchOptions.VCSPluginName,
 		fetchOptions.AuthType,
@@ -115,6 +121,7 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 		fetchOptions.AutoRepair,
 		fetchOptions.CleanWorkdir,
 		fetchOptions.Threads,
+		scope,
 		logger,
 	)
 
@@ -168,6 +175,8 @@ func init() {
 	FetchCmd.Flags().StringVarP(&fetchOptions.Branch, "branch", "b", "", "Specific branch to fetch. Default: current default remote branch. Implies --single-branch.")
 	FetchCmd.Flags().StringVarP(&fetchOptions.OutputPath, "output", "o", "", "Directory where the fetched repository will be saved.")
 	FetchCmd.Flags().StringVarP(&fetchOptions.PrMode, "pr-mode", "", "", "PR fetching mode: 'branch', 'ref', or 'commit'.")
+	FetchCmd.Flags().BoolVar(&fetchOptions.DiffLines, "diff-lines", false, "Emit sparse diff hunks (added/modified lines plus dotfiles) under a temporary diff-lines folder so secrets/SAST scanners can focus on PR changes. This folder is not pruned by --rm-ext.")
+	FetchCmd.Flags().BoolVar(&fetchOptions.DiffFiles, "diff-files", false, "Copy full versions of changed files (plus dotfiles) into a temporary diff-files folder to give scanners complete context. This folder is not pruned by --rm-ext.")
 	FetchCmd.Flags().BoolVar(&fetchOptions.SingleBranch, "single-branch", false, "Fetch only the specified branch without history from other branches.")
 	FetchCmd.Flags().IntVar(&fetchOptions.Depth, "depth", -1, "Create a shallow clone with a history truncated to the specified number of commits. Default: 0")
 	FetchCmd.Flags().BoolVar(&fetchOptions.Tags, "tags", false, "Fetch all tags from the repository.")

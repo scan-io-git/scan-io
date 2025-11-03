@@ -85,7 +85,7 @@ func GetRepositoryPath(cfg *Config, Domain, repoWithNamespace string) string {
 
 // GetPRTempPath constructs the path to the temporary folder for a pull request based on the VCS URL, namespace, and repository name.
 func GetPRTempPath(cfg *Config, Domain, Namespace, RepoName string, PRId int) string {
-	basePath := filepath.Join(GetScanioTempHome(cfg), strings.ToLower(Domain), strings.ToLower(Namespace), strings.ToLower(RepoName), "scanio-pr-tmp", strconv.Itoa(PRId))
+	basePath := filepath.Join(GetScanioTempHome(cfg), strings.ToLower(Domain), strings.ToLower(Namespace), strings.ToLower(RepoName), "pr", strconv.Itoa(PRId))
 
 	// Append timestamp if not in CI environment
 	if !IsCI(cfg) {

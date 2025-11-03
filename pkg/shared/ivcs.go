@@ -51,18 +51,19 @@ type Reference struct {
 
 // VCSFetchRequest represents a fetch request for a VCS.
 type VCSFetchRequest struct {
-	CloneURL     string            `json:"clone_url"`
-	Branch       string            `json:"branch"`
-	AuthType     string            `json:"auth_type"`
-	SSHKey       string            `json:"ssh_key"`
-	TargetFolder string            `json:"target_folder"`
-	FetchMode    ftutils.FetchMode `json:"fetch_mode"`
-	RepoParam    RepositoryParams  `json:"repo_param"`
-	Depth        int               `json:"depth"`
-	SingleBranch bool              `json:"single_branch"`
-	TagMode      git.TagMode       `json:"tag_mode"`
-	AutoRepair   bool              `json:"auto_repair,omitempty"`
-	CleanWorkdir bool              `json:"clean_workdir,omitempty"`
+	CloneURL     string             `json:"clone_url"`
+	Branch       string             `json:"branch"`
+	AuthType     string             `json:"auth_type"`
+	SSHKey       string             `json:"ssh_key"`
+	TargetFolder string             `json:"target_folder"`
+	FetchMode    ftutils.FetchMode  `json:"fetch_mode"`
+	FetchScope   ftutils.FetchScope `json:"fetch_scope"`
+	RepoParam    RepositoryParams   `json:"repo_param"`
+	Depth        int                `json:"depth"`
+	SingleBranch bool               `json:"single_branch"`
+	TagMode      git.TagMode        `json:"tag_mode"`
+	AutoRepair   bool               `json:"auto_repair,omitempty"`
+	CleanWorkdir bool               `json:"clean_workdir,omitempty"`
 }
 
 // VCSRequestBase is the base structure for VCS requests.
@@ -114,7 +115,9 @@ type ListFuncResult struct {
 
 // VCSFetchResponse represents a response from a fetch request.
 type VCSFetchResponse struct {
-	Path string `json:"path"`
+	Path   string             `json:"path"`
+	Scope  ftutils.FetchScope `json:"scope,omitempty"`
+	Extras map[string]string  `json:"extras,omitempty"`
 }
 
 // VCSListRepositoriesResponse represents a response from listing repositories.

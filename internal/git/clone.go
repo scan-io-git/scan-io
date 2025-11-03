@@ -26,7 +26,7 @@ import (
 
 const (
 	origin       = "origin"
-	tmpRefPrefix = "refs/tmp/"
+	tmpRefPrefix = "refs/scanio/tmp/"
 )
 
 // CloneRepository clones or fetches a repository into args.TargetFolder, checks out the requested target (branch/tag/PR/commit)

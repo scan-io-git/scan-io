@@ -32,7 +32,7 @@ RUN apk update && \
 
 # Build the core and plugins using the Makefile
 RUN echo "Building binaries and plugins for '$TARGETOS/$TARGETARCH'"
-RUN make build PLUGINS=$PLUGINS CORE_BINARY=/usr/bin/scanio PLUGINS_DIR=/usr/bin/plugins
+RUN make build PLUGINS="$PLUGINS" CORE_BINARY=/usr/bin/scanio PLUGINS_DIR=/usr/bin/plugins
 
 # Stage 2: Prepare the runtime environment
 FROM alpine:3.21.3 AS runtime
