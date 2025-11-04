@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v47/github"
 	"github.com/hashicorp/go-hclog"
@@ -187,7 +189,115 @@ func (g *VCSGithub) RetrievePRInformation(args shared.VCSRetrievePRInformationRe
 		return shared.PRParams{}, fmt.Errorf("failed to retrieve PR: %w", err)
 	}
 
-	return convertToPRParams(prData), nil
+	prParams := convertToPRParams(prData)
+
+	reviewerVerdicts, err := g.collectReviewVerdicts(client, args.RepoParam.Namespace, args.RepoParam.Repository, prID, prData)
+	if err != nil {
+		g.logger.Warn("failed to retrieve reviewers verdicts for PR", "PRID", prID, "error", err)
+	} else if len(reviewerVerdicts) > 0 {
+		prParams.Reviewers = reviewerVerdicts
+	}
+
+	return prParams, nil
+}
+
+func (g *VCSGithub) collectReviewVerdicts(client *github.Client, owner, repo string, prNumber int, pr *github.PullRequest) ([]shared.PRReview, error) {
+	ctx := context.Background()
+	options := &github.ListOptions{PerPage: 100}
+
+	type reviewEntry struct {
+		submittedAt time.Time
+		review      shared.PRReview
+	}
+
+	reviewsByUser := make(map[string]reviewEntry)
+
+	for {
+		reviews, resp, err := client.PullRequests.ListReviews(ctx, owner, repo, prNumber, options)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, review := range reviews {
+			if review == nil {
+				continue
+			}
+
+			user := review.GetUser()
+			if user == nil || user.Login == nil {
+				continue
+			}
+
+			login := user.GetLogin()
+			submittedAt := time.Time{}
+			if review.SubmittedAt != nil {
+				submittedAt = *review.SubmittedAt
+			}
+
+			verdict := strings.ToUpper(review.GetState())
+			if verdict == "" {
+				verdict = "PENDING"
+			}
+
+			existing, ok := reviewsByUser[login]
+			if !ok || submittedAt.After(existing.submittedAt) {
+				reviewer := safeUser(user)
+				reviewsByUser[login] = reviewEntry{
+					submittedAt: submittedAt,
+					review: shared.PRReview{
+						Reviewer:           reviewer,
+						Verdict:            verdict,
+						LastReviewedCommit: review.GetCommitID(),
+					},
+				}
+			}
+		}
+
+		if resp == nil || resp.NextPage == 0 {
+			break
+		}
+
+		options.Page = resp.NextPage
+	}
+
+	if pr != nil && pr.RequestedReviewers != nil {
+		for _, requested := range pr.RequestedReviewers {
+			if requested == nil || requested.Login == nil {
+				continue
+			}
+
+			login := requested.GetLogin()
+			if _, exists := reviewsByUser[login]; exists {
+				continue
+			}
+
+			reviewer := safeUser(requested)
+
+			reviewsByUser[login] = reviewEntry{
+				review: shared.PRReview{
+					Reviewer: reviewer,
+					Verdict:  "PENDING",
+				},
+			}
+		}
+	}
+
+	if len(reviewsByUser) == 0 {
+		return nil, nil
+	}
+
+	logins := make([]string, 0, len(reviewsByUser))
+	for login := range reviewsByUser {
+		logins = append(logins, login)
+	}
+	sort.Strings(logins)
+
+	result := make([]shared.PRReview, 0, len(logins))
+	for _, login := range logins {
+		result = append(result, reviewsByUser[login].review)
+	}
+
+	return result, nil
 }
 
 // AddRoleToPR handles adding a specified role to a PR based on the provided VCSAddRoleToPRRequest.

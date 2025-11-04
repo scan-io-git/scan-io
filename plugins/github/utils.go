@@ -38,7 +38,10 @@ func safeUser(user *github.User) shared.User {
 	if user == nil || user.Login == nil {
 		return shared.User{UserName: "unknown"}
 	}
-	return shared.User{UserName: *user.Login}
+	return shared.User{
+		UserName: safeString(user.Login),
+		Email:    safeString(user.Email),
+	}
 }
 
 // safeReference converts a GitHub reference to a shared.Reference, handling nil safely.

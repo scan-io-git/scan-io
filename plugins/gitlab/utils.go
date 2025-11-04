@@ -1,7 +1,8 @@
 package main
 
 import (
-	// "strings"
+	"sort"
+	"strings"
 	"time"
 
 	"gitlab.com/gitlab-org/api/client-go"
@@ -76,4 +77,95 @@ func convertToPRParams(mr *gitlab.MergeRequest) shared.PRParams {
 		CreatedDate: safeTime(mr.CreatedAt),
 		UpdatedDate: safeTime(mr.UpdatedAt),
 	}
+}
+
+func verdictPriority(verdict string) int {
+	switch verdict {
+	case "APPROVED":
+		return 3
+	case "CHANGES_REQUESTED", "REJECTED":
+		return 2
+	default:
+		return 1
+	}
+}
+
+func convertGitlabReviewers(mr *gitlab.MergeRequest, approvals *gitlab.MergeRequestApprovals) []shared.PRReview {
+	if mr == nil {
+		return nil
+	}
+
+	type reviewerState struct {
+		verdict string
+		review  shared.PRReview
+	}
+
+	reviewers := make(map[int]reviewerState)
+
+	addOrUpdate := func(user *gitlab.BasicUser, verdict string, approved bool) {
+		if user == nil {
+			return
+		}
+
+		normalizedVerdict := strings.ToUpper(strings.TrimSpace(verdict))
+		if normalizedVerdict == "" {
+			if approved {
+				normalizedVerdict = "APPROVED"
+			} else {
+				normalizedVerdict = "PENDING"
+			}
+		}
+
+		state := reviewerState{
+			verdict: normalizedVerdict,
+			review: shared.PRReview{
+				Reviewer: safeUser(user),
+				Verdict:  normalizedVerdict,
+			},
+		}
+
+		if existing, ok := reviewers[user.ID]; ok {
+			if verdictPriority(normalizedVerdict) > verdictPriority(existing.verdict) {
+				reviewers[user.ID] = state
+			}
+			return
+		}
+
+		reviewers[user.ID] = state
+	}
+
+	for _, reviewer := range mr.Reviewers {
+		addOrUpdate(reviewer, "PENDING", false)
+	}
+
+	if approvals != nil {
+		for _, approver := range approvals.Approvers {
+			if approver == nil {
+				continue
+			}
+			addOrUpdate(approver.User, "PENDING", false)
+		}
+
+		for _, approved := range approvals.ApprovedBy {
+			if approved == nil {
+				continue
+			}
+			addOrUpdate(approved.User, "APPROVED", true)
+		}
+	}
+
+	if len(reviewers) == 0 {
+		return nil
+	}
+
+	result := make([]shared.PRReview, 0, len(reviewers))
+	for _, reviewer := range reviewers {
+		result = append(result, reviewer.review)
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Reviewer.UserName < result[j].Reviewer.UserName
+	})
+
+	return result
 }

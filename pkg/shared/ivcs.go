@@ -24,22 +24,30 @@ type RepositoryParams struct {
 
 // PRParams holds the details of a pull request.
 type PRParams struct {
-	ID          int       `json:"id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	State       string    `json:"state"`
-	Author      User      `json:"author"`
-	SelfLink    string    `json:"self_link"`
-	Source      Reference `json:"source"`
-	Destination Reference `json:"destination"`
-	CreatedDate int64     `json:"created_date"`
-	UpdatedDate int64     `json:"updated_date"`
+	ID          int        `json:"id"`
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	State       string     `json:"state"`
+	Author      User       `json:"author"`
+	SelfLink    string     `json:"self_link"`
+	Source      Reference  `json:"source"`
+	Destination Reference  `json:"destination"`
+	CreatedDate int64      `json:"created_date"`
+	UpdatedDate int64      `json:"updated_date"`
+	Reviewers   []PRReview `json:"reviewers,omitempty"`
 }
 
 // User holds the details of a user.
 type User struct {
 	UserName string `json:"user_name"`
 	Email    string `json:"email"`
+}
+
+// PRReview captures a reviewer verdict for a pull request.
+type PRReview struct {
+	Reviewer           User   `json:"reviewer"`
+	Verdict            string `json:"verdict"`
+	LastReviewedCommit string `json:"lastReviewedCommit,omitempty"`
 }
 
 // Reference holds the details of a reference in a repository.
