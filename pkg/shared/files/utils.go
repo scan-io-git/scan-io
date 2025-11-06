@@ -108,6 +108,7 @@ func Copy(srcPath, destPath string) error {
 
 // CopyFile copies a file from srcFile to destFile.
 func CopyFile(srcFile, destFile string) error {
+
 	destDir := filepath.Dir(destFile)
 	if err := CreateFolderIfNotExists(destDir); err != nil {
 		return fmt.Errorf("failed to create directory %q: %w", destDir, err)
@@ -256,4 +257,27 @@ func DetermineFileFullPath(path, nameTemplate string) (string, string, error) {
 	}
 
 	return fullPath, folder, nil
+}
+
+func EnsureWithinRoot(root, target string) (string, error) {
+	if root == "" {
+		return filepath.Clean(target), nil
+	}
+
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return "", fmt.Errorf("resolve root: %w", err)
+	}
+
+	absTarget, err := filepath.Abs(target)
+	if err != nil {
+		return "", fmt.Errorf("resolve path %q: %w", target, err)
+	}
+
+	rel, err := filepath.Rel(absRoot, absTarget)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return "", fmt.Errorf("path %q escapes root %q", absTarget, absRoot)
+	}
+
+	return absTarget, nil
 }
