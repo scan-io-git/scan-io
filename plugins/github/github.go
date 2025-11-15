@@ -500,22 +500,6 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse,
 
 // CreateIssue creates a new GitHub issue using the provided request.
 //
-// Parameters:
-//
-//	args - VCSIssueCreationRequest containing repository details and issue content
-//
-// Examples:
-//   - Create an issue:
-//     req := shared.VCSIssueCreationRequest{
-//     RepoParam: shared.RepositoryParams{
-//     Namespace: "octocat",
-//     Repository: "hello-world",
-//     },
-//     Title: "New Feature Request",
-//     Body: "Please add support for...",
-//     }
-//     issueNumber, err := githubClient.CreateIssue(req)
-//
 // Returns:
 //   - The number of the created issue
 //   - An error if the issue creation fails
