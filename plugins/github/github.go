@@ -535,22 +535,6 @@ func (g *VCSGithub) Fetch(args shared.VCSFetchRequest) (shared.VCSFetchResponse,
 
 // CreateIssue creates a new GitHub issue using the provided request.
 //
-// Parameters:
-//
-//	args - VCSIssueCreationRequest containing repository details and issue content
-//
-// Examples:
-//   - Create an issue:
-//     req := shared.VCSIssueCreationRequest{
-//     RepoParam: shared.RepositoryParams{
-//     Namespace: "octocat",
-//     Repository: "hello-world",
-//     },
-//     Title: "New Feature Request",
-//     Body: "Please add support for...",
-//     }
-//     issueNumber, err := githubClient.CreateIssue(req)
-//
 // Returns:
 //   - The number of the created issue
 //   - An error if the issue creation fails
@@ -629,7 +613,28 @@ func (g *VCSGithub) ListIssues(args shared.VCSListIssuesRequest) ([]shared.Issue
 		result = append(result, convertToIssueParams(it))
 	}
 
+	// Apply body filter if provided
+	if args.BodyFilter != "" {
+		result = filterIssuesByBody(result, args.BodyFilter)
+	}
+
 	return result, nil
+}
+
+// filterIssuesByBody filters a slice of issues by body content using substring matching.
+// Returns only issues whose body contains the specified filter text.
+func filterIssuesByBody(issues []shared.IssueParams, bodyFilter string) []shared.IssueParams {
+	if bodyFilter == "" {
+		return issues
+	}
+
+	var filtered []shared.IssueParams
+	for _, issue := range issues {
+		if strings.Contains(issue.Body, bodyFilter) {
+			filtered = append(filtered, issue)
+		}
+	}
+	return filtered
 }
 
 // Setup initializes the global configuration for the VCSGithub instance.

@@ -9,6 +9,7 @@ import (
 
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/owenrumney/go-sarif/v2/sarif"
+	"github.com/scan-io-git/scan-io/internal/git"
 	internalsarif "github.com/scan-io-git/scan-io/internal/sarif"
 	issuecorrelation "github.com/scan-io-git/scan-io/pkg/issuecorrelation"
 	"github.com/scan-io-git/scan-io/pkg/shared"
@@ -50,17 +51,13 @@ type NewIssueData struct {
 }
 
 // parseIssueBody attempts to read the body produced by this command and extract
-// known metadata from blockquote format lines. Only supports the new format:
+// known metadata from blockquote format lines. Supports the new format:
+// "> **Rule ID**: semgrep.rule.id"
 // "> **Severity**: Error,  **Scanner**: Semgrep OSS"
 // "> **File**: app.py, **Lines**: 11-29"
 // Returns an OpenIssueReport with zero values when fields are missing.
 func parseIssueBody(body string) OpenIssueReport {
 	rep := OpenIssueReport{}
-
-	// Extract rule ID from header format: "## 🐞 <ruleID>"
-	if rid := extractRuleIDFromBody(body); rid != "" {
-		rep.RuleID = rid
-	}
 
 	for _, line := range strings.Split(body, "\n") {
 		line = strings.TrimSpace(line)
@@ -87,6 +84,10 @@ func parseIssueBody(body string) OpenIssueReport {
 		for _, part := range parts {
 			segment := strings.TrimSpace(part)
 
+			if strings.HasPrefix(segment, "Rule ID:") {
+				rep.RuleID = strings.TrimSpace(strings.TrimPrefix(segment, "Rule ID:"))
+				continue
+			}
 			if strings.HasPrefix(segment, "Severity:") {
 				rep.Severity = strings.TrimSpace(strings.TrimPrefix(segment, "Severity:"))
 			} else if strings.HasPrefix(segment, "Scanner:") {
@@ -99,6 +100,12 @@ func parseIssueBody(body string) OpenIssueReport {
 			} else if strings.HasPrefix(segment, "Snippet SHA256:") {
 				rep.Hash = strings.TrimSpace(strings.TrimPrefix(segment, "Snippet SHA256:"))
 			}
+		}
+	}
+	// Prefer the metadata-provided Rule ID and fall back to the legacy header format.
+	if strings.TrimSpace(rep.RuleID) == "" {
+		if rid := extractRuleIDFromBody(body); rid != "" {
+			rep.RuleID = rid
 		}
 	}
 	return rep
@@ -124,7 +131,7 @@ func extractRuleIDFromBody(body string) string {
 
 // listOpenIssues calls the VCS plugin to list open issues for the configured repo
 // and parses their bodies into OpenIssueReport structures.
-func listOpenIssues(options RunOptions) (map[int]OpenIssueEntry, error) {
+func listOpenIssues(options RunOptions, lg hclog.Logger) (map[int]OpenIssueEntry, error) {
 	req := shared.VCSListIssuesRequest{
 		VCSRequestBase: shared.VCSRequestBase{
 			RepoParam: shared.RepositoryParams{
@@ -133,7 +140,8 @@ func listOpenIssues(options RunOptions) (map[int]OpenIssueEntry, error) {
 			},
 			Action: "listIssues",
 		},
-		State: "open",
+		State:      "open",
+		BodyFilter: scanioManagedAnnotation, // Filter for scanio-managed issues
 	}
 
 	var issues []shared.IssueParams
@@ -166,7 +174,7 @@ func listOpenIssues(options RunOptions) (map[int]OpenIssueEntry, error) {
 
 // buildNewIssuesFromSARIF processes SARIF report and extracts high severity findings,
 // returning structured data for creating new issues.
-func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, lg hclog.Logger) []NewIssueData {
+func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, sourceFolderAbs string, repoMetadata *git.RepositoryMetadata, lg hclog.Logger) []NewIssueData {
 	var newIssueData []NewIssueData
 
 	for _, run := range report.Runs {
@@ -187,7 +195,7 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, l
 
 		for _, res := range run.Results {
 			level, _ := res.Properties["Level"].(string)
-			if strings.ToLower(level) != "error" {
+			if !isLevelAllowed(strings.ToLower(level), options.Levels) {
 				continue
 			}
 
@@ -202,21 +210,22 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, l
 				continue
 			}
 
-			fileURI := filepath.ToSlash(extractFileURIFromResult(res, options.SourceFolder))
+			fileURI, localPath := internalsarif.ExtractFileURIFromResult(res, sourceFolderAbs, repoMetadata)
+			fileURI = filepath.ToSlash(strings.TrimSpace(fileURI))
 			if fileURI == "" {
 				fileURI = "<unknown>"
 				lg.Warn("SARIF result missing file URI, using placeholder", "rule_id", ruleID)
 			}
-			line, endLine := extractRegionFromResult(res)
+			line, endLine := internalsarif.ExtractRegionFromResult(res)
 
 			// Warn about missing location information
 			if line <= 0 {
 				lg.Warn("SARIF result missing line information", "rule_id", ruleID, "file", fileURI)
 			}
 
-			snippetHash := computeSnippetHash(fileURI, line, endLine, options.SourceFolder)
+			snippetHash := issuecorrelation.ComputeSnippetHash(localPath, line, endLine)
 			if snippetHash == "" && fileURI != "<unknown>" && line > 0 {
-				lg.Warn("failed to compute snippet hash", "rule_id", ruleID, "file", fileURI, "line", line)
+				lg.Warn("failed to compute snippet hash", "rule_id", ruleID, "file", fileURI, "line", line, "local_path", localPath)
 			}
 
 			scannerName := getScannerName(run)
@@ -224,15 +233,21 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, l
 				lg.Warn("SARIF run missing scanner/tool name, using fallback", "rule_id", ruleID)
 			}
 
+			var ruleDescriptor *sarif.ReportingDescriptor
+			if r, ok := rulesByID[ruleID]; ok {
+				ruleDescriptor = r
+			}
+
 			sev := displaySeverity(level)
 
 			// build body and title with scanner name label
-			titleText := buildIssueTitle(scannerName, sev, ruleID, fileURI, line, endLine)
+			ruleTitleComponent := displayRuleTitleComponent(ruleID, ruleDescriptor)
+			titleText := buildIssueTitle(scannerName, sev, ruleTitleComponent, fileURI, line, endLine)
 
 			// New body header and compact metadata blockquote
 			header := ""
-			if strings.TrimSpace(ruleID) != "" {
-				header = fmt.Sprintf("## 🐞 %s\n\n", ruleID)
+			if h := internalsarif.DisplayRuleHeading(ruleDescriptor); strings.TrimSpace(h) != "" {
+				header = fmt.Sprintf("## 🐞 %s\n\n", h)
 			}
 			scannerDisp := scannerName
 			if scannerDisp == "" {
@@ -243,18 +258,42 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, l
 			if endLine > line {
 				linesDisp = fmt.Sprintf("%d-%d", line, endLine)
 			}
-			meta := fmt.Sprintf(
-				"> **Severity**: %s,  **Scanner**: %s\n> **File**: %s, **Lines**: %s\n",
-				sev, scannerDisp, fileDisp, linesDisp,
-			)
+			var metaBuilder strings.Builder
+			if trimmedID := strings.TrimSpace(ruleID); trimmedID != "" {
+				metaBuilder.WriteString(fmt.Sprintf("> **Rule ID**: %s\n", trimmedID))
+			}
+			metaBuilder.WriteString(fmt.Sprintf(
+				"> **Severity**: %s,  **Scanner**: %s\n", sev, scannerDisp,
+			))
+			metaBuilder.WriteString(fmt.Sprintf(
+				"> **File**: %s, **Lines**: %s\n", fileDisp, linesDisp,
+			))
+			meta := metaBuilder.String()
 			// Only use the new header and blockquote metadata
 			body := header + meta + "\n"
 			var references []string
 
-			// Append rule help markdown if available
-			if r, ok := rulesByID[ruleID]; ok && r != nil && r.Help != nil && r.Help.Markdown != nil {
-				if hm := strings.TrimSpace(*r.Help.Markdown); hm != "" {
-					detail, helpRefs := parseRuleHelpMarkdown(hm)
+			// Append permalink if available
+			if link := buildGitHubPermalink(options, repoMetadata, fileURI, line, endLine); link != "" {
+				body += fmt.Sprintf("\n%s\n", link)
+			}
+
+			// Add formatted result message if available
+			if res.Message.Markdown != nil || res.Message.Text != nil {
+				formatOpts := internalsarif.MessageFormatOptions{
+					Namespace:    options.Namespace,
+					Repository:   options.Repository,
+					Ref:          options.Ref,
+					SourceFolder: sourceFolderAbs,
+				}
+				if formatted := internalsarif.FormatResultMessage(res, repoMetadata, formatOpts); formatted != "" {
+					body += fmt.Sprintf("\n\n### Description\n\n%s\n", formatted)
+				}
+			}
+
+			// Append rule detail/help content
+			if ruleDescriptor != nil {
+				if detail, helpRefs := extractRuleDetail(ruleDescriptor); detail != "" || len(helpRefs) > 0 {
 					if detail != "" {
 						body += "\n\n" + detail
 					}
@@ -264,9 +303,9 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, l
 				}
 			}
 
-			// Append permalink if available
-			if link := buildGitHubPermalink(options, fileURI, line, endLine); link != "" {
-				body += fmt.Sprintf("\n%s\n", link)
+			// Add code flow section if available
+			if codeFlowSection := FormatCodeFlows(res, options, repoMetadata, sourceFolderAbs); codeFlowSection != "" {
+				body += "\n\n---\n\n" + codeFlowSection + "\n\n---\n\n"
 			}
 
 			// Append security identifier tags (CWE, OWASP) with links if available in rule properties
@@ -304,7 +343,7 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, l
 
 			newIssueData = append(newIssueData, NewIssueData{
 				Metadata: issuecorrelation.IssueMetadata{
-					IssueID:     "",
+					IssueID:     ruleID,
 					Scanner:     scannerName,
 					RuleID:      ruleID,
 					Severity:    level,
@@ -320,6 +359,40 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, l
 	}
 
 	return newIssueData
+}
+
+// displayRuleTitleComponent returns the identifier segment to embed in the GitHub issue title.
+// Prefers rule.Name when available; falls back to ruleID.
+func displayRuleTitleComponent(ruleID string, rule *sarif.ReportingDescriptor) string {
+	if rule != nil && rule.Name != nil {
+		if name := strings.TrimSpace(*rule.Name); name != "" {
+			return name
+		}
+	}
+	return strings.TrimSpace(ruleID)
+}
+
+// extractRuleDetail returns a detail string (markdown/plain) and optional reference links.
+// Prefers rule.Help.Markdown when available; falls back to rule.FullDescription.Text.
+func extractRuleDetail(rule *sarif.ReportingDescriptor) (string, []string) {
+	if rule == nil {
+		return "", nil
+	}
+
+	if rule.Help != nil && rule.Help.Markdown != nil {
+		if hm := strings.TrimSpace(*rule.Help.Markdown); hm != "" {
+			if detail, refs := parseRuleHelpMarkdown(hm); strings.TrimSpace(detail) != "" || len(refs) > 0 {
+				return detail, refs
+			}
+		}
+	}
+
+	if rule.FullDescription != nil && rule.FullDescription.Text != nil {
+		if fd := strings.TrimSpace(*rule.FullDescription.Text); fd != "" {
+			return fd, nil
+		}
+	}
+	return "", nil
 }
 
 // buildKnownIssuesFromOpen converts open GitHub issues into correlation metadata,
@@ -357,6 +430,36 @@ func buildKnownIssuesFromOpen(openIssues map[int]OpenIssueEntry, lg hclog.Logger
 	return knownIssues
 }
 
+// filterIssuesBySourceFolder filters open issues to only those within the current source folder scope.
+// This enables independent issue management for different subfolders in monorepo CI workflows.
+// Issues are filtered based on their FilePath metadata matching the normalized subfolder path.
+func filterIssuesBySourceFolder(openIssues map[int]OpenIssueEntry, repoMetadata *git.RepositoryMetadata, lg hclog.Logger) map[int]OpenIssueEntry {
+	// Determine the subfolder scope from repo metadata
+	subfolder := internalsarif.NormalisedSubfolder(repoMetadata)
+
+	// If no subfolder (scanning from root), include all issues
+	if subfolder == "" {
+		lg.Debug("no subfolder scope, including all issues")
+		return openIssues
+	}
+
+	// Filter issues: keep only those whose FilePath starts with subfolder
+	filtered := make(map[int]OpenIssueEntry)
+	for num, entry := range openIssues {
+		filePath := filepath.ToSlash(entry.OpenIssueReport.FilePath)
+		if strings.HasPrefix(filePath, subfolder+"/") || filePath == subfolder {
+			filtered[num] = entry
+		} else {
+			lg.Debug("excluding issue outside source folder scope",
+				"number", num, "file", filePath, "scope", subfolder)
+		}
+	}
+
+	lg.Info("filtered issues by source folder scope",
+		"total", len(openIssues), "scoped", len(filtered), "subfolder", subfolder)
+	return filtered
+}
+
 // createUnmatchedIssues creates GitHub issues for new findings that don't correlate with existing issues.
 // Returns the number of successfully created issues.
 func createUnmatchedIssues(unmatchedNew []issuecorrelation.IssueMetadata, newIssues []issuecorrelation.IssueMetadata, newBodies, newTitles []string, options RunOptions, lg hclog.Logger) (int, error) {
@@ -375,6 +478,28 @@ func createUnmatchedIssues(unmatchedNew []issuecorrelation.IssueMetadata, newIss
 			continue
 		}
 
+		if options.DryRun {
+			// Print dry-run information instead of making API call
+			fmt.Printf("[DRY RUN] Would create issue:\n")
+			fmt.Printf("  Title: %s\n", newTitles[idx])
+			fmt.Printf("  File: %s\n", u.Filename)
+			fmt.Printf("  Lines: %d", u.StartLine)
+			if u.EndLine > u.StartLine {
+				fmt.Printf("-%d", u.EndLine)
+			}
+			fmt.Printf("\n")
+			severityDisplay := displaySeverity(u.Severity)
+			if strings.TrimSpace(severityDisplay) == "" {
+				severityDisplay = u.Severity
+			}
+			fmt.Printf("  Severity: %s\n", severityDisplay)
+			fmt.Printf("  Scanner: %s\n", u.Scanner)
+			fmt.Printf("  Rule ID: %s\n", u.RuleID)
+			fmt.Printf("\n")
+			created++
+			continue
+		}
+
 		req := shared.VCSIssueCreationRequest{
 			VCSRequestBase: shared.VCSRequestBase{
 				RepoParam: shared.RepositoryParams{
@@ -385,8 +510,8 @@ func createUnmatchedIssues(unmatchedNew []issuecorrelation.IssueMetadata, newIss
 			},
 			Title:     newTitles[idx],
 			Body:      newBodies[idx],
-			Labels:    opts.Labels,
-			Assignees: opts.Assignees,
+			Labels:    options.Labels,
+			Assignees: options.Assignees,
 		}
 
 		err := shared.WithPlugin(AppConfig, logger, shared.PluginTypeVCS, "github", func(raw interface{}) error {
@@ -408,7 +533,8 @@ func createUnmatchedIssues(unmatchedNew []issuecorrelation.IssueMetadata, newIss
 
 // closeUnmatchedIssues closes GitHub issues for known findings that don't correlate with current scan results.
 // Returns an error if any issue closure fails.
-func closeUnmatchedIssues(unmatchedKnown []issuecorrelation.IssueMetadata, options RunOptions, lg hclog.Logger) error {
+func closeUnmatchedIssues(unmatchedKnown []issuecorrelation.IssueMetadata, options RunOptions, lg hclog.Logger) (int, error) {
+	closed := 0
 	for _, k := range unmatchedKnown {
 		// known IssueID contains the number as string
 		num, err := strconv.Atoi(k.IssueID)
@@ -416,6 +542,23 @@ func closeUnmatchedIssues(unmatchedKnown []issuecorrelation.IssueMetadata, optio
 			// skip if we can't parse number
 			continue
 		}
+
+		if options.DryRun {
+			// Print dry-run information instead of making API calls
+			fmt.Printf("[DRY RUN] Would close issue #%d:\n", num)
+			fmt.Printf("  File: %s\n", k.Filename)
+			fmt.Printf("  Lines: %d", k.StartLine)
+			if k.EndLine > k.StartLine {
+				fmt.Printf("-%d", k.EndLine)
+			}
+			fmt.Printf("\n")
+			fmt.Printf("  Rule ID: %s\n", k.RuleID)
+			fmt.Printf("  Reason: Not found in current scan\n")
+			fmt.Printf("\n")
+			closed++
+			continue
+		}
+
 		// Leave a comment before closing the issue to explain why it is being closed
 		commentReq := shared.VCSCreateIssueCommentRequest{
 			VCSRequestBase: shared.VCSRequestBase{
@@ -465,17 +608,18 @@ func closeUnmatchedIssues(unmatchedKnown []issuecorrelation.IssueMetadata, optio
 		if err != nil {
 			lg.Error("failed to close issue via plugin", "error", err, "number", num)
 			// continue closing others but report an error at end
-			return errors.NewCommandError(options, nil, fmt.Errorf("close issue failed: %w", err), 2)
+			return closed, errors.NewCommandError(options, nil, fmt.Errorf("close issue failed: %w", err), 2)
 		}
+		closed++
 	}
-	return nil
+	return closed, nil
 }
 
 // processSARIFReport iterates runs/results in the SARIF report and creates VCS issues for
 // high severity findings. Returns number of created issues or an error.
-func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hclog.Logger, openIssues map[int]OpenIssueEntry) (int, error) {
+func processSARIFReport(report *internalsarif.Report, options RunOptions, sourceFolderAbs string, repoMetadata *git.RepositoryMetadata, lg hclog.Logger, openIssues map[int]OpenIssueEntry) (int, int, error) {
 	// Build list of new issues from SARIF using extracted function
-	newIssueData := buildNewIssuesFromSARIF(report, options, lg)
+	newIssueData := buildNewIssuesFromSARIF(report, options, sourceFolderAbs, repoMetadata, lg)
 
 	// Extract metadata, bodies, and titles for correlation and issue creation
 	newIssues := make([]issuecorrelation.IssueMetadata, len(newIssueData))
@@ -488,8 +632,11 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 		newTitles[i] = data.Title
 	}
 
-	// Build list of known issues from the provided open issues data
-	knownIssues := buildKnownIssuesFromOpen(openIssues, lg)
+	// Filter open issues to only those within the current source folder scope
+	scopedOpenIssues := filterIssuesBySourceFolder(openIssues, repoMetadata, lg)
+
+	// Build list of known issues from the filtered open issues data
+	knownIssues := buildKnownIssuesFromOpen(scopedOpenIssues, lg)
 
 	// correlate
 	corr := issuecorrelation.NewCorrelator(newIssues, knownIssues)
@@ -499,14 +646,30 @@ func processSARIFReport(report *internalsarif.Report, options RunOptions, lg hcl
 	unmatchedNew := corr.UnmatchedNew()
 	created, err := createUnmatchedIssues(unmatchedNew, newIssues, newBodies, newTitles, options, lg)
 	if err != nil {
-		return created, err
+		return created, 0, err
 	}
 
 	// Close unmatched known issues (open issues that did not correlate)
 	unmatchedKnown := corr.UnmatchedKnown()
-	if err := closeUnmatchedIssues(unmatchedKnown, options, lg); err != nil {
-		return created, err
+	closed, err := closeUnmatchedIssues(unmatchedKnown, options, lg)
+	if err != nil {
+		return created, closed, err
 	}
 
-	return created, nil
+	return created, closed, nil
+}
+
+// isLevelAllowed checks if a SARIF level is in the allowed levels list
+func isLevelAllowed(level string, allowedLevels []string) bool {
+	// If no levels specified, default to "error" for backward compatibility
+	if allowedLevels == nil || len(allowedLevels) == 0 {
+		return strings.ToLower(level) == "error"
+	}
+
+	for _, allowed := range allowedLevels {
+		if strings.ToLower(level) == strings.ToLower(allowed) {
+			return true
+		}
+	}
+	return false
 }
