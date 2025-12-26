@@ -8,21 +8,9 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
 	"github.com/scan-io-git/scan-io/pkg/shared/vcsurl"
-)
 
-// Mode constants
-const (
-	ModeSingleURL = "single-url"
-	ModeFlags     = "flags"
+	cmdutil "github.com/scan-io-git/scan-io/internal/cmd"
 )
-
-// determineMode determines the mode based on the provided arguments.
-func determineMode(args []string) string {
-	if len(args) > 0 {
-		return ModeSingleURL
-	}
-	return ModeFlags
-}
 
 // prepareIntegrationVCSTarget prepares the targets for integration VCS based on the validated arguments.
 func prepareIntegrationVCSTarget(options *vcsintegrator.RunOptionsIntegrationVCS, args []string, mode string) (shared.RepositoryParams, error) {
@@ -33,7 +21,7 @@ func prepareIntegrationVCSTarget(options *vcsintegrator.RunOptionsIntegrationVCS
 	options.Comment = commentContent
 
 	switch mode {
-	case ModeSingleURL:
+	case cmdutil.ModeSingleURL:
 		targetURL := args[0]
 		vcsType := vcsurl.StringToVCSType(options.VCSPluginName)
 		url, err := vcsurl.ParseForVCSType(targetURL, vcsType)
@@ -50,7 +38,7 @@ func prepareIntegrationVCSTarget(options *vcsintegrator.RunOptionsIntegrationVCS
 		}
 		return repoInfo, nil
 
-	case ModeFlags:
+	case cmdutil.ModeFlags:
 		return shared.RepositoryParams{
 			Domain:        options.Domain,
 			Namespace:     options.Namespace,

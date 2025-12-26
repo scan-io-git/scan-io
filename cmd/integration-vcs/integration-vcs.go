@@ -12,6 +12,8 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/artifacts"
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
+
+	cmdutil "github.com/scan-io-git/scan-io/internal/cmd"
 )
 
 type Arguments interface{}
@@ -86,7 +88,7 @@ func runIntegrationVCSCommand(cmd *cobra.Command, args []string) error {
 		return errors.NewCommandError(integrationVCSOptions, nil, fmt.Errorf("invalid integration VCS arguments: %w", err), 1)
 	}
 
-	mode := determineMode(args)
+	mode := cmdutil.DetermineMode(args)
 	i := vcsintegrator.New(
 		integrationVCSOptions.VCSPluginName,
 		integrationVCSOptions.Action,

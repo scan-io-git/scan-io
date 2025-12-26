@@ -14,6 +14,8 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
+
+	cmdutil "github.com/scan-io-git/scan-io/internal/cmd"
 )
 
 // Global variables for configuration and command arguments
@@ -63,7 +65,7 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	listOptions.Action = vcsintegrator.VCSListing
-	mode := determineMode(args)
+	mode := cmdutil.DetermineMode(args)
 
 	i := vcsintegrator.New(
 		listOptions.VCSPluginName,
