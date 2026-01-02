@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	cmdutil "github.com/scan-io-git/scan-io/internal/cmd"
+	"github.com/scan-io-git/scan-io/internal/sarif"
 	"github.com/scan-io-git/scan-io/internal/vcsintegrator"
+
+	cmdutil "github.com/scan-io-git/scan-io/internal/cmd"
 )
 
 // validateSarifCommentsArgs validates the required command options for the selected mode.
@@ -51,6 +53,14 @@ func validateSarifCommentsArgs(options *vcsintegrator.RunOptionsIntegrationVCS, 
 	}
 	if strings.TrimSpace(options.SourceFolder) == "" {
 		missing = append(missing, "source")
+	}
+
+	normalizedLevels, err := sarif.NormalizeAndValidateLevels(options.SarifLevels)
+	if err != nil {
+		issues = append(issues, fmt.Sprintf("invalid severity levels: %v", err))
+	} else {
+		options.SarifLevels = normalizedLevels
+		logger.Debug("normalized severity levels", "levels", options.SarifLevels)
 	}
 
 	if len(missing) > 0 {
