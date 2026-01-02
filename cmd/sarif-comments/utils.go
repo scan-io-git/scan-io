@@ -13,7 +13,7 @@ import (
 
 // prepareListTargets prepares the targets for listing based on the validated arguments.
 func prepareSarifCommentsTarget(options *vcsintegrator.RunOptionsIntegrationVCS, args []string, mode string) (shared.RepositoryParams, error) {
-	commentContent, err := files.GetCommentContent(options.CommentFile)
+	commentContent, err := getCommentContent(options)
 	if err != nil {
 		return shared.RepositoryParams{}, err
 	}
@@ -48,4 +48,17 @@ func prepareSarifCommentsTarget(options *vcsintegrator.RunOptionsIntegrationVCS,
 	default:
 		return shared.RepositoryParams{}, fmt.Errorf("invalid sarif comments mode: %q", mode)
 	}
+}
+
+// getCommentContent reads the comment content from a file or directly from options.
+func getCommentContent(options *vcsintegrator.RunOptionsIntegrationVCS) (string, error) {
+	if options.CommentFile == "" {
+		return options.Comment, nil
+	}
+
+	commentContent, err := files.GetCommentContent(options.CommentFile)
+	if err != nil {
+		return options.Comment, err
+	}
+	return commentContent, nil
 }

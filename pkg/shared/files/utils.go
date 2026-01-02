@@ -245,3 +245,41 @@ func DetermineFileFullPath(path, nameTemplate string) (string, string, error) {
 
 	return fullPath, folder, nil
 }
+
+// GetCommentContent reads the comment content from a file or directly from options.
+func GetCommentContent(path string) (string, error) {
+	expandedPath, err := ExpandPath(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to expand path %q %w", path, err)
+	}
+
+	if err := ValidatePath(expandedPath); err != nil {
+		return "", fmt.Errorf("failed to validate path %q: %w", expandedPath, err)
+	}
+
+	data, err := os.ReadFile(expandedPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read comment file: %v", err)
+	}
+	return string(data), nil
+}
+
+// ResolveSourceFolder resolves a source folder path to its absolute form for path calculations.
+// It handles path expansion (e.g., ~) and absolute path resolution with graceful fallbacks.
+// Returns an empty string if the input folder is empty or whitespace-only.
+func ResolveSourceFolder(folder string, logger hclog.Logger) string {
+	if folder := strings.TrimSpace(folder); folder != "" {
+		expandedFolder, expandErr := ExpandPath(folder)
+		if expandErr != nil {
+			logger.Debug("failed to expand source folder; using raw value", "error", expandErr)
+			expandedFolder = folder
+		}
+		if absFolder, absErr := filepath.Abs(expandedFolder); absErr != nil {
+			logger.Debug("failed to resolve absolute source folder; using expanded value", "error", absErr)
+			return expandedFolder
+		} else {
+			return filepath.Clean(absFolder)
+		}
+	}
+	return ""
+}

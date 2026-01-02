@@ -2,7 +2,6 @@ package integrationvcs
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/scan-io-git/scan-io/internal/vcsintegrator"
 	"github.com/scan-io-git/scan-io/pkg/shared"
@@ -57,18 +56,9 @@ func getCommentContent(options *vcsintegrator.RunOptionsIntegrationVCS) (string,
 		return options.Comment, nil
 	}
 
-	expandedPath, err := files.ExpandPath(options.CommentFile)
+	commentContent, err := files.GetCommentContent(options.CommentFile)
 	if err != nil {
-		return "", fmt.Errorf("failed to expand path %q %w", options.CommentFile, err)
+		return options.Comment, err
 	}
-
-	if err := files.ValidatePath(expandedPath); err != nil {
-		return "", fmt.Errorf("failed to validate path %q: %w", expandedPath, err)
-	}
-
-	data, err := os.ReadFile(expandedPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read comment file: %v", err)
-	}
-	return string(data), nil
+	return commentContent, nil
 }
