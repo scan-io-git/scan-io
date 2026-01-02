@@ -166,34 +166,3 @@ func buildGenericAnchor(location *sarif.Location) string {
 	}
 	return anchor
 }
-
-// todo case for env variables
-// // buildGitHubPermalink builds a permalink to a file and region in GitHub.
-// // It prefers the CLI --ref when provided; otherwise attempts to read the
-// // current commit hash from --source-folder using git metadata. When neither
-// // is available, returns an empty string.
-// func buildGitHubPermalink(options RunOptions, fileURI string, start, end int) string {
-// 	base := fmt.Sprintf("https://github.com/%s/%s", options.Namespace, options.Repository)
-// 	ref := strings.TrimSpace(options.Ref)
-
-// 	if ref == "" && options.SourceFolder != "" {
-// 		if md, err := git.CollectRepositoryMetadata(options.SourceFolder); err == nil && md.CommitHash != nil && *md.CommitHash != "" {
-// 			ref = *md.CommitHash
-// 		}
-// 	}
-
-// 	if ref == "" || fileURI == "" || fileURI == "<unknown>" {
-// 		return ""
-// 	}
-
-// 	path := filepath.ToSlash(fileURI)
-// 	anchor := ""
-// 	if start > 0 {
-// 		anchor = fmt.Sprintf("#L%d", start)
-// 		if end > start {
-// 			anchor = fmt.Sprintf("%s-L%d", anchor, end)
-// 		}
-// 	}
-
-// 	return fmt.Sprintf("%s/blob/%s/%s%s", base, ref, path, anchor)
-// }

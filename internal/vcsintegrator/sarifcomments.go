@@ -28,8 +28,9 @@ func prepareSarifComments(
 	sourceRoot string,
 	limit int,
 	summary string,
+	sarifLevels []string,
 ) (shared.VCSAddInLineCommentsListRequest, SarifCommentStats, error) {
-	collected, err := sarif.CollectIssuesFromFile(logger, sarifPath, sourceRoot, pluginName, repo.HTTPLink, true)
+	collected, err := sarif.CollectIssuesFromFile(logger, sarifPath, sourceRoot, pluginName, repo.HTTPLink, sarifLevels, true)
 	if err != nil {
 		return shared.VCSAddInLineCommentsListRequest{}, SarifCommentStats{}, fmt.Errorf("collect issues from sarif: %w", err)
 	}

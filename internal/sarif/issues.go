@@ -2,13 +2,13 @@ package sarif
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 
 	"github.com/scan-io-git/scan-io/internal/git"
+	"github.com/scan-io-git/scan-io/pkg/shared/files"
 
 	issuecorrelation "github.com/scan-io-git/scan-io/pkg/issuecorrelation"
 )
@@ -24,17 +24,19 @@ type IssueData struct {
 // CollectIssuesFromFile loads a SARIF file (reusing ReadReport) and returns
 // the flattened findings. sourceRoot lets callers trim absolute URIs to a
 // repo-relative path; set noSuppressions to true to drop suppressed results.
-func CollectIssuesFromFile(logger hclog.Logger, inputPath, sourceRoot, vcs, url string, noSuppressions bool) ([]IssueData, error) {
-	report, err := ReadReport(inputPath, logger, sourceRoot, noSuppressions)
+func CollectIssuesFromFile(logger hclog.Logger, inputPath, sourceRoot, vcs, url string, includeSeverity []string, noSuppressions bool) ([]IssueData, error) {
+	// Resolve source folder to absolute form for path calculations
+	sourceFolderAbs := files.ResolveSourceFolder(sourceRoot, logger)
+	report, err := ReadReport(inputPath, logger, sourceFolderAbs, noSuppressions)
 	if err != nil {
 		return nil, fmt.Errorf("read sarif report: %w", err)
 	}
-	return CollectIssues(report, vcs)
+	return CollectIssues(report, vcs, includeSeverity)
 }
 
 // CollectIssues walks an already-loaded Report and emits a Finding per SARIF
 // location, normalising artifact URIs and pulling message text/snippets.
-func CollectIssues(report *Report, vcs string) ([]IssueData, error) {
+func CollectIssues(report *Report, vcs string, includeSeverity []string) ([]IssueData, error) {
 	if report == nil || report.Report == nil || len(report.Runs) == 0 {
 		return nil, fmt.Errorf("sarif report has no runs")
 	}
@@ -82,10 +84,9 @@ func CollectIssues(report *Report, vcs string) ([]IssueData, error) {
 
 		for _, res := range run.Results {
 			level, _ := res.Properties["Level"].(string)
-			// todo: severity filtering
-			// if strings.ToLower(level) != "error" {
-			// 	continue
-			// }
+			if !isLevelAllowed(strings.ToLower(level), includeSeverity) {
+				continue
+			}
 
 			ruleID := ""
 			if res.RuleID != nil {
@@ -97,32 +98,41 @@ func CollectIssues(report *Report, vcs string) ([]IssueData, error) {
 				continue
 			}
 
-			fileURI := filepath.ToSlash(extractFileURIFromResult(res, report.sourceFolder))
+			fileURI, localPath := ExtractFileURIFromResult(res, report.sourceFolder, repoMetadata)
 			if fileURI == "" {
 				fileURI = "<unknown>"
 				report.logger.Warn("SARIF result missing file URI, using placeholder", "rule_id", ruleID)
 			}
 
-			line, endLine := extractRegionFromResult(res)
-			snippetHash := computeSnippetHash(fileURI, line, endLine, report.sourceFolder)
-			if snippetHash == "" && fileURI != "<unknown>" && line > 0 {
-				report.logger.Warn("failed to compute snippet hash", "rule_id", ruleID, "file", fileURI, "line", line)
+			line, endLine := ExtractRegionFromResult(res)
+			if line <= 0 {
+				report.logger.Warn("SARIF result missing line information", "rule_id", ruleID, "file", fileURI)
 			}
 
-			toolMeta, ok := extractToolNameAndVersionFromRun(run, reportToolMeta)
+			snippetHash := issuecorrelation.ComputeSnippetHash(localPath, line, endLine)
+			if snippetHash == "" && fileURI != "<unknown>" && line > 0 {
+				report.logger.Warn("failed to compute snippet hash", "rule_id", ruleID, "file", fileURI, "line", line, "local_path", localPath)
+			}
+
+			toolMeta, ok := ExtractToolNameAndVersionFromRun(run, reportToolMeta)
 			if !ok {
 				report.logger.Warn("SARIF run missing scanner/tool name, using fallback", "rule_id", ruleID)
 			}
 
 			sev := displaySeverity(level)
+			var ruleDescriptor *sarif.ReportingDescriptor
+			if r, ok := rulesByID[ruleID]; ok {
+				ruleDescriptor = r
+			}
 
 			// build body and title with scanner name label
-			titleText := buildIssueMarkdownTitle(toolMeta, sev, ruleID, fileURI, line, endLine)
+			ruleTitleComponent := displayRuleTitleComponent(ruleID, ruleDescriptor)
+			titleText := buildIssueMarkdownTitle(toolMeta, sev, ruleTitleComponent, fileURI, line, endLine)
 
 			// New body header and compact metadata blockquote
 			header := ""
-			if strings.TrimSpace(ruleID) != "" {
-				header = fmt.Sprintf("## 🐞 %s\n\n", ruleID)
+			if h := DisplayRuleHeading(ruleDescriptor); strings.TrimSpace(h) != "" {
+				header = fmt.Sprintf("## 🐞 %s\n\n", h)
 			}
 
 			scannerDisp := "SARIF"
@@ -150,25 +160,44 @@ func CollectIssues(report *Report, vcs string) ([]IssueData, error) {
 			if endLine > line {
 				linesDisp = fmt.Sprintf("%d-%d", line, endLine)
 			}
-			meta := fmt.Sprintf(
-				"> **Severity**: %s,  **Scanner**: %s\n> **File**: %s, **Lines**: %s\n",
-				sev, scannerDisp, fileDisp, linesDisp,
-			)
+
+			var metaBuilder strings.Builder
+			if trimmedID := strings.TrimSpace(ruleID); trimmedID != "" {
+				metaBuilder.WriteString(fmt.Sprintf("> **Rule ID**: %s\n", trimmedID))
+			}
+			metaBuilder.WriteString(fmt.Sprintf(
+				"> **Severity**: %s,  **Scanner**: %s\n", sev, scannerDisp,
+			))
+			metaBuilder.WriteString(fmt.Sprintf(
+				"> **File**: %s, **Lines**: %s\n", fileDisp, linesDisp,
+			))
+			meta := metaBuilder.String()
 
 			// Only use the new header and blockquote metadata
-			body := header + meta + "\n"
+			body := header + meta
 			var references []string
 
-			issueDesc := getStringProp(res.Properties, "Description")
-			if issueDesc == "" && res.Message.Text != nil {
-				issueDesc = *res.Message.Text
+			// Add formatted result message if available
+			// todo: adopt not only for github scenario
+			primaryDetail := ""
+			if res.Message.Markdown != nil || res.Message.Text != nil {
+				formatOpts := MessageFormatOptions{
+					SourceFolder: report.sourceFolder,
+				}
+				if formatted := FormatResultMessage(res, repoMetadata, formatOpts); formatted != "" {
+					primaryDetail = formatted
+				}
 			}
 
+			// issueDesc := getStringProp(res.Properties, "Description")
+			// if issueDesc == "" && res.Message.Text != nil {
+			// 	issueDesc = *res.Message.Text
+			// }
+			// primaryDetail := strings.TrimSpace(issueDesc)
+
 			// Append issue description, falling back to rule help text if necessary
-			primaryDetail := strings.TrimSpace(issueDesc)
-			if r, ok := rulesByID[ruleID]; ok && r != nil && r.Help != nil && r.Help.Markdown != nil {
-				if hm := strings.TrimSpace(*r.Help.Markdown); hm != "" {
-					detail, helpRefs := parseRuleHelpMarkdown(hm)
+			if ruleDescriptor != nil {
+				if detail, helpRefs := extractRuleDetail(ruleDescriptor); detail != "" || len(helpRefs) > 0 {
 					if primaryDetail == "" {
 						primaryDetail = detail
 					}
@@ -177,15 +206,23 @@ func CollectIssues(report *Report, vcs string) ([]IssueData, error) {
 					}
 				}
 			}
+
 			if primaryDetail != "" {
-				body += "\n\n" + primaryDetail
+				body += fmt.Sprintf("\n\n### Description\n\n%s\n", primaryDetail)
 			}
 
-			// Append permalink if available
-			// todo check issues with monorep subpath
 			if res.Locations[0].Properties["WebURL"] != nil {
 				body += fmt.Sprintf("\n%s\n", res.Locations[0].Properties["WebURL"])
 			}
+
+			// Add code flow section if available
+			// todo: adopt for common scenario
+			// if codeFlowSection := FormatCodeFlows(res, options, repoMetadata, sourceFolderAbs); codeFlowSection != "" {
+			// 	body += "\n\n---\n\n" + codeFlowSection + "\n\n---\n\n"
+			// }
+
+			// Append permalink if available
+			// todo check issues with monorep subpath
 
 			// Append security identifier tags (CWE, OWASP) with links if available in rule properties
 			if r, ok := rulesByID[ruleID]; ok && r != nil && r.Properties != nil {
@@ -222,7 +259,7 @@ func CollectIssues(report *Report, vcs string) ([]IssueData, error) {
 
 			collected = append(collected, IssueData{
 				Metadata: issuecorrelation.IssueMetadata{
-					IssueID:     "",
+					IssueID:     ruleID,
 					Scanner:     scannerDisp,
 					RuleID:      ruleID,
 					Severity:    level,
@@ -303,58 +340,6 @@ func parseRuleHelpMarkdown(markdown string) (string, []string) {
 	return detail, references
 }
 
-// extractFileURIFromResult returns a file path derived from the SARIF result's first location.
-// If the URI is absolute and a non-empty sourceFolder is provided, the returned path will be
-// made relative to sourceFolder (matching previous behaviour).
-func extractFileURIFromResult(res *sarif.Result, sourceFolder string) string {
-	if res == nil || len(res.Locations) == 0 {
-		return ""
-	}
-	loc := res.Locations[0]
-	if loc.PhysicalLocation == nil {
-		return ""
-	}
-	art := loc.PhysicalLocation.ArtifactLocation
-	if art == nil || art.URI == nil {
-		return ""
-	}
-	uri := *art.URI
-	// If URI is not absolute or there's no sourceFolder provided, return it unchanged.
-	if !filepath.IsAbs(uri) || sourceFolder == "" {
-		return uri
-	}
-
-	// Normalize sourceFolder to an absolute, cleaned path so relative inputs like
-	// "../scanio-test" match absolute URIs such as "/home/jekos/.../scanio-test/...".
-	if absSource, err := filepath.Abs(sourceFolder); err == nil {
-		absSource = filepath.Clean(absSource)
-
-		// Prefer filepath.Rel which will produce a relative path when uri is under absSource.
-		if rel, err := filepath.Rel(absSource, uri); err == nil {
-			// If rel does not escape to parent directories, it's a proper subpath.
-			if rel != "" && !strings.HasPrefix(rel, "..") {
-				return rel
-			}
-		}
-
-		// Fallback: trim the absolute source prefix explicitly when possible.
-		prefix := absSource + string(filepath.Separator)
-		if strings.HasPrefix(uri, prefix) {
-			return strings.TrimPrefix(uri, prefix)
-		}
-		if strings.HasPrefix(uri, absSource) {
-			return strings.TrimPrefix(uri, absSource)
-		}
-	}
-
-	// Last-resort: try trimming the raw sourceFolder string provided by the user.
-	rel := strings.TrimPrefix(uri, sourceFolder)
-	if strings.HasPrefix(rel, string(filepath.Separator)) {
-		return rel[1:]
-	}
-	return rel
-}
-
 // extractRegionFromResult returns start and end line numbers (0 when not present)
 // taken from the SARIF result's first location region.
 func extractRegionFromResult(res *sarif.Result) (int, int) {
@@ -393,4 +378,128 @@ func extractRegionFromResult(res *sarif.Result) (int, int) {
 		end = *loc.PhysicalLocation.Region.EndLine
 	}
 	return start, end
+}
+
+// isLevelAllowed checks if a SARIF level is in the allowed levels list
+func isLevelAllowed(level string, allowedLevels []string) bool {
+	//todo: revise to iclude all levels if its not specified
+	// If no levels specified, default to "error" for backward compatibility
+	if len(allowedLevels) == 0 {
+		return strings.ToLower(level) == "error"
+	}
+
+	for _, allowed := range allowedLevels {
+		if strings.ToLower(level) == strings.ToLower(allowed) {
+			return true
+		}
+	}
+	return false
+}
+
+// normalizeAndValidateLevels validates and normalizes severity levels input.
+// Accepts both SARIF levels (error, warning, note, none) and display levels (High, Medium, Low, Info).
+// Returns normalized SARIF levels and an error if mixing formats is detected.
+func NormalizeAndValidateLevels(levels []string) ([]string, error) {
+	if len(levels) == 0 {
+		return []string{"error"}, nil
+	}
+
+	var sarifLevels []string
+	var displayLevels []string
+	var normalized []string
+
+	// Check each level and categorize
+	for _, level := range levels {
+		normalizedLevel := strings.ToLower(strings.TrimSpace(level))
+
+		// Check if it's a SARIF level
+		if isSARIFLevel(normalizedLevel) {
+			sarifLevels = append(sarifLevels, normalizedLevel)
+			normalized = append(normalized, normalizedLevel)
+		} else if isDisplayLevel(normalizedLevel) {
+			displayLevels = append(displayLevels, normalizedLevel)
+			// Convert display level to SARIF level
+			sarifLevel := displayToSARIFLevel(normalizedLevel)
+			normalized = append(normalized, sarifLevel)
+		} else {
+			return nil, fmt.Errorf("invalid severity level '%s'. Valid SARIF levels: error, warning, note, none. Valid display levels: high, medium, low, info", level)
+		}
+	}
+
+	// Check for mixing formats
+	if len(sarifLevels) > 0 && len(displayLevels) > 0 {
+		return nil, fmt.Errorf("cannot mix SARIF levels (error, warning, note, none) with display levels (High, Medium, Low, Info)")
+	}
+
+	return normalized, nil
+}
+
+// isSARIFLevel checks if the normalized level is a valid SARIF level
+func isSARIFLevel(level string) bool {
+	switch level {
+	case "error", "warning", "note", "none":
+		return true
+	default:
+		return false
+	}
+}
+
+// isDisplayLevel checks if the normalized level is a valid display level
+func isDisplayLevel(level string) bool {
+	switch level {
+	case "high", "medium", "low", "info":
+		return true
+	default:
+		return false
+	}
+}
+
+// displayToSARIFLevel converts a display level to its corresponding SARIF level
+func displayToSARIFLevel(displayLevel string) string {
+	switch displayLevel {
+	case "high":
+		return "error"
+	case "medium":
+		return "warning"
+	case "low":
+		return "note"
+	case "info":
+		return "none"
+	default:
+		return displayLevel
+	}
+}
+
+// displayRuleTitleComponent returns the identifier segment to embed in the GitHub issue title.
+// Prefers rule.Name when available; falls back to ruleID.
+func displayRuleTitleComponent(ruleID string, rule *sarif.ReportingDescriptor) string {
+	if rule != nil && rule.Name != nil {
+		if name := strings.TrimSpace(*rule.Name); name != "" {
+			return name
+		}
+	}
+	return strings.TrimSpace(ruleID)
+}
+
+// extractRuleDetail returns a detail string (markdown/plain) and optional reference links.
+// Prefers rule.Help.Markdown when available; falls back to rule.FullDescription.Text.
+func extractRuleDetail(rule *sarif.ReportingDescriptor) (string, []string) {
+	if rule == nil {
+		return "", nil
+	}
+
+	if rule.Help != nil && rule.Help.Markdown != nil {
+		if hm := strings.TrimSpace(*rule.Help.Markdown); hm != "" {
+			if detail, refs := parseRuleHelpMarkdown(hm); strings.TrimSpace(detail) != "" || len(refs) > 0 {
+				return detail, refs
+			}
+		}
+	}
+
+	if rule.FullDescription != nil && rule.FullDescription.Text != nil {
+		if fd := strings.TrimSpace(*rule.FullDescription.Text); fd != "" {
+			return fd, nil
+		}
+	}
+	return "", nil
 }

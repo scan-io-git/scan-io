@@ -2,12 +2,9 @@ package sarif
 
 import (
 	"crypto/md5"
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -132,38 +129,6 @@ func buildIssueTitle(scannerName, severity, ruleID, fileURI string, line, endLin
 		return fmt.Sprintf("%s at %s:%d", title, fileURI, line)
 	}
 	return fmt.Sprintf("%s at %s", title, fileURI)
-}
-
-// computeSnippetHash reads the snippet (single line or range) from sourceFolder + fileURI
-// and returns its SHA256 hex string. Returns empty string on any error or if inputs are invalid.
-func computeSnippetHash(fileURI string, line, endLine int, sourceFolder string) string {
-	if fileURI == "" || fileURI == "<unknown>" || line <= 0 || sourceFolder == "" {
-		return ""
-	}
-	absPath := filepath.Join(sourceFolder, filepath.FromSlash(fileURI))
-	data, err := os.ReadFile(absPath)
-	if err != nil {
-		return ""
-	}
-	lines := strings.Split(string(data), "\n")
-	start := line
-	end := line
-	if endLine > line {
-		end = endLine
-	}
-	// Validate bounds (1-based line numbers)
-	if start < 1 || start > len(lines) {
-		return ""
-	}
-	if end > len(lines) {
-		end = len(lines)
-	}
-	if end < start {
-		return ""
-	}
-	snippet := strings.Join(lines[start-1:end], "\n")
-	sum := sha256.Sum256([]byte(snippet))
-	return fmt.Sprintf("%x", sum[:])
 }
 
 // helper to fetch a string property safely

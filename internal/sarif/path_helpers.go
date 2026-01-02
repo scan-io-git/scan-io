@@ -295,18 +295,37 @@ func CalculateLocalPath(rawURI string, repoMetadata *git.RepositoryMetadata, abs
 	return ResolveRelativeLocalPath(cleanURI, repoRoot, subfolder, absSource)
 }
 
-// ExtractRegionFromResult returns start and end line numbers (0 when not present)
-// taken from the SARIF result's first location region.
+// extractRegionFromResult returns start and end line numbers (0 when not present)
+// taken ExtractRegionFromResult the SARIF result's first location region.
 func ExtractRegionFromResult(res *sarif.Result) (int, int) {
 	if res == nil || len(res.Locations) == 0 {
 		return 0, 0
 	}
+
 	loc := res.Locations[0]
 	if loc.PhysicalLocation == nil || loc.PhysicalLocation.Region == nil {
 		return 0, 0
 	}
 	start := 0
 	end := 0
+
+	if props := loc.PhysicalLocation.Region.Properties; props != nil {
+		if v, ok := props["StartLine"].(int); ok {
+			start = v
+		} else if v, ok := props["startLine"].(int); ok {
+			start = v
+		}
+		if v, ok := props["EndLine"].(int); ok {
+			end = v
+		} else if v, ok := props["endLine"].(int); ok {
+			end = v
+		}
+		// If we resolved both from properties there's no need to consult the pointers below.
+		if start > 0 || end > 0 {
+			return start, end
+		}
+	}
+
 	if loc.PhysicalLocation.Region.StartLine != nil {
 		start = *loc.PhysicalLocation.Region.StartLine
 	}

@@ -44,6 +44,7 @@ type RunOptionsIntegrationVCS struct {
 	SarifInput       string   `json:"sarif_input,omitempty"`
 	SourceFolder     string   `json:"source_folder,omitempty"`
 	SarifIssuesLimit int      `json:"sarif_issues_limit,omitempty"`
+	SarifLevels      []string `json:"sarif_levels,omitempty"`
 }
 
 // New creates a new VCSIntegrator instance with the provided configuration.
@@ -160,6 +161,7 @@ func (i *VCSIntegrator) PrepIntegrationRequest(cfg *config.Config, options *RunO
 			options.SourceFolder,
 			options.SarifIssuesLimit,
 			options.Comment,
+			options.SarifLevels,
 		)
 		if err != nil {
 			return nil, err

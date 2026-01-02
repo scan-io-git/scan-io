@@ -477,7 +477,7 @@ func calculateThreadFlowFingerprint(threadFlow *sarif.ThreadFlow) string {
 
 // ExtractToolNameAndVersionFromRun returns tool metadata for the provided run.
 // The second return value is false when the run (or driver) is missing.
-func extractToolNameAndVersionFromRun(run *sarif.Run, fallback *ToolMetadata) (*ToolMetadata, bool) {
+func ExtractToolNameAndVersionFromRun(run *sarif.Run, fallback *ToolMetadata) (*ToolMetadata, bool) {
 	if run != nil && run.Tool.Driver != nil {
 		name := strings.TrimSpace(run.Tool.Driver.Name)
 		version := run.Tool.Driver.SemanticVersion

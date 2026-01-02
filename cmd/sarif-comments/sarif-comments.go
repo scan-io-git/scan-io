@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/scan-io-git/scan-io/internal/ci"
+	"github.com/scan-io-git/scan-io/internal/git"
 	"github.com/scan-io-git/scan-io/internal/vcsintegrator"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 	// "github.com/scan-io-git/scan-io/pkg/shared/artifacts"
@@ -16,18 +17,6 @@ import (
 
 	cmdutil "github.com/scan-io-git/scan-io/internal/cmd"
 )
-
-// RunOptionsSarifComments holds flags for sarif-comments command.
-type RunOptionsSarifComments struct {
-	VCS           string `json:"vcs,omitempty"`
-	Domain        string `json:"domain,omitempty"`
-	Namespace     string `json:"namespace,omitempty"`
-	Repository    string `json:"repository,omitempty"`
-	PullRequestID string `json:"pull_request_id,omitempty"`
-	SarifPath     string `json:"sarif_path,omitempty"`
-	SourceFolder  string `json:"source_folder,omitempty"`
-	Limit         int    `json:"limit,omitempty"`
-}
 
 // Global variables for configuration and command arguments
 var (
@@ -65,25 +54,35 @@ func runSarifComments(cmd *cobra.Command, args []string) error {
 
 	mode := cmdutil.DetermineMode(args)
 
-	resolution, err := ci.ResolveFromEnvironment(logger, sarifCommentsOptions.VCSPluginName)
+	resolutionEnv, err := ci.ResolveFromEnvironment(logger, sarifCommentsOptions.VCSPluginName)
 	if err != nil {
 		return errors.NewCommandError(sarifCommentsOptions, nil, err, 1)
 	}
 
-	if resolution.PluginName != "" {
-		sarifCommentsOptions.VCSPluginName = resolution.PluginName
+	resolutionGitMeta, err := git.ApplyGitMetadataOptionsFallbacks(logger, sarifCommentsOptions.SourceFolder,
+		sarifCommentsOptions.Namespace, sarifCommentsOptions.Repository, sarifCommentsOptions.VCSPluginName, "")
+	if err != nil {
+		logger.Debug("git metadata fallback failed", "error", err)
 	}
-	if sarifCommentsOptions.Domain == "" && resolution.Domain != "" {
-		sarifCommentsOptions.Domain = resolution.Domain
+
+	if resolutionEnv.PluginName != "" {
+		sarifCommentsOptions.VCSPluginName = resolutionEnv.PluginName
 	}
-	if sarifCommentsOptions.Namespace == "" && resolution.Namespace != "" {
-		sarifCommentsOptions.Namespace = resolution.Namespace
+	if sarifCommentsOptions.Domain == "" && resolutionEnv.Domain != "" {
+		sarifCommentsOptions.Domain = resolutionEnv.Domain
 	}
-	if sarifCommentsOptions.Repository == "" && resolution.Repository != "" {
-		sarifCommentsOptions.Repository = resolution.Repository
+	if sarifCommentsOptions.Namespace == "" && resolutionEnv.Namespace != "" {
+		sarifCommentsOptions.Namespace = resolutionEnv.Namespace
+	} else if sarifCommentsOptions.Namespace == "" && resolutionGitMeta.Namespace != "" {
+		sarifCommentsOptions.Namespace = resolutionGitMeta.Namespace
 	}
-	if sarifCommentsOptions.PullRequestID == "" && resolution.PullRequest != "" {
-		sarifCommentsOptions.PullRequestID = resolution.PullRequest
+	if sarifCommentsOptions.Repository == "" && resolutionEnv.Repository != "" {
+		sarifCommentsOptions.Repository = resolutionEnv.Repository
+	} else if sarifCommentsOptions.Repository == "" && resolutionGitMeta.Repository != "" {
+		sarifCommentsOptions.Repository = resolutionGitMeta.Repository
+	}
+	if sarifCommentsOptions.PullRequestID == "" && resolutionEnv.PullRequest != "" {
+		sarifCommentsOptions.PullRequestID = resolutionEnv.PullRequest
 	}
 
 	if err := validateSarifCommentsArgs(&sarifCommentsOptions, args, mode); err != nil {
@@ -104,8 +103,6 @@ func runSarifComments(cmd *cobra.Command, args []string) error {
 		return errors.NewCommandError(sarifCommentsOptions, nil, fmt.Errorf("failed to prepare sarif comments targets: %w", err), 1)
 	}
 
-	// repo.HTTPLink = buildRepoHTTPLink(sarifCommentsOptions)
-
 	sarifCommentsRequest, err := i.PrepIntegrationRequest(AppConfig, &sarifCommentsOptions, repoParams)
 	if err != nil {
 		logger.Error("failed to prepare integration VCS request", "error", err)
@@ -116,13 +113,6 @@ func runSarifComments(cmd *cobra.Command, args []string) error {
 	fmt.Print(resultSarifCommentsVCS)
 
 	return nil
-}
-
-func buildRepoHTTPLink(opts RunOptionsSarifComments) string {
-	if opts.Domain == "" || opts.Namespace == "" || opts.Repository == "" {
-		return ""
-	}
-	return fmt.Sprintf("https://%s/%s/%s", opts.Domain, opts.Namespace, opts.Repository)
 }
 
 // generateLongDescription generates the long description dynamically with the list of available scanner plugins.
@@ -149,6 +139,7 @@ func init() {
 	SarifCommentsCmd.Flags().IntVar(&sarifCommentsOptions.SarifIssuesLimit, "limit", 0, "Maximum number of SARIF findings to convert into comments (0 = no limit)")
 	SarifCommentsCmd.Flags().StringVar(&sarifCommentsOptions.Comment, "comment", "", "Optional summary comment appended after posting inline comments")
 	SarifCommentsCmd.Flags().StringVar(&sarifCommentsOptions.CommentFile, "comment-file", "", "File containing the summary comment appended after posting inline comments")
+	SarifCommentsCmd.Flags().StringSliceVar(&sarifCommentsOptions.SarifLevels, "levels", []string{"error"}, "SARIF severity levels to process: SARIF levels (error, warning, note, none) or display levels (High, Medium, Low, Info). Cannot mix formats. (repeat flag or use comma-separated values)")
 	// SarifCommentsCmd.Flags().StringVar(&sarifCommentsOptions.Ref, "ref", "", "Git ref (branch or commit SHA) to build a permalink to the vulnerable code")
 	SarifCommentsCmd.Flags().BoolP("help", "h", false, "Show help for sarif-comments command.")
 }
