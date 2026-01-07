@@ -142,7 +142,26 @@ var ToHtmlCmd = &cobra.Command{
 		if err != nil {
 			logger.Warn("can't collect repository metadata", "reason", err)
 		} else {
-			logger.Debug("repositoryMetadata", "BranchName", *repositoryMetadata.BranchName, "CommitHash", *repositoryMetadata.CommitHash, "RepositoryFullName", *repositoryMetadata.RepositoryFullName, "Subfolder", repositoryMetadata.Subfolder, "RepoRootFolder", repositoryMetadata.RepoRootFolder)
+			branch := ""
+			if repositoryMetadata.BranchName != nil {
+				branch = *repositoryMetadata.BranchName
+			}
+			commit := ""
+			if repositoryMetadata.CommitHash != nil {
+				commit = *repositoryMetadata.CommitHash
+			}
+			fullName := ""
+			if repositoryMetadata.RepositoryFullName != nil {
+				fullName = *repositoryMetadata.RepositoryFullName
+			}
+			logger.Debug(
+				"repositoryMetadata",
+				"BranchName", branch,
+				"CommitHash", commit,
+				"RepositoryFullName", fullName,
+				"Subfolder", repositoryMetadata.Subfolder,
+				"RepoRootFolder", repositoryMetadata.RepoRootFolder,
+			)
 		}
 
 		var url *vcsurl.VCSURL

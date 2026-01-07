@@ -1,0 +1,671 @@
+package sarif
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/owenrumney/go-sarif/v2/sarif"
+	"github.com/scan-io-git/scan-io/internal/git"
+)
+
+func TestNormalisedSubfolder(t *testing.T) {
+	tests := []struct {
+		name     string
+		metadata *git.RepositoryMetadata
+		expected string
+	}{
+		{
+			name:     "nil metadata",
+			metadata: nil,
+			expected: "",
+		},
+		{
+			name: "empty subfolder",
+			metadata: &git.RepositoryMetadata{
+				Subfolder: "",
+			},
+			expected: "",
+		},
+		{
+			name: "subfolder with forward slash",
+			metadata: &git.RepositoryMetadata{
+				Subfolder: "apps/demo",
+			},
+			expected: "apps/demo",
+		},
+		{
+			name: "subfolder with leading slash",
+			metadata: &git.RepositoryMetadata{
+				Subfolder: "/apps/demo",
+			},
+			expected: "apps/demo",
+		},
+		{
+			name: "subfolder with trailing slash",
+			metadata: &git.RepositoryMetadata{
+				Subfolder: "apps/demo/",
+			},
+			expected: "apps/demo",
+		},
+		{
+			name: "subfolder with backslash",
+			metadata: &git.RepositoryMetadata{
+				Subfolder: "apps\\demo",
+			},
+			expected: "apps/demo",
+		},
+		{
+			name: "subfolder with both slashes",
+			metadata: &git.RepositoryMetadata{
+				Subfolder: "/apps/demo\\",
+			},
+			expected: "apps/demo",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := NormalisedSubfolder(tt.metadata)
+			if result != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestPathWithin(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "path_within_test")
+	if err != nil {
+		t.Fatalf("failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	subdir := filepath.Join(tempDir, "subdir")
+	if err := os.Mkdir(subdir, 0755); err != nil {
+		t.Fatalf("failed to create subdirectory: %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		path     string
+		root     string
+		expected bool
+	}{
+		{
+			name:     "empty root always returns true",
+			path:     "/any/path",
+			root:     "",
+			expected: true,
+		},
+		{
+			name:     "path equals root",
+			path:     tempDir,
+			root:     tempDir,
+			expected: true,
+		},
+		{
+			name:     "path within root",
+			path:     subdir,
+			root:     tempDir,
+			expected: true,
+		},
+		{
+			name:     "path outside root",
+			path:     tempDir,
+			root:     subdir,
+			expected: false,
+		},
+		{
+			name:     "relative path within root",
+			path:     filepath.Join(tempDir, ".", "subdir"),
+			root:     tempDir,
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := PathWithin(tt.path, tt.root)
+			if result != tt.expected {
+				t.Errorf("PathWithin(%q, %q) = %v, expected %v", tt.path, tt.root, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestResolveRelativeLocalPath(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "resolve_path_test")
+	if err != nil {
+		t.Fatalf("failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create a repository structure
+	repoRoot := filepath.Join(tempDir, "repo")
+	subfolder := filepath.Join(repoRoot, "apps", "demo")
+	if err := os.MkdirAll(subfolder, 0755); err != nil {
+		t.Fatalf("failed to create subfolder: %v", err)
+	}
+
+	// Create a test file
+	testFile := filepath.Join(subfolder, "main.py")
+	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	tests := []struct {
+		name      string
+		cleanURI  string
+		repoRoot  string
+		subfolder string
+		absSource string
+		expected  string
+	}{
+		{
+			name:      "relative file exists in subfolder",
+			cleanURI:  "main.py",
+			repoRoot:  repoRoot,
+			subfolder: "apps/demo",
+			absSource: subfolder,
+			expected:  testFile,
+		},
+		{
+			name:      "relative file with repo root only",
+			cleanURI:  filepath.Join("apps", "demo", "main.py"),
+			repoRoot:  repoRoot,
+			subfolder: "",
+			absSource: "",
+			expected:  testFile,
+		},
+		{
+			name:      "fallback to absSource",
+			cleanURI:  "main.py",
+			repoRoot:  "",
+			subfolder: "",
+			absSource: subfolder,
+			expected:  testFile,
+		},
+		{
+			name:      "non-existent file returns constructed path",
+			cleanURI:  "nonexistent.py",
+			repoRoot:  repoRoot,
+			subfolder: "",
+			absSource: subfolder,
+			expected:  filepath.Join(repoRoot, "nonexistent.py"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ResolveRelativeLocalPath(tt.cleanURI, tt.repoRoot, tt.subfolder, tt.absSource)
+			if result != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestConvertToRepoRelativePath(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "convert_path_test")
+	if err != nil {
+		t.Fatalf("failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	repoRoot := filepath.Join(tempDir, "scanio-test")
+	subfolder := filepath.Join(repoRoot, "apps", "demo")
+	if err := os.MkdirAll(subfolder, 0755); err != nil {
+		t.Fatalf("failed to create subfolder: %v", err)
+	}
+
+	absoluteFile := filepath.Join(subfolder, "main.py")
+	if err := os.WriteFile(absoluteFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	metadata := &git.RepositoryMetadata{
+		RepoRootFolder: repoRoot,
+		Subfolder:      "apps/demo",
+	}
+
+	tests := []struct {
+		name         string
+		rawURI       string
+		metadata     *git.RepositoryMetadata
+		sourceFolder string
+		expected     string
+	}{
+		{
+			name:         "empty URI",
+			rawURI:       "",
+			metadata:     metadata,
+			sourceFolder: subfolder,
+			expected:     "",
+		},
+		{
+			name:         "absolute URI with metadata",
+			rawURI:       absoluteFile,
+			metadata:     metadata,
+			sourceFolder: subfolder,
+			expected:     "apps/demo/main.py",
+		},
+		{
+			name:         "relative URI with metadata",
+			rawURI:       "main.py",
+			metadata:     metadata,
+			sourceFolder: subfolder,
+			expected:     "apps/demo/main.py",
+		},
+		{
+			name:         "relative URI with file:// prefix",
+			rawURI:       "file://main.py",
+			metadata:     metadata,
+			sourceFolder: subfolder,
+			expected:     "apps/demo/main.py",
+		},
+		{
+			name:         "absolute URI without metadata",
+			rawURI:       absoluteFile,
+			metadata:     nil,
+			sourceFolder: subfolder,
+			expected:     "main.py",
+		},
+		{
+			name:         "relative URI with parent path",
+			rawURI:       filepath.ToSlash(filepath.Join("..", "scanio-test", "apps", "demo", "main.py")),
+			metadata:     metadata,
+			sourceFolder: subfolder,
+			expected:     "apps/demo/main.py",
+		},
+		{
+			name:         "URI already with subfolder prefix",
+			rawURI:       "apps/demo/main.py",
+			metadata:     metadata,
+			sourceFolder: subfolder,
+			expected:     "apps/demo/main.py",
+		},
+		{
+			name:         "relative URI without metadata or source folder",
+			rawURI:       "src/main.py",
+			metadata:     nil,
+			sourceFolder: "",
+			expected:     "src/main.py",
+		},
+		{
+			name:         "whitespace in URI",
+			rawURI:       "  main.py  ",
+			metadata:     metadata,
+			sourceFolder: subfolder,
+			expected:     "apps/demo/main.py",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ConvertToRepoRelativePath(tt.rawURI, tt.metadata, tt.sourceFolder)
+			if result != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestConvertToRepoRelativePathWithoutRepoRoot(t *testing.T) {
+	// Test scenarios where we don't have repository metadata
+	tests := []struct {
+		name         string
+		rawURI       string
+		sourceFolder string
+		expected     string
+	}{
+		{
+			name:         "relative path without metadata",
+			rawURI:       "src/main.py",
+			sourceFolder: "/tmp/project",
+			expected:     "src/main.py",
+		},
+		{
+			name:         "absolute path without metadata falls back to source folder",
+			rawURI:       "/tmp/project/src/main.py",
+			sourceFolder: "/tmp/project",
+			expected:     "src/main.py",
+		},
+		{
+			name:         "absolute path with no context",
+			rawURI:       "/home/user/project/main.py",
+			sourceFolder: "",
+			expected:     "home/user/project/main.py",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ConvertToRepoRelativePath(tt.rawURI, nil, tt.sourceFolder)
+			if result != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestConvertToRepoRelativePathCrossPlatform(t *testing.T) {
+	// Test that paths are always normalized to forward slashes
+	tempDir, err := os.MkdirTemp("", "cross_platform_test")
+	if err != nil {
+		t.Fatalf("failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	repoRoot := filepath.Join(tempDir, "repo")
+	subfolder := filepath.Join(repoRoot, "apps", "demo")
+	if err := os.MkdirAll(subfolder, 0755); err != nil {
+		t.Fatalf("failed to create subfolder: %v", err)
+	}
+
+	// Create the file
+	mainFile := filepath.Join(subfolder, "main.py")
+	if err := os.WriteFile(mainFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	metadata := &git.RepositoryMetadata{
+		RepoRootFolder: repoRoot,
+		Subfolder:      "apps/demo",
+	}
+
+	// Test with a relative path - the internal logic will normalize it
+	rawURI := "main.py"
+	result := ConvertToRepoRelativePath(rawURI, metadata, subfolder)
+
+	// Result should always use forward slashes
+	if strings.Contains(result, "\\") {
+		t.Errorf("expected forward slashes only, got %q", result)
+	}
+
+	expected := "apps/demo/main.py"
+	if result != expected {
+		t.Errorf("expected %q, got %q", expected, result)
+	}
+}
+
+func TestBuildGitHubPermalink(t *testing.T) {
+	tests := []struct {
+		name             string
+		namespace        string
+		repository       string
+		ref              string
+		repoRelativePath string
+		startLine        int
+		endLine          int
+		expected         string
+	}{
+		{
+			name:             "single line",
+			namespace:        "scan-io-git",
+			repository:       "scan-io",
+			ref:              "main",
+			repoRelativePath: "src/main.go",
+			startLine:        42,
+			endLine:          0,
+			expected:         "https://github.com/scan-io-git/scan-io/blob/main/src/main.go#L42",
+		},
+		{
+			name:             "line range",
+			namespace:        "scan-io-git",
+			repository:       "scan-io",
+			ref:              "abc123",
+			repoRelativePath: "internal/sarif/path_helpers.go",
+			startLine:        10,
+			endLine:          15,
+			expected:         "https://github.com/scan-io-git/scan-io/blob/abc123/internal/sarif/path_helpers.go#L10-L15",
+		},
+		{
+			name:             "same start and end line",
+			namespace:        "scan-io-git",
+			repository:       "scan-io",
+			ref:              "main",
+			repoRelativePath: "cmd/sarif-issues/utils.go",
+			startLine:        5,
+			endLine:          5,
+			expected:         "https://github.com/scan-io-git/scan-io/blob/main/cmd/sarif-issues/utils.go#L5",
+		},
+		{
+			name:             "no line numbers",
+			namespace:        "scan-io-git",
+			repository:       "scan-io",
+			ref:              "main",
+			repoRelativePath: "README.md",
+			startLine:        0,
+			endLine:          0,
+			expected:         "https://github.com/scan-io-git/scan-io/blob/main/README.md",
+		},
+		{
+			name:             "negative start line",
+			namespace:        "scan-io-git",
+			repository:       "scan-io",
+			ref:              "main",
+			repoRelativePath: "src/main.go",
+			startLine:        -1,
+			endLine:          0,
+			expected:         "https://github.com/scan-io-git/scan-io/blob/main/src/main.go",
+		},
+		{
+			name:             "empty namespace",
+			namespace:        "",
+			repository:       "scan-io",
+			ref:              "main",
+			repoRelativePath: "src/main.go",
+			startLine:        1,
+			endLine:          0,
+			expected:         "",
+		},
+		{
+			name:             "empty repository",
+			namespace:        "scan-io-git",
+			repository:       "",
+			ref:              "main",
+			repoRelativePath: "src/main.go",
+			startLine:        1,
+			endLine:          0,
+			expected:         "",
+		},
+		{
+			name:             "empty ref",
+			namespace:        "scan-io-git",
+			repository:       "scan-io",
+			ref:              "",
+			repoRelativePath: "src/main.go",
+			startLine:        1,
+			endLine:          0,
+			expected:         "",
+		},
+		{
+			name:             "empty file path",
+			namespace:        "scan-io-git",
+			repository:       "scan-io",
+			ref:              "main",
+			repoRelativePath: "",
+			startLine:        1,
+			endLine:          0,
+			expected:         "",
+		},
+		{
+			name:             "file with subdirectory",
+			namespace:        "scan-io-git",
+			repository:       "scan-io",
+			ref:              "feature-branch",
+			repoRelativePath: "internal/sarif/message_formatter.go",
+			startLine:        25,
+			endLine:          30,
+			expected:         "https://github.com/scan-io-git/scan-io/blob/feature-branch/internal/sarif/message_formatter.go#L25-L30",
+		},
+		{
+			name:             "end line less than start line",
+			namespace:        "scan-io-git",
+			repository:       "scan-io",
+			ref:              "main",
+			repoRelativePath: "src/main.go",
+			startLine:        10,
+			endLine:          5,
+			expected:         "https://github.com/scan-io-git/scan-io/blob/main/src/main.go#L10",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := BuildGitHubPermalink(tt.namespace, tt.repository, tt.ref, tt.repoRelativePath, tt.startLine, tt.endLine)
+			if result != tt.expected {
+				t.Errorf("BuildGitHubPermalink(%q, %q, %q, %q, %d, %d) = %q, expected %q",
+					tt.namespace, tt.repository, tt.ref, tt.repoRelativePath, tt.startLine, tt.endLine, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestExtractFileURIFromResult(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "sarif_extract")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	repoRoot := filepath.Join(tempDir, "scanio-test")
+	subfolder := filepath.Join(repoRoot, "apps", "demo")
+	if err := os.MkdirAll(subfolder, 0o755); err != nil {
+		t.Fatalf("Failed to create subfolder: %v", err)
+	}
+
+	absoluteFile := filepath.Join(subfolder, "main.py")
+	metadata := &git.RepositoryMetadata{
+		RepoRootFolder: repoRoot,
+		Subfolder:      filepath.ToSlash(filepath.Join("apps", "demo")),
+	}
+
+	if err := os.WriteFile(absoluteFile, []byte("print('demo')\n"), 0o644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	tests := []struct {
+		name          string
+		uri           string
+		meta          *git.RepositoryMetadata
+		expectedRepo  string
+		expectedLocal string
+		sourceFolder  string
+	}{
+		{
+			name:          "absolute URI with metadata",
+			uri:           absoluteFile,
+			meta:          metadata,
+			expectedRepo:  filepath.ToSlash(filepath.Join("apps", "demo", "main.py")),
+			expectedLocal: absoluteFile,
+			sourceFolder:  subfolder,
+		},
+		{
+			name:          "relative URI with metadata",
+			uri:           "main.py",
+			meta:          metadata,
+			expectedRepo:  filepath.ToSlash(filepath.Join("apps", "demo", "main.py")),
+			expectedLocal: filepath.Join(repoRoot, "apps", "demo", "main.py"),
+			sourceFolder:  subfolder,
+		},
+		{
+			name:          "relative URI with parent segments",
+			uri:           filepath.ToSlash(filepath.Join("..", "scanio-test", "apps", "demo", "main.py")),
+			meta:          metadata,
+			expectedRepo:  filepath.ToSlash(filepath.Join("apps", "demo", "main.py")),
+			expectedLocal: filepath.Join(repoRoot, "apps", "demo", "main.py"),
+			sourceFolder:  subfolder,
+		},
+		{
+			name:          "relative URI already prefixed",
+			uri:           filepath.ToSlash(filepath.Join("apps", "demo", "main.py")),
+			meta:          metadata,
+			expectedRepo:  filepath.ToSlash(filepath.Join("apps", "demo", "main.py")),
+			expectedLocal: filepath.Join(repoRoot, "apps", "demo", "main.py"),
+			sourceFolder:  subfolder,
+		},
+		{
+			name:          "absolute URI without metadata falls back to source folder",
+			uri:           absoluteFile,
+			meta:          nil,
+			expectedRepo:  "main.py",
+			expectedLocal: absoluteFile,
+			sourceFolder:  subfolder,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			uri := tt.uri
+			result := &sarif.Result{
+				Locations: []*sarif.Location{
+					{
+						PhysicalLocation: &sarif.PhysicalLocation{
+							ArtifactLocation: &sarif.ArtifactLocation{
+								URI: &uri,
+							},
+						},
+					},
+				},
+			}
+
+			repoPath, localPath := ExtractFileURIFromResult(result, tt.sourceFolder, tt.meta)
+			if repoPath != tt.expectedRepo {
+				t.Fatalf("expected repo path %q, got %q", tt.expectedRepo, repoPath)
+			}
+			if localPath != tt.expectedLocal {
+				t.Fatalf("expected local path %q, got %q", tt.expectedLocal, localPath)
+			}
+		})
+	}
+}
+
+func TestDisplayRuleHeadingPrefersShortDescription(t *testing.T) {
+	text := "Short desc"
+	name := "Rule Name"
+	rule := &sarif.ReportingDescriptor{
+		ShortDescription: &sarif.MultiformatMessageString{
+			Text: &text,
+		},
+		Name: &name,
+	}
+
+	got := DisplayRuleHeading(rule)
+	if got != "Short desc" {
+		t.Fatalf("expected short description heading, got %q", got)
+	}
+}
+
+func TestDisplayRuleHeadingFallsBackToName(t *testing.T) {
+	name := "Rule Name"
+	rule := &sarif.ReportingDescriptor{
+		Name: &name,
+	}
+
+	got := DisplayRuleHeading(rule)
+	if got != "Rule Name" {
+		t.Fatalf("expected name fallback heading, got %q", got)
+	}
+}
+
+func TestDisplayRuleHeadingFallsBackToID(t *testing.T) {
+	id := "rule.id"
+	rule := &sarif.ReportingDescriptor{
+		ID: id,
+	}
+
+	got := DisplayRuleHeading(rule)
+	if got != "rule.id" {
+		t.Fatalf("expected rule id fallback heading, got %q", got)
+	}
+}
+
+func TestDisplayRuleHeadingReturnsEmptyForNil(t *testing.T) {
+	got := DisplayRuleHeading(nil)
+	if got != "" {
+		t.Fatalf("expected empty string for nil rule, got %q", got)
+	}
+}

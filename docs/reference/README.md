@@ -11,6 +11,7 @@ This section provides detailed technical documentation for Scanio’s commands, 
 - [List Command](cmd-list.md): Describes repository discovery functionality across supported VCS platforms, available filtering options, and command output structure.
 - [Fetch Command](cmd-fetch.md): Explains repository fetching logic, supported authentication types, URL formats, and command output structure.
 - [Analyse Command](cmd-analyse.md): Provides details on running security scanners, handling input data, configuring output formats, and command output structure.
+- [SARIF Issues Command](cmd-sarif-issues.md): Explains how to create GitHub issues from SARIF findings with configurable severity levels, with automated lifecycle management.
 - [To-HTML Command](cmd-to-html.md): Explains conversion of SARIF reports to human-friendly HTML format, code snippet inclusion, and template customization options.
 - [Report Patch Command](cmd-report-patch.md): Details how to make structured modifications to SARIF reports, including different filtering capabilities and actions.
 

@@ -67,3 +67,5 @@ __debug_bin*
 *.json
 *report.html
 *results.html
+
+data/

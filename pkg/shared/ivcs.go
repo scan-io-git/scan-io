@@ -36,6 +36,18 @@ type PRParams struct {
 	UpdatedDate int64     `json:"updated_date"`
 }
 
+// IssueParams holds the details of an issue.
+type IssueParams struct {
+	Number      int    `json:"number"`
+	Title       string `json:"title"`
+	Body        string `json:"body,omitempty"`
+	State       string `json:"state"`
+	Author      User   `json:"author"`
+	URL         string `json:"url"`
+	CreatedDate int64  `json:"created_date"`
+	UpdatedDate int64  `json:"updated_date"`
+}
+
 // User holds the details of a user.
 type User struct {
 	UserName string `json:"user_name"`
@@ -99,11 +111,47 @@ type VCSSetStatusOfPRRequest struct {
 	LocalTipCommit string `json:"tip_commit"` // Tip commit hash to verify is local and remote tip commit are equal
 }
 
+// VCSIssueCreationRequest represents a request to create a new issue.
+type VCSIssueCreationRequest struct {
+	VCSRequestBase
+	Title string `json:"title"`
+	Body  string `json:"body"`
+	// Logins for Users to assign to this issue.
+	// github supports multiple assignees
+	Assignees []string `json:"assignees,omitempty"`
+	// Labels is an optional list of label names to attach to the created issue.
+	// Not all VCS providers support labels; providers that don't will ignore this field.
+	Labels []string `json:"labels,omitempty"`
+}
+
+// VCSIssueUpdateRequest represents a request to update an existing issue.
+type VCSIssueUpdateRequest struct {
+	VCSRequestBase
+	Number int    `json:"number"`
+	Title  string `json:"title"`
+	Body   string `json:"body"`
+	State  string `json:"state"` // optional: "open" or "closed"
+}
+
+// VCSCreateIssueCommentRequest represents a request to create a comment on an issue.
+type VCSCreateIssueCommentRequest struct {
+	VCSRequestBase
+	Number int    `json:"number"`
+	Body   string `json:"body"`
+}
+
 // VCSAddCommentToPRRequest represents a request to add a comment to a PR.
 type VCSAddCommentToPRRequest struct {
 	VCSRequestBase
 	Comment   string   `json:"comment"`
 	FilePaths []string `json:"file_paths"`
+}
+
+// VCSListIssuesRequest represents a request to list issues in a repository.
+type VCSListIssuesRequest struct {
+	VCSRequestBase
+	State      string `json:"state"`       // open, closed, all; default open
+	BodyFilter string `json:"body_filter"` // optional: filter issues by body content (substring match)
 }
 
 // ListFuncResult holds the result of a list function.
@@ -131,6 +179,11 @@ type VCSRetrievePRInformationResponse struct {
 	PR PRParams `json:"pr"`
 }
 
+// VCSListIssuesResponse represents a response from listing issues.
+type VCSListIssuesResponse struct {
+	Issues []IssueParams `json:"issues"`
+}
+
 // VCS defines the interface for VCS-related operations.
 type VCS interface {
 	Setup(configData config.Config) (bool, error)
@@ -140,6 +193,10 @@ type VCS interface {
 	AddRoleToPR(req VCSAddRoleToPRRequest) (bool, error)
 	SetStatusOfPR(req VCSSetStatusOfPRRequest) (bool, error)
 	AddCommentToPR(req VCSAddCommentToPRRequest) (bool, error)
+	CreateIssue(req VCSIssueCreationRequest) (int, error)
+	ListIssues(req VCSListIssuesRequest) ([]IssueParams, error)
+	UpdateIssue(req VCSIssueUpdateRequest) (bool, error)
+	CreateIssueComment(req VCSCreateIssueCommentRequest) (bool, error)
 }
 
 // VCSRPCClient implements the VCS interface for RPC clients.
@@ -217,6 +274,46 @@ func (c *VCSRPCClient) AddCommentToPR(req VCSAddCommentToPRRequest) (bool, error
 	return resp, nil
 }
 
+// CreateIssue calls the CreateIssue method on the RPC client.
+func (c *VCSRPCClient) CreateIssue(req VCSIssueCreationRequest) (int, error) {
+	var resp int
+	err := c.client.Call("Plugin.CreateIssue", req, &resp)
+	if err != nil {
+		return 0, fmt.Errorf("RPC client CreateIssue call failed: %w", err)
+	}
+	return resp, nil
+}
+
+// ListIssues calls the ListIssues method on the RPC client.
+func (c *VCSRPCClient) ListIssues(req VCSListIssuesRequest) ([]IssueParams, error) {
+	var resp VCSListIssuesResponse
+	err := c.client.Call("Plugin.ListIssues", req, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("RPC client ListIssues call failed: %w", err)
+	}
+	return resp.Issues, nil
+}
+
+// UpdateIssue calls the UpdateIssue method on the RPC client.
+func (c *VCSRPCClient) UpdateIssue(req VCSIssueUpdateRequest) (bool, error) {
+	var resp bool
+	err := c.client.Call("Plugin.UpdateIssue", req, &resp)
+	if err != nil {
+		return false, fmt.Errorf("RPC client UpdateIssue call failed: %w", err)
+	}
+	return resp, nil
+}
+
+// CreateIssueComment calls the CreateIssueComment method on the RPC client.
+func (c *VCSRPCClient) CreateIssueComment(req VCSCreateIssueCommentRequest) (bool, error) {
+	var resp bool
+	err := c.client.Call("Plugin.CreateIssueComment", req, &resp)
+	if err != nil {
+		return false, fmt.Errorf("RPC client CreateIssueComment call failed: %w", err)
+	}
+	return resp, nil
+}
+
 // VCSRPCServer wraps a VCS implementation to provide an RPC server.
 type VCSRPCServer struct {
 	Impl VCS
@@ -290,6 +387,46 @@ func (s *VCSRPCServer) AddCommentToPR(args VCSAddCommentToPRRequest, resp *bool)
 		return fmt.Errorf("VCS AddCommentToPR failed: %w", err)
 	}
 	return err
+}
+
+// CreateIssue calls the CreateIssue method on the VCS implementation.
+func (s *VCSRPCServer) CreateIssue(args VCSIssueCreationRequest, resp *int) error {
+	var err error
+	*resp, err = s.Impl.CreateIssue(args)
+	if err != nil {
+		return fmt.Errorf("VCS CreateIssue failed: %w", err)
+	}
+	return nil
+}
+
+// ListIssues calls the ListIssues method on the VCS implementation.
+func (s *VCSRPCServer) ListIssues(args VCSListIssuesRequest, resp *VCSListIssuesResponse) error {
+	issues, err := s.Impl.ListIssues(args)
+	if err != nil {
+		return fmt.Errorf("VCS ListIssues failed: %w", err)
+	}
+	resp.Issues = issues
+	return nil
+}
+
+// UpdateIssue calls the UpdateIssue method on the VCS implementation.
+func (s *VCSRPCServer) UpdateIssue(args VCSIssueUpdateRequest, resp *bool) error {
+	var err error
+	*resp, err = s.Impl.UpdateIssue(args)
+	if err != nil {
+		return fmt.Errorf("VCS UpdateIssue failed: %w", err)
+	}
+	return nil
+}
+
+// CreateIssueComment calls the CreateIssueComment method on the VCS implementation.
+func (s *VCSRPCServer) CreateIssueComment(args VCSCreateIssueCommentRequest, resp *bool) error {
+	var err error
+	*resp, err = s.Impl.CreateIssueComment(args)
+	if err != nil {
+		return fmt.Errorf("VCS CreateIssueComment failed: %w", err)
+	}
+	return nil
 }
 
 // VCSPlugin is the implementation of the plugin.Plugin interface for VCS.

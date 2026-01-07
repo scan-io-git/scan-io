@@ -1,0 +1,25 @@
+# Scan-io Cursor Rules
+
+## Development workflow
+- When implementing new features or making changes to the codebase, always check the `docs/engineering/` directory first for established patterns and guidelines:
+- When in doubt about implementation details, always refer to the engineering documentation first, then examine similar existing implementations in the codebase.
+- Try to reuse internal packages if relevant. Extend if required functionality does not exist.
+- Don't use `data` folder in tests, it will not be available in other environment. But feel free to read content to make proper mocks.
+- Try to use `make build-cli` or `make build-plugins` or `make build` instead of `go build ...`
+
+## Commands
+- Build cli with: `make build-cli`
+- Build plugins with: `make build-plugins`
+- Build everything with: `make build`
+- Test with: `make test`
+- Use `go fmt` for formatting
+
+## Code style
+- Use early returns when handling errors or special cases to reduce nesting and improve readability.
+
+## Planning
+- When generating a plan for new features, refactoring and so on, make an analysis of codebase, then write a plan in phases.
+- The plan may contain one or more phases. Each phase contains tasks. Write inputs and deliverables for each phase, task or group of tasks.
+- Ensure that new functionality has tasks related to having tests for that functionality.
+- Default plan file is `PLAN.md` in the root.
+- Add documentation and help message update when necessary.
