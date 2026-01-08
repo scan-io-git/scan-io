@@ -34,6 +34,39 @@ type PermalinkParams struct {
 	EndLine   int    // 1-based, 0 or equal to StartLine means single line
 }
 
+// validatePermalinkParams checks that all required parameters are present.
+func validatePermalinkParams(p PermalinkParams) error {
+	if p.Namespace == "" {
+		return ErrMissingNamespace
+	}
+	if p.Project == "" {
+		return ErrMissingProject
+	}
+	if p.Ref == "" {
+		return ErrMissingRef
+	}
+	if p.File == "" {
+		return ErrMissingFile
+	}
+	return nil
+}
+
+// resolveHost returns the host to use, falling back to default public hosts.
+func resolveHost(vcsType VCSType, host string) (string, error) {
+	if host != "" {
+		return host, nil
+	}
+	if defaultHost, ok := defaultHosts[vcsType]; ok {
+		return defaultHost, nil
+	}
+	return "", ErrMissingHost
+}
+
+// normalizeFilePath converts backslashes to forward slashes and trims leading slashes.
+func normalizeFilePath(file string) string {
+	return strings.TrimLeft(strings.ReplaceAll(file, "\\", "/"), "/")
+}
+
 // BuildPermalink generates a VCS file permalink from the given parameters.
 // Returns an error if required parameters are missing.
 //
@@ -46,35 +79,17 @@ type PermalinkParams struct {
 // For self-hosted instances, provide the Host parameter. If omitted, defaults to
 // the public host (github.com, gitlab.com, bitbucket.org).
 func BuildPermalink(p PermalinkParams) (string, error) {
-	// Validate required parameters
-	if p.Namespace == "" {
-		return "", ErrMissingNamespace
-	}
-	if p.Project == "" {
-		return "", ErrMissingProject
-	}
-	if p.Ref == "" {
-		return "", ErrMissingRef
-	}
-	if p.File == "" {
-		return "", ErrMissingFile
+	if err := validatePermalinkParams(p); err != nil {
+		return "", err
 	}
 
-	// Normalize file path to forward slashes and trim leading slashes
-	file := strings.TrimLeft(strings.ReplaceAll(p.File, "\\", "/"), "/")
-
-	// Resolve host
-	host := p.Host
-	if host == "" {
-		if defaultHost, ok := defaultHosts[p.VCSType]; ok {
-			host = defaultHost
-		}
-	}
-	if host == "" {
-		return "", ErrMissingHost
+	host, err := resolveHost(p.VCSType, p.Host)
+	if err != nil {
+		return "", err
 	}
 
-	// Build URL based on VCS type
+	file := normalizeFilePath(p.File)
+
 	switch p.VCSType {
 	case Gitlab:
 		return buildGitlabPermalink(host, p.Namespace, p.Project, p.Ref, file, p.StartLine, p.EndLine), nil
