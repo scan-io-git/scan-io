@@ -9,8 +9,9 @@ import (
 
 	"github.com/scan-io-git/scan-io/cmd/analyse"
 	"github.com/scan-io-git/scan-io/cmd/fetch"
-	"github.com/scan-io-git/scan-io/cmd/integration-vcs"
+	integrationvcs "github.com/scan-io-git/scan-io/cmd/integration-vcs"
 	"github.com/scan-io-git/scan-io/cmd/list"
+	sarifissues "github.com/scan-io-git/scan-io/cmd/sarif-issues"
 	"github.com/scan-io-git/scan-io/cmd/upload"
 	"github.com/scan-io-git/scan-io/cmd/version"
 	"github.com/scan-io-git/scan-io/pkg/shared"
@@ -87,6 +88,7 @@ func initConfig() {
 	fetch.Init(AppConfig, Logger.Named("fetch"))
 	analyse.Init(AppConfig, Logger.Named("analyse"))
 	integrationvcs.Init(AppConfig, Logger.Named("integration-vcs"))
+	sarifissues.Init(AppConfig, Logger.Named("sarif-issues"))
 	version.Init(AppConfig, Logger.Named("version"))
 	tohtml.Init(AppConfig, Logger.Named("to-html"))
 	upload.Init(AppConfig, Logger.Named("upload"))
@@ -100,6 +102,7 @@ func init() {
 	rootCmd.AddCommand(fetch.FetchCmd)
 	rootCmd.AddCommand(analyse.AnalyseCmd)
 	rootCmd.AddCommand(integrationvcs.IntegrationVCSCmd)
+	rootCmd.AddCommand(sarifissues.SarifIssuesCmd)
 	rootCmd.AddCommand(version.NewVersionCmd())
 	rootCmd.AddCommand(tohtml.ToHtmlCmd)
 	rootCmd.AddCommand(upload.UploadCmd)

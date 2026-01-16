@@ -33,6 +33,24 @@ func safeTime(t *time.Time) int64 {
 	return t.Unix()
 }
 
+// convertToIssueParams converts a GitHub Issue object to shared.IssueParams.
+func convertToIssueParams(iss *github.Issue) shared.IssueParams {
+	if iss == nil {
+		return shared.IssueParams{}
+	}
+
+	return shared.IssueParams{
+		Number:      safeInt(iss.Number),
+		Title:       safeString(iss.Title),
+		Body:        safeString(iss.Body),
+		State:       safeString(iss.State),
+		Author:      safeUser(iss.User),
+		URL:         safeString(iss.HTMLURL),
+		CreatedDate: safeTime(iss.CreatedAt),
+		UpdatedDate: safeTime(iss.UpdatedAt),
+	}
+}
+
 // safeUser converts a GitHub user to a shared.User, handling nil safely.
 func safeUser(user *github.User) shared.User {
 	if user == nil || user.Login == nil {
