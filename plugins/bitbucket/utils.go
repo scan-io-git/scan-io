@@ -1,6 +1,8 @@
 package main
 
 import (
+	"strings"
+
 	"github.com/scan-io-git/scan-io/internal/bitbucket"
 	"github.com/scan-io-git/scan-io/pkg/shared"
 )
@@ -19,6 +21,41 @@ func toRepositoryParams(repos *[]bitbucket.Repository) []shared.RepositoryParams
 		})
 	}
 	return repoParams
+}
+
+func deriveVerdict(user bitbucket.UserData) string {
+	status := strings.TrimSpace(user.Status)
+	switch {
+	case status != "":
+		return strings.ToUpper(status)
+	case user.Approved:
+		return "APPROVED"
+	default:
+		return "PENDING"
+	}
+}
+
+func toSharedUser(user bitbucket.UserData) shared.User {
+	return shared.User{
+		UserName: user.User.DisplayName,
+		Email:    user.User.EmailAddress,
+	}
+}
+
+func convertReviewers(reviewers []bitbucket.UserData) []shared.PRReview {
+	if len(reviewers) == 0 {
+		return nil
+	}
+
+	result := make([]shared.PRReview, 0, len(reviewers))
+	for _, reviewer := range reviewers {
+		result = append(result, shared.PRReview{
+			Reviewer:           toSharedUser(reviewer),
+			Verdict:            deriveVerdict(reviewer),
+			LastReviewedCommit: reviewer.LastReviewedCommit,
+		})
+	}
+	return result
 }
 
 func convertToPRParams(pr *bitbucket.PullRequest) shared.PRParams {
@@ -47,5 +84,6 @@ func convertToPRParams(pr *bitbucket.PullRequest) shared.PRParams {
 		},
 		CreatedDate: pr.CreatedDate,
 		UpdatedDate: pr.UpdatedDate,
+		Reviewers:   convertReviewers(pr.Reviewers),
 	}
 }

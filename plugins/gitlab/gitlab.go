@@ -258,8 +258,18 @@ func (g *VCSGitlab) RetrievePRInformation(args shared.VCSRetrievePRInformationRe
 		return shared.PRParams{}, fmt.Errorf("failed to retrieve MR: %w", err)
 	}
 
+	var approvals *gitlab.MergeRequestApprovals
+	if approvalData, _, err := client.MergeRequests.GetMergeRequestApprovals(projectID, mrID); err != nil {
+		g.logger.Warn("failed to retrieve MR approvals", "projectID", projectID, "MRID", mrID, "error", err)
+	} else {
+		approvals = approvalData
+	}
+
+	prParams := convertToPRParams(mrData)
+	prParams.Reviewers = convertGitlabReviewers(mrData, approvals)
+
 	g.logger.Debug("successfully retrieved MR information", "projectID", projectID, "MRID", mrID)
-	return convertToPRParams(mrData), nil
+	return prParams, nil
 }
 
 // AddRoleToPR handles adding a specified role to a MR based on the provided VCSAddRoleToPRRequest.
