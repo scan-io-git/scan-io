@@ -161,6 +161,17 @@ func CopySymLink(srcLink, destLink string) error {
 		return fmt.Errorf("failed to read symlink %q: %w", srcLink, err)
 	}
 
+	if destInfo, err := os.Lstat(destLink); err == nil {
+		if destInfo.Mode()&os.ModeSymlink != 0 {
+			if existingTarget, err := os.Readlink(destLink); err == nil && existingTarget == linkTarget {
+				return nil
+			}
+		}
+		return fmt.Errorf("destination exists %q", destLink)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to stat destination %q: %w", destLink, err)
+	}
+
 	if err := os.Symlink(linkTarget, destLink); err != nil {
 		return fmt.Errorf("failed to create symlink %q -> %q: %w", destLink, linkTarget, err)
 	}
