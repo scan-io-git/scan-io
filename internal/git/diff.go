@@ -164,7 +164,8 @@ func MaterializeDiff(gitClient *Client, repoRoot, diffRoot, baseSHA, headSHA str
 		}
 
 		if err := writeSparseFile(repoRoot, diffRoot, relPath, lines); err != nil {
-			return err
+			gitClient.logger.Warn("skipping file writing due to error", "err", err)
+			continue
 		}
 	}
 
