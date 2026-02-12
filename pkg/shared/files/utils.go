@@ -228,12 +228,12 @@ func CopySymLink(srcRoot, dstRoot *os.Root, srcLink, destLink string) error {
 	if !filepath.IsAbs(linkTarget) {
 		resolved = filepath.Clean(filepath.Join(filepath.Dir(destLink), linkTarget))
 	}
-	if _, err := dstRoot.Stat(resolved); err != nil {
-		// return fmt.Errorf("failed to validate symlink %q -> %q (root %q): %w", destLink, linkTarget, dstRoot.Name(), err)
+	if _, err := dstRoot.Stat(resolved); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to validate symlink %q -> %q (root %q): %w", destLink, linkTarget, dstRoot.Name(), err)
 	}
 
 	if err := dstRoot.Symlink(linkTarget, destLink); err != nil {
-		// return fmt.Errorf("failed to create symlink %q -> %q (root %q): %w", destLink, linkTarget, dstRoot.Name(), err)
+		return fmt.Errorf("failed to create symlink %q -> %q (root %q): %w", destLink, linkTarget, dstRoot.Name(), err)
 	}
 	return nil
 }
