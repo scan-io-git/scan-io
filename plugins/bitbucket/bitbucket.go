@@ -388,9 +388,7 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRes
 			return shared.VCSFetchResponse{}, fmt.Errorf("failed to prepare clean diff-files folder: %w", err)
 		}
 		for _, path := range changedPaths {
-			srcPath := filepath.Join(args.TargetFolder, path)
-			destPath := filepath.Join(diffFilesRoot, path)
-			if err := files.Copy(srcPath, destPath); err != nil {
+			if err := files.Copy(args.TargetFolder, diffFilesRoot, path, path); err != nil {
 				g.logger.Error("error copying file", "error", err)
 			}
 		}

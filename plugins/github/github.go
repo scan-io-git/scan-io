@@ -468,9 +468,7 @@ func (g *VCSGithub) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRespon
 		}
 
 		for _, path := range changedPaths {
-			srcPath := filepath.Join(args.TargetFolder, path)
-			destPath := filepath.Join(diffFilesRoot, path)
-			if err := ifiles.Copy(srcPath, destPath); err != nil {
+			if err := ifiles.Copy(args.TargetFolder, diffFilesRoot, path, path); err != nil {
 				g.logger.Error("error copying file", "error", err)
 			}
 		}
