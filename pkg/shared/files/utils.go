@@ -48,27 +48,43 @@ func GetValidatedFileName(path string) (string, error) {
 	return filepath.Base(path), nil
 }
 
-// CopyDotFiles copies files and directories starting with a dot from src to dst.
+// CopyDotFiles copies dot-prefixed entries from src to dst using root-scoped ops.
 func CopyDotFiles(src, dst string, logger hclog.Logger) error {
 	logger.Debug("copying files starting with a dot", "source", src, "destination", dst)
-	files, err := os.ReadDir(src)
+	srcRoot, err := os.OpenRoot(src)
 	if err != nil {
-		return fmt.Errorf("failed to read directory %q: %w", src, err)
+		return fmt.Errorf("failed to open source root %q: %w", src, err)
+	}
+	defer srcRoot.Close()
+
+	if err := os.MkdirAll(dst, os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create destination root %q: %w", dst, err)
+	}
+
+	dstRoot, err := os.OpenRoot(dst)
+	if err != nil {
+		return fmt.Errorf("failed to open destination root %q: %w", dst, err)
+	}
+	defer dstRoot.Close()
+
+	files, err := fs.ReadDir(srcRoot.FS(), ".")
+	if err != nil {
+		return fmt.Errorf("failed to read directory %q: %w", srcRoot.Name(), err)
 	}
 
 	for _, file := range files {
 		if file.Name()[0] == '.' {
-			srcPath := filepath.Join(src, file.Name())
-			dstPath := filepath.Join(dst, file.Name())
+			srcPath := file.Name()
+			dstPath := file.Name()
 
 			if file.IsDir() {
-				if err := Copy(srcPath, dstPath); err != nil {
-					logger.Error("error copying directory", "path", srcPath, "error", err)
+				if err := copyWithRoot(srcRoot, dstRoot, srcPath, dstPath); err != nil {
+					logger.Error("error copying directory", "srcRoot", srcRoot.Name(), "path", srcPath, "error", err)
 					return err
 				}
 			} else {
-				if err := Copy(srcPath, dstPath); err != nil {
-					logger.Error("error copying file", "path", srcPath, "error", err)
+				if err := copyWithRoot(srcRoot, dstRoot, srcPath, dstPath); err != nil {
+					logger.Error("error copying file", "srcRoot", srcRoot.Name(), "path", srcPath, "error", err)
 					return err
 				}
 			}
@@ -89,64 +105,85 @@ func RemoveAndRecreate(path string) error {
 	return nil
 }
 
-// Copy determines the type of source (file, directory, or symlink) and copies it accordingly.
-func Copy(srcPath, destPath string) error {
-	srcInfo, err := os.Lstat(srcPath)
+// Copy copies a file or directory using root paths and root-scoped operations.
+func Copy(srcRootPath, dstRootPath, srcPath, destPath string) error {
+	srcRoot, err := os.OpenRoot(srcRootPath)
 	if err != nil {
-		return fmt.Errorf("failed to stat source path %q: %w", srcPath, err)
+		return fmt.Errorf("failed to open source root %q: %w", srcRootPath, err)
+	}
+	defer srcRoot.Close()
+
+	dstRoot, err := os.OpenRoot(dstRootPath)
+	if err != nil {
+		return fmt.Errorf("failed to open destination root %q: %w", dstRootPath, err)
+	}
+	defer dstRoot.Close()
+
+	return copyWithRoot(srcRoot, dstRoot, srcPath, destPath)
+}
+
+// copyWithRoot dispatches copying by source type using root-scoped operations.
+func copyWithRoot(srcRoot, dstRoot *os.Root, srcPath, destPath string) error {
+	srcInfo, err := srcRoot.Lstat(srcPath)
+	if err != nil {
+		return fmt.Errorf("failed to stat source path %q (root %q): %w", srcPath, srcRoot.Name(), err)
 	}
 
 	switch {
 	case srcInfo.IsDir():
-		return CopyDir(srcPath, destPath)
+		return CopyDir(srcRoot, dstRoot, srcPath, destPath, srcInfo.Mode().Perm())
 	case srcInfo.Mode()&os.ModeSymlink != 0:
-		return CopySymLink(srcPath, destPath)
+		return CopySymLink(srcRoot, dstRoot, srcPath, destPath)
 	default:
-		return CopyFile(srcPath, destPath)
+		return CopyFile(srcRoot, dstRoot, srcPath, destPath, srcInfo.Mode().Perm())
 	}
 }
 
-// CopyFile copies a file from srcFile to destFile.
-func CopyFile(srcFile, destFile string) error {
+// CopyFile copies a file using root-scoped paths and ensures the destination dir exists.
+func CopyFile(srcRoot, dstRoot *os.Root, srcFile, destFile string, perm fs.FileMode) error {
 	destDir := filepath.Dir(destFile)
-	if err := CreateFolderIfNotExists(destDir); err != nil {
-		return fmt.Errorf("failed to create directory %q: %w", destDir, err)
+	srcDirInfo, err := srcRoot.Stat(filepath.Dir(srcFile))
+	if err != nil {
+		return fmt.Errorf("failed to stat source directory %q (root %q): %w", filepath.Dir(srcFile), srcRoot.Name(), err)
+	}
+	if err := dstRoot.MkdirAll(destDir, srcDirInfo.Mode().Perm()); err != nil {
+		return fmt.Errorf("failed to create directory %q (root %q): %w", destDir, dstRoot.Name(), err)
 	}
 
-	in, err := os.Open(srcFile)
+	in, err := srcRoot.Open(srcFile)
 	if err != nil {
-		return fmt.Errorf("failed to open source file %q: %w", srcFile, err)
+		return fmt.Errorf("failed to open source file %q (root %q): %w", srcFile, srcRoot.Name(), err)
 	}
 	defer in.Close()
 
-	out, err := os.Create(destFile)
+	out, err := dstRoot.OpenFile(destFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, perm)
 	if err != nil {
-		return fmt.Errorf("failed to create destination file %q: %w", destFile, err)
+		return fmt.Errorf("failed to create destination file %q (root %q): %w", destFile, dstRoot.Name(), err)
 	}
 	defer out.Close()
 
 	if _, err = io.Copy(out, in); err != nil {
-		return fmt.Errorf("failed to copy data from %q to %q: %w", srcFile, destFile, err)
+		return fmt.Errorf("failed to copy data from %q (root %q) to %q (root %q): %w", srcFile, srcRoot.Name(), destFile, dstRoot.Name(), err)
 	}
 	return nil
 }
 
-// CopyDir copies a directory from srcDir to destDir recursively.
-func CopyDir(srcDir, destDir string) error {
-	entries, err := os.ReadDir(srcDir)
+// CopyDir copies a directory recursively using root-scoped operations.
+func CopyDir(srcRoot, dstRoot *os.Root, srcDir, destDir string, perm fs.FileMode) error {
+	entries, err := fs.ReadDir(srcRoot.FS(), srcDir)
 	if err != nil {
-		return fmt.Errorf("failed to read source directory %q: %w", srcDir, err)
+		return fmt.Errorf("failed to read source directory %q (root %q): %w", srcDir, srcRoot.Name(), err)
 	}
 
-	if err := CreateFolderIfNotExists(destDir); err != nil {
-		return fmt.Errorf("failed to create destination directory %q: %w", destDir, err)
+	if err := dstRoot.MkdirAll(destDir, perm); err != nil {
+		return fmt.Errorf("failed to create destination directory %q (root %q): %w", destDir, dstRoot.Name(), err)
 	}
 
 	for _, entry := range entries {
 		srcPath := filepath.Join(srcDir, entry.Name())
 		destPath := filepath.Join(destDir, entry.Name())
 
-		if err := Copy(srcPath, destPath); err != nil {
+		if err := copyWithRoot(srcRoot, dstRoot, srcPath, destPath); err != nil {
 			return err
 		}
 	}
@@ -154,26 +191,49 @@ func CopyDir(srcDir, destDir string) error {
 	return nil
 }
 
-// CopySymLink copies a symbolic link from srcLink to destLink.
-func CopySymLink(srcLink, destLink string) error {
-	linkTarget, err := os.Readlink(srcLink)
+// CopySymLink copies a symlink using root-scoped operations.
+func CopySymLink(srcRoot, dstRoot *os.Root, srcLink, destLink string) error {
+	linkTarget, err := srcRoot.Readlink(srcLink)
 	if err != nil {
-		return fmt.Errorf("failed to read symlink %q: %w", srcLink, err)
+		return fmt.Errorf("failed to read symlink %q (root %q): %w", srcLink, srcRoot.Name(), err)
 	}
 
-	if destInfo, err := os.Lstat(destLink); err == nil {
+	destDir := filepath.Dir(destLink)
+	if err := dstRoot.MkdirAll(destDir, os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create directory %q (root %q): %w", destDir, dstRoot.Name(), err)
+	}
+
+	if destInfo, err := dstRoot.Lstat(destLink); err == nil {
 		if destInfo.Mode()&os.ModeSymlink != 0 {
-			if existingTarget, err := os.Readlink(destLink); err == nil && existingTarget == linkTarget {
+			if existingTarget, err := dstRoot.Readlink(destLink); err == nil && existingTarget == linkTarget {
 				return nil
 			}
 		}
-		return fmt.Errorf("destination exists %q", destLink)
+		if destInfo.IsDir() {
+			// if err := dstRoot.RemoveAll(destLink); err != nil {
+			// 	return fmt.Errorf("failed to remove destination directory %q: %w", destLink, err)
+			// }
+			return nil
+		} else {
+			if err := dstRoot.Remove(destLink); err != nil {
+				return fmt.Errorf("failed to remove destination link %q (root %q) for source copy of %q (root %q): %w", destLink, dstRoot.Name(), srcLink, srcRoot.Name(), err)
+			}
+		}
 	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("failed to stat destination %q: %w", destLink, err)
+		return fmt.Errorf("failed to stat destination %q (root %q): %w", destLink, dstRoot.Name(), err)
 	}
 
-	if err := os.Symlink(linkTarget, destLink); err != nil {
-		return fmt.Errorf("failed to create symlink %q -> %q: %w", destLink, linkTarget, err)
+	// check a symlink dst file exists or reachable inside root
+	resolved := linkTarget
+	if !filepath.IsAbs(linkTarget) {
+		resolved = filepath.Clean(filepath.Join(filepath.Dir(destLink), linkTarget))
+	}
+	if _, err := dstRoot.Stat(resolved); err != nil {
+		return fmt.Errorf("failed to validate symlink %q -> %q (root %q): %w", destLink, linkTarget, dstRoot.Name(), err)
+	}
+
+	if err := dstRoot.Symlink(linkTarget, destLink); err != nil {
+		return fmt.Errorf("failed to create symlink %q -> %q (root %q): %w", destLink, linkTarget, dstRoot.Name(), err)
 	}
 	return nil
 }
