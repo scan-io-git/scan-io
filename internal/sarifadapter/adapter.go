@@ -9,14 +9,15 @@ import (
 	"os"
 	"strings"
 
-	"github.com/owenrumney/go-sarif/v2/sarif"
+	gosarif "github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/scan-io-git/scan-io/internal/findings"
+	internalsarif "github.com/scan-io-git/scan-io/internal/sarif"
 )
 
 // FromReport converts a SARIF report into a slice of findings.
 // One Finding is produced per result; runs are flattened.
 // V1 maps only RuleID, Title, and Scanner; other fields are zero value.
-func FromReport(report *sarif.Report) []findings.Finding {
+func FromReport(report *gosarif.Report) []findings.Finding {
 	return convertReport(report)
 }
 
@@ -27,7 +28,7 @@ func FromFile(path string) ([]findings.Finding, error) {
 	if err != nil {
 		return nil, err
 	}
-	var report sarif.Report
+	var report gosarif.Report
 	if err := json.Unmarshal(data, &report); err != nil {
 		return nil, err
 	}
@@ -35,7 +36,7 @@ func FromFile(path string) ([]findings.Finding, error) {
 }
 
 // convertReport iterates all runs and results, emitting one Finding per result.
-func convertReport(report *sarif.Report) []findings.Finding {
+func convertReport(report *gosarif.Report) []findings.Finding {
 	if report == nil {
 		return nil
 	}
@@ -53,8 +54,8 @@ func convertReport(report *sarif.Report) []findings.Finding {
 	return out
 }
 
-func rulesByID(run *sarif.Run) map[string]*sarif.ReportingDescriptor {
-	m := make(map[string]*sarif.ReportingDescriptor)
+func rulesByID(run *gosarif.Run) map[string]*gosarif.ReportingDescriptor {
+	m := make(map[string]*gosarif.ReportingDescriptor)
 	if run == nil || run.Tool.Driver == nil {
 		return m
 	}
@@ -70,7 +71,7 @@ func rulesByID(run *sarif.Run) map[string]*sarif.ReportingDescriptor {
 	return m
 }
 
-func resultToFinding(res *sarif.Result, rulesByID map[string]*sarif.ReportingDescriptor, scannerName string) findings.Finding {
+func resultToFinding(res *gosarif.Result, rulesByID map[string]*gosarif.ReportingDescriptor, scannerName string) findings.Finding {
 	f := findings.Finding{}
 	if res == nil {
 		return f
@@ -85,19 +86,9 @@ func resultToFinding(res *sarif.Result, rulesByID map[string]*sarif.ReportingDes
 }
 
 // titleFromRule returns title: ShortDescription.Text, else Name, else rule ID.
-func titleFromRule(rule *sarif.ReportingDescriptor, ruleID string) string {
-	if rule != nil {
-		if rule.ShortDescription != nil && rule.ShortDescription.Text != nil {
-			if t := strings.TrimSpace(*rule.ShortDescription.Text); t != "" {
-				return t
-			}
-		}
-		if rule.Name != nil {
-			if t := strings.TrimSpace(*rule.Name); t != "" {
-				return t
-			}
-		}
-		return strings.TrimSpace(rule.ID)
+func titleFromRule(rule *gosarif.ReportingDescriptor, ruleID string) string {
+	if title := internalsarif.DisplayRuleHeading(rule); title != "" {
+		return title
 	}
 	return ruleID
 }
