@@ -7,7 +7,7 @@
 ARG PLUGINS="github,gitlab,bitbucket,semgrep,bandit,trufflehog"
 
 # Stage 1: Build Scanio core and plugins
-FROM golang:1.25.1-alpine3.21 AS build-scanio
+FROM golang:1.25.9-alpine3.23 AS build-scanio
 
 WORKDIR /usr/src/scanio
 
@@ -35,7 +35,7 @@ RUN echo "Building binaries and plugins for '$TARGETOS/$TARGETARCH'"
 RUN make build PLUGINS="$PLUGINS" CORE_BINARY=/usr/bin/scanio PLUGINS_DIR=/usr/bin/plugins
 
 # Stage 2: Prepare the runtime environment
-FROM alpine:3.21.3 AS runtime
+FROM alpine:3.23.4 AS runtime
 
 # Set target architecture for multi-arch builds
 ARG TARGETOS
@@ -64,7 +64,7 @@ RUN set -euxo pipefail && \
           echo "Installing Semgrep..."; \
           python3 -m venv "$PLUGIN_VENVS_DIR/semgrep" && \
           . "$PLUGIN_VENVS_DIR/semgrep/bin/activate" && \
-          pip install --no-cache-dir semgrep==1.120.1 ;; \
+          pip install --no-cache-dir semgrep==1.161.0 ;; \
         trufflehog3) \
           echo "Installing Trufflehog3..."; \
           apk add --no-cache git; \
@@ -75,10 +75,10 @@ RUN set -euxo pipefail && \
           echo "Installing Bandit..."; \
           python3 -m venv "$PLUGIN_VENVS_DIR/bandit" && \
           . "$PLUGIN_VENVS_DIR/bandit/bin/activate" && \
-          pip install --no-cache-dir bandit==1.8.3 ;; \
+          pip install --no-cache-dir bandit==1.9.4 ;; \
         trufflehog) \
           echo "Installing TruffleHog binary..."; \
-          TRUFFLEHOG_VER="3.88.27" && \
+          TRUFFLEHOG_VER="3.95.2" && \
           TARFILE="trufflehog_${TRUFFLEHOG_VER}_${TARGETOS}_${TARGETARCH}.tar.gz" && \
           CHECKSUMFILE="trufflehog_${TRUFFLEHOG_VER}_checksums.txt" && \
           curl -LOs "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VER}/${CHECKSUMFILE}" && \
