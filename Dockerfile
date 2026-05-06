@@ -122,5 +122,10 @@ RUN echo -e "\n\nscanio:" >> /scanio/config.yml && \
     echo -e "  temp_folder: /scanio/tmp" >> /scanio/config.yml && \
     echo -e "  artifacts_folder: /scanio/artifacts\n" >> /scanio/config.yml
 
+RUN addgroup -S scanio && adduser -S -G scanio scanio && \
+    chown -R scanio:scanio /scanio /data
+
+USER scanio
+
 ENTRYPOINT ["/bin/scanio"]
 CMD ["--help"]
