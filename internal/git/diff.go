@@ -13,6 +13,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/sourcegraph/go-diff/diff"
 
 	sharedfiles "github.com/scan-io-git/scan-io/pkg/shared/files"
@@ -65,12 +66,22 @@ func AddedLines(gitClient *Client, repoPath, baseHash, headHash string, filters 
 		return nil, fmt.Errorf("failed to load head tree: %w", err)
 	}
 
-	patch, err := baseTree.Patch(headTree)
+	changes, err := baseTree.Diff(headTree)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compute diff: %w", err)
 	}
 
-	parsed, err := diff.ParseMultiFileDiff([]byte(patch.String()))
+	var patchBuf bytes.Buffer
+	for _, c := range changes {
+		p, pErr := safePatch(c)
+		if pErr != nil {
+			gitClient.logger.Warn("skipping file in diff (too large for in-memory diff)", "err", pErr)
+			continue
+		}
+		patchBuf.WriteString(p.String())
+	}
+
+	parsed, err := diff.ParseMultiFileDiff(patchBuf.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse diff: %w", err)
 	}
@@ -213,6 +224,19 @@ func writeSparseFile(repoRoot, diffRoot, relPath string, lines map[int]string) e
 	}
 
 	return nil
+}
+
+// safePatch computes the patch for a single file change, recovering from panics
+// that sergi/go-diff can produce when a file has more unique lines than Unicode
+// rune space (~1.1M). On panic the error is returned and the caller skips the file.
+func safePatch(c *object.Change) (p *object.Patch, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("diff panic: %v", r)
+		}
+	}()
+	p, err = c.Patch()
+	return
 }
 
 // buildFilterSet returns an O(1) lookup table for the provided filter slice.
