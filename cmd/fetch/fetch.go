@@ -183,7 +183,7 @@ func init() {
 	FetchCmd.Flags().BoolVar(&fetchOptions.NoTags, "no-tags", false, "Do not fetch any tags from the repository.")
 	FetchCmd.Flags().BoolVar(&fetchOptions.AutoRepair, "auto-repair", false, "Automatically repair corrupted repositories by forcing a refetch and recloning if needed.")
 	FetchCmd.Flags().BoolVar(&fetchOptions.CleanWorkdir, "clean-workdir", false, "Reset the working tree to HEAD and remove untracked files (like 'git reset --hard' + 'git clean -fdx').")
-	FetchCmd.Flags().StringSliceVar(&fetchOptions.RmListExts, "rm-ext", []string{"csv", "png", "ipynb", "txt", "md", "mp4", "zip", "gif", "gz", "jpg", "jpeg", "cache", "tar", "svg", "bin", "lock", "exe"}, "Comma-separated list of file extensions to remove automatically after fetching.")
+	FetchCmd.Flags().StringSliceVar(&fetchOptions.RmListExts, "rm-ext", []string{"csv", "png", "ipynb", "txt", "md", "mp4", "zip", "gif", "gz", "jpg", "jpeg", "cache", "tar", "svg", "bin", "lock", "exe"}, "Comma-separated list of file extensions to remove automatically after fetching. Provide a plain comma-separated list with no spaces or quotes (for example: --rm-ext png,mp4,zip).")
 	FetchCmd.Flags().IntVarP(&fetchOptions.Threads, "threads", "j", 1, "Number of concurrent threads to use.")
 	FetchCmd.Flags().BoolP("help", "h", false, "Show help for the fetch command.")
 }
