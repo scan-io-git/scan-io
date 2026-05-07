@@ -49,19 +49,24 @@ func Execute() int {
 		}
 	}()
 	if err := rootCmd.Execute(); err != nil {
-		if commandErr, ok := err.(*errors.CommandError); ok {
-			if config.IsCI(AppConfig) {
-				if err := shared.PrintResultAsJSON(commandErr.Result); err != nil {
-					Logger.Error("error serializing JSON result", "error", err)
-				}
-			} else {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err.Error())
-			}
-			return commandErr.ExitCode
-		}
-		return 1
+		return handleExecuteError(err)
 	}
 	return 0
+}
+
+func handleExecuteError(err error) int {
+	commandErr, ok := err.(*errors.CommandError)
+	if !ok {
+		commandErr = errors.NewCommandError(nil, nil, err, 1)
+	}
+	if config.IsCI(AppConfig) {
+		if jsonErr := shared.PrintResultAsJSON(commandErr.Result); jsonErr != nil {
+			Logger.Error("error serializing JSON result", "error", jsonErr)
+		}
+	} else {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", commandErr.Error())
+	}
+	return commandErr.ExitCode
 }
 
 // initConfig reads the configuration file and initializes the commands with the loaded configuration.
