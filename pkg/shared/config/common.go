@@ -50,41 +50,65 @@ func DefaultRestyConfig() RestyHTTPClientConfig {
 
 // GetScanioHome returns the Scanio home directory from the configuration.
 func GetScanioHome(cfg *Config) string {
+	if cfg == nil {
+		return ""
+	}
 	return cfg.Scanio.HomeFolder
 }
 
 // GetScanioPluginsHome returns the Scanio plugins directory from the configuration.
 func GetScanioPluginsHome(cfg *Config) string {
+	if cfg == nil {
+		return ""
+	}
 	return cfg.Scanio.PluginsFolder
 }
 
 // GetScanioProjectsHome returns the Scanio projects directory from the configuration.
 func GetScanioProjectsHome(cfg *Config) string {
+	if cfg == nil {
+		return ""
+	}
 	return cfg.Scanio.ProjectsFolder
 }
 
 // GetScanioResultsHome returns the Scanio results directory from the configuration.
 func GetScanioResultsHome(cfg *Config) string {
+	if cfg == nil {
+		return ""
+	}
 	return cfg.Scanio.ResultsFolder
 }
 
 // GetScanioTempHome returns the Scanio temporary directory from the configuration.
 func GetScanioTempHome(cfg *Config) string {
+	if cfg == nil {
+		return ""
+	}
 	return cfg.Scanio.TempFolder
 }
 
 // GetScanioArtifactsHome returns the Scanio artifacts directory from the configuration.
 func GetScanioArtifactsHome(cfg *Config) string {
+	if cfg == nil {
+		return ""
+	}
 	return cfg.Scanio.ArtifactsFolder
 }
 
 // GetRepositoryPath constructs the path to a repository based on the VCS URL and repository namespace.
 func GetRepositoryPath(cfg *Config, Domain, repoWithNamespace string) string {
+	if cfg == nil {
+		return ""
+	}
 	return filepath.Join(GetScanioProjectsHome(cfg), strings.ToLower(Domain), strings.ToLower(repoWithNamespace))
 }
 
 // GetPRTempPath constructs the path to the temporary folder for a pull request based on the VCS URL, namespace, and repository name.
 func GetPRTempPath(cfg *Config, Domain, Namespace, RepoName string, PRId int) string {
+	if cfg == nil {
+		return ""
+	}
 	basePath := filepath.Join(GetScanioTempHome(cfg), strings.ToLower(Domain), strings.ToLower(Namespace), strings.ToLower(RepoName), "pr", strconv.Itoa(PRId))
 
 	// Append timestamp if not in CI environment
@@ -98,10 +122,16 @@ func GetPRTempPath(cfg *Config, Domain, Namespace, RepoName string, PRId int) st
 
 // GetScanioMode returns the Scanio mode from the configuration.
 func GetScanioMode(cfg *Config) string {
+	if cfg == nil {
+		return ""
+	}
 	return cfg.Scanio.Mode
 }
 
 // IsCI returns true if the Scanio mode is set to "CI", indicating a continuous integration environment.
 func IsCI(cfg *Config) bool {
+	if cfg == nil {
+		return false
+	}
 	return GetScanioMode(cfg) == "CI"
 }
