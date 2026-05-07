@@ -15,8 +15,13 @@ WORKDIR /usr/src/scanio
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy the source code
-COPY . .
+# Copy build inputs only — runtime assets (rules/, templates/, config.yml) are
+# brought in by the runtime stage below.
+COPY Makefile VERSION main.go ./
+COPY cmd/ cmd/
+COPY internal/ internal/
+COPY pkg/ pkg/
+COPY plugins/ plugins/
 
 # Set target architecture for multi-arch builds
 ARG TARGETOS

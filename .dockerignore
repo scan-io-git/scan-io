@@ -1,0 +1,69 @@
+# VCS
+.git
+.gitignore
+.gitattributes
+.github
+
+# Editor / IDE / OS metadata
+.vscode
+.idea
+.cursorrules
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Docker (daemon reads these before context is sent; no value shipping them in)
+Dockerfile
+.dockerignore
+
+# Docs and branding
+docs
+assets
+README.md
+LICENSE
+SECURITY.md
+AGENTS.md
+
+# Vagrant
+Vagrantfile
+.vagrant
+
+# Local data and scan output — must never leak into an image
+data
+*.sarif
+*report.html
+*results.html
+
+# Terraform state and secrets
+**/.terraform
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl
+.terraformrc
+terraform.rc
+
+# Build / test artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.*
+__debug_bin*
+crash.log
+crash.*.log
+bin/
+
+# Python venv / cache (left behind by plugin development)
+.venv
+__pycache__
+*.pyc
