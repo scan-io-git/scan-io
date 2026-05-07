@@ -59,9 +59,13 @@ func handleExecuteError(err error) int {
 	if !ok {
 		commandErr = errors.NewCommandError(nil, nil, err, 1)
 	}
-	if config.IsCI(AppConfig) {
+	if AppConfig != nil && config.IsCI(AppConfig) {
 		if jsonErr := shared.PrintResultAsJSON(commandErr.Result); jsonErr != nil {
-			Logger.Error("error serializing JSON result", "error", jsonErr)
+			if Logger != nil {
+				Logger.Error("error serializing JSON result", "error", jsonErr)
+			} else {
+				fmt.Fprintf(os.Stderr, "error serializing JSON result: %v\n", jsonErr)
+			}
 		}
 	} else {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", commandErr.Error())

@@ -80,3 +80,21 @@ func TestHandleExecuteError_CIMode_EmitsJSONAndReturns1(t *testing.T) {
 	require.Contains(t, stdout, "FAILED")
 	assert.Contains(t, stdout, "ci raw error")
 }
+
+func TestHandleExecuteError_NilGlobals_DoesNotPanicAndPrintsError(t *testing.T) {
+	prevCfg, prevLog := AppConfig, Logger
+	AppConfig = nil
+	Logger = nil
+	t.Cleanup(func() {
+		AppConfig = prevCfg
+		Logger = prevLog
+	})
+
+	var code int
+	stderr := captureStderr(func() {
+		code = handleExecuteError(fmt.Errorf("invalid argument \"\\\"png\\\"\" for \"--rm-ext\" flag"))
+	})
+
+	assert.Equal(t, 1, code)
+	assert.Contains(t, stderr, "--rm-ext")
+}
