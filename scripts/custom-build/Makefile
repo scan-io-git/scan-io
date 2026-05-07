@@ -4,6 +4,8 @@
 SCANIO_REPO ?= https://github.com/scan-io-git/scan-io.git
 SCANIO_REPO_DIR ?= ./scan-io
 SCANIO_REPO_BRANCH ?=
+SCANIO_LOCAL_PATH ?=
+SCANIO_REPO_DIR_ABS := $(abspath $(SCANIO_REPO_DIR))
 IMAGE_NAME ?= scanio
 RULES_CONFIG ?= scanio_rules.yaml
 SCANIO_CONFIG ?= config.yml
@@ -24,6 +26,7 @@ help: ## Display this help message
 	@echo "  IMAGE_NAME		  - Tag name of the image  (default: scanio)"
 	@echo "  SCANIO_REPO_DIR  - Directory for cloning the Scanio repository  (default: ./scan-io)"
 	@echo "  SCANIO_REPO_BRANCH - Branch, tag, or commit to checkout after clone (default: repo default)"
+	@echo "  SCANIO_LOCAL_PATH  - Path to a local Scanio checkout. When set, copies it into SCANIO_REPO_DIR instead of cloning SCANIO_REPO (default: empty)"
 	@echo "  RULES_CONFIG     - Path to the custom rule set config (default: ./scanio_rules.yaml)"
 	@echo "  SCANIO_CONFIG     - Path to the custom Scanio core config (default: ./config.yml)"
 	@echo "  CLONED_CONFIG_PATH     - Destination path for Scanio core config file in the cloned repo (default: <SCANIO_REPO_DIR>/<SCANIO_CONFIG>)"
@@ -39,16 +42,36 @@ help: ## Display this help message
 
 # Clone the Scanio repository
 .PHONY: clone-scanio-repo
-clone-scanio-repo: ## Clone the Scanio repository
+clone-scanio-repo: ## Clone the Scanio repository (or copy from SCANIO_LOCAL_PATH if set)
 	@if [ -d $(SCANIO_REPO_DIR) ]; then \
 		echo "[Custom Makefile] Removing existing Scanio repository '$(SCANIO_REPO_DIR)' ..."; \
 		rm -rf $(SCANIO_REPO_DIR); \
 	fi
-	@echo "[Custom Makefile] Cloning Scanio repository to '$(SCANIO_REPO_DIR)'";
-	@git clone $(SCANIO_REPO) $(SCANIO_REPO_DIR) || { echo "Failed to clone $(SCANIO_REPO)"; exit 1; }
-	@if [ -n "$(SCANIO_REPO_BRANCH)" ]; then \
-		echo "[Custom Makefile] Checking out $(SCANIO_REPO_BRANCH)..."; \
-		cd $(SCANIO_REPO_DIR) && git checkout $(SCANIO_REPO_BRANCH) || { echo "Failed to checkout $(SCANIO_REPO_BRANCH)"; exit 1; }; \
+	@if [ -n "$(SCANIO_LOCAL_PATH)" ]; then \
+		if [ ! -d "$(SCANIO_LOCAL_PATH)" ]; then \
+			echo "Local path '$(SCANIO_LOCAL_PATH)' does not exist"; exit 1; \
+		fi; \
+		if [ ! -f "$(SCANIO_LOCAL_PATH)/Makefile" ]; then \
+			echo "Local path '$(SCANIO_LOCAL_PATH)' does not look like a Scanio repository (no Makefile found)"; exit 1; \
+		fi; \
+		src="$(SCANIO_LOCAL_PATH)"; \
+		dst="$(SCANIO_REPO_DIR_ABS)"; \
+		exclude_arg=""; \
+		case "$$dst" in \
+			"$$src"/*) \
+				rel="$${dst#$$src/}"; \
+				exclude_arg="--exclude=/$$rel"; \
+				;; \
+		esac; \
+		echo "[Custom Makefile] Copying local Scanio repo from '$(SCANIO_LOCAL_PATH)' to '$(SCANIO_REPO_DIR)'"; \
+		rsync -a $$exclude_arg "$$src/" "$$dst/" || { echo "Failed to copy $(SCANIO_LOCAL_PATH)"; exit 1; }; \
+	else \
+		echo "[Custom Makefile] Cloning Scanio repository to '$(SCANIO_REPO_DIR)'"; \
+		git clone $(SCANIO_REPO) $(SCANIO_REPO_DIR) || { echo "Failed to clone $(SCANIO_REPO)"; exit 1; }; \
+		if [ -n "$(SCANIO_REPO_BRANCH)" ]; then \
+			echo "[Custom Makefile] Checking out $(SCANIO_REPO_BRANCH)..."; \
+			cd $(SCANIO_REPO_DIR) && git checkout $(SCANIO_REPO_BRANCH) || { echo "Failed to checkout $(SCANIO_REPO_BRANCH)"; exit 1; }; \
+		fi; \
 	fi
 
 # Copy custom config to cloned Scanio repo

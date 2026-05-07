@@ -43,6 +43,7 @@ Variables can be overridden by setting them via the command line.
 | `TARGET_OS`        | `linux`                                          | Target OS for Docker builds                                   |
 | `TARGET_ARCH`      | `amd64`                                          | Target architecture for Docker builds                         |
 | `REGISTRY`         | (empty)                                          | Docker registry (optional)                                    |
+| `SCANIO_LOCAL_PATH`| (empty)                                          | Path to a local Scanio checkout. When set, `clone-scanio-repo` copies this directory into `SCANIO_REPO_DIR` instead of running `git clone`. `SCANIO_REPO_BRANCH` is ignored in local mode. |
 
 ## Targets and Descriptions
 
@@ -84,6 +85,16 @@ cd scanio-build
 make build SCANIO_REPO=https://my.internal.github.com/security/scanio-code VERSION=1.0 REGISTRY=my.registry.com/scanio
 ```
 
+### Building from a local checkout
+
+If you have a local Scanio checkout with uncommitted changes that you want to package, set `SCANIO_LOCAL_PATH` instead of `SCANIO_REPO`. The pipeline copies your working tree into `SCANIO_REPO_DIR` and then runs identically to the remote clone flow. Your working tree is not modified.
+
+```bash
+make build SCANIO_LOCAL_PATH=/path/to/local/scan-io VERSION=dev REGISTRY=my.registry.com/scanio
+```
+
+The overlay from `copy-config` and `copy-rules` applies to the copy inside `SCANIO_REPO_DIR`, not to your original checkout.
+
 ### Things to Consider:
 1. **Custom Plugins**: If you have custom plugins, they can be added to the `plugins/` directory in the cloned repository and will be built as part of the Scanio plugins. Also, you can use the `PLUGINS` argument include particular plugins into your docker image.
 2. **Customization**: You can modify the paths, Docker image versions, and other settings by overriding the default values with command-line variables.
@@ -94,6 +105,8 @@ make build SCANIO_REPO=https://my.internal.github.com/security/scanio-code VERSI
 This step clones the Scanio source code repository. You may specify a custom repository with the `SCANIO_REPO` argument, or omit it to use the [official repository](https://github.com/scan-io-git/scan-io).
 
 The code is cloned into the `./scan-io` directory by default, unless overridden with the `SCANIO_REPO_DIR` argument.
+
+If `SCANIO_LOCAL_PATH` is set, this step copies the directory at that path into `SCANIO_REPO_DIR` instead of running `git clone`. Use this when you have a local checkout with uncommitted changes you want to build from.
 
 -> `copy-config`
 
@@ -161,6 +174,8 @@ make clone-scanio-repo
 **Variables supported**
 - `SCANIO_REPO_DIR`
 - `SCANIO_REPO`
+- `SCANIO_REPO_BRANCH`
+- `SCANIO_LOCAL_PATH`
 
 **Sample output:**
 ```bash
