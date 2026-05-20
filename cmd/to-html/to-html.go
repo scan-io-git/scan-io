@@ -193,7 +193,7 @@ var ToHtmlCmd = &cobra.Command{
 		sarifReport.EnrichResultsCodeFlowProperty(locationWebURLCallback)
 		sarifReport.EnrichResultsLevelProperty()
 		sarifReport.EnrichResultsLocationURIProperty(locationWebURLCallback)
-		sarifReport.SortResultsByLevel()
+		sarifReport.SortResultsBySeverity()
 		sarifReport.RemoveDataflowDuplicates()
 
 		toolMetadata, err := sarifReport.ExtractToolNameAndVersion()

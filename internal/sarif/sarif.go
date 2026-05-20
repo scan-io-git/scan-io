@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
@@ -95,32 +96,36 @@ func (r Report) ExtractToolNameAndVersion() (*ToolMetadata, error) {
 	}, nil
 }
 
-// function that collects information about amount of low, mediumn and high severity issues
-// returns a map with this information, and a total amount of issues
+// CollectSeverityInfo returns counts per severity bucket (critical/high/medium/low/info/unknown)
+// and a total. It reads Properties["Severity"] which is set by EnrichResultsLevelProperty.
 func (r Report) CollectSeverityInfo() map[string]int {
-	severityInfo := map[string]int{
-		"low":    0,
-		"medium": 0,
-		"high":   0,
-		"total":  0,
+	counts := map[string]int{
+		"critical": 0,
+		"high":     0,
+		"medium":   0,
+		"low":      0,
+		"info":     0,
+		"unknown":  0,
+		"total":    0,
 	}
 
 	for _, run := range r.Runs {
 		for _, result := range run.Results {
-			severity := result.Properties["Level"].(string)
-			switch severity {
-			case "error":
-				severityInfo["high"]++
-			case "warning":
-				severityInfo["medium"]++
-			default:
-				severityInfo["low"]++
+			sev, _ := result.Properties["Severity"].(string)
+			if sev == "" {
+				sev = "unknown"
 			}
-			severityInfo["total"]++
+			if _, ok := counts[sev]; !ok {
+				sev = "unknown"
+			}
+			if sev != "total" {
+				counts[sev]++
+			}
+			counts["total"]++
 		}
 	}
 
-	return severityInfo
+	return counts
 }
 
 // EnrichResultsTitleProperty function enriches sarif results properties with title and description values
@@ -284,8 +289,53 @@ func (r Report) EnrichResultsCodeFlowProperty(locationWebURLCallback func(artifa
 	}
 }
 
-// EnrichResultsLevelProperty enriches result properties with level information taken from either
-// the result itself or the corresponding rule metadata. Supports multi-run SARIF reports.
+// normalizeSeverityString maps a case-insensitive severity string to canonical (level, severity) pair.
+// Returns ok=false when the string is not recognized, so callers can try the next source.
+func normalizeSeverityString(raw string) (level, severity string, ok bool) {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "critical":
+		return "error", "critical", true
+	case "high", "error":
+		return "error", "high", true
+	case "medium", "warning":
+		return "warning", "medium", true
+	case "low", "note":
+		return "note", "low", true
+	case "info", "none":
+		return "none", "info", true
+	default:
+		return "", "", false
+	}
+}
+
+// cvssToBuckets converts a CVSS-style numeric score (0.0-10.0) to (level, severity).
+// Thresholds follow the GitHub Code Scanning SARIF spec.
+func cvssToBuckets(score float64) (level, severity string) {
+	switch {
+	case score >= 9.0:
+		return "error", "critical"
+	case score >= 7.0:
+		return "error", "high"
+	case score >= 4.0:
+		return "warning", "medium"
+	case score > 0.0:
+		return "note", "low"
+	default:
+		return "none", "info"
+	}
+}
+
+// EnrichResultsLevelProperty sets Properties["Level"] (canonical SARIF: error/warning/note/none/unknown)
+// and Properties["Severity"] (display bucket: critical/high/medium/low/info/unknown) on every result.
+//
+// Source precedence (descending granularity):
+//  1. rule.Properties["security-severity"] (CVSS numeric 0.0-10.0)
+//  2. rule.Properties["problem.severity"] (Semgrep/CodeQL string, may carry critical/info)
+//  3. result.Level (SARIF per-finding, only 4-value resolution)
+//  4. rule.DefaultConfiguration.Level
+//  5. fallback: unknown/unknown
+//
+// Both properties are idempotent: if both are already set the result is skipped.
 func (r Report) EnrichResultsLevelProperty() {
 	for _, run := range r.Runs {
 		rulesMap := map[string]*sarif.ReportingDescriptor{}
@@ -307,16 +357,11 @@ func (r Report) EnrichResultsLevelProperty() {
 				result.Properties = make(map[string]interface{})
 			}
 
-			if result.Properties["Level"] != nil {
+			// Idempotence: skip if both already set.
+			_, hasLevel := result.Properties["Level"]
+			_, hasSeverity := result.Properties["Severity"]
+			if hasLevel && hasSeverity {
 				continue
-			}
-
-			// Prefer explicit level on the result when available.
-			if result.Level != nil {
-				if lvl := strings.TrimSpace(*result.Level); lvl != "" {
-					result.Properties["Level"] = lvl
-					continue
-				}
 			}
 
 			var ruleDescriptor *sarif.ReportingDescriptor
@@ -326,32 +371,65 @@ func (r Report) EnrichResultsLevelProperty() {
 				}
 			}
 
-			if ruleDescriptor != nil && ruleDescriptor.Properties != nil {
-				if level, ok := ruleDescriptor.Properties["problem.severity"]; ok {
-					if str, ok := level.(string); ok {
-						if trimmed := strings.TrimSpace(str); trimmed != "" {
-							result.Properties["Level"] = trimmed
-							continue
-						}
-					} else if level != nil {
-						// Preserve non-string values (legacy behaviour) if provided.
-						result.Properties["Level"] = level
-						continue
-					}
-				}
-			}
-
-			if ruleDescriptor != nil && ruleDescriptor.DefaultConfiguration != nil {
-				if lvl := strings.TrimSpace(ruleDescriptor.DefaultConfiguration.Level); lvl != "" {
-					result.Properties["Level"] = lvl
-					continue
-				}
-			}
-
-			// Fallback when no metadata provides a level.
-			result.Properties["Level"] = "unknown"
+			level, severity := resolveResultSeverity(result, ruleDescriptor)
+			result.Properties["Level"] = level
+			result.Properties["Severity"] = severity
 		}
 	}
+}
+
+// resolveResultSeverity walks the source precedence chain and returns (level, severity).
+func resolveResultSeverity(result *sarif.Result, rule *sarif.ReportingDescriptor) (level, severity string) {
+	// 1. security-severity (CVSS numeric) on the rule.
+	if rule != nil && rule.Properties != nil {
+		if raw, ok := rule.Properties["security-severity"]; ok && raw != nil {
+			if score, ok := toFloat64(raw); ok {
+				return cvssToBuckets(score)
+			}
+		}
+	}
+
+	// 2. problem.severity string on the rule.
+	if rule != nil && rule.Properties != nil {
+		if raw, ok := rule.Properties["problem.severity"]; ok {
+			if str, ok := raw.(string); ok {
+				if lvl, sev, ok := normalizeSeverityString(str); ok {
+					return lvl, sev
+				}
+			}
+		}
+	}
+
+	// 3. result.Level (SARIF per-finding).
+	if result.Level != nil {
+		if lvl, sev, ok := normalizeSeverityString(*result.Level); ok {
+			return lvl, sev
+		}
+	}
+
+	// 4. rule.DefaultConfiguration.Level.
+	if rule != nil && rule.DefaultConfiguration != nil {
+		if lvl, sev, ok := normalizeSeverityString(rule.DefaultConfiguration.Level); ok {
+			return lvl, sev
+		}
+	}
+
+	return "unknown", "unknown"
+}
+
+// toFloat64 coerces interface{} values that may be float64, json.Number, or numeric string to float64.
+func toFloat64(v interface{}) (float64, bool) {
+	switch t := v.(type) {
+	case float64:
+		return t, true
+	case json.Number:
+		f, err := t.Float64()
+		return f, err == nil
+	case string:
+		f, err := strconv.ParseFloat(strings.TrimSpace(t), 64)
+		return f, err == nil
+	}
+	return 0, false
 }
 
 func (r Report) EnrichResultsLocationURIProperty(locationWebURLCallback func(artifactLocation *sarif.Location) string) {
@@ -386,24 +464,30 @@ func (r Report) EnrichResultsLocationURIProperty(locationWebURLCallback func(art
 	}
 }
 
-// SortResultsByLevel function sorts sarif results by level
-func (r Report) SortResultsByLevel() {
+// SortResultsBySeverity sorts results by Severity bucket: critical < high < medium < low < info < unknown.
+func (r Report) SortResultsBySeverity() {
+	severityOrder := map[string]int{
+		"critical": 0,
+		"high":     1,
+		"medium":   2,
+		"low":      3,
+		"info":     4,
+		"unknown":  5,
+	}
 
 	for _, run := range r.Runs {
-		// sort results by level
-		// order: error, warning, note, none
-		levelOrder := map[string]int{
-			"error":   0,
-			"warning": 1,
-			"note":    2,
-			"none":    3,
-			"unknown": 4,
-		}
-
-		// sort results by level
-		// order: error, warning, note, none, unknown
 		sort.Slice(run.Results, func(i, j int) bool {
-			return levelOrder[run.Results[i].Properties["Level"].(string)] < levelOrder[run.Results[j].Properties["Level"].(string)]
+			si, _ := run.Results[i].Properties["Severity"].(string)
+			sj, _ := run.Results[j].Properties["Severity"].(string)
+			oi, ok := severityOrder[si]
+			if !ok {
+				oi = 5
+			}
+			oj, ok := severityOrder[sj]
+			if !ok {
+				oj = 5
+			}
+			return oi < oj
 		})
 	}
 }

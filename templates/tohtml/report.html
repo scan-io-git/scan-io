@@ -107,16 +107,28 @@
       border-color: var(--issue-card-border-color-dark);
     }
 
-    .severity--error {
+    .severity--critical {
+      border-color: #8b1a1a;
+    }
+
+    .severity--error, .severity--high {
       border-color: #ba432b;
     }
 
-    .severity--warning {
+    .severity--warning, .severity--medium {
       border-color: #b06d07;
     }
 
-    .severity--note, .severity--none {
+    .severity--note, .severity--low {
       border-color: #7c7c85;
+    }
+
+    .severity--none, .severity--info {
+      border-color: #2b6aba;
+    }
+
+    .severity--unknown {
+      border-color: #a0a0a8;
     }
 
     .severity-icon {
@@ -133,21 +145,31 @@
       margin-right: 6px;
     }
 
-    .severity-icon--error {
+    .severity-icon--critical {
+      background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjIuODggMTIyLjg4Ij48cmVjdCB3aWR0aD0iMTIyLjg4IiBoZWlnaHQ9IjEyMi44OCIgcng9IjE2LjEiIGZpbGw9IiM4YjFhMWEiLz48dGV4dCB4PSI2MS40NCIgeT0iOTIiIGZvbnQtZmFtaWx5PSJBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9Ijg1IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkM8L3RleHQ+PC9zdmc+');
+      background-repeat: no-repeat;
+    }
+
+    .severity-icon--error, .severity-icon--high {
       /* svg source https://uxwing.com/alphabet-h-icon/ */
       background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjIuODggMTIyLjg4Ij48cGF0aCBkPSJNMTcuODkgMGg4OC45YzguODUgMCAxNi4xIDcuMjQgMTYuMSAxNi4xdjkwLjY4YzAgOC44NS03LjI0IDE2LjEtMTYuMSAxNi4xSDE2LjFjLTguODUgMC0xNi4xLTcuMjQtMTYuMS0xNi4xdi04OC45QzAgOC4wNSA4LjA1IDAgMTcuODkgMHptMTQuNDkgMzEuMDZoMTguNzV2MjEuMjJoMjAuNTRWMzEuMDZIOTAuNXY2MC43Nkg3MS42N1Y2Ny4yMUg1MS4xM3YyNC42MUgzMi4zOFYzMS4wNnoiIGZpbGw9IiNiYTQzMmIiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIi8+PC9zdmc+');
       background-repeat: no-repeat;
     }
 
-    .severity-icon--warning {
+    .severity-icon--warning, .severity-icon--medium {
       /* svg source https://uxwing.com/alphabet-m-icon/ */
       background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjIuODggMTIyLjg4Ij48cGF0aCBkPSJNMTcuODkgMGg4OC45YzguODUgMCAxNi4xIDcuMjQgMTYuMSAxNi4xdjkwLjY4YzAgOC44NS03LjI0IDE2LjEtMTYuMSAxNi4xSDE2LjFjLTguODUgMC0xNi4xLTcuMjQtMTYuMS0xNi4xdi04OC45QzAgOC4wNSA4LjA1IDAgMTcuODkgMHptOS4zOSAzMS4wNmgyNC43N2w5LjQzIDM2Ljk3IDkuNDYtMzYuOTdIOTUuNnY2MC43Nkg4MC4yNFY0NS41TDY4LjM4IDkxLjgySDU0LjQ3TDQyLjY0IDQ1LjV2NDYuMzJIMjcuMjhWMzEuMDZ6IiBmaWxsPSIjYjA2ZDA3IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvc3ZnPg==');
       background-repeat: no-repeat;
     }
 
-    .severity-icon--note, .severity-icon--none {
+    .severity-icon--note, .severity-icon--low {
       /* svg source https://uxwing.com/alphabet-l-icon/ */
       background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjIuODggMTIyLjg4Ij48cGF0aCBkPSJNMTcuODkgMGg4OC45YzguODUgMCAxNi4xIDcuMjQgMTYuMSAxNi4xdjkwLjY4YzAgOC44NS03LjI0IDE2LjEtMTYuMSAxNi4xSDE2LjFjLTguODUgMC0xNi4xLTcuMjQtMTYuMS0xNi4xdi04OC45QzAgOC4wNSA4LjA1IDAgMTcuODkgMHptMTkuNDkgMzEuMDZoMTguNzV2NDUuODJIODUuNXYxNC45NEgzNy4zOFYzMS4wNnoiIGZpbGw9IiM3YzdjODUiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIi8+PC9zdmc+');
+      background-repeat: no-repeat;
+    }
+
+    .severity-icon--none, .severity-icon--info {
+      background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjIuODggMTIyLjg4Ij48cmVjdCB3aWR0aD0iMTIyLjg4IiBoZWlnaHQ9IjEyMi44OCIgcng9IjE2LjEiIGZpbGw9IiMyYjZhYmEiLz48dGV4dCB4PSI2MS40NCIgeT0iOTIiIGZvbnQtZmFtaWx5PSJBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9Ijg1IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkk8L3RleHQ+PC9zdmc+');
       background-repeat: no-repeat;
     }
 
@@ -542,16 +564,24 @@
         <div class="header-container__issues-breakdown__total">There are {{index .Metadata.SeverityInfo "total"}} issues:</div>
         <div class="header-container__issues-breakdown__table">
           <div class="header-container__issues-breakdown__table__entry">
-            <div class="severity-icon--small severity-icon--error"></div>
+            <div class="severity-icon--small severity-icon--critical"></div>
+            <div>{{index .Metadata.SeverityInfo "critical"}} critical</div>
+          </div>
+          <div class="header-container__issues-breakdown__table__entry">
+            <div class="severity-icon--small severity-icon--high"></div>
             <div>{{index .Metadata.SeverityInfo "high"}} high</div>
           </div>
           <div class="header-container__issues-breakdown__table__entry">
-            <div class="severity-icon--small severity-icon--warning"></div>
+            <div class="severity-icon--small severity-icon--medium"></div>
             <div>{{index .Metadata.SeverityInfo "medium"}} medium</div>
           </div>
           <div class="header-container__issues-breakdown__table__entry">
-            <div class="severity-icon--small severity-icon--note"></div>
+            <div class="severity-icon--small severity-icon--low"></div>
             <div>{{index .Metadata.SeverityInfo "low"}} low</div>
+          </div>
+          <div class="header-container__issues-breakdown__table__entry">
+            <div class="severity-icon--small severity-icon--info"></div>
+            <div>{{index .Metadata.SeverityInfo "info"}} info</div>
           </div>
         </div>
       </div>
@@ -610,14 +640,14 @@
 
       <div class="issue-cards">
         {{range .Results}}
-        {{ $level := index .Properties "Level"}}
-        <div class="issue-card severity--{{$level}}">
+        {{ $severity := index .Properties "Severity"}}
+        <div class="issue-card severity--{{$severity}}">
           <div class="issue-card___header">
-            <div class="severity-icon severity-icon--{{$level}}"></div>
+            <div class="severity-icon severity-icon--{{$severity}}"></div>
             <h2 class="issue-card__title">{{index .Properties "Title"}}</h2>
           </div>
           <div class="issue-card__body">
-            <div class="issue-card__body__metadata severity--{{$level}}">
+            <div class="issue-card__body__metadata severity--{{$severity}}">
               {{index .Properties "Description"}}<br><br>
               {{ $location := index .Locations 0}}
               {{ $locationURI := index $location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
