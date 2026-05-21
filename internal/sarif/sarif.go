@@ -195,62 +195,80 @@ func (r Report) EnrichResultsLocationProperty(location *sarif.Location) error {
 		location.PhysicalLocation.Region.Properties["EndLine"] = location.PhysicalLocation.Region.Properties["StartLine"]
 	}
 
-	// return if allToHTMLOptions.SourceFolder is not specified
+	// Prefer the SARIF-provided snippet text if present — it already has the full multi-line range.
+	region := location.PhysicalLocation.Region
+	if region != nil && region.Snippet != nil && region.Snippet.Text != nil && *region.Snippet.Text != "" {
+		full := *region.Snippet.Text
+		artifactLocation.Properties["Code"] = full
+		artifactLocation.Properties["CodeLines"] = strings.Split(full, "\n")
+		return nil
+	}
+
+	// Otherwise read the lines from disk. Requires the source folder to be set.
 	if r.sourceFolder == "" {
 		return fmt.Errorf("source folder is not set")
 	}
-	codeLine, err := r.readLineFromFile(location.PhysicalLocation)
+	lines, err := r.readLinesFromFile(location.PhysicalLocation)
 	if err != nil {
 		return err
 	}
-	// print amount of spaces bnefore code
-	// spacePrefixLength := len(codeLine) - len(strings.TrimLeft(codeLine, " "))
-	// artifactLocation.Properties["Code"] = strings.TrimLeft(codeLine, " ")
-	artifactLocation.Properties["Code"] = codeLine
+	artifactLocation.Properties["Code"] = strings.Join(lines, "\n")
+	artifactLocation.Properties["CodeLines"] = lines
 
 	return nil
 }
 
-// readLineFromFile function reads a line from a file by the given location
-func (r Report) readLineFromFile(loc *sarif.PhysicalLocation) (string, error) {
-	//return error if allToHTMLOptions.SourceFolder is not specified
+// readLinesFromFile reads the [StartLine, EndLine] range from the file referenced by loc.
+// Falls back to just StartLine if EndLine is unset.
+func (r Report) readLinesFromFile(loc *sarif.PhysicalLocation) ([]string, error) {
 	if r.sourceFolder == "" {
-		return "", fmt.Errorf("source folder is not set")
+		return nil, fmt.Errorf("source folder is not set")
+	}
+	if loc.Region == nil || loc.Region.StartLine == nil {
+		return nil, fmt.Errorf("region or StartLine is nil")
 	}
 
-	// Construct the file path
-	// Use *loc.ArtifactLocation.URI value if it's an absolute path, and make a concatenation of r.sourceFolder and *loc.ArtifactLocation.URI otherwise
 	filePath := *loc.ArtifactLocation.URI
 	if !filepath.IsAbs(filePath) {
 		fixedFilePath, err := files.ExpandPath(filepath.Join(r.sourceFolder, *loc.ArtifactLocation.URI))
 		if err != nil {
-			return "", fmt.Errorf("failed to contruct a file path: %w", err)
+			return nil, fmt.Errorf("failed to construct a file path: %w", err)
 		}
 		filePath = fixedFilePath
 	}
 
-	// Open the file
 	file, err := os.Open(filePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to open file: %w", err)
+		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
 
-	// Read the file line by line
+	startLine := *loc.Region.StartLine
+	endLine := startLine
+	if loc.Region.EndLine != nil && *loc.Region.EndLine >= startLine {
+		endLine = *loc.Region.EndLine
+	}
+
 	scanner := bufio.NewScanner(file)
-	currentLine := 0
+	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
+	var out []string
+	current := 0
 	for scanner.Scan() {
-		currentLine++
-		if currentLine == *loc.Region.StartLine {
-			return scanner.Text(), nil
+		current++
+		if current >= startLine && current <= endLine {
+			out = append(out, scanner.Text())
+		}
+		if current >= endLine {
+			break
 		}
 	}
-
 	if err := scanner.Err(); err != nil {
-		return "", fmt.Errorf("error reading file: %w", err)
+		return nil, fmt.Errorf("error reading file: %w", err)
 	}
-
-	return "", fmt.Errorf("line %d not found in file", *loc.Region.StartLine)
+	if len(out) == 0 {
+		return nil, fmt.Errorf("lines %d-%d not found in file", startLine, endLine)
+	}
+	return out, nil
 }
 
 // EnrichResultsCodeFlowProperty function enriches code flow location properties with source code and URI values

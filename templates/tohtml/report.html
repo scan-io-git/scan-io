@@ -121,166 +121,254 @@
       position: relative;
     }
 
-    .issue-card {
-      left: 0;
-      top: 10px;
-      padding: 24px 16px;
-      border-radius: 8px;
-      border: 2px solid;
-      margin-bottom: 40px;
-      background-color: var(--issue-card-bg-color-light);
+    .finding {
+      border: 1px solid var(--border-default);
+      border-radius: 12px;
+      background: var(--bg-canvas);
+      margin: 8px 0;
+      overflow: hidden;
     }
 
-    .issue-card___header {
+    .finding[open] {
+      box-shadow: 0 1px 0 rgba(31, 35, 40, 0.04);
+    }
+
+    body.dark-mode .finding[open] {
+      box-shadow: 0 1px 0 rgba(1, 4, 9, 0.4);
+    }
+
+    .finding__head {
       display: flex;
-      margin-bottom: 16px;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      cursor: pointer;
+      list-style: none;
     }
 
-    .issue-card__title {
-      font-size: 24px;
-      margin: 0px;
+    .finding__head::-webkit-details-marker {
+      display: none;
     }
 
-    body.dark-mode .issue-card {
-      background-color: var(--issue-card-bg-color-dark);
-      border-color: var(--issue-card-border-color-dark);
+    .finding__head::after {
+      content: '▾';
+      margin-left: auto;
+      padding-left: 8px;
+      color: var(--fg-muted);
+      transition: transform 0.15s ease;
+      flex: 0 0 auto;
     }
 
-    .severity--critical {
-      border-color: #8b1a1a;
+    .finding:not([open]) .finding__head::after {
+      transform: rotate(-90deg);
     }
 
-    .severity--error, .severity--high {
-      border-color: #ba432b;
+    .finding__head:hover {
+      background: var(--bg-subtle);
     }
 
-    .severity--warning, .severity--medium {
-      border-color: #b06d07;
+    .finding__title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--fg-default);
+      flex: 1 1 auto;
+      min-width: 0;
     }
 
-    .severity--note, .severity--low {
-      border-color: #7c7c85;
+    .finding__meta {
+      display: inline-flex;
+      gap: 4px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      color: var(--fg-muted);
+      min-width: 0;
+      overflow: hidden;
+      flex-shrink: 1;
     }
 
-    .severity--none, .severity--info {
-      border-color: #2b6aba;
-    }
-
-    .severity--unknown {
-      border-color: #a0a0a8;
-    }
-
-    .severity-icon {
-      width: 32px; 
-      height: 32px; 
-      display: inline-block;
-      margin-right: 8px;
-    }
-
-    .severity-icon--small {
-      width: 24px; 
-      height: 24px; 
-      display: inline-block;
-      margin-right: 6px;
-    }
-
-    .severity-icon--critical {
-      background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjIuODggMTIyLjg4Ij48cmVjdCB3aWR0aD0iMTIyLjg4IiBoZWlnaHQ9IjEyMi44OCIgcng9IjE2LjEiIGZpbGw9IiM4YjFhMWEiLz48dGV4dCB4PSI2MS40NCIgeT0iOTIiIGZvbnQtZmFtaWx5PSJBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9Ijg1IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkM8L3RleHQ+PC9zdmc+');
-      background-repeat: no-repeat;
-    }
-
-    .severity-icon--error, .severity-icon--high {
-      /* svg source https://uxwing.com/alphabet-h-icon/ */
-      background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjIuODggMTIyLjg4Ij48cGF0aCBkPSJNMTcuODkgMGg4OC45YzguODUgMCAxNi4xIDcuMjQgMTYuMSAxNi4xdjkwLjY4YzAgOC44NS03LjI0IDE2LjEtMTYuMSAxNi4xSDE2LjFjLTguODUgMC0xNi4xLTcuMjQtMTYuMS0xNi4xdi04OC45QzAgOC4wNSA4LjA1IDAgMTcuODkgMHptMTQuNDkgMzEuMDZoMTguNzV2MjEuMjJoMjAuNTRWMzEuMDZIOTAuNXY2MC43Nkg3MS42N1Y2Ny4yMUg1MS4xM3YyNC42MUgzMi4zOFYzMS4wNnoiIGZpbGw9IiNiYTQzMmIiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIi8+PC9zdmc+');
-      background-repeat: no-repeat;
-    }
-
-    .severity-icon--warning, .severity-icon--medium {
-      /* svg source https://uxwing.com/alphabet-m-icon/ */
-      background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjIuODggMTIyLjg4Ij48cGF0aCBkPSJNMTcuODkgMGg4OC45YzguODUgMCAxNi4xIDcuMjQgMTYuMSAxNi4xdjkwLjY4YzAgOC44NS03LjI0IDE2LjEtMTYuMSAxNi4xSDE2LjFjLTguODUgMC0xNi4xLTcuMjQtMTYuMS0xNi4xdi04OC45QzAgOC4wNSA4LjA1IDAgMTcuODkgMHptOS4zOSAzMS4wNmgyNC43N2w5LjQzIDM2Ljk3IDkuNDYtMzYuOTdIOTUuNnY2MC43Nkg4MC4yNFY0NS41TDY4LjM4IDkxLjgySDU0LjQ3TDQyLjY0IDQ1LjV2NDYuMzJIMjcuMjhWMzEuMDZ6IiBmaWxsPSIjYjA2ZDA3IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvc3ZnPg==');
-      background-repeat: no-repeat;
-    }
-
-    .severity-icon--note, .severity-icon--low {
-      /* svg source https://uxwing.com/alphabet-l-icon/ */
-      background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjIuODggMTIyLjg4Ij48cGF0aCBkPSJNMTcuODkgMGg4OC45YzguODUgMCAxNi4xIDcuMjQgMTYuMSAxNi4xdjkwLjY4YzAgOC44NS03LjI0IDE2LjEtMTYuMSAxNi4xSDE2LjFjLTguODUgMC0xNi4xLTcuMjQtMTYuMS0xNi4xdi04OC45QzAgOC4wNSA4LjA1IDAgMTcuODkgMHptMTkuNDkgMzEuMDZoMTguNzV2NDUuODJIODUuNXYxNC45NEgzNy4zOFYzMS4wNnoiIGZpbGw9IiM3YzdjODUiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIi8+PC9zdmc+');
-      background-repeat: no-repeat;
-    }
-
-    .severity-icon--none, .severity-icon--info {
-      background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjIuODggMTIyLjg4Ij48cmVjdCB3aWR0aD0iMTIyLjg4IiBoZWlnaHQ9IjEyMi44OCIgcng9IjE2LjEiIGZpbGw9IiMyYjZhYmEiLz48dGV4dCB4PSI2MS40NCIgeT0iOTIiIGZvbnQtZmFtaWx5PSJBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9Ijg1IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkk8L3RleHQ+PC9zdmc+');
-      background-repeat: no-repeat;
-    }
-
-    .issue-card__body__metadata {
-      padding: 8px 8px;
-      border: 2px solid var(--issue-card-border-color-light);
-      border-radius: 8px;
-      margin-bottom: 8px;
-      overflow: auto;
-    }
-
-    body.dark-mode .issue-card__body__metadata,
-    body.dark-mode .issue-card__body__dataflows__filename,
-    body.dark-mode .issue-card__body__dataflow-id {
-      border-color: var(--issue-card-border-color-dark);
-      background-color: var(--bg-color-dark);
-    }
-
-    .issue-card__body__dataflows__filename {
-      padding:4px 8px;
-      border:1px solid var(--issue-card-border-color-light);
-      border-radius: 8px;
-      font-size:14px;
+    .finding__path {
       word-break: break-all;
       overflow-wrap: anywhere;
     }
 
-    .issue-card__body__dataflows__codeline {
-      padding:4px 8px;
-      font-family: monospace;
-      font-size:14px;
+    .finding__line {
+      color: var(--fg-subtle);
+      flex: 0 0 auto;
+    }
+
+    /* Severity badges (Primer label style) */
+    .finding__badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      flex: 0 0 auto;
+    }
+
+    .finding__badge--critical { background: #ffebe9; color: #82071e; border-color: #cf222e; }
+    .finding__badge--high     { background: #fff1e5; color: #762c00; border-color: #bc4c00; }
+    .finding__badge--medium   { background: #fff8c5; color: #633c01; border-color: #9a6700; }
+    .finding__badge--low      { background: #f6f8fa; color: #59636e; border-color: #d1d9e0; }
+    .finding__badge--info     { background: #ddf4ff; color: #0550ae; border-color: #0969da; }
+    .finding__badge--unknown  { background: #f6f8fa; color: #59636e; border-color: #d1d9e0; }
+    .finding__badge--note     { background: #f6f8fa; color: #59636e; border-color: #d1d9e0; }
+    .finding__badge--warning  { background: #fff8c5; color: #633c01; border-color: #9a6700; }
+    .finding__badge--error    { background: #ffebe9; color: #82071e; border-color: #cf222e; }
+    .finding__badge--none     { background: #ddf4ff; color: #0550ae; border-color: #0969da; }
+
+    body.dark-mode .finding__badge--critical { background: #490202; color: #ff7b72; border-color: #f85149; }
+    body.dark-mode .finding__badge--high     { background: #3b1d04; color: #ffa657; border-color: #db6d28; }
+    body.dark-mode .finding__badge--medium   { background: #3d2906; color: #e3b341; border-color: #bb8009; }
+    body.dark-mode .finding__badge--low      { background: #161b22; color: #9198a1; border-color: #3d444d; }
+    body.dark-mode .finding__badge--info     { background: #051d4d; color: #79c0ff; border-color: #1f6feb; }
+    body.dark-mode .finding__badge--unknown,
+    body.dark-mode .finding__badge--note     { background: #161b22; color: #9198a1; border-color: #3d444d; }
+    body.dark-mode .finding__badge--warning  { background: #3d2906; color: #e3b341; border-color: #bb8009; }
+    body.dark-mode .finding__badge--error    { background: #490202; color: #ff7b72; border-color: #f85149; }
+    body.dark-mode .finding__badge--none     { background: #051d4d; color: #79c0ff; border-color: #1f6feb; }
+
+    .finding__body {
+      padding: 12px 16px 16px;
+      border-top: 1px solid var(--border-muted);
+    }
+
+    .finding__description {
+      color: var(--fg-default);
+      line-height: 1.5;
+      margin: 0 0 12px;
+    }
+
+    .finding__location {
+      font-size: 13px;
+      color: var(--fg-muted);
+      margin-bottom: 12px;
+      word-break: break-all;
+      overflow-wrap: anywhere;
+    }
+
+    .finding__location strong {
+      color: var(--fg-default);
+      font-weight: 600;
+    }
+
+    .finding__location a {
+      color: var(--accent-fg);
+      text-decoration: none;
+    }
+
+    .finding__location a:hover {
+      text-decoration: underline;
+    }
+
+    body.dark-mode .issue-card__body__dataflows__filename,
+    body.dark-mode .issue-card__body__dataflow-id {
+      border-color: var(--border-default);
+      background-color: var(--bg-subtle);
+    }
+
+    .issue-card__body__dataflows {
+      margin-top: 8px;
+    }
+
+    .card__body__dataflows__header {
       display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--fg-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .issue-card__body__dataflows__filename {
+      padding: 8px 12px;
+      background: var(--bg-subtle);
+      border-radius: 6px 6px 0 0;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      color: var(--fg-muted);
+      word-break: break-all;
+      overflow-wrap: anywhere;
+      border: 1px solid var(--border-default);
+      border-bottom: 0;
+      margin-top: 8px;
+    }
+
+    .issue-card__body__dataflows__codeline {
+      padding: 4px 12px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      display: flex;
+      align-items: flex-start;
+      border-left: 1px solid var(--border-default);
+      border-right: 1px solid var(--border-default);
+      background: var(--bg-canvas);
+    }
+
+    .issue-card__body__dataflows__codeline:last-child {
+      border-bottom: 1px solid var(--border-default);
+      border-radius: 0 0 6px 6px;
+      padding-bottom: 8px;
     }
 
     .issue-card__body__dataflows__codeline__linecol {
-      width: 64px;
+      flex: 0 0 56px;
       text-align: right;
       margin-right: 16px;
+      color: var(--fg-subtle);
+      user-select: none;
     }
 
     .issue-card__body__dataflows__codeline__linecol__code {
-      overflow: auto;
+      flex: 1 1 auto;
+      overflow-x: auto;
+      color: var(--fg-default);
+      white-space: pre;
+      tab-size: 2;
+      -moz-tab-size: 2;
     }
 
     .issue-card__body__metadata__location {
-      font-size: 14px;
+      font-size: 13px;
       word-break: break-all;
       overflow-wrap: anywhere;
     }
 
     .issue-card__body__dataflow-id {
-      display: inline-block;
-      width: 16px; 
-      height: 16px; 
-      border: 2px solid var(--issue-card-border-color-light); 
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border: 1px solid var(--border-default);
       border-radius: 50%;
-      text-align: center; 
-      line-height: 1.5;
-      font-size: 14px;
-    }
-
-    .card__body__dataflows__header {
-      margin-bottom: 8px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--bg-canvas);
+      color: var(--fg-default);
     }
 
     .action-field {
       cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .action-field:hover {
+      border-color: var(--accent-emphasis);
     }
 
     .selected-dataflow-id {
-      background-color:var(--primary-color-dark);
+      background-color: var(--accent-emphasis);
       color: #ffffff;
+      border-color: var(--accent-emphasis);
     }
 
     .issue-card__body__dataflow {
@@ -292,12 +380,13 @@
     }
 
     .dataflow-code-highlighted {
-      border-radius:4px;
-      background-color: rgba(0,0,0,.1);
+      border-radius: 3px;
+      background-color: var(--accent-subtle);
+      padding: 1px 2px;
     }
 
     body.dark-mode .dataflow-code-highlighted {
-      background-color: #386641
+      background-color: var(--accent-subtle);
     }
 
     .report-header {
@@ -695,22 +784,25 @@
       <!-- <div class="main-body-summary">
       </div> -->
 
-      <div class="issue-cards">
-        {{range .Results}}
+      <div class="findings">
+        {{range $i, $r := .Results}}
         {{ $severity := index .Properties "Severity"}}
-        <div class="issue-card severity--{{$severity}}">
-          <div class="issue-card___header">
-            <div class="severity-icon severity-icon--{{$severity}}"></div>
-            <h2 class="issue-card__title">{{index .Properties "Title"}}</h2>
-          </div>
-          <div class="issue-card__body">
-            <div class="issue-card__body__metadata severity--{{$severity}}">
-              {{index .Properties "Description"}}<br><br>
-              {{ $location := index .Locations 0}}
-              {{ $locationURI := index $location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
-              {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
-              {{ $locationWebURL := index $location.Properties "WebURL"}}
-              <div class="issue-card__body__metadata__location">Location: <strong>{{if $locationWebURL}}<a href="{{- $locationWebURL -}}">{{$locationURI}} (line : {{$locationStartLine}})</a> {{else}} {{$locationURI}} (line : {{$locationStartLine}}){{end}}</strong></div>
+        {{ $location := index .Locations 0}}
+        {{ $locationURI := index $location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
+        {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
+        {{ $locationWebURL := index $location.Properties "WebURL"}}
+        <details id="issue-{{$i}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" {{if or (eq $severity "critical") (eq $severity "high")}}open{{end}}>
+          <summary class="finding__head">
+            <span class="finding__badge finding__badge--{{$severity}}">{{$severity}}</span>
+            <span class="finding__title">{{index .Properties "Title"}}</span>
+            <span class="finding__meta">
+              <span class="finding__path">{{$locationURI}}</span><span class="finding__line">:{{$locationStartLine}}</span>
+            </span>
+          </summary>
+          <div class="finding__body">
+            <p class="finding__description">{{index .Properties "Description"}}</p>
+            <div class="finding__location">
+              Location: <strong>{{if $locationWebURL}}<a href="{{- $locationWebURL -}}">{{$locationURI}} (line {{$locationStartLine}})</a>{{else}}{{$locationURI}} (line {{$locationStartLine}}){{end}}</strong>
             </div>
             <div class="issue-card__body__dataflows">
               <header class="card__body__dataflows__header">
@@ -742,39 +834,19 @@
                         {{end}}
                         {{ $prevUri = $curUri }}
 
-                        {{/* process the actual dataflow element */}}
-                        {{ $code := index .Location.PhysicalLocation.ArtifactLocation.Properties "Code" }}
+                        {{/* render the snippet as one row per source line */}}
+                        {{ $codeLines := index .Location.PhysicalLocation.ArtifactLocation.Properties "CodeLines" }}
                         {{ $startLine := index .Location.PhysicalLocation.Region.Properties "StartLine" }}
                         {{ $endLine := index .Location.PhysicalLocation.Region.Properties "EndLine" }}
                         {{ $startColumn := index .Location.PhysicalLocation.Region.Properties "StartColumn" }}
                         {{ $endColumn := index .Location.PhysicalLocation.Region.Properties "EndColumn" }}
-                        {{ $locationWebURL := index $location.Properties "WebURL"}}
-                        {{/* */}}
+                        {{ $locationWebURL := index .Location.Properties "WebURL"}}
+                        {{ $isSingleLine := eq $startLine $endLine }}
 
-                        <div class="issue-card__body__dataflows__codeline">
-
-                          <span class="issue-card__body__dataflows__codeline__linecol">
-                          {{if $locationWebURL}}
-                            <a href="{{- $locationWebURL -}}">{{$startLine}}:{{$startColumn}}</a>
-                          {{else}}
-                            {{$startLine}}:{{$startColumn}}
-                          {{end}}
-                          </span>
-
-                          {{if $code}}
-                          <div class="issue-card__body__dataflows__codeline__linecol__code">
-                            {{/* highlight code if it's a oneline */}}
-                            {{if eq $startLine $endLine}}
-                              {{- slice $code 0 $startColumn -}}
-                              <span class="dataflow-code-highlighted">{{- slice $code $startColumn $endColumn -}}</span>
-                              {{- slice $code $endColumn -}}
-                            {{else}}
-                              {{- $code -}}
-                            {{end}}
-                            {{/* */}}
-                          </div>
-                          {{end}}
-                        </div>
+                        {{range $idx, $lineText := $codeLines}}
+                          {{ $lineNum := add $startLine $idx -}}
+                          <div class="issue-card__body__dataflows__codeline"><span class="issue-card__body__dataflows__codeline__linecol">{{if and $locationWebURL (eq $idx 0)}}<a href="{{- $locationWebURL -}}">{{$lineNum}}</a>{{else}}{{$lineNum}}{{end}}</span><div class="issue-card__body__dataflows__codeline__linecol__code">{{if and $isSingleLine (gt $endColumn $startColumn)}}{{- slice $lineText 0 $startColumn -}}<span class="dataflow-code-highlighted">{{- slice $lineText $startColumn $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}{{- $lineText -}}{{end}}</div></div>
+                        {{end}}
 
                       {{end}}
                     </div>
@@ -784,7 +856,7 @@
               {{end}}
             </div>
           </div>
-        </div>
+        </details>
         {{end}}
       </div>
     
