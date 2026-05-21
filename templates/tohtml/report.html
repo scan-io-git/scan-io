@@ -904,12 +904,143 @@
       transform: translateY(10px);
     }
 
+    /* Copy-to-clipboard button on each code line */
+    .issue-card__body__dataflows__codeline {
+      position: relative;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 4px;
+      right: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--fg-muted);
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+    }
+
+    .issue-card__body__dataflows__codeline:hover .copy-btn {
+      opacity: 0.7;
+    }
+
+    .copy-btn:hover {
+      opacity: 1 !important;
+      background: var(--bg-subtle);
+      border-color: var(--border-default);
+      color: var(--fg-default);
+    }
+
+    .copy-btn[data-copied="1"] {
+      opacity: 1 !important;
+      color: #1a7f37;
+      border-color: #1a7f37;
+    }
+
+    body.dark-mode .copy-btn[data-copied="1"] {
+      color: #3fb950;
+      border-color: #3fb950;
+    }
+
+    .copy-btn svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    /* Keyboard help dialog */
+    #help-dialog {
+      max-width: 480px;
+      padding: 0;
+      border: 1px solid var(--border-default);
+      border-radius: 12px;
+      background: var(--bg-canvas);
+      color: var(--fg-default);
+      box-shadow: 0 10px 32px rgba(31, 35, 40, 0.2);
+    }
+
+    #help-dialog::backdrop {
+      background: rgba(31, 35, 40, 0.35);
+    }
+
+    .help-dialog__head {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-default);
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .help-dialog__body {
+      padding: 12px 16px 16px;
+    }
+
+    .help-dialog__body table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .help-dialog__body td {
+      padding: 4px 8px;
+      vertical-align: top;
+    }
+
+    .help-dialog__body kbd {
+      display: inline-flex;
+      min-width: 22px;
+      padding: 2px 6px;
+      justify-content: center;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-default);
+      border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      color: var(--fg-default);
+    }
+
+    .help-dialog__close {
+      float: right;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      color: var(--fg-muted);
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .help-dialog__close:hover {
+      color: var(--fg-default);
+    }
+
     @media print {
-      .theme-switcher-grid, .scroll-up-button, #report-toolbar, #report-toc { display: none !important; }
+      .summary-bar,
+      .toc,
+      .theme-switcher-grid,
+      .scroll-up-button,
+      .copy-btn,
+      #help-dialog,
+      .finding__head::after { display: none !important; }
       body { background: #fff !important; color: #000 !important; }
-      .issue-card { break-inside: avoid; border: 1px solid #ccc !important; }
-      .issue-card__body__dataflow { display: block !important; }
-      details[open] summary ~ * { display: revert !important; }
+      .finding {
+        break-inside: avoid;
+        border: 1px solid #d1d9e0 !important;
+        box-shadow: none !important;
+      }
+      .finding[open] .finding__body,
+      .finding:not([open]) .finding__body {
+        display: block !important;
+      }
+      .finding > .finding__body { display: block !important; }
+      details[open] > summary ~ *,
+      details:not([open]) > summary ~ * { display: revert !important; }
     }
   </style>
 
@@ -926,6 +1057,10 @@
   <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
     <symbol id="icon-search" viewBox="0 0 16 16">
       <path fill="currentColor" fill-rule="evenodd" d="M10.68 11.74a6 6 0 0 1-7.92-8.94 6 6 0 0 1 8.95 7.92l3.48 3.48a.75.75 0 1 1-1.06 1.06l-3.45-3.52ZM11.5 7a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/>
+    </symbol>
+    <symbol id="icon-copy" viewBox="0 0 16 16">
+      <path fill="currentColor" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/>
+      <path fill="currentColor" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/>
     </symbol>
   </svg>
   <header class="report-header">
@@ -1114,7 +1249,7 @@
 
                         {{range $idx, $lineText := $codeLines}}
                           {{ $lineNum := add $startLine $idx -}}
-                          <div class="issue-card__body__dataflows__codeline"><span class="issue-card__body__dataflows__codeline__linecol">{{if and $locationWebURL (eq $idx 0)}}<a href="{{- $locationWebURL -}}">{{$lineNum}}</a>{{else}}{{$lineNum}}{{end}}</span><div class="issue-card__body__dataflows__codeline__linecol__code">{{if and $isSingleLine (gt $endColumn $startColumn)}}{{- slice $lineText 0 $startColumn -}}<span class="dataflow-code-highlighted">{{- slice $lineText $startColumn $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}{{- $lineText -}}{{end}}</div></div>
+                          <div class="issue-card__body__dataflows__codeline"><span class="issue-card__body__dataflows__codeline__linecol">{{if and $locationWebURL (eq $idx 0)}}<a href="{{- $locationWebURL -}}">{{$lineNum}}</a>{{else}}{{$lineNum}}{{end}}</span><div class="issue-card__body__dataflows__codeline__linecol__code">{{if and $isSingleLine (gt $endColumn $startColumn)}}{{- slice $lineText 0 $startColumn -}}<span class="dataflow-code-highlighted">{{- slice $lineText $startColumn $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}{{- $lineText -}}{{end}}</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#icon-copy"/></svg></button></div>
                         {{end}}
 
                       {{end}}
@@ -1303,6 +1438,108 @@
         if (target) target.open = true;
       });
 
+      // Copy-to-clipboard handler (delegated)
+      document.addEventListener('click', e => {
+        const btn = e.target.closest('.copy-btn');
+        if (!btn) return;
+        const cl = btn.closest('.issue-card__body__dataflows__codeline');
+        const codeEl = cl?.querySelector('.issue-card__body__dataflows__codeline__linecol__code');
+        const text = codeEl?.innerText ?? '';
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(text).then(() => {
+            btn.dataset.copied = '1';
+            setTimeout(() => { delete btn.dataset.copied; }, 1200);
+          }).catch(() => {});
+        }
+      });
+
+      // Help dialog
+      const helpDialog = document.getElementById('help-dialog');
+      function openHelp() { if (helpDialog && !helpDialog.open) helpDialog.showModal(); }
+      function closeHelp() { if (helpDialog?.open) helpDialog.close(); }
+      helpDialog?.addEventListener('click', e => {
+        if (e.target === helpDialog) closeHelp();
+        if (e.target.closest('[data-close-help]')) closeHelp();
+      });
+
+      // j/k navigation across visible findings
+      function visibleFindings() {
+        return findings.filter(f => !f.hidden && f.offsetParent !== null);
+      }
+      function nextFinding(direction) {
+        const list = visibleFindings();
+        if (list.length === 0) return;
+        const stickyOffset = 80; // summary bar + a little headroom
+        const tops = list.map(f => f.getBoundingClientRect().top);
+        let idx = -1;
+        for (let i = 0; i < tops.length; i++) {
+          if (tops[i] >= stickyOffset - 1) { idx = i; break; }
+        }
+        if (idx === -1) idx = list.length - 1;
+        // If the candidate is already nearly at the top, step further.
+        if (direction === 1 && Math.abs(tops[idx] - stickyOffset) < 4 && idx + 1 < list.length) idx++;
+        if (direction === -1) idx = Math.max(0, idx - 1);
+        const target = list[idx];
+        target.open = true;
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      // Keyboard shortcuts
+      document.addEventListener('keydown', e => {
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        const active = document.activeElement;
+        const inField = active && active.matches('input, textarea, select, [contenteditable="true"]');
+        if (e.key === 'Escape') {
+          if (helpDialog?.open) { closeHelp(); e.preventDefault(); return; }
+          if (active === searchInput && searchInput.value) {
+            searchInput.value = '';
+            applySearch('');
+            e.preventDefault();
+            return;
+          }
+          // Clear filter + search
+          applyFilter('all');
+          if (searchInput.value) { searchInput.value = ''; applySearch(''); }
+          return;
+        }
+        if (inField) return;
+        switch (e.key) {
+          case '/':
+            e.preventDefault();
+            searchInput.focus();
+            searchInput.select();
+            break;
+          case 'j':
+            e.preventDefault();
+            nextFinding(1);
+            break;
+          case 'k':
+            e.preventDefault();
+            nextFinding(-1);
+            break;
+          case 'e':
+            findings.forEach(f => { f.open = true; });
+            syncToggleLabel();
+            try { localStorage.setItem('report.expandAll', 'true'); } catch (_) {}
+            break;
+          case 'c':
+            findings.forEach(f => { f.open = false; });
+            syncToggleLabel();
+            try { localStorage.setItem('report.expandAll', 'false'); } catch (_) {}
+            break;
+          case 't':
+            document.getElementById('theme-switcher-grid')?.click();
+            break;
+          case 'o':
+            setTocOpen(tocBtn.getAttribute('aria-pressed') !== 'true');
+            break;
+          case '?':
+            e.preventDefault();
+            if (helpDialog?.open) closeHelp(); else openHelp();
+            break;
+        }
+      });
+
       // Restore persisted state on load
       try {
         const savedFilter = localStorage.getItem('report.filter');
@@ -1337,6 +1574,28 @@
       }
     }
   </script>
+<dialog id="help-dialog" aria-label="Keyboard shortcuts">
+  <div class="help-dialog__head">
+    Keyboard shortcuts
+    <button class="help-dialog__close" type="button" aria-label="Close" data-close-help>&times;</button>
+  </div>
+  <div class="help-dialog__body">
+    <table>
+      <tbody>
+        <tr><td><kbd>/</kbd></td><td>Focus search</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Clear search and filter, close this dialog</td></tr>
+        <tr><td><kbd>j</kbd></td><td>Next finding (open it)</td></tr>
+        <tr><td><kbd>k</kbd></td><td>Previous finding (open it)</td></tr>
+        <tr><td><kbd>e</kbd></td><td>Expand all findings</td></tr>
+        <tr><td><kbd>c</kbd></td><td>Collapse all findings</td></tr>
+        <tr><td><kbd>t</kbd></td><td>Toggle light / dark theme</td></tr>
+        <tr><td><kbd>o</kbd></td><td>Toggle outline (TOC)</td></tr>
+        <tr><td><kbd>?</kbd></td><td>Show / hide this dialog</td></tr>
+      </tbody>
+    </table>
+  </div>
+</dialog>
+
 <button id="scrollUpButton" class="scroll-up-button" aria-label="Scroll to top">
   <!-- svg source https://uxwing.com/line-angle-up-icon/ -->
   <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 122.88 66.91" style="enable-background:new 0 0 122.88 66.91" xml:space="preserve">
