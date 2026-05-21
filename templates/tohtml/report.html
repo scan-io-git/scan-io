@@ -260,7 +260,7 @@
     }
 
     body.dark-mode .finding__df-filename,
-    body.dark-mode .finding__df-id {
+    body.dark-mode .finding__df-id:not(.finding__df-id--selected) {
       border-color: var(--border-default);
       background-color: var(--bg-subtle);
     }
@@ -884,6 +884,17 @@
       outline-offset: 1px;
     }
 
+    .pill:focus-visible,
+    .btn:focus-visible,
+    .btn-theme:focus-visible,
+    .scroll-up-button:focus-visible,
+    .help-dialog__close:focus-visible,
+    .toc__item a:focus-visible,
+    .finding__df-id:focus-visible {
+      outline: 2px solid var(--accent-brand);
+      outline-offset: 2px;
+    }
+
     .copy-btn svg {
       width: 12px;
       height: 12px;
@@ -990,6 +1001,14 @@
       .finding > .finding__body { display: block !important; }
       details[open] > summary ~ *,
       details:not([open]) > summary ~ * { display: revert !important; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+      }
     }
   </style>
 
@@ -1334,9 +1353,7 @@
       }
 
       function initDataflowSwitcher() {
-        document.addEventListener('click', e => {
-          const pill = e.target.closest('[data-dataflow-id]');
-          if (!pill) return;
+        function activatePill(pill) {
           const id = pill.dataset.dataflowId;
           const head = pill.closest('header');
           head?.querySelector('.finding__df-id--selected')?.classList.remove('finding__df-id--selected');
@@ -1344,6 +1361,17 @@
           const block = pill.closest('.finding__df-block');
           block?.querySelector('.finding__df--selected')?.classList.remove('finding__df--selected');
           block?.querySelector(`.finding__df--${id}`)?.classList.add('finding__df--selected');
+        }
+        document.addEventListener('click', e => {
+          const pill = e.target.closest('[data-dataflow-id]');
+          if (pill) activatePill(pill);
+        });
+        document.addEventListener('keydown', e => {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          const pill = e.target.closest('[data-dataflow-id]');
+          if (!pill) return;
+          if (e.key === ' ') e.preventDefault();
+          activatePill(pill);
         });
       }
 
