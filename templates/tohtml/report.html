@@ -49,13 +49,6 @@
       /* Border-radius scale */
       --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-pill: 999px;
 
-      /* Theme-switcher animation tokens (unchanged) */
-      --sun-color: #fabc1c;
-      --moon-color: #fffdf2;
-      --day-bg-color: #0dbdf6;
-      --night-bg-color: #272a30;
-      --cloud-color: #fffdf2;
-      --star-color: #fffdf2;
     }
 
     html {
@@ -144,12 +137,16 @@
     }
 
     .finding__head::after {
-      content: '▾';
+      content: '';
+      display: block;
+      width: 16px;
+      height: 16px;
+      background-color: var(--fg-muted);
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.939l3.72-3.719a.749.749 0 0 1 1.06 0Z'/%3E%3C/svg%3E") center/16px no-repeat;
+      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.939l3.72-3.719a.749.749 0 0 1 1.06 0Z'/%3E%3C/svg%3E") center/16px no-repeat;
       margin-left: auto;
-      padding-left: 8px;
-      color: var(--fg-muted);
-      transition: transform 0.15s ease;
       flex: 0 0 auto;
+      transition: transform 0.15s ease;
     }
 
     .finding:not([open]) .finding__head::after {
@@ -610,9 +607,7 @@
     .report-header__inner {
       max-width: 1280px;
       margin: 0 auto;
-      padding: 12px 16px 12px 16px;
-      padding-right: 84px;
-      position: relative;
+      padding: 12px 16px;
       display: flex;
       align-items: center;
       gap: 16px;
@@ -707,107 +702,37 @@
       background: var(--brand-green);
     }
 
-    .issue-card__body__metadata__location a, .finding__df-linecol a {
+    .finding__df-linecol a {
       color: var(--accent-fg);
     }
 
-    body.dark-mode .issue-card__body__metadata__location a,
-    body.dark-mode .finding__df-linecol a {
-      color: var(--accent-fg);
-    }
-
-    .theme-switcher-grid {
-      position: absolute;
-      top: 50%;
-      right: 16px;
-      transform: translateY(-50%);
-      display: grid;
-      grid-template-columns: repeat(54, 1px);
-      grid-template-rows: repeat(24, 1px);
-      background-color: var(--day-bg-color);
-      border-radius: 49px;
-      border: 1px solid var(--border-default);
-      cursor: pointer;
-      transition: background-color 0.3s ease, border-color 0.3s ease;
+    .btn-theme {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
       padding: 0;
-      appearance: none;
-      overflow: hidden;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      background: var(--bg-canvas);
+      color: var(--fg-muted);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      flex: 0 0 auto;
+      margin-left: auto;
     }
 
-    .theme-switcher-grid.dark-mode {
-      background-color: var(--night-bg-color);
-      border-color: var(--border-color-dark);
+    .btn-theme:hover {
+      background: var(--bg-subtle);
+      color: var(--fg-default);
+      border-color: var(--fg-muted);
     }
 
-    .sun {
-      background-color: var(--sun-color);
-      grid-column: 3 / 23;
-      grid-row: 3 / 23;
-      border-radius: 50%;
-      transition: grid-column 0.5s ease, background-color 0.5s ease;
-      height: 20px;
-    }
-
-    .theme-switcher-grid.dark-mode .sun {
-      grid-column: 33 / 53;
-      background-color: var(--moon-color);
-    }
-
-    .moon-overlay, .cloud-ball, .star {
-      position: absolute;
-      border-radius: 50%;
-      transition: left 0.5s ease, background-color 0.5s ease;
-      z-index: 1;
-      background-color: var(--day-bg-color);
-    }
-
-    .theme-switcher-grid.dark-mode .moon-overlay {
-      display: block;
-      left: calc(28 / 54 * 100%);
-      top: calc(4 / 29 * 100%);
-      width: 18px;
-      height: 18px;
-      background-color: var(--night-bg-color);
-    }
-
-    .cloud-ball {
-      background-color: var(--cloud-color);
-      border-radius: 50%;
-      width: 9px;
-      height: 9px;
-      position: absolute;
-      transition: all 0.5s ease;
-      z-index: 2;
-    }
-
-    #ball1 { top: calc((8 / 24) * 100%); left: calc((12 / 54) * 100%); }
-    #ball2 { top: calc((8 / 24) * 100%); left: calc((17 / 54) * 100%); }
-    #ball3 { top: calc((8 / 24) * 100%); left: calc((22 / 54) * 100%); }
-    #ball4 { top: calc((6 / 24) * 100%); left: calc((17 / 54) * 100%); }
-
-    .theme-switcher-grid.dark-mode #ball1 { top: calc((17 / 24) * 100%); left: calc((17 / 54) * 100%); width: 2px; height: 2px; }
-    .theme-switcher-grid.dark-mode #ball2 { top: calc((4 / 24) * 100%); left: calc((23 / 54) * 100%); width: 2px; height: 2px; }
-    .theme-switcher-grid.dark-mode #ball3 { top: calc((11 / 24) * 100%); left: calc((30 / 54) * 100%); width: 2px; height: 2px; }
-    .theme-switcher-grid.dark-mode #ball4 { top: calc((6 / 24) * 100%); left: calc((35 / 54) * 100%); width: 2px; height: 2px; }
-
-    .star { 
-      background-color: var(--star-color); 
-      width: 1px; 
-      height: 1px; 
-      position: absolute; 
-      opacity: 0; 
-      transition: opacity 0.5s ease, top 0.5s ease, left 0.5s ease;
-    }
-    #star1 { top: calc((19 / 24) * 100%); left: calc((11 / 54) * 100%); }
-    #star2 { top: calc((5 / 24) * 100%); left: calc((10 / 54) * 100%); }
-    #star3 { top: calc((11 / 24) * 100%); left: calc((17 / 54) * 100%); }
-    #star4 { top: calc((18 / 24) * 100%); left: calc((25 / 54) * 100%); }
-
-    .theme-switcher-grid.dark-mode #star1,
-    .theme-switcher-grid.dark-mode #star2,
-    .theme-switcher-grid.dark-mode #star3,
-    .theme-switcher-grid.dark-mode #star4 {
-      opacity: 1;
+    .btn-theme svg {
+      width: 16px;
+      height: 16px;
+      pointer-events: none;
     }
 
     .report-footer {
@@ -835,43 +760,41 @@
 
     .scroll-up-button {
       position: fixed;
-      bottom: 20px; 
-      right: 30px;  
-      width: 40px;
-      height: 40px;
-      border: none;
-      visibility: hidden;
-      opacity: 0; 
+      bottom: 24px;
+      right: 24px;
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      background: var(--bg-canvas);
+      color: var(--fg-muted);
       cursor: pointer;
-      transition: visibility 0.5s ease, opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+      visibility: hidden;
+      opacity: 0;
+      transition: visibility 0.2s ease, opacity 0.2s ease, transform 0.2s ease,
+                  background 0.15s, color 0.15s, border-color 0.15s;
       z-index: 1000;
-      background-color: transparent; 
     }
 
     .scroll-up-button svg {
-      width: 100%;
-      height: 100%;
-      fill: currentColor;
-      transition: fill 0.3s ease;
-    }
-
-    .scroll-up-button svg {
-      color: var(--accent-brand);
+      width: 16px;
+      height: 16px;
+      pointer-events: none;
     }
 
     .scroll-up-button:hover {
-      transform: translateY(-5px);
-    }
-
-    .scroll-up-button:active {
-      transform: translateY(0);
+      background: var(--bg-subtle);
+      color: var(--fg-default);
+      border-color: var(--fg-muted);
+      transform: translateY(-2px);
     }
 
     .scroll-up-button.show {
-      visibility: visible; 
-      opacity: 1; 
+      visibility: visible;
+      opacity: 1;
       transform: translateY(0);
     }
 
@@ -879,7 +802,7 @@
       visibility: hidden;
       opacity: 0;
       pointer-events: none;
-      transform: translateY(10px);
+      transform: translateY(4px);
     }
 
     /* Copy-to-clipboard button on each code line */
@@ -945,10 +868,13 @@
     }
 
     .help-dialog__head {
-      padding: 12px 16px;
+      padding: 10px 12px 10px 16px;
       border-bottom: 1px solid var(--border-default);
       font-weight: 600;
       font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
 
     .help-dialog__body {
@@ -980,24 +906,36 @@
     }
 
     .help-dialog__close {
-      float: right;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
       padding: 0;
-      border: 0;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
       background: transparent;
       cursor: pointer;
       color: var(--fg-muted);
-      font-size: 18px;
-      line-height: 1;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
     }
 
     .help-dialog__close:hover {
+      background: var(--bg-subtle);
+      border-color: var(--border-default);
       color: var(--fg-default);
+    }
+
+    .help-dialog__close svg {
+      width: 16px;
+      height: 16px;
+      pointer-events: none;
     }
 
     @media print {
       .summary-bar,
       .toc,
-      .theme-switcher-grid,
+      .btn-theme,
       .scroll-up-button,
       .copy-btn,
       #help-dialog,
@@ -1036,6 +974,21 @@
       <path fill="currentColor" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/>
       <path fill="currentColor" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/>
     </symbol>
+    <symbol id="icon-chevron-down" viewBox="0 0 16 16">
+      <path fill="currentColor" d="M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.939l3.72-3.719a.749.749 0 0 1 1.06 0Z"/>
+    </symbol>
+    <symbol id="icon-chevron-up" viewBox="0 0 16 16">
+      <path fill="currentColor" d="M3.22 10.53a.749.749 0 0 1 0-1.06l4.25-4.25a.749.749 0 0 1 1.06 0l4.25 4.25a.749.749 0 1 1-1.06 1.06L8 6.811 4.28 10.53a.749.749 0 0 1-1.06 0Z"/>
+    </symbol>
+    <symbol id="icon-x" viewBox="0 0 16 16">
+      <path fill="currentColor" d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/>
+    </symbol>
+    <symbol id="icon-sun" viewBox="0 0 16 16">
+      <path fill="currentColor" d="M8 12a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-1.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm5.657-8.157a.75.75 0 0 1 0 1.061l-1.061 1.06a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734l1.06-1.06a.75.75 0 0 1 1.06 0Zm-9.193 9.193a.75.75 0 0 1 0 1.06l-1.06 1.061a.75.75 0 1 1-1.061-1.06l1.06-1.061a.75.75 0 0 1 1.061 0ZM8 0a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0V.75A.75.75 0 0 1 8 0ZM3 8a.75.75 0 0 1-.75.75H.75a.75.75 0 0 1 0-1.5h1.5A.75.75 0 0 1 3 8Zm13 0a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1 0-1.5h1.5A.75.75 0 0 1 16 8Zm-8 5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 8 13Zm3.536-1.464a.75.75 0 0 1 1.06 0l1.061 1.06a.75.75 0 0 1-1.06 1.061l-1.061-1.06a.75.75 0 0 1 0-1.061ZM2.343 2.343a.75.75 0 0 1 1.061 0l1.06 1.061a.751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018l-1.06-1.06a.75.75 0 0 1 0-1.06Z"/>
+    </symbol>
+    <symbol id="icon-moon" viewBox="0 0 16 16">
+      <path fill="currentColor" d="M9.598 1.591a.749.749 0 0 1 .785-.175 7.001 7.001 0 1 1-8.967 8.967.75.75 0 0 1 .961-.96 5.5 5.5 0 0 0 7.046-7.046.75.75 0 0 1 .175-.786Zm1.616 1.945a7 7 0 0 1-7.678 7.678 5.499 5.499 0 1 0 7.678-7.678Z"/>
+    </symbol>
   </svg>
   <header class="report-header">
     <div class="report-header__inner">
@@ -1060,38 +1013,9 @@
         {{if .Metadata.RepositoryMetadata.Subfolder}}<span class="report-header__pill"><strong>Subfolder</strong> <code>{{ .Metadata.RepositoryMetadata.Subfolder }}</code></span>{{end}}
       </div>
 
-      <button
-      class="theme-switcher-grid"
-      id="theme-switcher-grid"
-      aria-label="Switch theme"
-    >
-      <div class="sun" id="sun" aria-hidden="true"></div>
-      <div class="moon-overlay" id="moon-overlay" aria-hidden="true"></div>
-      <div
-        class="cloud-ball cloud-ball-left"
-        id="ball1"
-        aria-hidden="true"
-      ></div>
-      <div
-        class="cloud-ball cloud-ball-middle"
-        id="ball2"
-        aria-hidden="true"
-      ></div>
-      <div
-        class="cloud-ball cloud-ball-right"
-        id="ball3"
-        aria-hidden="true"
-      ></div>
-      <div
-        class="cloud-ball cloud-ball-top"
-        id="ball4"
-        aria-hidden="true"
-      ></div>
-      <div class="star" id="star1" aria-hidden="true"></div>
-      <div class="star" id="star2" aria-hidden="true"></div>
-      <div class="star" id="star3" aria-hidden="true"></div>
-      <div class="star" id="star4" aria-hidden="true"></div>
-    </button>
+      <button class="btn-theme" id="btn-theme" aria-label="Switch theme" title="Toggle light / dark theme (t)">
+        <svg aria-hidden="true" width="16" height="16"><use id="btn-theme-icon" href="#icon-sun"/></svg>
+      </button>
     </div>
     <div class="report-header__accent" aria-hidden="true"></div>
   </header>
@@ -1247,13 +1171,14 @@
       });
 
       const body = document.body;
-      const themeSwitcher = document.getElementById("theme-switcher-grid");
+      const themeSwitcher = document.getElementById("btn-theme");
+      const themeIcon = document.getElementById("btn-theme-icon");
 
       function setTheme(mode) {
         const isDarkMode = mode === "dark";
         body.classList.toggle("dark-mode", isDarkMode);
         body.classList.toggle("light-mode", !isDarkMode);
-        themeSwitcher.classList.toggle("dark-mode", isDarkMode);
+        if (themeIcon) themeIcon.setAttribute("href", isDarkMode ? "#icon-moon" : "#icon-sun");
       }
 
       function getSystemThemePreference() {
@@ -1476,7 +1401,7 @@
             try { localStorage.setItem('report.expandAll', 'false'); } catch (_) {}
             break;
           case 't':
-            document.getElementById('theme-switcher-grid')?.click();
+            document.getElementById('btn-theme')?.click();
             break;
           case 'o':
             setTocOpen(tocBtn.getAttribute('aria-pressed') !== 'true');
@@ -1525,7 +1450,9 @@
 <dialog id="help-dialog" aria-label="Keyboard shortcuts">
   <div class="help-dialog__head">
     Keyboard shortcuts
-    <button class="help-dialog__close" type="button" aria-label="Close" data-close-help>&times;</button>
+    <button class="help-dialog__close" type="button" aria-label="Close" data-close-help>
+      <svg aria-hidden="true" width="16" height="16"><use href="#icon-x"/></svg>
+    </button>
   </div>
   <div class="help-dialog__body">
     <table>
@@ -1544,11 +1471,8 @@
   </div>
 </dialog>
 
-<button id="scrollUpButton" class="scroll-up-button" aria-label="Scroll to top">
-  <!-- svg source https://uxwing.com/line-angle-up-icon/ -->
-  <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 122.88 66.91" style="enable-background:new 0 0 122.88 66.91" xml:space="preserve">
-    <g><path d="M11.68,64.96c-2.72,2.65-7.08,2.59-9.73-0.14c-2.65-2.72-2.59-7.08,0.13-9.73L56.87,1.97l4.8,4.93l-4.81-4.95 c2.74-2.65,7.1-2.58,9.76,0.15c0.08,0.08,0.15,0.16,0.23,0.24L120.8,55.1c2.72,2.65,2.78,7.01,0.13,9.73 c-2.65,2.72-7,2.78-9.73,0.14L61.65,16.5L11.68,64.96L11.68,64.96z"/></g>
-  </svg>
+<button id="scrollUpButton" class="scroll-up-button" aria-label="Scroll to top" title="Scroll to top">
+  <svg aria-hidden="true" width="16" height="16"><use href="#icon-chevron-up"/></svg>
 </button>
 <footer class="report-footer">
   Scanio Orchestrator 0.3.0
