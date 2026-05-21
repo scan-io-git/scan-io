@@ -7,6 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>{{ .Metadata.Title }}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='4' fill='%2331bc81'/><text x='8' y='12' font-family='system-ui,sans-serif' font-size='11' font-weight='700' text-anchor='middle' fill='white'>S</text></svg>">
   <base target="_blank">
 
   <style type="text/css">
@@ -39,6 +40,14 @@
 
       /* Scanio brand */
       --brand-green: #31bc81;
+      --brand-green-dark: #3fb950;
+
+      /* Spacing scale: 4 / 8 / 12 / 16 / 24 / 32 */
+      --space-1: 4px; --space-2: 8px; --space-3: 12px;
+      --space-4: 16px; --space-5: 24px; --space-6: 32px;
+
+      /* Border-radius scale */
+      --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-pill: 999px;
 
       /* Theme-switcher animation tokens (unchanged) */
       --sun-color: #fabc1c;
@@ -75,29 +84,8 @@
       --accent-fg: var(--accent-fg-light);
       --accent-emphasis: var(--accent-emphasis-light);
       --accent-subtle: var(--accent-subtle-light);
-
-      /* Backward-compat aliases for legacy issue-card / footer CSS (replaced in later tasks) */
-      --bg-color-light: var(--bg-canvas);
-      --bg-color-dark: var(--bg-canvas-dark);
-      --text-color: var(--fg-default);
-      --text-color-light: var(--fg-default-light);
-      --text-color-dark: var(--fg-default-dark);
-      --border-color: var(--border-default);
-      --border-color-light: var(--border-default-light);
-      --border-color-dark: var(--border-default-dark);
-      --primary-color: var(--accent-fg);
-      --primary-color-light: var(--accent-fg-light);
-      --primary-color-dark: var(--brand-green);
-      --issue-card-border-color-light: var(--border-default-light);
-      --issue-card-border-color-dark: var(--border-default-dark);
-      --issue-card-bg-color-light: var(--bg-canvas-light);
-      --issue-card-bg-color-dark: var(--bg-subtle-dark);
-      --footer-bg: var(--bg-subtle);
-      --footer-text: var(--fg-muted);
-      --footer-link: var(--accent-fg);
-      --footer-link-hover: var(--accent-emphasis);
-      --footer-heading: var(--fg-default);
-      --footer-border: var(--border-default);
+      --accent-brand: var(--brand-green);
+      --focus-ring: color-mix(in oklch, var(--brand-green) 30%, transparent);
 
       background-color: var(--bg-canvas);
       color: var(--fg-default);
@@ -115,6 +103,8 @@
       --accent-fg: var(--accent-fg-dark);
       --accent-emphasis: var(--accent-emphasis-dark);
       --accent-subtle: var(--accent-subtle-dark);
+      --accent-brand: var(--brand-green-dark);
+      --focus-ring: color-mix(in oklch, var(--brand-green-dark) 30%, transparent);
     }
 
     .main-body {
@@ -268,17 +258,17 @@
       text-decoration: underline;
     }
 
-    body.dark-mode .issue-card__body__dataflows__filename,
-    body.dark-mode .issue-card__body__dataflow-id {
+    body.dark-mode .finding__df-filename,
+    body.dark-mode .finding__df-id {
       border-color: var(--border-default);
       background-color: var(--bg-subtle);
     }
 
-    .issue-card__body__dataflows {
+    .finding__df-block {
       margin-top: 8px;
     }
 
-    .card__body__dataflows__header {
+    .finding__df-header {
       display: flex;
       align-items: center;
       gap: 8px;
@@ -290,7 +280,7 @@
       letter-spacing: 0.04em;
     }
 
-    .issue-card__body__dataflows__filename {
+    .finding__df-filename {
       padding: 8px 12px;
       background: var(--bg-subtle);
       border-radius: 6px 6px 0 0;
@@ -304,7 +294,8 @@
       margin-top: 8px;
     }
 
-    .issue-card__body__dataflows__codeline {
+    .finding__df-codeline {
+      position: relative;
       padding: 4px 12px;
       font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
       font-size: 12px;
@@ -315,13 +306,13 @@
       background: var(--bg-canvas);
     }
 
-    .issue-card__body__dataflows__codeline:last-child {
+    .finding__df-codeline:last-child {
       border-bottom: 1px solid var(--border-default);
       border-radius: 0 0 6px 6px;
       padding-bottom: 8px;
     }
 
-    .issue-card__body__dataflows__codeline__linecol {
+    .finding__df-linecol {
       flex: 0 0 56px;
       text-align: right;
       margin-right: 16px;
@@ -329,7 +320,7 @@
       user-select: none;
     }
 
-    .issue-card__body__dataflows__codeline__linecol__code {
+    .finding__df-code {
       flex: 1 1 auto;
       overflow-x: auto;
       color: var(--fg-default);
@@ -338,13 +329,7 @@
       -moz-tab-size: 2;
     }
 
-    .issue-card__body__metadata__location {
-      font-size: 13px;
-      word-break: break-all;
-      overflow-wrap: anywhere;
-    }
-
-    .issue-card__body__dataflow-id {
+    .finding__df-id {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -357,38 +342,35 @@
       font-weight: 600;
       background: var(--bg-canvas);
       color: var(--fg-default);
-    }
-
-    .action-field {
       cursor: pointer;
       transition: background 0.15s, border-color 0.15s, color 0.15s;
     }
 
-    .action-field:hover {
+    .finding__df-id:hover {
       border-color: var(--accent-emphasis);
     }
 
-    .selected-dataflow-id {
+    .finding__df-id--selected {
       background-color: var(--accent-emphasis);
       color: #ffffff;
       border-color: var(--accent-emphasis);
     }
 
-    .issue-card__body__dataflow {
+    .finding__df {
       display: none;
     }
 
-    .issue-card__body__dataflow.selected-dataflow {
+    .finding__df.finding__df--selected {
       display: block;
     }
 
-    .dataflow-code-highlighted {
+    .finding__df-highlight {
       border-radius: 3px;
       background-color: var(--accent-subtle);
       padding: 1px 2px;
     }
 
-    body.dark-mode .dataflow-code-highlighted {
+    body.dark-mode .finding__df-highlight {
       background-color: var(--accent-subtle);
     }
 
@@ -725,12 +707,12 @@
       background: var(--brand-green);
     }
 
-    .issue-card__body__metadata__location a, .issue-card__body__dataflows__codeline__linecol a {
+    .issue-card__body__metadata__location a, .finding__df-linecol a {
       color: var(--accent-fg);
     }
 
     body.dark-mode .issue-card__body__metadata__location a,
-    body.dark-mode .issue-card__body__dataflows__codeline__linecol a {
+    body.dark-mode .finding__df-linecol a {
       color: var(--accent-fg);
     }
 
@@ -875,12 +857,8 @@
       transition: fill 0.3s ease;
     }
 
-    body.light-mode .scroll-up-button svg {
-      color: var(--primary-color-light); 
-    }
-
-    body.dark-mode .scroll-up-button svg {
-      color: var(--primary-color-dark); 
+    .scroll-up-button svg {
+      color: var(--accent-brand);
     }
 
     .scroll-up-button:hover {
@@ -905,10 +883,6 @@
     }
 
     /* Copy-to-clipboard button on each code line */
-    .issue-card__body__dataflows__codeline {
-      position: relative;
-    }
-
     .copy-btn {
       position: absolute;
       top: 4px;
@@ -928,7 +902,7 @@
       transition: opacity 0.15s, background 0.15s, border-color 0.15s;
     }
 
-    .issue-card__body__dataflows__codeline:hover .copy-btn {
+    .finding__df-codeline:hover .copy-btn {
       opacity: 0.7;
     }
 
@@ -1086,32 +1060,6 @@
         {{if .Metadata.RepositoryMetadata.Subfolder}}<span class="report-header__pill"><strong>Subfolder</strong> <code>{{ .Metadata.RepositoryMetadata.Subfolder }}</code></span>{{end}}
       </div>
 
-      <div class="header-container__issues-breakdown" hidden>
-        <div class="header-container__issues-breakdown__total">There are {{index .Metadata.SeverityInfo "total"}} issues:</div>
-        <div class="header-container__issues-breakdown__table">
-          <div class="header-container__issues-breakdown__table__entry">
-            <div class="severity-icon--small severity-icon--critical"></div>
-            <div>{{index .Metadata.SeverityInfo "critical"}} critical</div>
-          </div>
-          <div class="header-container__issues-breakdown__table__entry">
-            <div class="severity-icon--small severity-icon--high"></div>
-            <div>{{index .Metadata.SeverityInfo "high"}} high</div>
-          </div>
-          <div class="header-container__issues-breakdown__table__entry">
-            <div class="severity-icon--small severity-icon--medium"></div>
-            <div>{{index .Metadata.SeverityInfo "medium"}} medium</div>
-          </div>
-          <div class="header-container__issues-breakdown__table__entry">
-            <div class="severity-icon--small severity-icon--low"></div>
-            <div>{{index .Metadata.SeverityInfo "low"}} low</div>
-          </div>
-          <div class="header-container__issues-breakdown__table__entry">
-            <div class="severity-icon--small severity-icon--info"></div>
-            <div>{{index .Metadata.SeverityInfo "info"}} info</div>
-          </div>
-        </div>
-      </div>
-
       <button
       class="theme-switcher-grid"
       id="theme-switcher-grid"
@@ -1208,8 +1156,8 @@
             <div class="finding__location">
               Location: <strong>{{if $locationWebURL}}<a href="{{- $locationWebURL -}}">{{$locationURI}} (line {{$locationStartLine}})</a>{{else}}{{$locationURI}} (line {{$locationStartLine}}){{end}}</strong>
             </div>
-            <div class="issue-card__body__dataflows">
-              <header class="card__body__dataflows__header">
+            <div class="finding__df-block">
+              <header class="finding__df-header">
                 DataFlows:
                 {{$totalDataFlows := 0}}
                 {{range .CodeFlows}}
@@ -1219,7 +1167,7 @@
                 {{end}}
                 {{ if gt $totalDataFlows 1 }}
                   {{ range $index, $dataFlowCounter := generateSequence $totalDataFlows }}
-                    <span class="issue-card__body__dataflow-id issue-card__body__dataflow-id--{{$dataFlowCounter}} action-field {{if eq $dataFlowCounter 1}}{{print "selected-dataflow-id"}}{{end}}" onclick="updateSelectedDataflow(event,{{$dataFlowCounter}})">{{$dataFlowCounter}}</span>
+                    <span class="finding__df-id finding__df-id--{{$dataFlowCounter}} {{if eq $dataFlowCounter 1}}{{print "finding__df-id--selected"}}{{end}}" onclick="updateSelectedDataflow(event,{{$dataFlowCounter}})">{{$dataFlowCounter}}</span>
                   {{end}}
                 {{end}}
               </header>
@@ -1227,14 +1175,14 @@
                 {{ $dataFlowCounter := 1 }}
                 {{range .CodeFlows}}
                   {{range .ThreadFlows}}
-                    <div class="issue-card__body__dataflow issue-card__body__dataflow--{{$dataFlowCounter}} {{if eq $dataFlowCounter 1}}{{print "selected-dataflow"}}{{end}}">
+                    <div class="finding__df finding__df--{{$dataFlowCounter}} {{if eq $dataFlowCounter 1}}{{print "finding__df--selected"}}{{end}}">
                       {{ $prevUri := "" }}
                       {{range .Locations}}
 
                         {{/* figure out whether we should add a filename block here */}}
                         {{ $curUri := index .Location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
                         {{ if ne $curUri $prevUri }}
-                        <div class="issue-card__body__dataflows__filename">{{$curUri}}</div>
+                        <div class="finding__df-filename">{{$curUri}}</div>
                         {{end}}
                         {{ $prevUri = $curUri }}
 
@@ -1249,7 +1197,7 @@
 
                         {{range $idx, $lineText := $codeLines}}
                           {{ $lineNum := add $startLine $idx -}}
-                          <div class="issue-card__body__dataflows__codeline"><span class="issue-card__body__dataflows__codeline__linecol">{{if and $locationWebURL (eq $idx 0)}}<a href="{{- $locationWebURL -}}">{{$lineNum}}</a>{{else}}{{$lineNum}}{{end}}</span><div class="issue-card__body__dataflows__codeline__linecol__code">{{if and $isSingleLine (gt $endColumn $startColumn)}}{{- slice $lineText 0 $startColumn -}}<span class="dataflow-code-highlighted">{{- slice $lineText $startColumn $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}{{- $lineText -}}{{end}}</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#icon-copy"/></svg></button></div>
+                          <div class="finding__df-codeline"><span class="finding__df-linecol">{{if and $locationWebURL (eq $idx 0)}}<a href="{{- $locationWebURL -}}">{{$lineNum}}</a>{{else}}{{$lineNum}}{{end}}</span><div class="finding__df-code">{{if and $isSingleLine (gt $endColumn $startColumn)}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}{{- $lineText -}}{{end}}</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#icon-copy"/></svg></button></div>
                         {{end}}
 
                       {{end}}
@@ -1442,8 +1390,8 @@
       document.addEventListener('click', e => {
         const btn = e.target.closest('.copy-btn');
         if (!btn) return;
-        const cl = btn.closest('.issue-card__body__dataflows__codeline');
-        const codeEl = cl?.querySelector('.issue-card__body__dataflows__codeline__linecol__code');
+        const cl = btn.closest('.finding__df-codeline');
+        const codeEl = cl?.querySelector('.finding__df-code');
         const text = codeEl?.innerText ?? '';
         if (navigator.clipboard?.writeText) {
           navigator.clipboard.writeText(text).then(() => {
@@ -1557,20 +1505,20 @@
 
   <script>
     function updateSelectedDataflow(event, dataflowId) {
-      const selectedElement = event.target.closest('header').querySelector('.selected-dataflow-id');
+      const selectedElement = event.target.closest('header').querySelector('.finding__df-id--selected');
       if (selectedElement) {
-        selectedElement.classList.remove('selected-dataflow-id');
+        selectedElement.classList.remove('finding__df-id--selected');
       }
-      event.target.classList.add('selected-dataflow-id');
+      event.target.classList.add('finding__df-id--selected');
 
-      const dataflowContainer = event.target.closest('.issue-card__body__dataflows');
-      const currentDataflowElement = dataflowContainer.querySelector('.selected-dataflow');
+      const dataflowContainer = event.target.closest('.finding__df-block');
+      const currentDataflowElement = dataflowContainer.querySelector('.finding__df--selected');
       if (currentDataflowElement) {
-        currentDataflowElement.classList.remove('selected-dataflow');
+        currentDataflowElement.classList.remove('finding__df--selected');
       }
-      const selectedDataflowElement = dataflowContainer.querySelector(`.issue-card__body__dataflow--${dataflowId}`);
+      const selectedDataflowElement = dataflowContainer.querySelector(`.finding__df--${dataflowId}`);
       if (selectedDataflowElement) {
-        selectedDataflowElement.classList.add('selected-dataflow');
+        selectedDataflowElement.classList.add('finding__df--selected');
       }
     }
   </script>
