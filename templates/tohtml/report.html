@@ -389,6 +389,174 @@
       background-color: var(--accent-subtle);
     }
 
+    /* Sticky summary bar (count + filter pills + search + collapse-all) */
+    .summary-bar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: var(--bg-canvas);
+      border-bottom: 1px solid var(--border-default);
+      box-shadow: 0 1px 0 rgba(31, 35, 40, 0.04);
+    }
+
+    body.dark-mode .summary-bar {
+      box-shadow: 0 1px 0 rgba(1, 4, 9, 0.4);
+    }
+
+    .summary-bar__inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 10px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .summary-bar__count {
+      font-size: 14px;
+      color: var(--fg-muted);
+    }
+
+    .summary-bar__count strong {
+      font-weight: 600;
+      color: var(--fg-default);
+    }
+
+    .summary-bar__match {
+      margin-left: 8px;
+      font-size: 12px;
+      color: var(--fg-subtle);
+    }
+
+    .summary-bar__pills {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border-default);
+      background: var(--bg-canvas);
+      color: var(--fg-default);
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .pill:hover {
+      background: var(--bg-subtle);
+    }
+
+    .pill[aria-pressed="true"] {
+      background: var(--bg-inset);
+      border-color: var(--fg-muted);
+    }
+
+    body.dark-mode .pill[aria-pressed="true"] {
+      background: var(--bg-inset);
+      border-color: var(--fg-muted);
+    }
+
+    .pill__dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--fg-muted);
+      flex: 0 0 8px;
+    }
+
+    .pill--critical .pill__dot { background: #cf222e; }
+    .pill--high     .pill__dot { background: #bc4c00; }
+    .pill--medium   .pill__dot { background: #9a6700; }
+    .pill--low      .pill__dot { background: #6e7781; }
+    .pill--info     .pill__dot { background: #0969da; }
+
+    body.dark-mode .pill--critical .pill__dot { background: #f85149; }
+    body.dark-mode .pill--high     .pill__dot { background: #db6d28; }
+    body.dark-mode .pill--medium   .pill__dot { background: #bb8009; }
+    body.dark-mode .pill--low      .pill__dot { background: #6e7681; }
+    body.dark-mode .pill--info     .pill__dot { background: #1f6feb; }
+
+    .pill__n {
+      color: var(--fg-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .summary-bar__tools {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-left: auto;
+    }
+
+    .search {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border: 1px solid var(--border-default);
+      border-radius: 6px;
+      background: var(--bg-canvas);
+      color: var(--fg-muted);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .search:focus-within {
+      border-color: var(--accent-emphasis);
+      box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.2);
+      color: var(--fg-default);
+    }
+
+    .search input {
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--fg-default);
+      font-size: 13px;
+      font-family: inherit;
+      min-width: 220px;
+    }
+
+    .search input::placeholder {
+      color: var(--fg-muted);
+    }
+
+    .btn {
+      font-size: 12px;
+      font-family: inherit;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-default);
+      background: var(--bg-canvas);
+      color: var(--fg-default);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn--ghost:hover {
+      background: var(--bg-subtle);
+    }
+
+    /* Filter rules — hide cards whose severity does not match the active filter */
+    body.filter-critical .finding:not(.finding--critical),
+    body.filter-high     .finding:not(.finding--high),
+    body.filter-medium   .finding:not(.finding--medium),
+    body.filter-low      .finding:not(.finding--low),
+    body.filter-info     .finding:not(.finding--info) {
+      display: none;
+    }
+
+    .finding[hidden] {
+      display: none;
+    }
+
     .report-header {
       background: var(--bg-subtle);
       border-bottom: 1px solid var(--border-default);
@@ -692,6 +860,11 @@
 {{ $webURL := .Metadata.WebURL }}
 
 <body>
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <symbol id="icon-search" viewBox="0 0 16 16">
+      <path fill="currentColor" fill-rule="evenodd" d="M10.68 11.74a6 6 0 0 1-7.92-8.94 6 6 0 0 1 8.95 7.92l3.48 3.48a.75.75 0 1 1-1.06 1.06l-3.45-3.52ZM11.5 7a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/>
+    </symbol>
+  </svg>
   <header class="report-header">
     <div class="report-header__inner">
       <a class="report-header__brand" href="https://github.com/scan-io-git/scan-io" target="_blank" rel="noopener">
@@ -776,6 +949,27 @@
     </div>
     <div class="report-header__accent" aria-hidden="true"></div>
   </header>
+
+  <div id="summary-bar" class="summary-bar">
+    <div class="summary-bar__inner">
+      <span class="summary-bar__count"><strong>{{index .Metadata.SeverityInfo "total"}}</strong> findings <span id="search-count" class="summary-bar__match" aria-live="polite"></span></span>
+      <div class="summary-bar__pills" role="group" aria-label="Filter by severity">
+        <button class="pill" data-filter="all" aria-pressed="true">All</button>
+        <button class="pill pill--critical" data-filter="critical" aria-pressed="false"><span class="pill__dot"></span>Critical <span class="pill__n">{{index .Metadata.SeverityInfo "critical"}}</span></button>
+        <button class="pill pill--high"     data-filter="high"     aria-pressed="false"><span class="pill__dot"></span>High <span class="pill__n">{{index .Metadata.SeverityInfo "high"}}</span></button>
+        <button class="pill pill--medium"   data-filter="medium"   aria-pressed="false"><span class="pill__dot"></span>Medium <span class="pill__n">{{index .Metadata.SeverityInfo "medium"}}</span></button>
+        <button class="pill pill--low"      data-filter="low"      aria-pressed="false"><span class="pill__dot"></span>Low <span class="pill__n">{{index .Metadata.SeverityInfo "low"}}</span></button>
+        <button class="pill pill--info"     data-filter="info"     aria-pressed="false"><span class="pill__dot"></span>Info <span class="pill__n">{{index .Metadata.SeverityInfo "info"}}</span></button>
+      </div>
+      <div class="summary-bar__tools">
+        <label class="search">
+          <svg aria-hidden="true" width="14" height="14"><use href="#icon-search"/></svg>
+          <input id="search" type="search" placeholder="Filter findings..." aria-label="Search findings" autocomplete="off">
+        </label>
+        <button id="toggle-all" class="btn btn--ghost" type="button">Collapse all</button>
+      </div>
+    </div>
+  </div>
 
   <div class="main-container">
     {{range .Report.Runs}}
@@ -943,6 +1137,86 @@
           setTheme(newSystemTheme);
         }
       });
+
+      /* ---- Summary bar: severity filter + search + expand/collapse all ---- */
+      const findings = Array.from(document.querySelectorAll('.finding'));
+      const total = findings.length;
+
+      // Index search text once per finding (title + description + path).
+      findings.forEach(f => {
+        const title = f.querySelector('.finding__title')?.textContent || '';
+        const desc  = f.querySelector('.finding__description')?.textContent || '';
+        const path  = f.querySelector('.finding__path')?.textContent || '';
+        f.dataset.searchText = (title + ' ' + desc + ' ' + path).toLowerCase();
+      });
+
+      // Filter pills
+      const pills = Array.from(document.querySelectorAll('.summary-bar__pills .pill'));
+      function applyFilter(severity) {
+        const valid = ['critical', 'high', 'medium', 'low', 'info'];
+        ['filter-critical', 'filter-high', 'filter-medium', 'filter-low', 'filter-info']
+          .forEach(c => document.body.classList.remove(c));
+        if (severity && valid.indexOf(severity) !== -1) {
+          document.body.classList.add('filter-' + severity);
+        }
+        pills.forEach(p => p.setAttribute('aria-pressed', String(p.dataset.filter === (severity || 'all'))));
+        try { localStorage.setItem('report.filter', severity || 'all'); } catch (_) {}
+        updateMatchCount();
+      }
+      pills.forEach(p => p.addEventListener('click', () => {
+        const sev = p.dataset.filter;
+        const current = pills.find(pp => pp.getAttribute('aria-pressed') === 'true')?.dataset.filter || 'all';
+        if (sev === 'all' || sev === current) applyFilter('all');
+        else applyFilter(sev);
+      }));
+
+      // Search box
+      const searchInput = document.getElementById('search');
+      const searchCount = document.getElementById('search-count');
+      let searchDebounce;
+      function applySearch(q) {
+        const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
+        findings.forEach(f => {
+          const txt = f.dataset.searchText || '';
+          const match = tokens.every(t => txt.indexOf(t) !== -1);
+          f.hidden = !match;
+        });
+        try { localStorage.setItem('report.search', q); } catch (_) {}
+        updateMatchCount();
+      }
+      function updateMatchCount() {
+        const visible = findings.filter(f => !f.hidden && f.offsetParent !== null).length;
+        if (visible === total) searchCount.textContent = '';
+        else searchCount.textContent = '(' + visible + ' of ' + total + ' visible)';
+      }
+      searchInput.addEventListener('input', () => {
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => applySearch(searchInput.value), 150);
+      });
+
+      // Expand / collapse all
+      const toggleAllBtn = document.getElementById('toggle-all');
+      function syncToggleLabel() {
+        const anyOpen = findings.some(f => f.open);
+        toggleAllBtn.textContent = anyOpen ? 'Collapse all' : 'Expand all';
+      }
+      toggleAllBtn.addEventListener('click', () => {
+        const anyOpen = findings.some(f => f.open);
+        findings.forEach(f => { f.open = !anyOpen; });
+        try { localStorage.setItem('report.expandAll', String(!anyOpen)); } catch (_) {}
+        syncToggleLabel();
+      });
+      findings.forEach(f => f.addEventListener('toggle', syncToggleLabel));
+
+      // Restore persisted state on load
+      try {
+        const savedFilter = localStorage.getItem('report.filter');
+        if (savedFilter) applyFilter(savedFilter);
+        const savedSearch = localStorage.getItem('report.search');
+        if (savedSearch) { searchInput.value = savedSearch; applySearch(savedSearch); }
+      } catch (_) {}
+      syncToggleLabel();
+      updateMatchCount();
 
     });
   </script>
