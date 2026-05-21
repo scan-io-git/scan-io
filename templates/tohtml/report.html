@@ -125,7 +125,7 @@
 
     .finding__head {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 12px;
       padding: 12px 16px;
       cursor: pointer;
@@ -174,16 +174,20 @@
       min-width: 0;
       overflow: hidden;
       flex-shrink: 1;
+      padding-top: 2px;
     }
 
     .finding__path {
-      word-break: break-all;
-      overflow-wrap: anywhere;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
     }
 
     .finding__line {
       color: var(--fg-subtle);
       flex: 0 0 auto;
+      white-space: nowrap;
     }
 
     /* Severity badges (Primer label style) */
@@ -192,7 +196,7 @@
       align-items: center;
       padding: 2px 10px;
       border-radius: 999px;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 600;
       border: 1px solid;
       text-transform: uppercase;
@@ -403,6 +407,8 @@
     .summary-bar__count strong {
       font-weight: 600;
       color: var(--fg-default);
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
     }
 
     .summary-bar__match {
@@ -552,7 +558,7 @@
     .toc__item a {
       display: flex;
       gap: 8px;
-      align-items: center;
+      align-items: baseline;
       color: var(--fg-default);
       text-decoration: none;
     }
@@ -568,6 +574,7 @@
       border-radius: 50%;
       background: var(--fg-muted);
       flex: 0 0 8px;
+      transform: translateY(2px);
     }
 
     .toc__item--critical .toc__dot { background: #cf222e; }
@@ -602,6 +609,7 @@
     .report-header {
       background: var(--bg-subtle);
       border-bottom: 1px solid var(--border-default);
+      container-type: inline-size;
     }
 
     .report-header__inner {
@@ -644,10 +652,10 @@
     }
 
     .report-header__title {
-      font-size: 18px;
+      font-size: 20px;
       font-weight: 600;
       color: var(--fg-default);
-      letter-spacing: -0.01em;
+      letter-spacing: -0.015em;
     }
 
     .report-header__meta {
@@ -700,6 +708,24 @@
     .report-header__accent {
       height: 2px;
       background: var(--brand-green);
+    }
+
+    @container (max-width: 720px) {
+      .report-header__inner {
+        flex-wrap: wrap;
+        row-gap: 8px;
+      }
+      .report-header__brand {
+        flex: 1 1 100%;
+      }
+      .report-header__meta {
+        flex: 1 1 auto;
+        margin-left: 0;
+      }
+      .btn-theme {
+        margin-left: auto;
+        flex: 0 0 auto;
+      }
     }
 
     .finding__df-linecol a {
