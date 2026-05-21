@@ -49,6 +49,10 @@
       --star-color: #fffdf2;
     }
 
+    html {
+      scroll-padding-top: 72px;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
       font-size: 14px;
@@ -57,7 +61,6 @@
       padding: 0;
       display: flex;
       flex-direction: column;
-      scroll-padding-top: 64px;
       transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 
       /* Primer tokens — light mode defaults */
@@ -544,6 +547,66 @@
       background: var(--bg-subtle);
     }
 
+    /* Table of contents drawer */
+    .toc {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-default);
+      background: var(--bg-subtle);
+    }
+
+    .toc__list {
+      columns: 2;
+      column-gap: 24px;
+      padding: 0;
+      margin: 0;
+      list-style: none;
+      font-size: 13px;
+    }
+
+    .toc__item {
+      break-inside: avoid;
+      padding: 3px 0;
+    }
+
+    .toc__item a {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      color: var(--fg-default);
+      text-decoration: none;
+    }
+
+    .toc__item a:hover {
+      color: var(--accent-fg);
+      text-decoration: underline;
+    }
+
+    .toc__dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--fg-muted);
+      flex: 0 0 8px;
+    }
+
+    .toc__item--critical .toc__dot { background: #cf222e; }
+    .toc__item--high     .toc__dot { background: #bc4c00; }
+    .toc__item--medium   .toc__dot { background: #9a6700; }
+    .toc__item--low      .toc__dot { background: #6e7781; }
+    .toc__item--info     .toc__dot { background: #0969da; }
+
+    body.dark-mode .toc__item--critical .toc__dot { background: #f85149; }
+    body.dark-mode .toc__item--high     .toc__dot { background: #db6d28; }
+    body.dark-mode .toc__item--medium   .toc__dot { background: #bb8009; }
+    body.dark-mode .toc__item--low      .toc__dot { background: #6e7681; }
+    body.dark-mode .toc__item--info     .toc__dot { background: #1f6feb; }
+
+    @media (max-width: 900px) {
+      .toc__list { columns: 1; }
+    }
+
     /* Filter rules — hide cards whose severity does not match the active filter */
     body.filter-critical .finding:not(.finding--critical),
     body.filter-high     .finding:not(.finding--high),
@@ -967,9 +1030,21 @@
           <input id="search" type="search" placeholder="Filter findings..." aria-label="Search findings" autocomplete="off">
         </label>
         <button id="toggle-all" class="btn btn--ghost" type="button">Collapse all</button>
+        <button id="toggle-toc" class="btn btn--ghost" type="button" aria-pressed="false" aria-controls="toc">Show outline</button>
       </div>
     </div>
   </div>
+
+  <nav id="toc" class="toc" hidden aria-label="Findings outline">
+    <ol class="toc__list">
+      {{range .Report.Runs}}
+      {{range $i, $r := .Results}}
+      {{ $sev := index .Properties "Severity" }}
+      <li class="toc__item toc__item--{{$sev}}"><a href="#issue-{{$i}}" target="_self"><span class="toc__dot"></span>{{index .Properties "Title"}}</a></li>
+      {{end}}
+      {{end}}
+    </ol>
+  </nav>
 
   <div class="main-container">
     {{range .Report.Runs}}
@@ -1208,12 +1283,34 @@
       });
       findings.forEach(f => f.addEventListener('toggle', syncToggleLabel));
 
+      // TOC drawer
+      const tocBtn = document.getElementById('toggle-toc');
+      const tocNav = document.getElementById('toc');
+      function setTocOpen(open) {
+        tocBtn.setAttribute('aria-pressed', String(open));
+        tocBtn.textContent = open ? 'Hide outline' : 'Show outline';
+        tocNav.hidden = !open;
+        try { localStorage.setItem('report.toc', String(open)); } catch (_) {}
+      }
+      tocBtn.addEventListener('click', () => {
+        setTocOpen(tocBtn.getAttribute('aria-pressed') !== 'true');
+      });
+      tocNav.addEventListener('click', e => {
+        const link = e.target.closest('a[href^="#issue-"]');
+        if (!link) return;
+        const id = link.getAttribute('href').slice(1);
+        const target = document.getElementById(id);
+        if (target) target.open = true;
+      });
+
       // Restore persisted state on load
       try {
         const savedFilter = localStorage.getItem('report.filter');
         if (savedFilter) applyFilter(savedFilter);
         const savedSearch = localStorage.getItem('report.search');
         if (savedSearch) { searchInput.value = savedSearch; applySearch(savedSearch); }
+        const savedToc = localStorage.getItem('report.toc');
+        if (savedToc === 'true') setTocOpen(true);
       } catch (_) {}
       syncToggleLabel();
       updateMatchCount();
