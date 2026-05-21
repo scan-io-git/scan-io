@@ -767,11 +767,12 @@
 
     .report-footer {
       border-top: 1px solid var(--border-default);
-      padding: 16px;
+      padding: 12px 16px;
       color: var(--fg-muted);
       font-size: 12px;
-      text-align: center;
       background: var(--bg-subtle);
+      max-width: 1280px;
+      margin: 0 auto;
     }
 
     .report-footer a {
@@ -1128,7 +1129,7 @@
                 {{end}}
                 {{ if gt $totalDataFlows 1 }}
                   {{ range $index, $dataFlowCounter := generateSequence $totalDataFlows }}
-                    <span class="finding__df-id finding__df-id--{{$dataFlowCounter}} {{if eq $dataFlowCounter 1}}{{print "finding__df-id--selected"}}{{end}}" onclick="updateSelectedDataflow(event,{{$dataFlowCounter}})">{{$dataFlowCounter}}</span>
+                    <span class="finding__df-id finding__df-id--{{$dataFlowCounter}} {{if eq $dataFlowCounter 1}}{{print "finding__df-id--selected"}}{{end}}" data-dataflow-id="{{$dataFlowCounter}}" role="button" tabindex="0">{{$dataFlowCounter}}</span>
                   {{end}}
                 {{end}}
               </header>
@@ -1179,95 +1180,7 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
-      const scrollUpButton = document.getElementById("scrollUpButton");
-      const thresholdPercentage = 0.2; 
-
-      let debounceTimer;
-  
-      window.addEventListener("scroll", function () {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(handleScroll, 100); 
-      });
-
-      function handleScroll() {
-        const scrollHeight = document.documentElement.scrollHeight;
-        const scrollRatio = window.scrollY / scrollHeight;
-
-        if (scrollRatio > thresholdPercentage) {
-          scrollUpButton.classList.add("show");
-        } else {
-          scrollUpButton.classList.remove("show");
-        }
-      }
-
-      scrollUpButton.addEventListener("click", function () {
-        window.scrollTo({
-          top: 0,
-          behavior: "smooth"
-        });
-      });
-
       const body = document.body;
-      const themeSwitcher = document.getElementById("btn-theme");
-      const themeIcon = document.getElementById("btn-theme-icon");
-
-      function setTheme(mode) {
-        const isDarkMode = mode === "dark";
-        body.classList.toggle("dark-mode", isDarkMode);
-        body.classList.toggle("light-mode", !isDarkMode);
-        if (themeIcon) themeIcon.setAttribute("href", isDarkMode ? "#icon-moon" : "#icon-sun");
-      }
-
-      function getSystemThemePreference() {
-        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? "dark" : "light";
-      }
-
-      function getSavedTheme() {
-        return localStorage.getItem("theme");
-      }
-
-      function saveThemePreference(mode) {
-        localStorage.setItem("theme", mode);
-      }
-
-      function initializeTheme() {
-        const savedTheme = getSavedTheme() || getSystemThemePreference();
-        setTheme(savedTheme);
-      }
-
-      themeSwitcher.addEventListener("click", function () {
-        const isDarkMode = document.body.classList.contains("dark-mode");
-
-        if (isDarkMode) {
-          setTheme("light");
-          saveThemePreference("light");
-        } else {
-          setTheme("dark");
-          saveThemePreference("dark");
-        }
-      });
-
-      initializeTheme();
-
-      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-        const newSystemTheme = e.matches ? "dark" : "light";
-        const savedTheme = getSavedTheme();
-
-        if (!savedTheme) {
-          setTheme(newSystemTheme);
-        }
-      });
-
-      /* ---- Sticky shadow via IntersectionObserver ---- */
-      const summaryBar = document.getElementById('summary-bar');
-      const sentinel = document.getElementById('summary-bar-sentinel');
-      if (summaryBar && sentinel && 'IntersectionObserver' in window) {
-        new IntersectionObserver(([entry]) => {
-          summaryBar.classList.toggle('is-stuck', !entry.isIntersecting);
-        }, { threshold: 1 }).observe(sentinel);
-      }
-
-      /* ---- Summary bar: severity filter + search + expand/collapse all ---- */
       const findings = Array.from(document.querySelectorAll('.finding'));
       const total = findings.length;
 
@@ -1279,219 +1192,246 @@
         f.dataset.searchText = (title + ' ' + desc + ' ' + path).toLowerCase();
       });
 
-      // Filter pills
-      const pills = Array.from(document.querySelectorAll('.summary-bar__pills .pill'));
-      function applyFilter(severity) {
-        const valid = ['critical', 'high', 'medium', 'low', 'info'];
-        ['filter-critical', 'filter-high', 'filter-medium', 'filter-low', 'filter-info']
-          .forEach(c => document.body.classList.remove(c));
-        if (severity && valid.indexOf(severity) !== -1) {
-          document.body.classList.add('filter-' + severity);
-        }
-        pills.forEach(p => p.setAttribute('aria-pressed', String(p.dataset.filter === (severity || 'all'))));
-        try { localStorage.setItem('report.filter', severity || 'all'); } catch (_) {}
-        updateMatchCount();
-      }
-      pills.forEach(p => p.addEventListener('click', () => {
-        const sev = p.dataset.filter;
-        const current = pills.find(pp => pp.getAttribute('aria-pressed') === 'true')?.dataset.filter || 'all';
-        if (sev === 'all' || sev === current) applyFilter('all');
-        else applyFilter(sev);
-      }));
+      // Shared state exposed to cross-cutting handlers
+      let applyFilter, applySearch, syncToggleLabel, setTocOpen, tocBtn, searchInput, helpDialog;
 
-      // Search box
-      const searchInput = document.getElementById('search');
-      const searchCount = document.getElementById('search-count');
-      let searchDebounce;
-      function applySearch(q) {
-        const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
-        findings.forEach(f => {
-          const txt = f.dataset.searchText || '';
-          const match = tokens.every(t => txt.indexOf(t) !== -1);
-          f.hidden = !match;
+      function initScrollUp() {
+        const btn = document.getElementById("scrollUpButton");
+        let debounce;
+        window.addEventListener("scroll", () => {
+          clearTimeout(debounce);
+          debounce = setTimeout(() => {
+            const ratio = window.scrollY / document.documentElement.scrollHeight;
+            btn.classList.toggle("show", ratio > 0.2);
+          }, 100);
         });
-        try { localStorage.setItem('report.search', q); } catch (_) {}
-        updateMatchCount();
+        btn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
       }
+
+      function initTheme() {
+        const switcher = document.getElementById("btn-theme");
+        const icon = document.getElementById("btn-theme-icon");
+        function setTheme(mode) {
+          const dark = mode === "dark";
+          body.classList.toggle("dark-mode", dark);
+          body.classList.toggle("light-mode", !dark);
+          if (icon) icon.setAttribute("href", dark ? "#icon-moon" : "#icon-sun");
+        }
+        function savedTheme() { return localStorage.getItem("theme"); }
+        function systemTheme() {
+          return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? "dark" : "light";
+        }
+        switcher.addEventListener("click", () => {
+          const dark = body.classList.contains("dark-mode");
+          const next = dark ? "light" : "dark";
+          setTheme(next);
+          try { localStorage.setItem("theme", next); } catch (_) {}
+        });
+        setTheme(savedTheme() || systemTheme());
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+          if (!savedTheme()) setTheme(e.matches ? "dark" : "light");
+        });
+      }
+
+      function initStickyShadow() {
+        const bar = document.getElementById('summary-bar');
+        const sentinel = document.getElementById('summary-bar-sentinel');
+        if (bar && sentinel && 'IntersectionObserver' in window) {
+          new IntersectionObserver(([entry]) => {
+            bar.classList.toggle('is-stuck', !entry.isIntersecting);
+          }, { threshold: 1 }).observe(sentinel);
+        }
+      }
+
+      function initFilter() {
+        const pills = Array.from(document.querySelectorAll('.summary-bar__pills .pill'));
+        applyFilter = function(severity) {
+          const valid = ['critical', 'high', 'medium', 'low', 'info'];
+          ['filter-critical', 'filter-high', 'filter-medium', 'filter-low', 'filter-info']
+            .forEach(c => body.classList.remove(c));
+          if (severity && valid.indexOf(severity) !== -1) body.classList.add('filter-' + severity);
+          pills.forEach(p => p.setAttribute('aria-pressed', String(p.dataset.filter === (severity || 'all'))));
+          try { localStorage.setItem('report.filter', severity || 'all'); } catch (_) {}
+          updateMatchCount();
+        };
+        pills.forEach(p => p.addEventListener('click', () => {
+          const sev = p.dataset.filter;
+          const current = pills.find(pp => pp.getAttribute('aria-pressed') === 'true')?.dataset.filter || 'all';
+          applyFilter(sev === 'all' || sev === current ? 'all' : sev);
+        }));
+      }
+
+      function initSearch() {
+        searchInput = document.getElementById('search');
+        const searchCount = document.getElementById('search-count');
+        let debounce;
+        applySearch = function(q) {
+          const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
+          findings.forEach(f => {
+            f.hidden = !tokens.every(t => (f.dataset.searchText || '').indexOf(t) !== -1);
+          });
+          try { localStorage.setItem('report.search', q); } catch (_) {}
+          updateMatchCount();
+        };
+        function updateMatchCount() {
+          const visible = findings.filter(f => !f.hidden && f.offsetParent !== null).length;
+          searchCount.textContent = visible === total ? '' : '(' + visible + ' of ' + total + ' visible)';
+        }
+        // expose for filter to call
+        window._updateMatchCount = updateMatchCount;
+        searchInput.addEventListener('input', () => {
+          clearTimeout(debounce);
+          debounce = setTimeout(() => applySearch(searchInput.value), 150);
+        });
+      }
+
       function updateMatchCount() {
-        const visible = findings.filter(f => !f.hidden && f.offsetParent !== null).length;
-        if (visible === total) searchCount.textContent = '';
-        else searchCount.textContent = '(' + visible + ' of ' + total + ' visible)';
+        if (window._updateMatchCount) window._updateMatchCount();
       }
-      searchInput.addEventListener('input', () => {
-        clearTimeout(searchDebounce);
-        searchDebounce = setTimeout(() => applySearch(searchInput.value), 150);
-      });
 
-      // Expand / collapse all
-      const toggleAllBtn = document.getElementById('toggle-all');
-      function syncToggleLabel() {
-        const anyOpen = findings.some(f => f.open);
-        toggleAllBtn.textContent = anyOpen ? 'Collapse all' : 'Expand all';
+      function initToggleAll() {
+        const btn = document.getElementById('toggle-all');
+        syncToggleLabel = function() {
+          btn.textContent = findings.some(f => f.open) ? 'Collapse all' : 'Expand all';
+        };
+        btn.addEventListener('click', () => {
+          const anyOpen = findings.some(f => f.open);
+          findings.forEach(f => { f.open = !anyOpen; });
+          try { localStorage.setItem('report.expandAll', String(!anyOpen)); } catch (_) {}
+          syncToggleLabel();
+        });
+        findings.forEach(f => f.addEventListener('toggle', syncToggleLabel));
       }
-      toggleAllBtn.addEventListener('click', () => {
-        const anyOpen = findings.some(f => f.open);
-        findings.forEach(f => { f.open = !anyOpen; });
-        try { localStorage.setItem('report.expandAll', String(!anyOpen)); } catch (_) {}
-        syncToggleLabel();
-      });
-      findings.forEach(f => f.addEventListener('toggle', syncToggleLabel));
 
-      // TOC drawer
-      const tocBtn = document.getElementById('toggle-toc');
-      const tocNav = document.getElementById('toc');
-      function setTocOpen(open) {
-        tocBtn.setAttribute('aria-pressed', String(open));
-        tocBtn.textContent = open ? 'Hide outline' : 'Show outline';
-        tocNav.hidden = !open;
-        try { localStorage.setItem('report.toc', String(open)); } catch (_) {}
+      function initToc() {
+        tocBtn = document.getElementById('toggle-toc');
+        const tocNav = document.getElementById('toc');
+        setTocOpen = function(open) {
+          tocBtn.setAttribute('aria-pressed', String(open));
+          tocBtn.textContent = open ? 'Hide outline' : 'Show outline';
+          tocNav.hidden = !open;
+          try { localStorage.setItem('report.toc', String(open)); } catch (_) {}
+        };
+        tocBtn.addEventListener('click', () => setTocOpen(tocBtn.getAttribute('aria-pressed') !== 'true'));
+        tocNav.addEventListener('click', e => {
+          const link = e.target.closest('a[href^="#issue-"]');
+          if (!link) return;
+          const target = document.getElementById(link.getAttribute('href').slice(1));
+          if (target) target.open = true;
+        });
       }
-      tocBtn.addEventListener('click', () => {
-        setTocOpen(tocBtn.getAttribute('aria-pressed') !== 'true');
-      });
-      tocNav.addEventListener('click', e => {
-        const link = e.target.closest('a[href^="#issue-"]');
-        if (!link) return;
-        const id = link.getAttribute('href').slice(1);
-        const target = document.getElementById(id);
-        if (target) target.open = true;
-      });
 
-      // Copy-to-clipboard handler (delegated)
-      document.addEventListener('click', e => {
-        const btn = e.target.closest('.copy-btn');
-        if (!btn) return;
-        const cl = btn.closest('.finding__df-codeline');
-        const codeEl = cl?.querySelector('.finding__df-code');
-        const text = codeEl?.innerText ?? '';
-        if (navigator.clipboard?.writeText) {
-          navigator.clipboard.writeText(text).then(() => {
+      function initCopy() {
+        document.addEventListener('click', e => {
+          const btn = e.target.closest('.copy-btn');
+          if (!btn) return;
+          const text = btn.closest('.finding__df-codeline')?.querySelector('.finding__df-code')?.innerText ?? '';
+          navigator.clipboard?.writeText(text).then(() => {
             btn.dataset.copied = '1';
             setTimeout(() => { delete btn.dataset.copied; }, 1200);
           }).catch(() => {});
-        }
-      });
-
-      // Help dialog
-      const helpDialog = document.getElementById('help-dialog');
-      function openHelp() { if (helpDialog && !helpDialog.open) helpDialog.showModal(); }
-      function closeHelp() { if (helpDialog?.open) helpDialog.close(); }
-      helpDialog?.addEventListener('click', e => {
-        if (e.target === helpDialog) closeHelp();
-        if (e.target.closest('[data-close-help]')) closeHelp();
-      });
-
-      // j/k navigation across visible findings
-      function visibleFindings() {
-        return findings.filter(f => !f.hidden && f.offsetParent !== null);
-      }
-      function nextFinding(direction) {
-        const list = visibleFindings();
-        if (list.length === 0) return;
-        const stickyOffset = 80; // summary bar + a little headroom
-        const tops = list.map(f => f.getBoundingClientRect().top);
-        let idx = -1;
-        for (let i = 0; i < tops.length; i++) {
-          if (tops[i] >= stickyOffset - 1) { idx = i; break; }
-        }
-        if (idx === -1) idx = list.length - 1;
-        // If the candidate is already nearly at the top, step further.
-        if (direction === 1 && Math.abs(tops[idx] - stickyOffset) < 4 && idx + 1 < list.length) idx++;
-        if (direction === -1) idx = Math.max(0, idx - 1);
-        const target = list[idx];
-        target.open = true;
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
       }
 
-      // Keyboard shortcuts
-      document.addEventListener('keydown', e => {
-        if (e.ctrlKey || e.metaKey || e.altKey) return;
-        const active = document.activeElement;
-        const inField = active && active.matches('input, textarea, select, [contenteditable="true"]');
-        if (e.key === 'Escape') {
-          if (helpDialog?.open) { closeHelp(); e.preventDefault(); return; }
-          if (active === searchInput && searchInput.value) {
-            searchInput.value = '';
-            applySearch('');
-            e.preventDefault();
+      function initDataflowSwitcher() {
+        document.addEventListener('click', e => {
+          const pill = e.target.closest('[data-dataflow-id]');
+          if (!pill) return;
+          const id = pill.dataset.dataflowId;
+          const head = pill.closest('header');
+          head?.querySelector('.finding__df-id--selected')?.classList.remove('finding__df-id--selected');
+          pill.classList.add('finding__df-id--selected');
+          const block = pill.closest('.finding__df-block');
+          block?.querySelector('.finding__df--selected')?.classList.remove('finding__df--selected');
+          block?.querySelector(`.finding__df--${id}`)?.classList.add('finding__df--selected');
+        });
+      }
+
+      function initHelp() {
+        helpDialog = document.getElementById('help-dialog');
+        function openHelp() { if (helpDialog && !helpDialog.open) helpDialog.showModal(); }
+        function closeHelp() { if (helpDialog?.open) helpDialog.close(); }
+        helpDialog?.addEventListener('click', e => {
+          if (e.target === helpDialog || e.target.closest('[data-close-help]')) closeHelp();
+        });
+        // expose for shortcuts
+        window._openHelp = openHelp;
+        window._closeHelp = closeHelp;
+      }
+
+      function initShortcuts() {
+        function visibleFindings() {
+          return findings.filter(f => !f.hidden && f.offsetParent !== null);
+        }
+        function nextFinding(direction) {
+          const list = visibleFindings();
+          if (!list.length) return;
+          const offset = 80;
+          const tops = list.map(f => f.getBoundingClientRect().top);
+          let idx = tops.findIndex(t => t >= offset - 1);
+          if (idx === -1) idx = list.length - 1;
+          if (direction === 1 && Math.abs(tops[idx] - offset) < 4 && idx + 1 < list.length) idx++;
+          if (direction === -1) idx = Math.max(0, idx - 1);
+          list[idx].open = true;
+          list[idx].scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        document.addEventListener('keydown', e => {
+          if (e.ctrlKey || e.metaKey || e.altKey) return;
+          const active = document.activeElement;
+          const inField = active?.matches('input, textarea, select, [contenteditable="true"]');
+          if (e.key === 'Escape') {
+            if (helpDialog?.open) { window._closeHelp(); e.preventDefault(); return; }
+            if (active === searchInput && searchInput.value) {
+              searchInput.value = ''; applySearch(''); e.preventDefault(); return;
+            }
+            applyFilter('all');
+            if (searchInput.value) { searchInput.value = ''; applySearch(''); }
             return;
           }
-          // Clear filter + search
-          applyFilter('all');
-          if (searchInput.value) { searchInput.value = ''; applySearch(''); }
-          return;
-        }
-        if (inField) return;
-        switch (e.key) {
-          case '/':
-            e.preventDefault();
-            searchInput.focus();
-            searchInput.select();
-            break;
-          case 'j':
-            e.preventDefault();
-            nextFinding(1);
-            break;
-          case 'k':
-            e.preventDefault();
-            nextFinding(-1);
-            break;
-          case 'e':
-            findings.forEach(f => { f.open = true; });
-            syncToggleLabel();
-            try { localStorage.setItem('report.expandAll', 'true'); } catch (_) {}
-            break;
-          case 'c':
-            findings.forEach(f => { f.open = false; });
-            syncToggleLabel();
-            try { localStorage.setItem('report.expandAll', 'false'); } catch (_) {}
-            break;
-          case 't':
-            document.getElementById('btn-theme')?.click();
-            break;
-          case 'o':
-            setTocOpen(tocBtn.getAttribute('aria-pressed') !== 'true');
-            break;
-          case '?':
-            e.preventDefault();
-            if (helpDialog?.open) closeHelp(); else openHelp();
-            break;
-        }
-      });
+          if (inField) return;
+          switch (e.key) {
+            case '/': e.preventDefault(); searchInput.focus(); searchInput.select(); break;
+            case 'j': e.preventDefault(); nextFinding(1); break;
+            case 'k': e.preventDefault(); nextFinding(-1); break;
+            case 'e':
+              findings.forEach(f => { f.open = true; });
+              syncToggleLabel();
+              try { localStorage.setItem('report.expandAll', 'true'); } catch (_) {}
+              break;
+            case 'c':
+              findings.forEach(f => { f.open = false; });
+              syncToggleLabel();
+              try { localStorage.setItem('report.expandAll', 'false'); } catch (_) {}
+              break;
+            case 't': document.getElementById('btn-theme')?.click(); break;
+            case 'o': setTocOpen(tocBtn.getAttribute('aria-pressed') !== 'true'); break;
+            case '?': e.preventDefault(); helpDialog?.open ? window._closeHelp() : window._openHelp(); break;
+          }
+        });
+      }
 
-      // Restore persisted state on load
+      // Boot
+      initScrollUp();
+      initTheme();
+      initStickyShadow();
+      initFilter();
+      initSearch();
+      initToggleAll();
+      initToc();
+      initCopy();
+      initDataflowSwitcher();
+      initHelp();
+      initShortcuts();
+
+      // Restore persisted state
       try {
-        const savedFilter = localStorage.getItem('report.filter');
-        if (savedFilter) applyFilter(savedFilter);
-        const savedSearch = localStorage.getItem('report.search');
-        if (savedSearch) { searchInput.value = savedSearch; applySearch(savedSearch); }
-        const savedToc = localStorage.getItem('report.toc');
-        if (savedToc === 'true') setTocOpen(true);
+        const f = localStorage.getItem('report.filter'); if (f) applyFilter(f);
+        const s = localStorage.getItem('report.search'); if (s) { searchInput.value = s; applySearch(s); }
+        if (localStorage.getItem('report.toc') === 'true') setTocOpen(true);
       } catch (_) {}
       syncToggleLabel();
       updateMatchCount();
-
     });
-  </script>
-
-  <script>
-    function updateSelectedDataflow(event, dataflowId) {
-      const selectedElement = event.target.closest('header').querySelector('.finding__df-id--selected');
-      if (selectedElement) {
-        selectedElement.classList.remove('finding__df-id--selected');
-      }
-      event.target.classList.add('finding__df-id--selected');
-
-      const dataflowContainer = event.target.closest('.finding__df-block');
-      const currentDataflowElement = dataflowContainer.querySelector('.finding__df--selected');
-      if (currentDataflowElement) {
-        currentDataflowElement.classList.remove('finding__df--selected');
-      }
-      const selectedDataflowElement = dataflowContainer.querySelector(`.finding__df--${dataflowId}`);
-      if (selectedDataflowElement) {
-        selectedDataflowElement.classList.add('finding__df--selected');
-      }
-    }
   </script>
 <dialog id="help-dialog" aria-label="Keyboard shortcuts">
   <div class="help-dialog__head">
@@ -1521,10 +1461,8 @@
   <svg aria-hidden="true" width="16" height="16"><use href="#icon-chevron-up"/></svg>
 </button>
 <footer class="report-footer">
-  Scanio Orchestrator 0.3.0
+  <a href="https://github.com/scan-io-git/scan-io" target="_blank" rel="noopener">scan-io-git/scan-io</a>
   <span class="report-footer__sep">·</span>
   Generated {{ .Metadata.Time | formatDateTime }} UTC
-  <span class="report-footer__sep">·</span>
-  <a href="https://github.com/scan-io-git/scan-io" target="_blank" rel="noopener">scan-io-git/scan-io</a>
 </footer>
 </body>
