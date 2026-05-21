@@ -568,7 +568,8 @@
     }
 
     .toc__item a:hover {
-      color: var(--accent-fg);
+      background: color-mix(in oklch, var(--accent-brand) 8%, transparent);
+      border-radius: var(--radius-sm);
       text-decoration: underline;
     }
 
@@ -595,6 +596,10 @@
 
     @media (max-width: 900px) {
       .toc__list { columns: 1; }
+    }
+
+    @media (max-width: 600px) {
+      .search input { min-width: 0; }
     }
 
     /* Filter rules — hide cards whose severity does not match the active filter */
@@ -635,7 +640,7 @@
     }
 
     .report-header__brand:hover .report-header__title {
-      color: var(--accent-fg);
+      color: var(--accent-brand);
     }
 
     .report-header__logo {
@@ -827,13 +832,6 @@
       visibility: visible;
       opacity: 1;
       transform: translateY(0);
-    }
-
-    .scroll-up-button.hide {
-      visibility: hidden;
-      opacity: 0;
-      pointer-events: none;
-      transform: translateY(4px);
     }
 
     /* Copy-to-clipboard button on each code line */
@@ -1213,6 +1211,7 @@
 
       // Shared state exposed to cross-cutting handlers
       let applyFilter, applySearch, syncToggleLabel, setTocOpen, tocBtn, searchInput, helpDialog;
+      let openHelp, closeHelp, _matchCountFn;
 
       function initScrollUp() {
         const btn = document.getElementById("scrollUpButton");
@@ -1297,7 +1296,7 @@
           searchCount.textContent = visible === total ? '' : '(' + visible + ' of ' + total + ' visible)';
         }
         // expose for filter to call
-        window._updateMatchCount = updateMatchCount;
+        _matchCountFn = updateMatchCount;
         searchInput.addEventListener('input', () => {
           clearTimeout(debounce);
           debounce = setTimeout(() => applySearch(searchInput.value), 150);
@@ -1305,7 +1304,7 @@
       }
 
       function updateMatchCount() {
-        if (window._updateMatchCount) window._updateMatchCount();
+        if (_matchCountFn) _matchCountFn();
       }
 
       function initToggleAll() {
@@ -1377,14 +1376,11 @@
 
       function initHelp() {
         helpDialog = document.getElementById('help-dialog');
-        function openHelp() { if (helpDialog && !helpDialog.open) helpDialog.showModal(); }
-        function closeHelp() { if (helpDialog?.open) helpDialog.close(); }
+        openHelp = function() { if (helpDialog && !helpDialog.open) helpDialog.showModal(); };
+        closeHelp = function() { if (helpDialog?.open) helpDialog.close(); };
         helpDialog?.addEventListener('click', e => {
           if (e.target === helpDialog || e.target.closest('[data-close-help]')) closeHelp();
         });
-        // expose for shortcuts
-        window._openHelp = openHelp;
-        window._closeHelp = closeHelp;
       }
 
       function initShortcuts() {
@@ -1408,7 +1404,7 @@
           const active = document.activeElement;
           const inField = active?.matches('input, textarea, select, [contenteditable="true"]');
           if (e.key === 'Escape') {
-            if (helpDialog?.open) { window._closeHelp(); e.preventDefault(); return; }
+            if (helpDialog?.open) { closeHelp(); e.preventDefault(); return; }
             if (active === searchInput && searchInput.value) {
               searchInput.value = ''; applySearch(''); e.preventDefault(); return;
             }
@@ -1433,7 +1429,7 @@
               break;
             case 't': document.getElementById('btn-theme')?.click(); break;
             case 'o': setTocOpen(tocBtn.getAttribute('aria-pressed') !== 'true'); break;
-            case '?': e.preventDefault(); helpDialog?.open ? window._closeHelp() : window._openHelp(); break;
+            case '?': e.preventDefault(); helpDialog?.open ? closeHelp() : openHelp(); break;
           }
         });
       }
