@@ -116,11 +116,11 @@
     }
 
     .finding[open] {
-      box-shadow: 0 1px 0 rgba(31, 35, 40, 0.04);
+      box-shadow: 0 1px 2px rgba(31, 35, 40, 0.06), 0 0 0 1px var(--border-muted);
     }
 
     body.dark-mode .finding[open] {
-      box-shadow: 0 1px 0 rgba(1, 4, 9, 0.4);
+      box-shadow: 0 1px 2px rgba(1, 4, 9, 0.4), 0 0 0 1px var(--border-muted);
     }
 
     .finding__head {
@@ -218,10 +218,10 @@
     body.dark-mode .finding__badge--critical { background: #490202; color: #ff7b72; border-color: #f85149; }
     body.dark-mode .finding__badge--high     { background: #3b1d04; color: #ffa657; border-color: #db6d28; }
     body.dark-mode .finding__badge--medium   { background: #3d2906; color: #e3b341; border-color: #bb8009; }
-    body.dark-mode .finding__badge--low      { background: #161b22; color: #9198a1; border-color: #3d444d; }
+    body.dark-mode .finding__badge--low      { background: #21262d; color: var(--fg-default); border-color: #3d444d; }
     body.dark-mode .finding__badge--info     { background: #051d4d; color: #79c0ff; border-color: #1f6feb; }
     body.dark-mode .finding__badge--unknown,
-    body.dark-mode .finding__badge--note     { background: #161b22; color: #9198a1; border-color: #3d444d; }
+    body.dark-mode .finding__badge--note     { background: #21262d; color: var(--fg-default); border-color: #3d444d; }
     body.dark-mode .finding__badge--warning  { background: #3d2906; color: #e3b341; border-color: #bb8009; }
     body.dark-mode .finding__badge--error    { background: #490202; color: #ff7b72; border-color: #f85149; }
     body.dark-mode .finding__badge--none     { background: #051d4d; color: #79c0ff; border-color: #1f6feb; }
@@ -348,13 +348,17 @@
     }
 
     .finding__df-id:hover {
-      border-color: var(--accent-emphasis);
+      border-color: var(--accent-brand);
     }
 
     .finding__df-id--selected {
-      background-color: var(--accent-emphasis);
+      background-color: var(--accent-brand);
       color: #ffffff;
-      border-color: var(--accent-emphasis);
+      border-color: var(--accent-brand);
+    }
+
+    body.dark-mode .finding__df-id--selected {
+      color: var(--bg-canvas);
     }
 
     .finding__df {
@@ -372,7 +376,7 @@
     }
 
     body.dark-mode .finding__df-highlight {
-      background-color: var(--accent-subtle);
+      background-color: color-mix(in oklch, var(--accent-brand) 22%, transparent);
     }
 
     /* Sticky summary bar (count + filter pills + search + collapse-all) */
@@ -382,11 +386,15 @@
       z-index: 20;
       background: var(--bg-canvas);
       border-bottom: 1px solid var(--border-default);
-      box-shadow: 0 1px 0 rgba(31, 35, 40, 0.04);
+      transition: box-shadow 0.15s;
     }
 
-    body.dark-mode .summary-bar {
-      box-shadow: 0 1px 0 rgba(1, 4, 9, 0.4);
+    .summary-bar.is-stuck {
+      box-shadow: 0 2px 8px rgba(31, 35, 40, 0.1);
+    }
+
+    body.dark-mode .summary-bar.is-stuck {
+      box-shadow: 0 2px 8px rgba(1, 4, 9, 0.5);
     }
 
     .summary-bar__inner {
@@ -443,13 +451,9 @@
     }
 
     .pill[aria-pressed="true"] {
-      background: var(--bg-inset);
-      border-color: var(--fg-muted);
-    }
-
-    body.dark-mode .pill[aria-pressed="true"] {
-      background: var(--bg-inset);
-      border-color: var(--fg-muted);
+      background: color-mix(in oklch, var(--accent-brand) 12%, transparent);
+      border-color: var(--accent-brand);
+      color: var(--accent-brand);
     }
 
     .pill__dot {
@@ -497,8 +501,8 @@
     }
 
     .search:focus-within {
-      border-color: var(--accent-emphasis);
-      box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.2);
+      border-color: var(--accent-brand);
+      box-shadow: 0 0 0 3px var(--focus-ring);
       color: var(--fg-default);
     }
 
@@ -873,6 +877,12 @@
       border-color: #3fb950;
     }
 
+    .copy-btn:focus-visible {
+      opacity: 1;
+      outline: 2px solid var(--accent-brand);
+      outline-offset: 1px;
+    }
+
     .copy-btn svg {
       width: 12px;
       height: 12px;
@@ -1046,6 +1056,7 @@
     <div class="report-header__accent" aria-hidden="true"></div>
   </header>
 
+  <div id="summary-bar-sentinel" aria-hidden="true" style="height:0;overflow:hidden"></div>
   <div id="summary-bar" class="summary-bar">
     <div class="summary-bar__inner">
       <span class="summary-bar__count"><strong>{{index .Metadata.SeverityInfo "total"}}</strong> findings <span id="search-count" class="summary-bar__match" aria-live="polite"></span></span>
@@ -1246,6 +1257,15 @@
           setTheme(newSystemTheme);
         }
       });
+
+      /* ---- Sticky shadow via IntersectionObserver ---- */
+      const summaryBar = document.getElementById('summary-bar');
+      const sentinel = document.getElementById('summary-bar-sentinel');
+      if (summaryBar && sentinel && 'IntersectionObserver' in window) {
+        new IntersectionObserver(([entry]) => {
+          summaryBar.classList.toggle('is-stuck', !entry.isIntersecting);
+        }, { threshold: 1 }).observe(sentinel);
+      }
 
       /* ---- Summary bar: severity filter + search + expand/collapse all ---- */
       const findings = Array.from(document.querySelectorAll('.finding'));
