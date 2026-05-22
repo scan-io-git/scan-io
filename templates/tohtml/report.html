@@ -940,37 +940,99 @@
       color: var(--accent-fg);
     }
 
-    .btn-theme {
-      position: fixed;
-      top: 14px;
-      right: var(--space-4);
-      z-index: var(--z-fab);
+    .header-kebab {
+      position: relative;
+    }
+
+    .header-kebab__btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 28px;
+      width: var(--control-h);
       height: var(--control-h);
       padding: 0;
+      background: none;
       border: 1px solid var(--border-default);
       border-radius: var(--radius-sm);
-      background: var(--bg-canvas);
-      color: var(--fg-muted);
       cursor: pointer;
-      transition: background var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast);
-      box-shadow: var(--shadow-xs), 0 0 0 1px var(--border-muted);
+      color: var(--fg-muted);
+      transition: background var(--motion-fast), color var(--motion-fast);
     }
-
-    .btn-theme:hover {
-      background: var(--bg-subtle);
+    .header-kebab__btn:hover {
+      background: var(--bg-inset);
       color: var(--fg-default);
-      border-color: var(--fg-muted);
     }
 
-    .btn-theme svg {
-      width: 16px;
-      height: 16px;
-      pointer-events: none;
+    .header-kebab__popover {
+      position: absolute;
+      right: 0;
+      top: calc(100% + var(--space-1));
+      min-width: 200px;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      z-index: var(--z-drawer);
+      padding: var(--space-2) 0;
     }
+    .header-kebab__popover[hidden] {
+      display: none;
+    }
+
+    .header-kebab__meta-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-3);
+      font-size: var(--text-sm);
+      color: var(--fg-muted);
+      white-space: nowrap;
+      cursor: default;
+    }
+    .header-kebab__meta-item strong {
+      color: var(--fg-default);
+      font-weight: 600;
+    }
+    .header-kebab__meta-item a {
+      color: var(--accent-fg);
+      text-decoration: none;
+    }
+    .header-kebab__meta-item a:hover {
+      text-decoration: underline;
+    }
+    .header-kebab__meta-item code {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: var(--text-xs);
+    }
+
+    .header-kebab__divider {
+      height: 1px;
+      margin: var(--space-1) 0;
+      background: var(--border-default);
+    }
+
+    .header-kebab__theme-btn {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      width: 100%;
+      padding: var(--space-2) var(--space-3);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: var(--text-sm);
+      font-family: inherit;
+      color: var(--fg-default);
+      text-align: left;
+    }
+    .header-kebab__theme-btn:hover {
+      background: var(--bg-inset);
+    }
+    .header-kebab__theme-label { flex: 1; }
+
+    /* sun/moon visibility controlled by data-theme */
+    [data-theme="dark"] .header-kebab .icon--sun { display: none; }
+    :not([data-theme="dark"]) .header-kebab .icon--moon { display: none; }
 
     .report-footer {
       background: var(--bg-subtle);
@@ -1154,7 +1216,8 @@
 
     .pill:focus-visible,
     .btn:focus-visible,
-    .btn-theme:focus-visible,
+    .header-kebab__btn:focus-visible,
+    .header-kebab__theme-btn:focus-visible,
     .scroll-up-button:focus-visible,
     .help-dialog__close:focus-visible,
     .finding__df-id:focus-visible {
@@ -1251,7 +1314,7 @@
       .summary-bar,
       .toc-drawer,
       .toc-reopen,
-      .btn-theme,
+      .header-kebab,
       .scroll-up-button,
       .copy-btn,
       .copy-all-btn,
@@ -1403,19 +1466,31 @@
         <span class="report-header__title">Scanio Report</span>
       </a>
 
-      <div class="report-header__meta">
-        <span class="report-header__pill"><strong>Tool</strong> {{ .Metadata.ToolMetadata.Name }}{{if .Metadata.ToolMetadata.Version}} {{ .Metadata.ToolMetadata.Version }}{{end}}</span>
-        {{if $repo}}<span class="report-header__pill"><strong>Repo</strong> <a href="{{ $webURL }}">{{ $repo }}</a></span>{{end}}
-        {{if $branch}}<span class="report-header__pill"><strong>Branch</strong> {{if $branchURL}}<a href="{{- $branchURL -}}">{{ $branch }}</a>{{else}}{{ $branch }}{{end}}</span>{{end}}
-        {{if $commit}}<span class="report-header__pill"><strong>Commit</strong> {{if $commitURL}}<a href="{{- $commitURL -}}"><code>{{ slice $commit 0 7 }}</code></a>{{else}}<code>{{ slice $commit 0 7 }}</code>{{end}}</span>{{end}}
-        <span class="report-header__pill"><strong>Generated</strong> {{ .Metadata.Time | formatDateTime }} UTC</span>
-        {{if .Metadata.SourceFolder}}<span class="report-header__pill" title="{{ .Metadata.SourceFolder }}"><strong>Source</strong> <code>{{ .Metadata.SourceFolder }}</code></span>{{end}}
-        {{if .Metadata.RepositoryMetadata.Subfolder}}<span class="report-header__pill"><strong>Subfolder</strong> <code>{{ .Metadata.RepositoryMetadata.Subfolder }}</code></span>{{end}}
+      <div class="header-kebab" style="margin-left:auto">
+        <button class="header-kebab__btn" id="header-kebab-btn"
+                aria-label="Report info and theme" aria-expanded="false" aria-haspopup="true"
+                title="Report info and theme">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+            <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+          </svg>
+        </button>
+        <div class="header-kebab__popover" id="header-kebab-popover" role="menu" aria-labelledby="header-kebab-btn" hidden>
+          <div class="header-kebab__meta-item" role="menuitem"><strong>Tool</strong>&nbsp;{{ .Metadata.ToolMetadata.Name }}{{if .Metadata.ToolMetadata.Version}} {{ .Metadata.ToolMetadata.Version }}{{end}}</div>
+          {{if $repo}}<div class="header-kebab__meta-item" role="menuitem"><strong>Repo</strong>&nbsp;<a href="{{ $webURL }}">{{ $repo }}</a></div>{{end}}
+          {{if $branch}}<div class="header-kebab__meta-item" role="menuitem"><strong>Branch</strong>&nbsp;{{if $branchURL}}<a href="{{- $branchURL -}}">{{ $branch }}</a>{{else}}{{ $branch }}{{end}}</div>{{end}}
+          {{if $commit}}<div class="header-kebab__meta-item" role="menuitem"><strong>Commit</strong>&nbsp;{{if $commitURL}}<a href="{{- $commitURL -}}"><code>{{ slice $commit 0 7 }}</code></a>{{else}}<code>{{ slice $commit 0 7 }}</code>{{end}}</div>{{end}}
+          <div class="header-kebab__meta-item" role="menuitem"><strong>Generated</strong>&nbsp;{{ .Metadata.Time | formatDateTime }} UTC</div>
+          {{if .Metadata.SourceFolder}}<div class="header-kebab__meta-item" role="menuitem" title="{{ .Metadata.SourceFolder }}"><strong>Source</strong>&nbsp;<code>{{ .Metadata.SourceFolder }}</code></div>{{end}}
+          {{if .Metadata.RepositoryMetadata.Subfolder}}<div class="header-kebab__meta-item" role="menuitem"><strong>Subfolder</strong>&nbsp;<code>{{ .Metadata.RepositoryMetadata.Subfolder }}</code></div>{{end}}
+          <div class="header-kebab__divider"></div>
+          <button class="header-kebab__theme-btn" id="kebab-theme-btn" role="menuitem"
+                  aria-label="Toggle theme">
+            <svg class="icon icon--sun" aria-hidden="true" width="14" height="14"><use href="#tb-sun"/></svg>
+            <svg class="icon icon--moon" aria-hidden="true" width="14" height="14"><use href="#tb-moon"/></svg>
+            <span class="header-kebab__theme-label">Toggle theme</span>
+          </button>
+        </div>
       </div>
-
-      <button class="btn-theme" id="btn-theme" aria-label="Switch theme" title="Toggle light / dark theme (t)">
-        <svg aria-hidden="true" width="16" height="16"><use id="btn-theme-icon" href="#tb-sun"/></svg>
-      </button>
     </div>
     <div class="report-header__accent" aria-hidden="true"></div>
   </header>
@@ -1599,42 +1674,41 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         btn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
       }
 
-      function initTheme() {
-        const switcher = document.getElementById("btn-theme");
-        const icon = document.getElementById("btn-theme-icon");
-        function setTheme(mode, animated) {
-          const dark = mode === "dark";
-          const apply = () => {
-            if (dark) {
-              document.documentElement.setAttribute('data-theme', 'dark');
-            } else {
-              document.documentElement.removeAttribute('data-theme');
-            }
-            if (icon) icon.setAttribute("href", dark ? "#tb-moon" : "#tb-sun");
-            document.documentElement.style.setProperty(
-              "--backdrop-bg",
-              dark ? "rgba(1,4,9,0.6)" : "rgba(31,35,40,0.35)"
-            );
-          };
-          if (animated && document.startViewTransition) {
-            document.startViewTransition(apply);
+      function applyTheme(mode, animated) {
+        const dark = mode === "dark";
+        const apply = () => {
+          if (dark) {
+            document.documentElement.setAttribute('data-theme', 'dark');
           } else {
-            apply();
+            document.documentElement.removeAttribute('data-theme');
           }
+          document.documentElement.style.setProperty(
+            "--backdrop-bg",
+            dark ? "rgba(1,4,9,0.6)" : "rgba(31,35,40,0.35)"
+          );
+        };
+        if (animated && document.startViewTransition) {
+          document.startViewTransition(apply);
+        } else {
+          apply();
         }
+      }
+
+      function toggleTheme(animated) {
+        const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const next = dark ? "light" : "dark";
+        applyTheme(next, animated);
+        try { localStorage.setItem("theme", next); } catch (_) {}
+      }
+
+      function initTheme() {
         function savedTheme() { return localStorage.getItem("theme"); }
         function systemTheme() {
           return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? "dark" : "light";
         }
-        switcher.addEventListener("click", () => {
-          const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-          const next = dark ? "light" : "dark";
-          setTheme(next, true);
-          try { localStorage.setItem("theme", next); } catch (_) {}
-        });
-        setTheme(savedTheme() || systemTheme(), false);
+        applyTheme(savedTheme() || systemTheme(), false);
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-          if (!savedTheme()) setTheme(e.matches ? "dark" : "light", true);
+          if (!savedTheme()) applyTheme(e.matches ? "dark" : "light", true);
         });
       }
 
@@ -1949,7 +2023,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
               syncToggleLabel();
               try { localStorage.setItem('report.expandAll', 'false'); } catch (_) {}
               break;
-            case 't': document.getElementById('btn-theme')?.click(); break;
+            case 't': toggleTheme(true); break;
             case 'o': setTocOpen(document.getElementById('toc-drawer').hidden); break;
             case '?': e.preventDefault(); helpDialog?.open ? closeHelp() : openHelp(); break;
           }
@@ -1982,9 +2056,47 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         });
       }
 
+      function initKebab() {
+        const btn = document.getElementById('header-kebab-btn');
+        const popover = document.getElementById('header-kebab-popover');
+        if (!btn || !popover) return;
+
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isOpen = !popover.hidden;
+          popover.hidden = isOpen;
+          btn.setAttribute('aria-expanded', String(!isOpen));
+        });
+
+        document.addEventListener('click', () => {
+          if (!popover.hidden) {
+            popover.hidden = true;
+            btn.setAttribute('aria-expanded', 'false');
+          }
+        });
+
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && !popover.hidden) {
+            popover.hidden = true;
+            btn.setAttribute('aria-expanded', 'false');
+            btn.focus();
+          }
+        });
+
+        const themeBtn = document.getElementById('kebab-theme-btn');
+        if (themeBtn) {
+          themeBtn.addEventListener('click', () => {
+            toggleTheme(true);
+            popover.hidden = true;
+            btn.setAttribute('aria-expanded', 'false');
+          });
+        }
+      }
+
       // Boot
       initScrollUp();
       initTheme();
+      initKebab();
       initStickyShadow();
       initFilter();
       initSearch();
