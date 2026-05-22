@@ -16,7 +16,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>{{ .Metadata.Title }}</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='4' fill='%2331bc81'/><text x='8' y='12' font-family='system-ui,sans-serif' font-size='11' font-weight='700' text-anchor='middle' fill='white'>S</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='4' fill='%230f7a51'/><text x='8' y='12' font-family='system-ui,sans-serif' font-size='11' font-weight='700' text-anchor='middle' fill='white'>S</text></svg>">
   <base target="_blank">
 
   <style type="text/css">
@@ -48,8 +48,8 @@
       --accent-subtle-dark: #051d4d;
 
       /* Scanio brand */
-      --brand-green: #31bc81;
-      --brand-green-dark: #3fb950;
+      --brand-green: #0f7a51;
+      --brand-green-dark: #3ddc8e;
 
       /* Dialog backdrop */
       --backdrop-bg: rgba(31, 35, 40, 0.35);
@@ -402,12 +402,8 @@
 
     .finding__df-highlight {
       border-radius: 3px;
-      background-color: var(--accent-subtle);
+      background-color: color-mix(in oklch, var(--accent-brand) 18%, transparent);
       padding: 1px 2px;
-    }
-
-    [data-theme="dark"] .finding__df-highlight {
-      background-color: color-mix(in oklch, var(--accent-brand) 22%, transparent);
     }
 
     /* Sticky summary bar (count + filter pills + search + collapse-all) */
@@ -699,7 +695,7 @@
     }
     .tv-tr[href]:hover { background: var(--bg-subtle); cursor: pointer; }
     .tv-tr[href]:focus-visible { outline: 2px solid var(--accent-brand); outline-offset: -2px; }
-    .tv-tr[aria-current="true"] { background: var(--accent-subtle); }
+    .tv-tr[aria-current="true"] { background: color-mix(in oklch, var(--accent-brand) 12%, var(--bg-canvas)); border-left: 2px solid var(--accent-brand); }
 
     /* Depth indentation */
     .tv-d0 { padding-left: 8px;  padding-right: 8px; }
@@ -832,7 +828,7 @@
       width: 32px;
       height: 32px;
       border-radius: 6px;
-      background: var(--brand-green);
+      background: var(--accent-brand);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -901,7 +897,7 @@
 
     .report-header__accent {
       height: 2px;
-      background: var(--brand-green);
+      background: var(--accent-brand);
     }
 
     @container (max-width: 720px) {
@@ -961,7 +957,7 @@
 
     .report-footer__accent {
       height: 2px;
-      background: color-mix(in srgb, var(--brand-green) 20%, transparent);
+      background: color-mix(in srgb, var(--accent-brand) 20%, transparent);
     }
 
     .report-footer__inner {
@@ -1084,13 +1080,8 @@
 
     .copy-btn[data-copied="1"] {
       opacity: 1 !important;
-      color: #1a7f37;
-      border-color: #1a7f37;
-    }
-
-    [data-theme="dark"] .copy-btn[data-copied="1"] {
-      color: #3fb950;
-      border-color: #3fb950;
+      color: var(--accent-brand);
+      border-color: var(--accent-brand);
     }
 
     .copy-btn:focus-visible {
