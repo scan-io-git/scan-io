@@ -544,60 +544,213 @@
       background: var(--bg-subtle);
     }
 
-    /* Table of contents drawer */
-    .toc {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 12px 16px;
+    /* ─── Outline layout: sidebar + main ─── */
+    .outline-layout {
+      display: flex;
+      align-items: flex-start;
+      width: 100%;
+    }
+
+    .toc-drawer {
+      width: 272px;
+      min-width: 272px;
+      flex: 0 0 272px;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 60px;
+      max-height: calc(100vh - 72px);
+      overflow: hidden;
+      margin: var(--space-4) 0 var(--space-4) var(--space-4);
+    }
+
+    /* Reopen strip — shown when drawer is hidden */
+    .toc-reopen {
+      flex: 0 0 24px;
+      width: 24px;
+      position: sticky;
+      top: 60px;
+      max-height: calc(100vh - 72px);
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      margin: var(--space-4) 0 var(--space-4) var(--space-4);
+      padding: var(--space-2) 0 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      color: var(--fg-muted);
+      transition: background var(--motion-fast);
+    }
+    .toc-reopen:hover { background: var(--bg-subtle); color: var(--fg-default); }
+    .toc-reopen__accent {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 2px;
+      background: var(--accent-brand);
+      border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    }
+
+    .toc-drawer__title {
+      padding: 7px 12px;
       border-bottom: 1px solid var(--border-default);
       background: var(--bg-subtle);
-    }
-
-    .toc__list {
-      columns: 2;
-      column-gap: 24px;
-      padding: 0;
-      margin: 0;
-      list-style: none;
-      font-size: 13px;
-    }
-
-    .toc__item {
-      break-inside: avoid;
-      padding: 3px 0;
-    }
-
-    .toc__item a {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--fg-muted);
       display: flex;
-      gap: 8px;
-      align-items: baseline;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .toc-drawer__close {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px; height: 20px;
+      border: none;
+      background: transparent;
+      color: var(--fg-muted);
+      cursor: pointer;
+      border-radius: 4px;
+      padding: 0;
+      transition: background var(--motion-fast), color var(--motion-fast);
+    }
+    .toc-drawer__close:hover { background: var(--bg-inset); color: var(--fg-default); }
+
+    .toc-grouping {
+      display: flex;
+      border-bottom: 1px solid var(--border-default);
+    }
+
+    .toc-grp-btn {
+      flex: 1;
+      padding: 5px var(--space-2);
+      border: none;
+      border-right: 1px solid var(--border-default);
+      background: var(--bg-subtle);
+      color: var(--fg-muted);
+      cursor: pointer;
+      font-size: 11px;
+      font-family: inherit;
+      transition: background var(--motion-fast), color var(--motion-fast);
+    }
+    .toc-grp-btn:last-child { border-right: none; }
+
+    .toc-grp-btn[aria-pressed="true"] {
+      background: var(--bg-canvas);
       color: var(--fg-default);
+      font-weight: 600;
+    }
+
+    .toc-tree {
+      overflow-y: auto;
+      flex: 1 1 auto;
+      padding: 4px 0;
+    }
+
+    /* ─── Tree rows ─── */
+    .tv-tr {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      height: 28px;
+      font-size: 13px;
+      color: var(--fg-default);
+      white-space: nowrap;
+      overflow: hidden;
       text-decoration: none;
     }
+    .tv-tr[href]:hover { background: var(--bg-subtle); cursor: pointer; }
+    .tv-tr[href]:focus-visible { outline: 2px solid var(--accent-brand); outline-offset: -2px; }
+    .tv-tr[aria-current="true"] { background: var(--accent-subtle); }
 
-    .toc__item a:hover {
-      background: color-mix(in oklch, var(--accent-brand) 8%, transparent);
-      border-radius: var(--radius-sm);
-      text-decoration: underline;
+    /* Depth indentation */
+    .tv-d0 { padding-left: 8px;  padding-right: 8px; }
+    .tv-d1 { padding-left: 20px; padding-right: 8px; }
+    .tv-d2 { padding-left: 32px; padding-right: 8px; }
+
+    /* Chevron */
+    .tv-ch {
+      flex: 0 0 12px; width: 12px; height: 12px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--fg-muted);
+    }
+    .tv-ch svg { width: 10px; height: 10px; transform: rotate(90deg); }
+    .tv-ch--leaf { visibility: hidden; }
+
+    /* Icon (file) */
+    .tv-ti {
+      flex: 0 0 14px; width: 14px; height: 14px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--fg-muted);
+    }
+    .tv-ti svg { width: 13px; height: 13px; }
+
+    /* Label */
+    .tv-tl { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
+    .tv-tl--mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 11px; }
+
+    /* Line sub-label */
+    .tv-ls {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 11px;
+      color: var(--fg-muted);
+      margin-left: 2px;
     }
 
-    .toc__dot {
-      width: 8px;
-      height: 8px;
+    /* Count badge */
+    .tv-tc {
+      flex: 0 0 auto;
+      font-size: 11px;
+      font-weight: 500;
+      background: var(--bg-inset);
+      color: var(--fg-muted);
+      border-radius: var(--radius-pill);
+      padding: 1px 6px;
+      min-width: 20px;
+      text-align: center;
+    }
+
+    /* Severity dot */
+    .tv-dot {
+      flex: 0 0 7px; width: 7px; height: 7px;
       border-radius: 50%;
       background: var(--fg-muted);
-      flex: 0 0 8px;
-      transform: translateY(2px);
     }
+    .tv-dot--critical { background: var(--sev-critical-dot); }
+    .tv-dot--high     { background: var(--sev-high-dot); }
+    .tv-dot--medium   { background: var(--sev-medium-dot); }
+    .tv-dot--low      { background: var(--sev-low-dot); }
+    .tv-dot--info     { background: var(--sev-info-dot); }
 
-    .toc__item--critical .toc__dot { background: var(--sev-critical-dot); }
-    .toc__item--high     .toc__dot { background: var(--sev-high-dot); }
-    .toc__item--medium   .toc__dot { background: var(--sev-medium-dot); }
-    .toc__item--low      .toc__dot { background: var(--sev-low-dot); }
-    .toc__item--info     .toc__dot { background: var(--sev-info-dot); }
+    /* Separator between rule groups */
+    .tv-sep { height: 1px; background: var(--border-muted); margin: 4px 0; }
+
+    /* Collapsible group headers */
+    .tv-tr.tv-d0, .tv-tr.tv-d1[data-grp-id] { cursor: pointer; user-select: none; }
+    .tv-tr.tv-d0:hover, .tv-tr.tv-d1[data-grp-id]:hover { background: var(--bg-subtle); }
+    .tv-ch svg { transition: transform var(--motion-fast) var(--motion-ease); }
+    .tv-tr[data-collapsed="true"] .tv-ch svg { transform: rotate(0deg); }
 
     @media (max-width: 900px) {
-      .toc__list { columns: 1; }
+      .toc-drawer {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        max-height: 100vh;
+        margin: 0;
+        border-radius: 0;
+        z-index: 150;
+        box-shadow: 4px 0 16px rgba(0,0,0,0.15);
+      }
     }
 
     @media (max-width: 600px) {
@@ -888,7 +1041,7 @@
     .btn-theme:focus-visible,
     .scroll-up-button:focus-visible,
     .help-dialog__close:focus-visible,
-    .toc__item a:focus-visible,
+    .tv-tr[href]:focus-visible,
     .finding__df-id:focus-visible {
       outline: 2px solid var(--accent-brand);
       outline-offset: 2px;
@@ -981,7 +1134,8 @@
 
     @media print {
       .summary-bar,
-      .toc,
+      .toc-drawer,
+      .toc-reopen,
       .btn-theme,
       .scroll-up-button,
       .copy-btn,
@@ -1044,6 +1198,12 @@
     <symbol id="icon-moon" viewBox="0 0 16 16">
       <path fill="currentColor" d="M9.598 1.591a.749.749 0 0 1 .785-.175 7.001 7.001 0 1 1-8.967 8.967.75.75 0 0 1 .961-.96 5.5 5.5 0 0 0 7.046-7.046.75.75 0 0 1 .175-.786Zm1.616 1.945a7 7 0 0 1-7.678 7.678 5.499 5.499 0 1 0 7.678-7.678Z"/>
     </symbol>
+    <symbol id="icon-chev-right" viewBox="0 0 16 16">
+      <path fill="currentColor" d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/>
+    </symbol>
+    <symbol id="icon-file" viewBox="0 0 16 16">
+      <path fill="currentColor" d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 9 4.25V1.5Zm6.75.062V4.25c0 .138.112.25.25.25h2.688l-.011-.013-2.914-2.914-.013-.011Z"/>
+    </symbol>
   </svg>
   <header class="report-header">
     <div class="report-header__inner">
@@ -1093,21 +1253,32 @@
           <input id="search" type="search" placeholder="Filter findings..." aria-label="Search findings" autocomplete="off">
         </label>
         <button id="toggle-all" class="btn btn--ghost" type="button">Collapse all</button>
-        <button id="toggle-toc" class="btn btn--ghost" type="button" aria-pressed="false" aria-controls="toc">Show outline</button>
       </div>
     </div>
   </div>
 
-  <nav id="toc" class="toc" hidden aria-label="Findings outline">
-    <ol class="toc__list">
-      {{range .Report.Runs}}
-      {{range $i, $r := .Results}}
-      {{ $sev := index .Properties "Severity" }}
-      <li class="toc__item toc__item--{{$sev}}"><a href="#issue-{{$i}}" target="_self"><span class="toc__dot"></span>{{index .Properties "Title"}}</a></li>
-      {{end}}
-      {{end}}
-    </ol>
-  </nav>
+  <div class="outline-layout">
+  <button class="toc-reopen" id="toc-reopen" type="button" aria-label="Show findings panel" hidden>
+    <span class="toc-reopen__accent"></span>
+    <svg width="12" height="12" aria-hidden="true"><use href="#icon-chev-right"/></svg>
+  </button>
+  <aside id="toc-drawer" class="toc-drawer" aria-label="Findings outline">
+    <div class="toc-drawer__title">
+      <span>Findings</span>
+      <div style="display:flex;align-items:center;gap:4px">
+        <span class="tv-tc">{{index .Metadata.SeverityInfo "total"}}</span>
+        <button class="toc-drawer__close" id="toc-close" type="button" aria-label="Hide findings panel" title="Hide (o)">
+          <svg width="14" height="14" aria-hidden="true"><use href="#icon-x"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="toc-grouping" role="group" aria-label="Group findings by">
+      <button class="toc-grp-btn" data-grp="sev-file" aria-pressed="true"  type="button">By severity</button>
+      <button class="toc-grp-btn" data-grp="rule"     aria-pressed="false" type="button">By rule</button>
+    </div>
+    <div class="toc-tree" id="toc-by-sev"  aria-label="Findings by severity and file"></div>
+    <div class="toc-tree" id="toc-by-rule" aria-label="Findings by rule" hidden></div>
+  </aside>
 
   <div class="main-container">
     {{range .Report.Runs}}
@@ -1195,6 +1366,7 @@
     </div>
     {{end}}
   </div>
+  </div><!-- /.outline-layout -->
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -1211,7 +1383,7 @@
       });
 
       // Shared state exposed to cross-cutting handlers
-      let applyFilter, applySearch, syncToggleLabel, setTocOpen, tocBtn, searchInput, helpDialog;
+      let applyFilter, applySearch, syncToggleLabel, setTocOpen, searchInput, helpDialog;
       let openHelp, closeHelp, _matchCountFn;
 
       function initScrollUp() {
@@ -1230,14 +1402,14 @@
       function initTheme() {
         const switcher = document.getElementById("btn-theme");
         const icon = document.getElementById("btn-theme-icon");
-        function setTheme(mode) {
+        function setTheme(mode, animated) {
           const dark = mode === "dark";
           const apply = () => {
             body.classList.toggle("dark-mode", dark);
             body.classList.toggle("light-mode", !dark);
             if (icon) icon.setAttribute("href", dark ? "#icon-moon" : "#icon-sun");
           };
-          if (document.startViewTransition) {
+          if (animated && document.startViewTransition) {
             document.startViewTransition(apply);
           } else {
             apply();
@@ -1250,12 +1422,12 @@
         switcher.addEventListener("click", () => {
           const dark = body.classList.contains("dark-mode");
           const next = dark ? "light" : "dark";
-          setTheme(next);
+          setTheme(next, true);
           try { localStorage.setItem("theme", next); } catch (_) {}
         });
-        setTheme(savedTheme() || systemTheme());
+        setTheme(savedTheme() || systemTheme(), false);
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-          if (!savedTheme()) setTheme(e.matches ? "dark" : "light");
+          if (!savedTheme()) setTheme(e.matches ? "dark" : "light", true);
         });
       }
 
@@ -1334,21 +1506,137 @@
       }
 
       function initToc() {
-        tocBtn = document.getElementById('toggle-toc');
-        const tocNav = document.getElementById('toc');
+        const drawer    = document.getElementById('toc-drawer');
+        const reopenBtn = document.getElementById('toc-reopen');
+        const closeBtn  = document.getElementById('toc-close');
+        const treeSev   = document.getElementById('toc-by-sev');
+        const treeRule  = document.getElementById('toc-by-rule');
+        const grpBtns   = Array.from(drawer.querySelectorAll('.toc-grp-btn'));
+
+        const data = findings.map((f, i) => ({
+          id: 'issue-' + i,
+          sev: f.dataset.severity || 'unknown',
+          title: f.querySelector('.finding__title')?.textContent.trim() || '',
+          file: f.querySelector('.finding__path')?.textContent.trim() || '',
+          line: (f.querySelector('.finding__line')?.textContent || '').replace(/^:/, '')
+        }));
+
+        const SEV_ORDER = ['critical','high','medium','low','info','unknown'];
+        const chev = '<span class="tv-ch"><svg aria-hidden="true"><use href="#icon-chev-right"/></svg></span>';
+        const chevLeaf = '<span class="tv-ch tv-ch--leaf" aria-hidden="true"></span>';
+        const fileIcon = '<span class="tv-ti"><svg aria-hidden="true"><use href="#icon-file"/></svg></span>';
+        function dot(sev) { return '<span class="tv-dot tv-dot--' + sev + '" aria-hidden="true"></span>'; }
+        function esc(s) { return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+        function buildSevTree() {
+          let html = '';
+          SEV_ORDER.forEach(sev => {
+            const items = data.filter(d => d.sev === sev);
+            if (!items.length) return;
+            const capSev = sev.charAt(0).toUpperCase() + sev.slice(1);
+            const sevId = 'sg-' + sev;
+            html += '<div class="tv-tr tv-d0" data-grp-id="' + sevId + '">' +
+              chev + dot(sev) +
+              '<span class="tv-tl">' + capSev + '</span>' +
+              '<span class="tv-tc">' + items.length + '</span></div>';
+            const files = [...new Set(items.map(d => d.file))];
+            files.forEach((file, fi) => {
+              const basename = file.split('/').pop();
+              const fileItems = items.filter(d => d.file === file);
+              const fileId = sevId + '-f' + fi;
+              html += '<div class="tv-tr tv-d1" data-grp-parent="' + sevId + '" data-grp-id="' + fileId + '">' +
+                chev + fileIcon +
+                '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
+                '<span class="tv-tc">' + fileItems.length + '</span></div>';
+              fileItems.forEach(d => {
+                html += '<a class="tv-tr tv-d2" href="#' + d.id + '" target="_self" title="' + esc(d.title) + '" data-grp-parent="' + fileId + ' ' + sevId + '">' +
+                  chevLeaf + dot(d.sev) +
+                  '<span class="tv-tl">' + esc(d.title) + '<span class="tv-ls">:' + esc(d.line) + '</span></span></a>';
+              });
+            });
+          });
+          return html;
+        }
+
+        function buildRuleTree() {
+          let html = '';
+          const rules = [...new Set(data.map(d => d.title))].sort();
+          rules.forEach((rule, ri) => {
+            const items = data.filter(d => d.title === rule);
+            const sev = items[0].sev;
+            const ruleId = 'rg-' + ri;
+            if (ri > 0) html += '<div class="tv-sep"></div>';
+            html += '<div class="tv-tr tv-d0" data-grp-id="' + ruleId + '">' +
+              chev + dot(sev) +
+              '<span class="tv-tl">' + esc(rule) + '</span>' +
+              '<span class="tv-tc">' + items.length + '</span></div>';
+            items.forEach(d => {
+              const basename = d.file.split('/').pop();
+              html += '<a class="tv-tr tv-d1" href="#' + d.id + '" target="_self" title="' + esc(d.file) + ' line ' + esc(d.line) + '" data-grp-parent="' + ruleId + '">' +
+                chevLeaf + fileIcon +
+                '<span class="tv-tl">' + esc(basename) + '<span class="tv-ls">:' + esc(d.line) + '</span></span></a>';
+            });
+          });
+          return html;
+        }
+
+        treeSev.innerHTML  = buildSevTree();
+        treeRule.innerHTML = buildRuleTree();
+
+        // Group collapse: click d0 (or d1 with data-grp-id) to toggle children
+        function toggleGroup(header) {
+          const id = header.dataset.grpId;
+          const collapsed = header.dataset.collapsed === 'true';
+          header.dataset.collapsed = String(!collapsed);
+          const tree = header.closest('.toc-tree');
+          tree.querySelectorAll('[data-grp-parent]').forEach(el => {
+            const parents = el.dataset.grpParent.split(' ');
+            if (parents.includes(id)) el.hidden = !collapsed;
+          });
+        }
+        [treeSev, treeRule].forEach(tree => {
+          tree.addEventListener('click', e => {
+            const hdr = e.target.closest('[data-grp-id]');
+            if (!hdr || e.target.closest('a')) return;
+            toggleGroup(hdr);
+          });
+        });
+
+        function setGrouping(grp) {
+          grpBtns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.grp === grp)));
+          treeSev.hidden  = grp !== 'sev-file';
+          treeRule.hidden = grp !== 'rule';
+          try { localStorage.setItem('report.toc.grouping', grp); } catch(_) {}
+        }
+        grpBtns.forEach(b => b.addEventListener('click', () => setGrouping(b.dataset.grp)));
+        const savedGrp = localStorage.getItem('report.toc.grouping') || 'sev-file';
+        setGrouping(savedGrp);
+
         setTocOpen = function(open) {
-          tocBtn.setAttribute('aria-pressed', String(open));
-          tocBtn.textContent = open ? 'Hide outline' : 'Show outline';
-          tocNav.hidden = !open;
+          drawer.hidden  = !open;
+          reopenBtn.hidden = open;
           try { localStorage.setItem('report.toc', String(open)); } catch (_) {}
         };
-        tocBtn.addEventListener('click', () => setTocOpen(tocBtn.getAttribute('aria-pressed') !== 'true'));
-        tocNav.addEventListener('click', e => {
+        closeBtn.addEventListener('click', () => setTocOpen(false));
+        reopenBtn.addEventListener('click', () => setTocOpen(true));
+
+        // Leaf link: expand finding + scroll, no new tab
+        drawer.addEventListener('click', e => {
           const link = e.target.closest('a[href^="#issue-"]');
           if (!link) return;
-          const target = document.getElementById(link.getAttribute('href').slice(1));
-          if (target) target.open = true;
+          e.preventDefault();
+          const id = link.getAttribute('href').slice(1);
+          const target = document.getElementById(id);
+          if (!target) return;
+          target.open = true;
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          drawer.querySelectorAll('a[aria-current]').forEach(a => a.removeAttribute('aria-current'));
+          link.setAttribute('aria-current', 'true');
         });
+
+        // Open on load if persisted
+        const savedOpen = localStorage.getItem('report.toc');
+        setTocOpen(savedOpen === null ? true : savedOpen === 'true');
       }
 
       function initCopy() {
@@ -1440,7 +1728,7 @@
               try { localStorage.setItem('report.expandAll', 'false'); } catch (_) {}
               break;
             case 't': document.getElementById('btn-theme')?.click(); break;
-            case 'o': setTocOpen(tocBtn.getAttribute('aria-pressed') !== 'true'); break;
+            case 'o': setTocOpen(document.getElementById('toc-drawer').hidden); break;
             case '?': e.preventDefault(); helpDialog?.open ? closeHelp() : openHelp(); break;
           }
         });
@@ -1463,7 +1751,7 @@
       try {
         const f = localStorage.getItem('report.filter'); if (f) applyFilter(f);
         const s = localStorage.getItem('report.search'); if (s) { searchInput.value = s; applySearch(s); }
-        if (localStorage.getItem('report.toc') === 'true') setTocOpen(true);
+        // toc open state restored inside initToc()
       } catch (_) {}
       syncToggleLabel();
       updateMatchCount();
