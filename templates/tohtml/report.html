@@ -264,6 +264,8 @@
     .finding__body {
       padding: var(--space-3) var(--space-4);
       border-top: 1px solid var(--border-muted);
+      overflow: hidden;
+      transition: height 220ms ease, opacity 220ms ease;
     }
 
     .finding__description {
@@ -483,6 +485,7 @@
 
     .pill:hover {
       background: var(--bg-subtle);
+      box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-green) 22%, transparent);
     }
 
     .pill[aria-pressed="true"] {
@@ -1225,6 +1228,16 @@
       box-shadow: var(--focus-ring);
     }
 
+    .pill:focus-visible {
+      box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-green) 22%, transparent);
+    }
+
+    .pill[aria-pressed="true"]:active,
+    .pill:active {
+      transform: scale(0.97);
+      transition: transform 80ms ease;
+    }
+
     .copy-btn svg {
       width: 12px;
       height: 12px;
@@ -1335,11 +1348,32 @@
       details:not([open]) > summary ~ * { display: revert !important; }
     }
 
+    @media (prefers-reduced-motion: no-preference) {
+      ::view-transition-old(root) {
+        animation: 200ms ease both vt-fade-out;
+      }
+      ::view-transition-new(root) {
+        animation: 200ms ease both vt-fade-in;
+      }
+    }
+    @keyframes vt-fade-out {
+      to { opacity: 0; }
+    }
+    @keyframes vt-fade-in {
+      from { opacity: 0; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         transition-duration: 0.01ms !important;
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
+      }
+      .finding__body {
+        transition: none !important;
+      }
+      .pill {
+        transition: none !important;
       }
     }
     /* Prism syntax tokens — GitHub palette */
@@ -1676,6 +1710,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
 
       function applyTheme(mode, animated) {
         const dark = mode === "dark";
+        const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         const apply = () => {
           if (dark) {
             document.documentElement.setAttribute('data-theme', 'dark');
@@ -1687,7 +1722,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             dark ? "rgba(1,4,9,0.6)" : "rgba(31,35,40,0.35)"
           );
         };
-        if (animated && document.startViewTransition) {
+        if (animated && !prefersReduced && document.startViewTransition) {
           document.startViewTransition(apply);
         } else {
           apply();
@@ -2093,6 +2128,48 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         }
       }
 
+      function initFindingAnimations() {
+        const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (prefersReduced) return;
+
+        document.querySelectorAll('.finding > summary, details.finding > summary').forEach(summary => {
+          summary.addEventListener('click', e => {
+            e.preventDefault();
+            const details = summary.closest('details');
+            const body = details.querySelector('.finding__body');
+            if (!body) return;
+
+            if (details.open) {
+              const h = body.scrollHeight;
+              body.style.height = h + 'px';
+              body.style.opacity = '1';
+              requestAnimationFrame(() => {
+                body.style.height = '0';
+                body.style.opacity = '0';
+              });
+              body.addEventListener('transitionend', () => {
+                details.open = false;
+                body.style.height = '';
+                body.style.opacity = '';
+              }, { once: true });
+            } else {
+              details.open = true;
+              const h = body.scrollHeight;
+              body.style.height = '0';
+              body.style.opacity = '0';
+              requestAnimationFrame(() => {
+                body.style.height = h + 'px';
+                body.style.opacity = '1';
+              });
+              body.addEventListener('transitionend', () => {
+                body.style.height = '';
+                body.style.opacity = '';
+              }, { once: true });
+            }
+          });
+        });
+      }
+
       // Boot
       initScrollUp();
       initTheme();
@@ -2108,6 +2185,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       initHelp();
       initShortcuts();
       initSyntaxHighlight();
+      initFindingAnimations();
 
       // Restore persisted state
       try {
