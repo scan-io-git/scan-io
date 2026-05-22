@@ -720,10 +720,6 @@
         flex: 1 1 auto;
         margin-left: 0;
       }
-      .btn-theme {
-        margin-left: auto;
-        flex: 0 0 auto;
-      }
     }
 
     .finding__df-linecol a {
@@ -731,6 +727,10 @@
     }
 
     .btn-theme {
+      position: fixed;
+      top: 14px;
+      right: var(--space-4);
+      z-index: 200;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -743,8 +743,7 @@
       color: var(--fg-muted);
       cursor: pointer;
       transition: background var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast);
-      flex: 0 0 auto;
-      margin-left: auto;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--border-muted);
     }
 
     .btn-theme:hover {
@@ -1220,9 +1219,16 @@
         const icon = document.getElementById("btn-theme-icon");
         function setTheme(mode) {
           const dark = mode === "dark";
-          body.classList.toggle("dark-mode", dark);
-          body.classList.toggle("light-mode", !dark);
-          if (icon) icon.setAttribute("href", dark ? "#icon-moon" : "#icon-sun");
+          const apply = () => {
+            body.classList.toggle("dark-mode", dark);
+            body.classList.toggle("light-mode", !dark);
+            if (icon) icon.setAttribute("href", dark ? "#icon-moon" : "#icon-sun");
+          };
+          if (document.startViewTransition) {
+            document.startViewTransition(apply);
+          } else {
+            apply();
+          }
         }
         function savedTheme() { return localStorage.getItem("theme"); }
         function systemTheme() {
