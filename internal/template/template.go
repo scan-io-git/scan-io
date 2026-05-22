@@ -3,6 +3,7 @@ package template
 import (
 	"fmt"
 	"html/template"
+	"strings"
 	"time"
 )
 
@@ -10,6 +11,13 @@ import (
 // helper function for html template
 func add(a, b int) int {
 	return a + b
+}
+
+// stripFragment removes the fragment portion (#...) from a URL string.
+// helper function for html template
+func stripFragment(url string) string {
+	before, _, _ := strings.Cut(url, "#")
+	return before
 }
 
 // generateSequence generates a slice of integers from 1 to n.
@@ -50,6 +58,7 @@ func NewTemplate(templateFile string, options ...func(*template.Template)) (*tem
 			"add":              add,
 			"generateSequence": generateSequence,
 			"formatDateTime":   formatDateTime,
+			"stripFragment":    stripFragment,
 		})
 	for _, o := range options {
 		o(t)
