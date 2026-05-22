@@ -2,6 +2,15 @@
 <html lang="en">
 
 <head>
+  <script>
+(function(){
+  var stored = localStorage.getItem('theme');
+  var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (stored === 'dark' || (!stored && prefersDark)) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+})();
+</script>
   <meta http-equiv="Content-type" content="text/html; charset=utf-8">
   <meta http-equiv="Content-Language" content="en-us">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -113,7 +122,7 @@
       color: var(--fg-default);
     }
 
-    body.dark-mode {
+    [data-theme="dark"] {
       --bg-canvas: var(--bg-canvas-dark);
       --bg-subtle: var(--bg-subtle-dark);
       --bg-inset: var(--bg-inset-dark);
@@ -155,7 +164,7 @@
       box-shadow: var(--shadow-xs), 0 0 0 1px var(--border-muted);
     }
 
-    body.dark-mode .finding[open] {
+    [data-theme="dark"] .finding[open] {
       box-shadow: var(--shadow-xs), 0 0 0 1px var(--border-muted);
     }
 
@@ -281,8 +290,8 @@
       text-decoration: underline;
     }
 
-    body.dark-mode .finding__df-filename,
-    body.dark-mode .finding__df-id:not(.finding__df-id--selected) {
+    [data-theme="dark"] .finding__df-filename,
+    [data-theme="dark"] .finding__df-id:not(.finding__df-id--selected) {
       border-color: var(--border-default);
       background-color: var(--bg-subtle);
     }
@@ -379,7 +388,7 @@
       border-color: var(--accent-brand);
     }
 
-    body.dark-mode .finding__df-id--selected {
+    [data-theme="dark"] .finding__df-id--selected {
       color: var(--bg-canvas);
     }
 
@@ -397,7 +406,7 @@
       padding: 1px 2px;
     }
 
-    body.dark-mode .finding__df-highlight {
+    [data-theme="dark"] .finding__df-highlight {
       background-color: color-mix(in oklch, var(--accent-brand) 22%, transparent);
     }
 
@@ -415,7 +424,7 @@
       box-shadow: var(--shadow-md);
     }
 
-    body.dark-mode .summary-bar.is-stuck {
+    [data-theme="dark"] .summary-bar.is-stuck {
       box-shadow: var(--shadow-md);
     }
 
@@ -1079,7 +1088,7 @@
       border-color: #1a7f37;
     }
 
-    body.dark-mode .copy-btn[data-copied="1"] {
+    [data-theme="dark"] .copy-btn[data-copied="1"] {
       color: #3fb950;
       border-color: #3fb950;
     }
@@ -1226,15 +1235,15 @@
     .finding__df-code .token.property{color:#116329}
     .finding__df-code .token.variable{color:#953800}
     .finding__df-code .token.punctuation{color:#24292f}
-    body.dark-mode .finding__df-code .token.comment,body.dark-mode .finding__df-code .token.prolog{color:#8b949e;font-style:italic}
-    body.dark-mode .finding__df-code .token.keyword,body.dark-mode .finding__df-code .token.important,body.dark-mode .finding__df-code .token.atrule{color:#ff7b72}
-    body.dark-mode .finding__df-code .token.string,body.dark-mode .finding__df-code .token.scalar{color:#a5d6ff}
-    body.dark-mode .finding__df-code .token.number,body.dark-mode .finding__df-code .token.boolean,body.dark-mode .finding__df-code .token.constant,body.dark-mode .finding__df-code .token.builtin{color:#79c0ff}
-    body.dark-mode .finding__df-code .token.function,body.dark-mode .finding__df-code .token.class-name{color:#d2a8ff}
-    body.dark-mode .finding__df-code .token.operator{color:#79c0ff}
-    body.dark-mode .finding__df-code .token.property{color:#7ee787}
-    body.dark-mode .finding__df-code .token.variable{color:#ffa657}
-    body.dark-mode .finding__df-code .token.punctuation{color:#c9d1d9}
+    [data-theme="dark"] .finding__df-code .token.comment,[data-theme="dark"] .finding__df-code .token.prolog{color:#8b949e;font-style:italic}
+    [data-theme="dark"] .finding__df-code .token.keyword,[data-theme="dark"] .finding__df-code .token.important,[data-theme="dark"] .finding__df-code .token.atrule{color:#ff7b72}
+    [data-theme="dark"] .finding__df-code .token.string,[data-theme="dark"] .finding__df-code .token.scalar{color:#a5d6ff}
+    [data-theme="dark"] .finding__df-code .token.number,[data-theme="dark"] .finding__df-code .token.boolean,[data-theme="dark"] .finding__df-code .token.constant,[data-theme="dark"] .finding__df-code .token.builtin{color:#79c0ff}
+    [data-theme="dark"] .finding__df-code .token.function,[data-theme="dark"] .finding__df-code .token.class-name{color:#d2a8ff}
+    [data-theme="dark"] .finding__df-code .token.operator{color:#79c0ff}
+    [data-theme="dark"] .finding__df-code .token.property{color:#7ee787}
+    [data-theme="dark"] .finding__df-code .token.variable{color:#ffa657}
+    [data-theme="dark"] .finding__df-code .token.punctuation{color:#c9d1d9}
   </style>
 
 </head>
@@ -1492,8 +1501,11 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         function setTheme(mode, animated) {
           const dark = mode === "dark";
           const apply = () => {
-            body.classList.toggle("dark-mode", dark);
-            body.classList.toggle("light-mode", !dark);
+            if (dark) {
+              document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+              document.documentElement.removeAttribute('data-theme');
+            }
             if (icon) icon.setAttribute("href", dark ? "#icon-moon" : "#icon-sun");
             document.documentElement.style.setProperty(
               "--backdrop-bg",
@@ -1511,7 +1523,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? "dark" : "light";
         }
         switcher.addEventListener("click", () => {
-          const dark = body.classList.contains("dark-mode");
+          const dark = document.documentElement.getAttribute('data-theme') === 'dark';
           const next = dark ? "light" : "dark";
           setTheme(next, true);
           try { localStorage.setItem("theme", next); } catch (_) {}
