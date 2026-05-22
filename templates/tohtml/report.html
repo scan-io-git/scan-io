@@ -513,7 +513,8 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 12px;
+      padding: 0 12px;
+      height: var(--control-h);
       border-radius: 999px;
       border: 1px solid var(--border-default);
       background: var(--bg-canvas);
@@ -585,10 +586,12 @@
     }
 
     .search {
+      position: relative;
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 8px;
+      padding: 0 8px;
+      height: var(--control-h);
       border: 1px solid var(--border-default);
       border-radius: 6px;
       background: var(--bg-canvas);
@@ -616,10 +619,36 @@
       color: var(--fg-muted);
     }
 
+    .search__clear {
+      position: absolute;
+      right: var(--space-2);
+      top: 50%;
+      transform: translateY(-50%);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--fg-muted);
+      border-radius: 50%;
+    }
+    .search__clear:hover {
+      color: var(--fg-default);
+      background: var(--neutral-subtle, var(--bg-inset));
+    }
+    .search-has-value .search__clear {
+      display: flex;
+    }
+
     .btn {
       font-size: var(--text-sm);
       font-family: inherit;
-      padding: var(--space-1) var(--space-3);
+      height: var(--control-h);
+      padding: 0 var(--space-3);
       border-radius: 6px;
       border: 1px solid var(--border-default);
       background: var(--bg-canvas);
@@ -1587,6 +1616,9 @@
         <label class="search">
           <svg aria-hidden="true" width="14" height="14"><use href="#tb-search"/></svg>
           <input id="search" type="search" placeholder="Filter findings..." aria-label="Search findings" autocomplete="off">
+          <button class="search__clear" aria-label="Clear search" tabindex="-1">
+            <svg class="icon" aria-hidden="true" width="12" height="12"><use href="#tb-x"></use></svg>
+          </button>
         </label>
         <button id="toggle-all" class="btn btn--ghost" type="button">Collapse all</button>
       </div>
@@ -1824,6 +1856,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       function initSearch() {
         searchInput = document.getElementById('search');
         const searchCount = document.getElementById('search-count');
+        const searchWrapper = searchInput.closest('.search');
+        const clearBtn = searchWrapper && searchWrapper.querySelector('.search__clear');
         let debounce;
         applySearch = function(q) {
           const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
@@ -1839,10 +1873,22 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         }
         // expose for filter to call
         _matchCountFn = updateMatchCount;
+        const updateClearBtn = () => {
+          if (searchWrapper) searchWrapper.classList.toggle('search-has-value', searchInput.value.length > 0);
+        };
         searchInput.addEventListener('input', () => {
           clearTimeout(debounce);
           debounce = setTimeout(() => applySearch(searchInput.value), 150);
+          updateClearBtn();
         });
+        if (clearBtn) {
+          clearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            updateClearBtn();
+            searchInput.dispatchEvent(new Event('input'));
+            searchInput.focus();
+          });
+        }
       }
 
       function updateMatchCount() {
