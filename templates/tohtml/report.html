@@ -324,6 +324,9 @@
       border: 1px solid var(--border-default);
       border-bottom: 0;
       margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
     }
 
     .finding__df-codeline {
@@ -1064,30 +1067,60 @@
       color: var(--fg-muted);
       cursor: pointer;
       opacity: 0;
+      pointer-events: none;
       transition: opacity var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast);
     }
 
-    .finding__df-codeline:hover .copy-btn {
-      opacity: 0.7;
+    .finding__df-codeline:hover .copy-btn,
+    .copy-btn:focus-visible {
+      opacity: 0.6;
+      pointer-events: auto;
     }
 
     .copy-btn:hover {
-      opacity: 1 !important;
+      opacity: 1;
       background: var(--bg-subtle);
       border-color: var(--border-default);
       color: var(--fg-default);
     }
 
     .copy-btn[data-copied="1"] {
-      opacity: 1 !important;
+      opacity: 1;
       color: var(--accent-brand);
       border-color: var(--accent-brand);
     }
 
     .copy-btn:focus-visible {
-      opacity: 1;
       outline: 2px solid var(--accent-brand);
       outline-offset: 1px;
+    }
+
+    /* Per-block copy-all button in the filename header */
+    .copy-all-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: var(--control-h);
+      height: var(--control-h);
+      padding: 0;
+      margin-left: auto;
+      background: none;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      opacity: 0.4;
+      color: var(--fg-muted);
+      transition: opacity 150ms ease, color 150ms ease;
+      flex-shrink: 0;
+    }
+    .copy-all-btn:hover,
+    .copy-all-btn:focus-visible {
+      opacity: 1;
+      color: var(--fg-default);
+    }
+    .copy-all-btn[data-copied="1"] {
+      color: var(--accent-brand);
+      opacity: 1;
     }
 
     .pill:focus-visible,
@@ -1192,6 +1225,7 @@
       .btn-theme,
       .scroll-up-button,
       .copy-btn,
+      .copy-all-btn,
       #help-dialog,
       .finding__head::after { display: none !important; }
       body { background: #fff !important; color: #000 !important; }
@@ -1455,7 +1489,7 @@
                         {{/* figure out whether we should add a filename block here */}}
                         {{ $curUri := index .Location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
                         {{ if ne $curUri $prevUri }}
-                        <div class="finding__df-filename">{{$curUri}}</div>
+                        <div class="finding__df-filename"><span>{{$curUri}}</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
                         {{end}}
                         {{ $prevUri = $curUri }}
 
@@ -1795,6 +1829,21 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         });
       }
 
+      function initCopyAll() {
+        document.querySelectorAll('.copy-all-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const dfBlock = btn.closest('.finding__df');
+            if (!dfBlock) return;
+            const lines = Array.from(dfBlock.querySelectorAll('.finding__df-code')).map(el => el.innerText);
+            if (!lines.length) return;
+            navigator.clipboard.writeText(lines.join('\n')).then(() => {
+              btn.setAttribute('data-copied', '1');
+              setTimeout(() => btn.removeAttribute('data-copied'), 2000);
+            }).catch(() => {});
+          });
+        });
+      }
+
       function initDataflowSwitcher() {
         function activatePill(pill) {
           const id = pill.dataset.dataflowId;
@@ -1888,7 +1937,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         document.querySelectorAll('.finding__df').forEach(dfBlock => {
           const fnameEl = dfBlock.querySelector('.finding__df-filename');
           if (!fnameEl) return;
-          const ext = fnameEl.textContent.trim().split('.').pop().toLowerCase();
+          const fnameText = (fnameEl.querySelector('span') || fnameEl).textContent.trim();
+          const ext = fnameText.split('.').pop().toLowerCase();
           const lang = extToLang[ext];
           if (!lang || !Prism.languages[lang]) return;
           dfBlock.querySelectorAll('.finding__df-code').forEach(codeEl => {
@@ -1912,6 +1962,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       initToggleAll();
       initToc();
       initCopy();
+      initCopyAll();
       initDataflowSwitcher();
       initHelp();
       initShortcuts();
