@@ -42,6 +42,9 @@
       --brand-green: #31bc81;
       --brand-green-dark: #3fb950;
 
+      /* Dialog backdrop */
+      --backdrop-bg: rgba(31, 35, 40, 0.35);
+
       /* Spacing scale: 4 / 8 / 12 / 16 / 24 / 32 */
       --space-1: 4px; --space-2: 8px; --space-3: 12px;
       --space-4: 16px; --space-5: 24px; --space-6: 32px;
@@ -180,6 +183,7 @@
       color: var(--fg-default);
       flex: 1 1 auto;
       min-width: 0;
+      text-wrap: pretty;
     }
 
     .finding__meta {
@@ -236,6 +240,7 @@
       color: var(--fg-default);
       line-height: 1.5;
       margin: 0 0 12px;
+      text-wrap: pretty;
     }
 
     .finding__location {
@@ -1074,7 +1079,6 @@
     .btn-theme:focus-visible,
     .scroll-up-button:focus-visible,
     .help-dialog__close:focus-visible,
-    .tv-tr[href]:focus-visible,
     .finding__df-id:focus-visible {
       outline: 2px solid var(--accent-brand);
       outline-offset: 2px;
@@ -1097,7 +1101,7 @@
     }
 
     #help-dialog::backdrop {
-      background: rgba(31, 35, 40, 0.35);
+      background: var(--backdrop-bg);
     }
 
     .help-dialog__head {
@@ -1475,6 +1479,10 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             body.classList.toggle("dark-mode", dark);
             body.classList.toggle("light-mode", !dark);
             if (icon) icon.setAttribute("href", dark ? "#icon-moon" : "#icon-sun");
+            document.documentElement.style.setProperty(
+              "--backdrop-bg",
+              dark ? "rgba(1,4,9,0.6)" : "rgba(31,35,40,0.35)"
+            );
           };
           if (animated && document.startViewTransition) {
             document.startViewTransition(apply);
