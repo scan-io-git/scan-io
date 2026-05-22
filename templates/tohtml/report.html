@@ -925,13 +925,46 @@
     }
 
     .report-footer {
-      border-top: 1px solid var(--border-default);
-      padding: 12px 16px;
-      color: var(--fg-muted);
-      font-size: 12px;
       background: var(--bg-subtle);
+      border-top: 1px solid var(--border-default);
+    }
+
+    .report-footer__accent {
+      height: 2px;
+      background: color-mix(in srgb, var(--brand-green) 20%, transparent);
+    }
+
+    .report-footer__inner {
       max-width: 1280px;
       margin: 0 auto;
+      padding: var(--space-3) var(--space-4);
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      font-size: 12px;
+      color: var(--fg-muted);
+    }
+
+    .report-footer__left {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+    }
+
+    .report-footer__center {
+      flex: 1;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .report-footer__right {
+      flex: 1;
+      text-align: right;
+      white-space: nowrap;
     }
 
     .report-footer a {
@@ -944,7 +977,7 @@
     }
 
     .report-footer__sep {
-      margin: 0 8px;
+      margin: 0 var(--space-2);
       color: var(--fg-subtle);
     }
 
@@ -1845,8 +1878,20 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
   <svg aria-hidden="true" width="16" height="16"><use href="#icon-chevron-up"/></svg>
 </button>
 <footer class="report-footer">
-  <a href="https://github.com/scan-io-git/scan-io" target="_blank" rel="noopener">scan-io-git/scan-io</a>
-  <span class="report-footer__sep">·</span>
-  Generated {{ .Metadata.Time | formatDateTime }} UTC
+  <div class="report-footer__accent" aria-hidden="true"></div>
+  <div class="report-footer__inner">
+    <div class="report-footer__left">
+      <span>Generated {{ .Metadata.Time | formatDateTime }} UTC</span>
+      {{if .Metadata.ToolMetadata.Name}}<span class="report-footer__sep">·</span><span>{{ .Metadata.ToolMetadata.Name }}</span>{{end}}
+    </div>
+    {{if $repo}}
+    <div class="report-footer__center">
+      {{if $branchURL}}<a href="{{ $branchURL }}" target="_blank" rel="noopener" title="{{ $repo }}">{{ $repo }}</a>{{else if $webURL}}<a href="{{ $webURL }}" target="_blank" rel="noopener" title="{{ $repo }}">{{ $repo }}</a>{{else}}<span title="{{ $repo }}">{{ $repo }}</span>{{end}}
+    </div>
+    {{end}}
+    <div class="report-footer__right">
+      <a href="https://github.com/scan-io-git/scan-io" target="_blank" rel="noopener">scan-io-git/scan-io</a>
+    </div>
+  </div>
 </footer>
 </body>
