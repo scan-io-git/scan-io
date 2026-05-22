@@ -116,7 +116,7 @@
       --accent-emphasis: var(--accent-emphasis-light);
       --accent-subtle: var(--accent-subtle-light);
       --accent-brand: var(--brand-green);
-      --focus-ring: color-mix(in oklch, var(--brand-green) 30%, transparent);
+      --focus-ring: 0 0 0 3px color-mix(in oklch, var(--brand-green) 45%, transparent);
 
       background-color: var(--bg-canvas);
       color: var(--fg-default);
@@ -135,7 +135,7 @@
       --accent-emphasis: var(--accent-emphasis-dark);
       --accent-subtle: var(--accent-subtle-dark);
       --accent-brand: var(--brand-green-dark);
-      --focus-ring: color-mix(in oklch, var(--brand-green-dark) 30%, transparent);
+      --focus-ring: 0 0 0 3px color-mix(in oklch, var(--brand-green-dark) 55%, transparent);
 
       /* Severity palette — dark (wider hue gap: High=orange, Medium=amber-gold) */
       --sev-critical-fg: #ff7b72; --sev-critical-bg: #490202; --sev-critical-border: #f85149; --sev-critical-dot: #f85149;
@@ -143,6 +143,11 @@
       --sev-medium-fg: #c8a820;  --sev-medium-bg: #201c00;  --sev-medium-border: #907600;  --sev-medium-dot: #9e8200;
       --sev-low-fg: var(--fg-default); --sev-low-bg: #21262d; --sev-low-border: #3d444d;   --sev-low-dot: #6e7681;
       --sev-info-fg: #79c0ff;    --sev-info-bg: #051d4d;    --sev-info-border: #1f6feb;    --sev-info-dot: #1f6feb;
+    }
+
+    :focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
     }
 
     .main-body {
@@ -539,7 +544,7 @@
 
     .search:focus-within {
       border-color: var(--accent-brand);
-      box-shadow: 0 0 0 3px var(--focus-ring);
+      box-shadow: var(--focus-ring);
       color: var(--fg-default);
     }
 
@@ -652,6 +657,7 @@
       transition: background var(--motion-fast), color var(--motion-fast);
     }
     .toc-drawer__close:hover { background: var(--bg-inset); color: var(--fg-default); }
+    .toc-drawer__close:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 
     .toc-grouping {
       display: flex;
@@ -671,6 +677,7 @@
       transition: background var(--motion-fast), color var(--motion-fast);
     }
     .toc-grp-btn:last-child { border-right: none; }
+    .toc-grp-btn:focus-visible { outline: none; box-shadow: inset var(--focus-ring); }
 
     .toc-grp-btn[aria-pressed="true"] {
       background: var(--bg-canvas);
@@ -697,7 +704,7 @@
       text-decoration: none;
     }
     .tv-tr[href]:hover { background: var(--bg-subtle); cursor: pointer; }
-    .tv-tr[href]:focus-visible { outline: 2px solid var(--accent-brand); outline-offset: -2px; }
+    .tv-tr[href]:focus-visible { outline: none; box-shadow: inset var(--focus-ring); }
     .tv-tr[aria-current="true"] { background: color-mix(in oklch, var(--accent-brand) 12%, var(--bg-canvas)); border-left: 2px solid var(--accent-brand); }
 
     /* Depth indentation */
@@ -823,6 +830,12 @@
       text-decoration: none;
     }
 
+    .report-header__brand:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+      border-radius: var(--radius-sm);
+    }
+
     .report-header__brand:hover .report-header__title {
       color: var(--accent-brand);
     }
@@ -891,6 +904,12 @@
 
     .report-header__pill a:hover {
       text-decoration: underline;
+    }
+
+    .report-header__pill a:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+      border-radius: 2px;
     }
 
     .report-header__pill code {
@@ -1005,6 +1024,12 @@
       text-decoration: underline;
     }
 
+    .report-footer a:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+      border-radius: 2px;
+    }
+
     .report-footer__sep {
       margin: 0 var(--space-2);
       color: var(--fg-subtle);
@@ -1091,8 +1116,8 @@
     }
 
     .copy-btn:focus-visible {
-      outline: 2px solid var(--accent-brand);
-      outline-offset: 1px;
+      outline: none;
+      box-shadow: var(--focus-ring);
     }
 
     /* Per-block copy-all button in the filename header */
@@ -1118,6 +1143,10 @@
       opacity: 1;
       color: var(--fg-default);
     }
+    .copy-all-btn:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
     .copy-all-btn[data-copied="1"] {
       color: var(--accent-brand);
       opacity: 1;
@@ -1129,8 +1158,8 @@
     .scroll-up-button:focus-visible,
     .help-dialog__close:focus-visible,
     .finding__df-id:focus-visible {
-      outline: 2px solid var(--accent-brand);
-      outline-offset: 2px;
+      outline: none;
+      box-shadow: var(--focus-ring);
     }
 
     .copy-btn svg {
