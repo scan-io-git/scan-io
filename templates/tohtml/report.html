@@ -1247,34 +1247,84 @@
 {{ $webURL := .Metadata.WebURL }}
 
 <body>
-  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
-    <symbol id="icon-search" viewBox="0 0 16 16">
-      <path fill="currentColor" fill-rule="evenodd" d="M10.68 11.74a6 6 0 0 1-7.92-8.94 6 6 0 0 1 8.95 7.92l3.48 3.48a.75.75 0 1 1-1.06 1.06l-3.45-3.52ZM11.5 7a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/>
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+    <symbol id="tb-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="10" cy="10" r="7"/>
+      <line x1="21" y1="21" x2="15" y2="15"/>
     </symbol>
-    <symbol id="icon-copy" viewBox="0 0 16 16">
-      <path fill="currentColor" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/>
-      <path fill="currentColor" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/>
+    <symbol id="tb-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <rect x="8" y="8" width="12" height="12" rx="2"/>
+      <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"/>
     </symbol>
-    <symbol id="icon-chevron-down" viewBox="0 0 16 16">
-      <path fill="currentColor" d="M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.939l3.72-3.719a.749.749 0 0 1 1.06 0Z"/>
+    <symbol id="tb-copy-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2"/>
+      <rect x="9" y="3" width="6" height="4" rx="2"/>
+      <line x1="9" y1="12" x2="15" y2="12"/>
+      <line x1="9" y1="16" x2="13" y2="16"/>
     </symbol>
-    <symbol id="icon-chevron-up" viewBox="0 0 16 16">
-      <path fill="currentColor" d="M3.22 10.53a.749.749 0 0 1 0-1.06l4.25-4.25a.749.749 0 0 1 1.06 0l4.25 4.25a.749.749 0 1 1-1.06 1.06L8 6.811 4.28 10.53a.749.749 0 0 1-1.06 0Z"/>
+    <symbol id="tb-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <polyline points="6 9 12 15 18 9"/>
     </symbol>
-    <symbol id="icon-x" viewBox="0 0 16 16">
-      <path fill="currentColor" d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/>
+    <symbol id="tb-chevron-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <polyline points="6 15 12 9 18 15"/>
     </symbol>
-    <symbol id="icon-sun" viewBox="0 0 16 16">
-      <path fill="currentColor" d="M8 12a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-1.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm5.657-8.157a.75.75 0 0 1 0 1.061l-1.061 1.06a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734l1.06-1.06a.75.75 0 0 1 1.06 0Zm-9.193 9.193a.75.75 0 0 1 0 1.06l-1.06 1.061a.75.75 0 1 1-1.061-1.06l1.06-1.061a.75.75 0 0 1 1.061 0ZM8 0a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0V.75A.75.75 0 0 1 8 0ZM3 8a.75.75 0 0 1-.75.75H.75a.75.75 0 0 1 0-1.5h1.5A.75.75 0 0 1 3 8Zm13 0a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1 0-1.5h1.5A.75.75 0 0 1 16 8Zm-8 5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 8 13Zm3.536-1.464a.75.75 0 0 1 1.06 0l1.061 1.06a.75.75 0 0 1-1.06 1.061l-1.061-1.06a.75.75 0 0 1 0-1.061ZM2.343 2.343a.75.75 0 0 1 1.061 0l1.06 1.061a.751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018l-1.06-1.06a.75.75 0 0 1 0-1.06Z"/>
+    <symbol id="tb-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <polyline points="9 6 15 12 9 18"/>
     </symbol>
-    <symbol id="icon-moon" viewBox="0 0 16 16">
-      <path fill="currentColor" d="M9.598 1.591a.749.749 0 0 1 .785-.175 7.001 7.001 0 1 1-8.967 8.967.75.75 0 0 1 .961-.96 5.5 5.5 0 0 0 7.046-7.046.75.75 0 0 1 .175-.786Zm1.616 1.945a7 7 0 0 1-7.678 7.678 5.499 5.499 0 1 0 7.678-7.678Z"/>
+    <symbol id="tb-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <line x1="18" y1="6" x2="6" y2="18"/>
+      <line x1="6" y1="6" x2="18" y2="18"/>
     </symbol>
-    <symbol id="icon-chev-right" viewBox="0 0 16 16">
-      <path fill="currentColor" d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/>
+    <symbol id="tb-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"/>
     </symbol>
-    <symbol id="icon-file" viewBox="0 0 16 16">
-      <path fill="currentColor" d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 9 4.25V1.5Zm6.75.062V4.25c0 .138.112.25.25.25h2.688l-.011-.013-2.914-2.914-.013-.011Z"/>
+    <symbol id="tb-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"/>
+    </symbol>
+    <symbol id="tb-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <path d="M14 3v4a1 1 0 0 0 1 1h4"/>
+      <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"/>
+    </symbol>
+    <symbol id="tb-file-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <path d="M14 3v4a1 1 0 0 0 1 1h4"/>
+      <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"/>
+      <line x1="9" y1="9" x2="10" y2="9"/>
+      <line x1="9" y1="13" x2="15" y2="13"/>
+      <line x1="9" y1="17" x2="15" y2="17"/>
+    </symbol>
+    <symbol id="tb-alert-triangle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <path d="M12 9v4"/>
+      <path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.871l-8.106 -13.534a1.914 1.914 0 0 0 -3.274 0z"/>
+      <path d="M12 17l0 .01"/>
+    </symbol>
+    <symbol id="tb-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9"/>
+      <line x1="12" y1="8" x2="12.01" y2="8"/>
+      <polyline points="11 12 12 12 12 16 13 16"/>
+    </symbol>
+    <symbol id="tb-link-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <path d="M11 7h-5a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-5"/>
+      <line x1="10" y1="14" x2="20" y2="4"/>
+      <polyline points="15 4 20 4 20 9"/>
+    </symbol>
+    <symbol id="tb-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <path d="M5.5 5h13a1 1 0 0 1 .5 1.5l-5 5.5l0 7l-4 -3l0 -4l-5 -5.5a1 1 0 0 1 .5 -1.5"/>
     </symbol>
   </svg>
   <header class="report-header">
@@ -1301,7 +1351,7 @@
       </div>
 
       <button class="btn-theme" id="btn-theme" aria-label="Switch theme" title="Toggle light / dark theme (t)">
-        <svg aria-hidden="true" width="16" height="16"><use id="btn-theme-icon" href="#icon-sun"/></svg>
+        <svg aria-hidden="true" width="16" height="16"><use id="btn-theme-icon" href="#tb-sun"/></svg>
       </button>
     </div>
     <div class="report-header__accent" aria-hidden="true"></div>
@@ -1321,7 +1371,7 @@
       </div>
       <div class="summary-bar__tools">
         <label class="search">
-          <svg aria-hidden="true" width="14" height="14"><use href="#icon-search"/></svg>
+          <svg aria-hidden="true" width="14" height="14"><use href="#tb-search"/></svg>
           <input id="search" type="search" placeholder="Filter findings..." aria-label="Search findings" autocomplete="off">
         </label>
         <button id="toggle-all" class="btn btn--ghost" type="button">Collapse all</button>
@@ -1332,7 +1382,7 @@
   <div class="outline-layout">
   <button class="toc-reopen" id="toc-reopen" type="button" aria-label="Show findings panel" hidden>
     <span class="toc-reopen__accent"></span>
-    <svg width="12" height="12" aria-hidden="true"><use href="#icon-chev-right"/></svg>
+    <svg width="12" height="12" aria-hidden="true"><use href="#tb-chevron-right"/></svg>
   </button>
   <aside id="toc-drawer" class="toc-drawer" aria-label="Findings outline">
     <div class="toc-drawer__title">
@@ -1340,7 +1390,7 @@
       <div style="display:flex;align-items:center;gap:4px">
         <span class="tv-tc">{{index .Metadata.SeverityInfo "total"}}</span>
         <button class="toc-drawer__close" id="toc-close" type="button" aria-label="Hide findings panel" title="Hide (o)">
-          <svg width="14" height="14" aria-hidden="true"><use href="#icon-x"/></svg>
+          <svg width="14" height="14" aria-hidden="true"><use href="#tb-x"/></svg>
         </button>
       </div>
     </div>
@@ -1420,7 +1470,7 @@
 
                         {{range $idx, $lineText := $codeLines}}
                           {{ $lineNum := add $startLine $idx -}}
-                          <div class="finding__df-codeline"><span class="finding__df-linecol">{{if $locationWebURL}}<a href="{{printf "%s#L%d" (stripFragment $locationWebURL) $lineNum}}">{{$lineNum}}</a>{{else}}{{$lineNum}}{{end}}</span><div class="finding__df-code">{{if $isSingleLine}}{{if gt $endColumn $startColumn}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}{{- $lineText -}}{{end}}{{else if eq $idx 0}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn -}}</span>{{else if eq $lineNum $endLine}}<span class="finding__df-highlight">{{- slice $lineText 0 $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}<span class="finding__df-highlight">{{- $lineText -}}</span>{{end}}</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#icon-copy"/></svg></button></div>
+                          <div class="finding__df-codeline"><span class="finding__df-linecol">{{if $locationWebURL}}<a href="{{printf "%s#L%d" (stripFragment $locationWebURL) $lineNum}}">{{$lineNum}}</a>{{else}}{{$lineNum}}{{end}}</span><div class="finding__df-code">{{if $isSingleLine}}{{if gt $endColumn $startColumn}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}{{- $lineText -}}{{end}}{{else if eq $idx 0}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn -}}</span>{{else if eq $lineNum $endLine}}<span class="finding__df-highlight">{{- slice $lineText 0 $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}<span class="finding__df-highlight">{{- $lineText -}}</span>{{end}}</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
                         {{end}}
 
                       {{end}}
@@ -1497,7 +1547,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             } else {
               document.documentElement.removeAttribute('data-theme');
             }
-            if (icon) icon.setAttribute("href", dark ? "#icon-moon" : "#icon-sun");
+            if (icon) icon.setAttribute("href", dark ? "#tb-moon" : "#tb-sun");
             document.documentElement.style.setProperty(
               "--backdrop-bg",
               dark ? "rgba(1,4,9,0.6)" : "rgba(31,35,40,0.35)"
@@ -1616,9 +1666,9 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         }));
 
         const SEV_ORDER = ['critical','high','medium','low','info','unknown'];
-        const chev = '<span class="tv-ch"><svg aria-hidden="true"><use href="#icon-chev-right"/></svg></span>';
+        const chev = '<span class="tv-ch"><svg aria-hidden="true"><use href="#tb-chevron-right"/></svg></span>';
         const chevLeaf = '<span class="tv-ch tv-ch--leaf" aria-hidden="true"></span>';
-        const fileIcon = '<span class="tv-ti"><svg aria-hidden="true"><use href="#icon-file"/></svg></span>';
+        const fileIcon = '<span class="tv-ti"><svg aria-hidden="true"><use href="#tb-file"/></svg></span>';
         function dot(sev) { return '<span class="tv-dot tv-dot--' + sev + '" aria-hidden="true"></span>'; }
         function esc(s) { return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 
@@ -1881,7 +1931,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
   <div class="help-dialog__head">
     Keyboard shortcuts
     <button class="help-dialog__close" type="button" aria-label="Close" data-close-help>
-      <svg aria-hidden="true" width="16" height="16"><use href="#icon-x"/></svg>
+      <svg aria-hidden="true" width="16" height="16"><use href="#tb-x"/></svg>
     </button>
   </div>
   <div class="help-dialog__body">
@@ -1902,7 +1952,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
 </dialog>
 
 <button id="scrollUpButton" class="scroll-up-button" aria-label="Scroll to top" title="Scroll to top">
-  <svg aria-hidden="true" width="16" height="16"><use href="#icon-chevron-up"/></svg>
+  <svg aria-hidden="true" width="16" height="16"><use href="#tb-chevron-up"/></svg>
 </button>
 <footer class="report-footer">
   <div class="report-footer__accent" aria-hidden="true"></div>
