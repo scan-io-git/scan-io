@@ -457,6 +457,19 @@
       color: var(--accent-brand);
     }
 
+    /* Severity-specific active tint — overrides brand-green for non-All pills */
+    .pill--critical[aria-pressed="true"] { background: color-mix(in oklch, var(--sev-critical-border) 12%, transparent); border-color: var(--sev-critical-border); color: var(--sev-critical-border); }
+    .pill--high[aria-pressed="true"]     { background: color-mix(in oklch, var(--sev-high-border)     12%, transparent); border-color: var(--sev-high-border);     color: var(--sev-high-border); }
+    .pill--medium[aria-pressed="true"]   { background: color-mix(in oklch, var(--sev-medium-border)   12%, transparent); border-color: var(--sev-medium-border);   color: var(--sev-medium-border); }
+    .pill--low[aria-pressed="true"]      { background: color-mix(in oklch, var(--sev-low-border)      12%, transparent); border-color: var(--sev-low-border);      color: var(--sev-low-border); }
+    .pill--info[aria-pressed="true"]     { background: color-mix(in oklch, var(--sev-info-border)     12%, transparent); border-color: var(--sev-info-border);     color: var(--sev-info-border); }
+
+    /* Count inherits pill color when active */
+    .pill[aria-pressed="true"] .pill__n { color: currentColor; opacity: 0.7; }
+
+    /* Zero-count pills are dimmed and non-interactive */
+    .pill[aria-disabled="true"] { opacity: 0.35; cursor: default; pointer-events: none; }
+
     .pill__dot {
       width: 8px;
       height: 8px;
@@ -1272,6 +1285,10 @@
           const current = pills.find(pp => pp.getAttribute('aria-pressed') === 'true')?.dataset.filter || 'all';
           applyFilter(sev === 'all' || sev === current ? 'all' : sev);
         }));
+        pills.forEach(p => {
+          const n = p.querySelector('.pill__n');
+          if (n && parseInt(n.textContent, 10) === 0) p.setAttribute('aria-disabled', 'true');
+        });
       }
 
       function initSearch() {
@@ -1288,7 +1305,7 @@
         };
         function updateMatchCount() {
           const visible = findings.filter(f => !f.hidden && f.offsetParent !== null).length;
-          searchCount.textContent = visible === total ? '' : '(' + visible + ' of ' + total + ' visible)';
+          searchCount.textContent = '';
         }
         // expose for filter to call
         _matchCountFn = updateMatchCount;
