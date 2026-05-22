@@ -51,6 +51,21 @@
       --brand-green: #0f7a51;
       --brand-green-dark: #3ddc8e;
 
+      /* Copy success state */
+      --success-fg: var(--brand-green);
+
+      /* Prism syntax tokens — light (GitHub palette) */
+      --syntax-comment:     #57606a;
+      --syntax-keyword:     #cf222e;
+      --syntax-string:      #0a3069;
+      --syntax-number:      #0550ae;
+      --syntax-operator:    #0550ae;
+      --syntax-function:    #8250df;
+      --syntax-class-name:  #8250df;
+      --syntax-property:    #116329;
+      --syntax-variable:    #953800;
+      --syntax-punctuation: #24292f;
+
       /* Dialog backdrop */
       --backdrop-bg: rgba(31, 35, 40, 0.35);
 
@@ -76,6 +91,9 @@
 
       /* Control height */
       --control-h: 28px;
+
+      /* Severity dot size */
+      --sev-dot-size: 8px;
 
       /* Motion scale */
       --motion-fast: 150ms; --motion-base: 200ms; --motion-ease: ease;
@@ -136,6 +154,21 @@
       --accent-subtle: var(--accent-subtle-dark);
       --accent-brand: var(--brand-green-dark);
       --focus-ring: 0 0 0 3px color-mix(in oklch, var(--brand-green-dark) 55%, transparent);
+
+      /* Copy success state — dark */
+      --success-fg: var(--brand-green-dark);
+
+      /* Prism syntax tokens — dark (GitHub dark palette) */
+      --syntax-comment:     #8b949e;
+      --syntax-keyword:     #ff7b72;
+      --syntax-string:      #a5d6ff;
+      --syntax-number:      #79c0ff;
+      --syntax-operator:    #79c0ff;
+      --syntax-function:    #d2a8ff;
+      --syntax-class-name:  #d2a8ff;
+      --syntax-property:    #7ee787;
+      --syntax-variable:    #ffa657;
+      --syntax-punctuation: #c9d1d9;
 
       /* Severity palette — dark (wider hue gap: High=orange, Medium=amber-gold) */
       --sev-critical-fg: #ff7b72; --sev-critical-bg: #490202; --sev-critical-border: #f85149; --sev-critical-dot: #f85149;
@@ -245,6 +278,7 @@
     .finding__badge {
       display: inline-flex;
       align-items: center;
+      gap: var(--space-1);
       padding: 2px var(--space-3);
       border-radius: 999px;
       font-size: var(--text-sm);
@@ -260,6 +294,13 @@
     .finding__badge--medium, .finding__badge--warning  { background: var(--sev-medium-bg);  color: var(--sev-medium-fg);  border-color: var(--sev-medium-border); }
     .finding__badge--low, .finding__badge--unknown, .finding__badge--note { background: var(--sev-low-bg); color: var(--sev-low-fg); border-color: var(--sev-low-border); }
     .finding__badge--info, .finding__badge--none { background: var(--sev-info-bg);  color: var(--sev-info-fg);  border-color: var(--sev-info-border); }
+
+    /* Dot color overrides for finding badge — use dot tokens rather than fg */
+    .finding__badge--critical .sev-dot, .finding__badge--error   .sev-dot { background: var(--sev-critical-dot); }
+    .finding__badge--high     .sev-dot                                     { background: var(--sev-high-dot); }
+    .finding__badge--medium   .sev-dot, .finding__badge--warning  .sev-dot { background: var(--sev-medium-dot); }
+    .finding__badge--low      .sev-dot, .finding__badge--unknown  .sev-dot, .finding__badge--note .sev-dot { background: var(--sev-low-dot); }
+    .finding__badge--info     .sev-dot, .finding__badge--none     .sev-dot { background: var(--sev-info-dot); }
 
     .finding__body {
       padding: var(--space-3) var(--space-4);
@@ -507,12 +548,22 @@
     /* Zero-count pills are dimmed and non-interactive */
     .pill[aria-disabled="true"] { opacity: 0.35; cursor: default; pointer-events: none; }
 
+    /* Unified severity dot token */
+    .sev-dot {
+      display: inline-block;
+      width: var(--sev-dot-size);
+      height: var(--sev-dot-size);
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: currentColor;
+    }
+
     .pill__dot {
-      width: 8px;
-      height: 8px;
+      width: var(--sev-dot-size);
+      height: var(--sev-dot-size);
       border-radius: 50%;
       background: var(--fg-muted);
-      flex: 0 0 8px;
+      flex: 0 0 var(--sev-dot-size);
     }
 
     .pill--critical .pill__dot { background: var(--sev-critical-dot); }
@@ -759,7 +810,7 @@
 
     /* Severity dot */
     .tv-dot {
-      flex: 0 0 7px; width: 7px; height: 7px;
+      flex: 0 0 var(--sev-dot-size); width: var(--sev-dot-size); height: var(--sev-dot-size);
       border-radius: 50%;
       background: var(--fg-muted);
     }
@@ -1176,8 +1227,8 @@
 
     .copy-btn[data-copied="1"] {
       opacity: 1;
-      color: var(--accent-brand);
-      border-color: var(--accent-brand);
+      color: var(--success-fg);
+      border-color: var(--success-fg);
     }
 
     .copy-btn:focus-visible {
@@ -1213,7 +1264,7 @@
       box-shadow: var(--focus-ring);
     }
     .copy-all-btn[data-copied="1"] {
-      color: var(--accent-brand);
+      color: var(--success-fg);
       opacity: 1;
     }
 
@@ -1377,24 +1428,15 @@
       }
     }
     /* Prism syntax tokens — GitHub palette */
-    .finding__df-code .token.comment,.finding__df-code .token.prolog{color:#57606a;font-style:italic}
-    .finding__df-code .token.keyword,.finding__df-code .token.important,.finding__df-code .token.atrule{color:#cf222e}
-    .finding__df-code .token.string,.finding__df-code .token.scalar{color:#0a3069}
-    .finding__df-code .token.number,.finding__df-code .token.boolean,.finding__df-code .token.constant,.finding__df-code .token.builtin{color:#0550ae}
-    .finding__df-code .token.function,.finding__df-code .token.class-name{color:#8250df}
-    .finding__df-code .token.operator{color:#0550ae}
-    .finding__df-code .token.property{color:#116329}
-    .finding__df-code .token.variable{color:#953800}
-    .finding__df-code .token.punctuation{color:#24292f}
-    [data-theme="dark"] .finding__df-code .token.comment,[data-theme="dark"] .finding__df-code .token.prolog{color:#8b949e;font-style:italic}
-    [data-theme="dark"] .finding__df-code .token.keyword,[data-theme="dark"] .finding__df-code .token.important,[data-theme="dark"] .finding__df-code .token.atrule{color:#ff7b72}
-    [data-theme="dark"] .finding__df-code .token.string,[data-theme="dark"] .finding__df-code .token.scalar{color:#a5d6ff}
-    [data-theme="dark"] .finding__df-code .token.number,[data-theme="dark"] .finding__df-code .token.boolean,[data-theme="dark"] .finding__df-code .token.constant,[data-theme="dark"] .finding__df-code .token.builtin{color:#79c0ff}
-    [data-theme="dark"] .finding__df-code .token.function,[data-theme="dark"] .finding__df-code .token.class-name{color:#d2a8ff}
-    [data-theme="dark"] .finding__df-code .token.operator{color:#79c0ff}
-    [data-theme="dark"] .finding__df-code .token.property{color:#7ee787}
-    [data-theme="dark"] .finding__df-code .token.variable{color:#ffa657}
-    [data-theme="dark"] .finding__df-code .token.punctuation{color:#c9d1d9}
+    .finding__df-code .token.comment,.finding__df-code .token.prolog{color:var(--syntax-comment);font-style:italic}
+    .finding__df-code .token.keyword,.finding__df-code .token.important,.finding__df-code .token.atrule{color:var(--syntax-keyword)}
+    .finding__df-code .token.string,.finding__df-code .token.scalar{color:var(--syntax-string)}
+    .finding__df-code .token.number,.finding__df-code .token.boolean,.finding__df-code .token.constant,.finding__df-code .token.builtin{color:var(--syntax-number)}
+    .finding__df-code .token.function,.finding__df-code .token.class-name{color:var(--syntax-function)}
+    .finding__df-code .token.operator{color:var(--syntax-operator)}
+    .finding__df-code .token.property{color:var(--syntax-property)}
+    .finding__df-code .token.variable{color:var(--syntax-variable)}
+    .finding__df-code .token.punctuation{color:var(--syntax-punctuation)}
   </style>
 
 </head>
@@ -1590,7 +1632,7 @@
         {{ $locationWebURL := index $location.Properties "WebURL"}}
         <details id="issue-{{$i}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" {{if or (eq $severity "critical") (eq $severity "high")}}open{{end}}>
           <summary class="finding__head">
-            <span class="finding__badge finding__badge--{{$severity}}">{{$severity}}</span>
+            <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
             <span class="finding__title">{{index .Properties "Title"}}</span>
             <span class="finding__meta">
               <span class="finding__path">{{$locationURI}}</span><span class="finding__line">:{{$locationStartLine}}</span>
