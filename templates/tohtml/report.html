@@ -1131,6 +1131,55 @@
     /* sun/moon visibility controlled by data-theme */
     [data-theme="dark"] .header-kebab .icon--sun { display: none; }
     :not([data-theme="dark"]) .header-kebab .icon--moon { display: none; }
+    html[data-theme="dark"] .report-header__inline-right .icon--sun { display: none; }
+    html:not([data-theme="dark"]) .report-header__inline-right .icon--moon { display: none; }
+
+    /* inline header right group — hidden by default, shown at wide viewports */
+    .report-header__inline-right {
+      display: none;
+    }
+
+    .report-header__inline-divider {
+      width: 1px;
+      height: 16px;
+      background: var(--border-default);
+      align-self: center;
+      flex-shrink: 0;
+    }
+
+    .report-header__theme-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: var(--control-h);
+      height: var(--control-h);
+      padding: 0;
+      background: none;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      color: var(--fg-muted);
+      transition: background var(--motion-fast), color var(--motion-fast);
+      flex-shrink: 0;
+    }
+    .report-header__theme-btn:hover {
+      background: var(--bg-inset);
+      color: var(--fg-default);
+    }
+    .report-header__theme-btn:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+
+    @media (min-width: 1024px) {
+      .report-header__inline-right {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        margin-left: auto;
+      }
+      .header-kebab { display: none; }
+    }
 
     .report-footer {
       background: var(--bg-subtle);
@@ -1617,6 +1666,19 @@
         <span class="report-header__title">Scanio Report</span>
       </a>
 
+      <div class="report-header__inline-right">
+        {{if $branch}}<span class="report-header__pill report-header__pill--branch">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+          {{if $branchURL}}<a href="{{- $branchURL -}}">{{ $branch }}</a>{{else}}{{ $branch }}{{end}}
+        </span>{{end}}
+        <span class="report-header__pill report-header__pill--findings">{{index .Metadata.SeverityInfo "total"}} findings</span>
+        <span class="report-header__pill report-header__pill--date">{{ .Metadata.Time | formatDateTime }} UTC</span>
+        <span class="report-header__inline-divider" aria-hidden="true"></span>
+        <button class="report-header__theme-btn" type="button" aria-label="Toggle theme" id="theme-btn-inline">
+          <svg class="icon icon--sun" aria-hidden="true" width="16" height="16"><use href="#tb-sun"/></svg>
+          <svg class="icon icon--moon" aria-hidden="true" width="16" height="16"><use href="#tb-moon"/></svg>
+        </button>
+      </div>
       <div class="header-kebab" style="margin-left:auto">
         <button class="header-kebab__btn" id="header-kebab-btn"
                 aria-label="Report info and theme" aria-expanded="false" aria-haspopup="true"
@@ -2259,6 +2321,11 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             popover.hidden = true;
             btn.setAttribute('aria-expanded', 'false');
           });
+        }
+
+        const inlineThemeBtn = document.getElementById('theme-btn-inline');
+        if (inlineThemeBtn) {
+          inlineThemeBtn.addEventListener('click', () => { toggleTheme(true); });
         }
       }
 
