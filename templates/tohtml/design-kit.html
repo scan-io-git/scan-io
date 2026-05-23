@@ -534,12 +534,12 @@
     font-size: var(--text-sm);
     font-family: inherit;
     cursor: pointer;
-    transition: background var(--motion-fast), border-color var(--motion-fast);
+    transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
   }
 
   .pill:hover {
     background: var(--bg-subtle);
-    box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-green) 22%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent-brand) 22%, transparent);
   }
 
   .pill[aria-pressed="true"] {
@@ -606,6 +606,8 @@
     font-family: inherit;
     min-width: 180px;
   }
+
+  .search input:focus-visible { box-shadow: none; outline: none; }
 
   .search input::placeholder {
     color: var(--fg-muted);
