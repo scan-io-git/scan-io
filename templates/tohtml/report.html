@@ -105,6 +105,21 @@
       --sev-low-fg: #59636e;     --sev-low-bg: #f6f8fa;     --sev-low-border: #d1d9e0;     --sev-low-dot: #6e7781;
       --sev-info-fg: #0550ae;    --sev-info-bg: #ddf4ff;    --sev-info-border: #0969da;    --sev-info-dot: #0969da;
 
+      /* Primer tokens — light mode defaults */
+      --bg-canvas: var(--bg-canvas-light);
+      --bg-subtle: var(--bg-subtle-light);
+      --bg-inset: var(--bg-inset-light);
+      --fg-default: var(--fg-default-light);
+      --fg-muted: var(--fg-muted-light);
+      --fg-subtle: var(--fg-subtle-light);
+      --border-default: var(--border-default-light);
+      --border-muted: var(--border-muted-light);
+      --accent-fg: var(--accent-fg-light);
+      --accent-emphasis: var(--accent-emphasis-light);
+      --accent-subtle: var(--accent-subtle-light);
+      --accent-brand: var(--brand-green);
+      --focus-ring: 0 0 0 3px color-mix(in oklch, var(--brand-green) 45%, transparent);
+
     }
 
     [hidden] { display: none !important; }
@@ -122,22 +137,6 @@
       display: flex;
       flex-direction: column;
       transition: background-color var(--motion-base) var(--motion-ease), color var(--motion-base) var(--motion-ease);
-
-      /* Primer tokens — light mode defaults */
-      --bg-canvas: var(--bg-canvas-light);
-      --bg-subtle: var(--bg-subtle-light);
-      --bg-inset: var(--bg-inset-light);
-      --fg-default: var(--fg-default-light);
-      --fg-muted: var(--fg-muted-light);
-      --fg-subtle: var(--fg-subtle-light);
-      --border-default: var(--border-default-light);
-      --border-muted: var(--border-muted-light);
-      --accent-fg: var(--accent-fg-light);
-      --accent-emphasis: var(--accent-emphasis-light);
-      --accent-subtle: var(--accent-subtle-light);
-      --accent-brand: var(--brand-green);
-      --focus-ring: 0 0 0 3px color-mix(in oklch, var(--brand-green) 45%, transparent);
-
       background-color: var(--bg-canvas);
       color: var(--fg-default);
     }
