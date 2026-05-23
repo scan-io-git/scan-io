@@ -2281,7 +2281,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
                 body.style.height = '0';
                 body.style.opacity = '0';
               });
-              body.addEventListener('transitionend', () => {
+              body.addEventListener('transitionend', e => {
+                if (e.propertyName !== 'height') return;
                 details.open = false;
                 body.style.height = '';
                 body.style.opacity = '';
@@ -2291,11 +2292,13 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
               const h = body.scrollHeight;
               body.style.height = '0';
               body.style.opacity = '0';
+              void body.offsetHeight;  // force reflow so the transition fires
               requestAnimationFrame(() => {
                 body.style.height = h + 'px';
                 body.style.opacity = '1';
               });
-              body.addEventListener('transitionend', () => {
+              body.addEventListener('transitionend', e => {
+                if (e.propertyName !== 'height') return;
                 body.style.height = '';
                 body.style.opacity = '';
               }, { once: true });
