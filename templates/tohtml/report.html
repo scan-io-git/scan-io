@@ -974,48 +974,48 @@
 
     .report-header__pill {
       display: inline-flex;
-      align-items: baseline;
-      gap: 4px;
-      padding: var(--space-1) var(--space-3);
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
       border-radius: 999px;
-      background: var(--bg-canvas);
+      background: transparent;
       border: 1px solid var(--border-default);
       font-size: var(--text-sm);
       color: var(--fg-muted);
-      max-width: 100%;
+      max-width: 160px;
       min-width: 0;
+      text-decoration: none;
+      white-space: nowrap;
     }
 
-    .report-header__pill > * {
+    .report-header__pill span,
+    .report-header__pill code {
       min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
-    .report-header__pill strong {
+    .report-header__pill:hover {
       color: var(--fg-default);
-      font-weight: 600;
-    }
-
-    .report-header__pill a {
-      color: var(--accent-fg);
+      border-color: var(--accent-fg);
       text-decoration: none;
     }
 
-    .report-header__pill a:hover {
-      text-decoration: underline;
-    }
-
-    .report-header__pill a:focus-visible {
+    .report-header__pill:focus-visible {
       outline: none;
       box-shadow: var(--focus-ring);
-      border-radius: 2px;
     }
 
     .report-header__pill code {
       font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
       font-size: var(--text-xs);
+    }
+
+    .report-header__tool-label {
+      font-size: var(--text-xs);
+      color: var(--fg-subtle);
+      white-space: nowrap;
     }
 
     .report-header__accent {
@@ -1150,7 +1150,7 @@
       flex-shrink: 0;
     }
 
-    .report-header__theme-btn {
+    .report-header__icon-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -1165,11 +1165,11 @@
       transition: background var(--motion-fast), color var(--motion-fast);
       flex-shrink: 0;
     }
-    .report-header__theme-btn:hover {
+    .report-header__icon-btn:hover {
       background: var(--bg-inset);
       color: var(--fg-default);
     }
-    .report-header__theme-btn:focus-visible {
+    .report-header__icon-btn:focus-visible {
       outline: none;
       box-shadow: var(--focus-ring);
     }
@@ -1213,14 +1213,6 @@
       flex-wrap: wrap;
     }
 
-    .report-footer__center {
-      flex: 1;
-      text-align: center;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
     .report-footer__right {
       flex: 1;
       text-align: right;
@@ -1240,11 +1232,6 @@
       outline: none;
       box-shadow: var(--focus-ring);
       border-radius: 2px;
-    }
-
-    .report-footer__sep {
-      margin: 0 var(--space-2);
-      color: var(--fg-subtle);
     }
 
     .scroll-up-button {
@@ -1574,6 +1561,7 @@
 {{ $branchURL := .Metadata.BranchURL }}
 {{ $commitURL := .Metadata.CommitURL }}
 {{ $webURL := .Metadata.WebURL }}
+{{ $vcs := .Metadata.VCSURL }}
 
 <body>
   <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
@@ -1655,6 +1643,19 @@
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <path d="M5.5 5h13a1 1 0 0 1 .5 1.5l-5 5.5l0 7l-4 -3l0 -4l-5 -5.5a1 1 0 0 1 .5 -1.5"/>
     </symbol>
+    <symbol id="tb-git-branch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>
+    </symbol>
+    <symbol id="tb-git-fork" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/>
+      <path d="M6 8v2a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V8"/><line x1="12" y1="12" x2="12" y2="16"/>
+    </symbol>
+    <symbol id="tb-git-commit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/><line x1="3" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="21" y2="12"/>
+    </symbol>
+    <symbol id="tb-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/><path d="M12 17v.01"/><path d="M12 13.5a1.5 1.5 0 0 1 1-1.4 2.5 2.5 0 1 0-3.5-2.3"/>
+    </symbol>
   </svg>
   <header class="report-header">
     <div class="report-header__inner">
@@ -1670,14 +1671,24 @@
       </a>
 
       <div class="report-header__inline-right">
-        {{if $branch}}<span class="report-header__pill report-header__pill--branch">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
-          {{if $branchURL}}<a href="{{- $branchURL -}}">{{ $branch }}</a>{{else}}{{ $branch }}{{end}}
-        </span>{{end}}
-        <span class="report-header__pill report-header__pill--findings">{{index .Metadata.SeverityInfo "total"}} findings</span>
-        <span class="report-header__pill report-header__pill--date">{{ .Metadata.Time | formatDateTime }} UTC</span>
+        {{if $repo}}<a class="report-header__pill report-header__pill--repo" href="{{ $webURL }}" target="_blank" rel="noopener" title="{{ $repo }}">
+          <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-fork"/></svg>
+          <span>{{ if and $vcs $vcs.Repository }}{{ $vcs.Hostname }}/{{ $vcs.Namespace }}/{{ $vcs.Repository }}{{ else }}{{ $repo }}{{ end }}</span>
+        </a>{{end}}
+        {{if $branch}}<a class="report-header__pill report-header__pill--branch" href="{{if $branchURL}}{{ $branchURL }}{{else}}#{{end}}" {{if $branchURL}}target="_blank" rel="noopener"{{end}} title="{{ $branch }}">
+          <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-branch"/></svg>
+          <span>{{ $branch }}</span>
+        </a>{{end}}
+        {{if $commit}}<a class="report-header__pill report-header__pill--commit" href="{{if $commitURL}}{{ $commitURL }}{{else}}#{{end}}" {{if $commitURL}}target="_blank" rel="noopener"{{end}} title="{{ $commit }}">
+          <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-commit"/></svg>
+          <code>#{{ slice $commit 0 7 }}</code>
+        </a>{{end}}
+        {{if .Metadata.ToolMetadata.Name}}<span class="report-header__tool-label">{{ .Metadata.ToolMetadata.Name }}{{if .Metadata.ToolMetadata.Version}} {{ .Metadata.ToolMetadata.Version }}{{end}}</span>{{end}}
         <span class="report-header__inline-divider" aria-hidden="true"></span>
-        <button class="report-header__theme-btn" type="button" aria-label="Toggle theme" id="theme-btn-inline">
+        <button class="report-header__icon-btn report-header__help-btn" type="button" aria-label="Keyboard shortcuts" id="help-btn-inline">
+          <svg class="icon" aria-hidden="true" width="16" height="16"><use href="#tb-help"/></svg>
+        </button>
+        <button class="report-header__icon-btn report-header__theme-btn" type="button" aria-label="Toggle theme" id="theme-btn-inline">
           <svg class="icon icon--sun" aria-hidden="true" width="16" height="16"><use href="#tb-sun"/></svg>
           <svg class="icon icon--moon" aria-hidden="true" width="16" height="16"><use href="#tb-moon"/></svg>
         </button>
@@ -1691,16 +1702,23 @@
           </svg>
         </button>
         <div class="header-kebab__popover" id="header-kebab-popover" role="menu" aria-labelledby="header-kebab-btn" hidden>
-          <div class="header-kebab__meta-item" role="menuitem"><strong>Tool</strong>&nbsp;{{ .Metadata.ToolMetadata.Name }}{{if .Metadata.ToolMetadata.Version}} {{ .Metadata.ToolMetadata.Version }}{{end}}</div>
-          {{if $repo}}<div class="header-kebab__meta-item" role="menuitem"><strong>Repo</strong>&nbsp;<a href="{{ $webURL }}">{{ $repo }}</a></div>{{end}}
-          {{if $branch}}<div class="header-kebab__meta-item" role="menuitem"><strong>Branch</strong>&nbsp;{{if $branchURL}}<a href="{{- $branchURL -}}">{{ $branch }}</a>{{else}}{{ $branch }}{{end}}</div>{{end}}
-          {{if $commit}}<div class="header-kebab__meta-item" role="menuitem"><strong>Commit</strong>&nbsp;{{if $commitURL}}<a href="{{- $commitURL -}}"><code>{{ slice $commit 0 7 }}</code></a>{{else}}<code>{{ slice $commit 0 7 }}</code>{{end}}</div>{{end}}
-          <div class="header-kebab__meta-item" role="menuitem"><strong>Generated</strong>&nbsp;{{ .Metadata.Time | formatDateTime }} UTC</div>
-          {{if .Metadata.SourceFolder}}<div class="header-kebab__meta-item" role="menuitem" title="{{ .Metadata.SourceFolder }}"><strong>Source</strong>&nbsp;<code>{{ .Metadata.SourceFolder }}</code></div>{{end}}
-          {{if .Metadata.RepositoryMetadata.Subfolder}}<div class="header-kebab__meta-item" role="menuitem"><strong>Subfolder</strong>&nbsp;<code>{{ .Metadata.RepositoryMetadata.Subfolder }}</code></div>{{end}}
+          {{if $repo}}<div class="header-kebab__meta-item" role="menuitem">
+            <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-fork"/></svg>
+            {{if $webURL}}<a href="{{ $webURL }}" target="_blank" rel="noopener">{{ if and $vcs $vcs.Repository }}{{ $vcs.Hostname }}/{{ $vcs.Namespace }}/{{ $vcs.Repository }}{{ else }}{{ $repo }}{{ end }}</a>{{else}}{{ if and $vcs $vcs.Repository }}{{ $vcs.Hostname }}/{{ $vcs.Namespace }}/{{ $vcs.Repository }}{{ else }}{{ $repo }}{{ end }}{{end}}
+          </div>{{end}}
+          {{if $branch}}<div class="header-kebab__meta-item" role="menuitem">
+            <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-branch"/></svg>
+            {{if $branchURL}}<a href="{{ $branchURL }}" target="_blank" rel="noopener">{{ $branch }}</a>{{else}}{{ $branch }}{{end}}
+          </div>{{end}}
+          {{if $commit}}<div class="header-kebab__meta-item" role="menuitem">
+            <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-commit"/></svg>
+            {{if $commitURL}}<a href="{{ $commitURL }}" target="_blank" rel="noopener"><code>#{{ slice $commit 0 7 }}</code></a>{{else}}<code>#{{ slice $commit 0 7 }}</code>{{end}}
+          </div>{{end}}
+          {{if .Metadata.ToolMetadata.Name}}<div class="header-kebab__meta-item header-kebab__meta-item--tool" role="menuitem">
+            {{ .Metadata.ToolMetadata.Name }}{{if .Metadata.ToolMetadata.Version}} {{ .Metadata.ToolMetadata.Version }}{{end}}
+          </div>{{end}}
           <div class="header-kebab__divider"></div>
-          <button class="header-kebab__theme-btn" id="kebab-theme-btn" role="menuitem"
-                  aria-label="Toggle theme">
+          <button class="header-kebab__theme-btn" id="kebab-theme-btn" role="menuitem" aria-label="Toggle theme">
             <svg class="icon icon--sun" aria-hidden="true" width="14" height="14"><use href="#tb-sun"/></svg>
             <svg class="icon icon--moon" aria-hidden="true" width="14" height="14"><use href="#tb-moon"/></svg>
             <span class="header-kebab__theme-label">Toggle theme</span>
@@ -2211,6 +2229,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         helpDialog?.addEventListener('click', e => {
           if (e.target === helpDialog || e.target.closest('[data-close-help]')) closeHelp();
         });
+        document.getElementById('help-btn-inline')?.addEventListener('click', () => { openHelp(); });
       }
 
       function initShortcuts() {
@@ -2439,13 +2458,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
   <div class="report-footer__inner">
     <div class="report-footer__left">
       <span>Generated {{ .Metadata.Time | formatDateTime }} UTC</span>
-      {{if .Metadata.ToolMetadata.Name}}<span class="report-footer__sep">·</span><span>{{ .Metadata.ToolMetadata.Name }}</span>{{end}}
     </div>
-    {{if $repo}}
-    <div class="report-footer__center">
-      {{if $branchURL}}<a href="{{ $branchURL }}" target="_blank" rel="noopener" title="{{ $repo }}">{{ $repo }}</a>{{else if $webURL}}<a href="{{ $webURL }}" target="_blank" rel="noopener" title="{{ $repo }}">{{ $repo }}</a>{{else}}<span title="{{ $repo }}">{{ $repo }}</span>{{end}}
-    </div>
-    {{end}}
     <div class="report-footer__right">
       <a href="https://github.com/scan-io-git/scan-io" target="_blank" rel="noopener">scan-io-git/scan-io</a>
     </div>

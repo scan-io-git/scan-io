@@ -37,6 +37,17 @@ type ToHTMLOptions struct {
 	NoSuppressions bool   `json:"nosuppressions,omitempty"`
 }
 
+type VCSURLInfo struct {
+	VCSType       string
+	Hostname      string
+	Namespace     string
+	Repository    string
+	Branch        string
+	PullRequestId string
+	HTTPRepoLink  string
+	SSHRepoLink   string
+}
+
 type ReportMetadata struct {
 	git.RepositoryMetadata
 	scaniosarif.ToolMetadata
@@ -47,6 +58,7 @@ type ReportMetadata struct {
 	WebURL       string
 	BranchURL    string
 	CommitURL    string
+	VCSURL       *VCSURLInfo
 }
 
 // Global variables for configuration and command arguments
@@ -66,6 +78,21 @@ var (
   # Use no-supressions to skip results with supressions sarif property
   scanio to-html -i /tmp/juice-shop/semgrep_results.sarif -o /tmp/juice-shop/semgrep_results.html -s /tmp/juice-shop/ -t ./templates/tohtml --no-supressions`
 )
+
+func vcsTypeToString(t vcsurl.VCSType) string {
+	switch t {
+	case vcsurl.Github:
+		return "github"
+	case vcsurl.Gitlab:
+		return "gitlab"
+	case vcsurl.Bitbucket:
+		return "bitbucket"
+	case vcsurl.GenericVCS:
+		return "generic"
+	default:
+		return ""
+	}
+}
 
 // this function will implement vcs specific logic to generate web URL to branch or commit + special case for onprem BB
 func buildWebURLToRef(url *vcsurl.VCSURL, refName, refType string) string {
@@ -219,6 +246,18 @@ var ToHtmlCmd = &cobra.Command{
 		}
 		if url != nil {
 			metadata.WebURL = url.HTTPRepoLink
+		}
+		if url != nil {
+			metadata.VCSURL = &VCSURLInfo{
+				VCSType:       vcsTypeToString(url.VCSType),
+				Hostname:      url.ParsedURL.Hostname(),
+				Namespace:     url.Namespace,
+				Repository:    url.Repository,
+				Branch:        url.Branch,
+				PullRequestId: url.PullRequestId,
+				HTTPRepoLink:  url.HTTPRepoLink,
+				SSHRepoLink:   url.SSHRepoLink,
+			}
 		}
 		if repositoryMetadata.BranchName != nil {
 			metadata.BranchURL = buildWebURLToRef(url, *repositoryMetadata.BranchName, "branch")
