@@ -1646,15 +1646,24 @@
     <symbol id="tb-git-branch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>
     </symbol>
-    <symbol id="tb-git-fork" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/>
-      <path d="M6 8v2a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V8"/><line x1="12" y1="12" x2="12" y2="16"/>
-    </symbol>
     <symbol id="tb-git-commit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="3"/><line x1="3" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="21" y2="12"/>
     </symbol>
     <symbol id="tb-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="9"/><path d="M12 17v.01"/><path d="M12 13.5a1.5 1.5 0 0 1 1-1.4 2.5 2.5 0 1 0-3.5-2.3"/>
+    </symbol>
+    <symbol id="tb-source-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <polyline points="7 8 3 12 7 16"/>
+      <polyline points="17 8 21 12 17 16"/>
+      <line x1="14" y1="4" x2="10" y2="20"/>
+    </symbol>
+    <symbol id="tb-git-pull-request" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/>
+      <line x1="6" y1="8" x2="6" y2="16"/>
+      <path d="M11 6h5a2 2 0 0 1 2 2v8"/>
+      <polyline points="14 9 11 6 14 3"/>
     </symbol>
   </svg>
   <header class="report-header">
@@ -1672,8 +1681,8 @@
 
       <div class="report-header__inline-right">
         {{if $repo}}<a class="report-header__pill report-header__pill--repo" href="{{ $webURL }}" target="_blank" rel="noopener" title="{{ $repo }}">
-          <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-fork"/></svg>
-          <span>{{ if and $vcs $vcs.Repository }}{{ $vcs.Hostname }}/{{ $vcs.Namespace }}/{{ $vcs.Repository }}{{ else }}{{ $repo }}{{ end }}</span>
+          <svg width="14" height="14" aria-hidden="true"><use href="#tb-source-code"/></svg>
+          <span>{{ if and $vcs $vcs.Repository }}{{ $vcs.Namespace }} / {{ $vcs.Repository }}{{ else }}{{ $repo }}{{ end }}</span>
         </a>{{end}}
         {{if $branch}}<a class="report-header__pill report-header__pill--branch" href="{{if $branchURL}}{{ $branchURL }}{{else}}#{{end}}" {{if $branchURL}}target="_blank" rel="noopener"{{end}} title="{{ $branch }}">
           <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-branch"/></svg>
@@ -1682,6 +1691,10 @@
         {{if $commit}}<a class="report-header__pill report-header__pill--commit" href="{{if $commitURL}}{{ $commitURL }}{{else}}#{{end}}" {{if $commitURL}}target="_blank" rel="noopener"{{end}} title="{{ $commit }}">
           <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-commit"/></svg>
           <code>#{{ slice $commit 0 7 }}</code>
+        </a>{{end}}
+        {{if and $vcs $vcs.PullRequestId}}<a class="report-header__pill report-header__pill--pr" href="{{ if eq $vcs.VCSType "bitbucket" }}{{ $vcs.HTTPRepoLink }}/pull-requests/{{ $vcs.PullRequestId }}{{ else if eq $vcs.VCSType "gitlab" }}{{ $vcs.HTTPRepoLink }}/-/merge_requests/{{ $vcs.PullRequestId }}{{ else }}{{ $vcs.HTTPRepoLink }}/pull/{{ $vcs.PullRequestId }}{{ end }}" target="_blank" rel="noopener" title="Pull request #{{ $vcs.PullRequestId }}">
+          <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-pull-request"/></svg>
+          <code>#{{ $vcs.PullRequestId }}</code>
         </a>{{end}}
         {{if .Metadata.ToolMetadata.Name}}<span class="report-header__tool-label">{{ .Metadata.ToolMetadata.Name }}{{if .Metadata.ToolMetadata.Version}} {{ .Metadata.ToolMetadata.Version }}{{end}}</span>{{end}}
         <span class="report-header__inline-divider" aria-hidden="true"></span>
@@ -1703,8 +1716,8 @@
         </button>
         <div class="header-kebab__popover" id="header-kebab-popover" role="menu" aria-labelledby="header-kebab-btn" hidden>
           {{if $repo}}<div class="header-kebab__meta-item" role="menuitem">
-            <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-fork"/></svg>
-            {{if $webURL}}<a href="{{ $webURL }}" target="_blank" rel="noopener">{{ if and $vcs $vcs.Repository }}{{ $vcs.Hostname }}/{{ $vcs.Namespace }}/{{ $vcs.Repository }}{{ else }}{{ $repo }}{{ end }}</a>{{else}}{{ if and $vcs $vcs.Repository }}{{ $vcs.Hostname }}/{{ $vcs.Namespace }}/{{ $vcs.Repository }}{{ else }}{{ $repo }}{{ end }}{{end}}
+            <svg width="14" height="14" aria-hidden="true"><use href="#tb-source-code"/></svg>
+            {{if $webURL}}<a href="{{ $webURL }}" target="_blank" rel="noopener">{{ if and $vcs $vcs.Repository }}{{ $vcs.Namespace }} / {{ $vcs.Repository }}{{ else }}{{ $repo }}{{ end }}</a>{{else}}{{ if and $vcs $vcs.Repository }}{{ $vcs.Namespace }} / {{ $vcs.Repository }}{{ else }}{{ $repo }}{{ end }}{{end}}
           </div>{{end}}
           {{if $branch}}<div class="header-kebab__meta-item" role="menuitem">
             <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-branch"/></svg>
@@ -1713,6 +1726,10 @@
           {{if $commit}}<div class="header-kebab__meta-item" role="menuitem">
             <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-commit"/></svg>
             {{if $commitURL}}<a href="{{ $commitURL }}" target="_blank" rel="noopener"><code>#{{ slice $commit 0 7 }}</code></a>{{else}}<code>#{{ slice $commit 0 7 }}</code>{{end}}
+          </div>{{end}}
+          {{if and $vcs $vcs.PullRequestId}}<div class="header-kebab__meta-item" role="menuitem">
+            <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-pull-request"/></svg>
+            <a href="{{ if eq $vcs.VCSType "bitbucket" }}{{ $vcs.HTTPRepoLink }}/pull-requests/{{ $vcs.PullRequestId }}{{ else if eq $vcs.VCSType "gitlab" }}{{ $vcs.HTTPRepoLink }}/-/merge_requests/{{ $vcs.PullRequestId }}{{ else }}{{ $vcs.HTTPRepoLink }}/pull/{{ $vcs.PullRequestId }}{{ end }}" target="_blank" rel="noopener">PR #{{ $vcs.PullRequestId }}</a>
           </div>{{end}}
           {{if .Metadata.ToolMetadata.Name}}<div class="header-kebab__meta-item header-kebab__meta-item--tool" role="menuitem">
             {{ .Metadata.ToolMetadata.Name }}{{if .Metadata.ToolMetadata.Version}} {{ .Metadata.ToolMetadata.Version }}{{end}}
