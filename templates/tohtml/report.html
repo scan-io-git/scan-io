@@ -774,8 +774,8 @@
     .toc-grp-btn:focus-visible { outline: none; box-shadow: inset var(--focus-ring); }
 
     .toc-grp-btn[aria-pressed="true"] {
-      background: var(--bg-canvas);
-      color: var(--fg-default);
+      background: color-mix(in oklch, var(--accent-brand) 12%, var(--bg-canvas));
+      color: var(--accent-brand);
       font-weight: 600;
     }
 
