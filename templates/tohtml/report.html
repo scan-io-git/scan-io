@@ -672,6 +672,13 @@
     .btn--ghost:hover {
       background: var(--bg-subtle);
     }
+    .btn--ghost[aria-pressed="true"] {
+      background: color-mix(in oklch, var(--accent-brand) 12%, transparent);
+      border-color: var(--accent-brand);
+      color: var(--accent-brand);
+    }
+    .btn__icon { width: 13px; height: 13px; flex: 0 0 13px; }
+    .btn--with-icon { display: inline-flex; align-items: center; gap: 6px; }
 
     /* ─── Outline layout: sidebar + main ─── */
     .outline-layout {
@@ -714,59 +721,6 @@
     .toc-resize.is-dragging { background: color-mix(in oklch, var(--accent-brand) 35%, transparent); }
     .toc-resize:focus-visible { outline: none; box-shadow: var(--focus-ring); }
     .toc-drawer { position: sticky; } /* anchor for absolute handle */
-
-    /* Stacked severity summary bar */
-    .toc-sevbar {
-      padding: 7px 12px 8px;
-      background: var(--bg-subtle);
-      border-bottom: 1px solid var(--border-default);
-    }
-    .toc-sevbar__strip {
-      display: flex;
-      height: 5px;
-      background: var(--bg-inset);
-      border-radius: var(--radius-pill);
-      overflow: hidden;
-    }
-    .toc-sevbar__strip > span {
-      display: block;
-      height: 100%;
-      transition: width var(--motion-fast);
-    }
-    .toc-sevbar__strip > span.sev-critical { background: var(--sev-critical-dot); }
-    .toc-sevbar__strip > span.sev-high     { background: var(--sev-high-dot); }
-    .toc-sevbar__strip > span.sev-medium   { background: var(--sev-medium-dot); }
-    .toc-sevbar__strip > span.sev-low      { background: var(--sev-low-dot); }
-    .toc-sevbar__strip > span.sev-info     { background: var(--sev-info-dot); }
-    .toc-sevbar__strip > span.sev-unknown  { background: var(--fg-muted); }
-
-    /* Reopen strip — shown when drawer is hidden */
-    .toc-reopen {
-      flex: 0 0 24px;
-      width: 24px;
-      position: sticky;
-      top: 60px;
-      max-height: calc(100vh - 72px);
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-default);
-      border-radius: var(--radius-sm);
-      margin: var(--space-4) 0 var(--space-4) var(--space-4);
-      padding: var(--space-2) 0 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      cursor: pointer;
-      color: var(--fg-muted);
-      transition: background var(--motion-fast);
-    }
-    .toc-reopen:hover { background: var(--bg-subtle); color: var(--fg-default); }
-    .toc-reopen__accent {
-      position: absolute;
-      left: 0; top: 0; bottom: 0;
-      width: 2px;
-      background: var(--accent-brand);
-      border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-    }
 
     .toc-drawer__title {
       padding: 7px 12px;
@@ -946,6 +900,29 @@
     .tv-tr.tv-d0:hover, .tv-tr.tv-d1[data-grp-id]:hover { background: var(--bg-subtle); }
     .tv-ch svg { transition: transform var(--motion-fast) var(--motion-ease); }
     .tv-tr[data-collapsed="true"] .tv-ch svg { transform: rotate(0deg); }
+
+    /* Collapsible descendants — animate between visible and collapsed states */
+    .toc-tree [data-grp-parent] {
+      overflow: hidden;
+      max-height: 80px;
+      opacity: 1;
+      transition: max-height 180ms var(--motion-ease),
+                  opacity 120ms var(--motion-ease),
+                  padding 180ms var(--motion-ease);
+    }
+    .toc-tree .tv-chips[data-grp-parent] {
+      max-height: 240px;
+    }
+    .toc-tree [data-grp-parent].is-collapsed {
+      max-height: 0;
+      opacity: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      pointer-events: none;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .toc-tree [data-grp-parent] { transition: none; }
+    }
 
     @media (max-width: 900px) {
       .toc-drawer {
@@ -1576,7 +1553,6 @@
     @media print {
       .summary-bar,
       .toc-drawer,
-      .toc-reopen,
       .header-kebab,
       .scroll-up-button,
       .copy-btn,
@@ -1724,6 +1700,10 @@
       <line x1="10" y1="14" x2="20" y2="4"/>
       <polyline points="15 4 20 4 20 9"/>
     </symbol>
+    <symbol id="tb-sidebar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="16" rx="2"/>
+      <line x1="9" y1="4" x2="9" y2="20"/>
+    </symbol>
     <symbol id="tb-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <path d="M5.5 5h13a1 1 0 0 1 .5 1.5l-5 5.5l0 7l-4 -3l0 -4l-5 -5.5a1 1 0 0 1 .5 -1.5"/>
@@ -1851,16 +1831,16 @@
             <svg class="icon" aria-hidden="true" width="12" height="12"><use href="#tb-x"></use></svg>
           </button>
         </label>
+        <button id="toc-toggle" class="btn btn--ghost btn--with-icon" type="button" aria-pressed="true" aria-label="Toggle findings panel" title="Toggle findings panel (o)">
+          <svg class="btn__icon" aria-hidden="true"><use href="#tb-sidebar"/></svg>
+          <span>Findings panel</span>
+        </button>
         <button id="toggle-all" class="btn btn--ghost" type="button">Collapse all</button>
       </div>
     </div>
   </div>
 
   <div class="outline-layout">
-  <button class="toc-reopen" id="toc-reopen" type="button" aria-label="Show findings panel" hidden>
-    <span class="toc-reopen__accent"></span>
-    <svg width="12" height="12" aria-hidden="true"><use href="#tb-chevron-right"/></svg>
-  </button>
   <aside id="toc-drawer" class="toc-drawer" aria-label="Findings outline">
     <div class="toc-drawer__title">
       <span>Findings</span>
@@ -1870,9 +1850,6 @@
           <svg width="14" height="14" aria-hidden="true"><use href="#tb-x"/></svg>
         </button>
       </div>
-    </div>
-    <div class="toc-sevbar" id="toc-sevbar" aria-hidden="true">
-      <div class="toc-sevbar__strip" id="toc-sevbar-strip"></div>
     </div>
     <div class="toc-grouping" role="group" aria-label="Group findings by">
       <button class="toc-grp-btn" data-grp="sev-file" aria-pressed="true"  type="button">By severity</button>
@@ -2147,11 +2124,10 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
 
       function initToc() {
         const drawer     = document.getElementById('toc-drawer');
-        const reopenBtn  = document.getElementById('toc-reopen');
+        const toggleBtn  = document.getElementById('toc-toggle');
         const closeBtn   = document.getElementById('toc-close');
         const treeSev    = document.getElementById('toc-by-sev');
         const treeRule   = document.getElementById('toc-by-rule');
-        const sevbarStrip = document.getElementById('toc-sevbar-strip');
         const resizeHandle = document.getElementById('toc-resize');
         const grpBtns    = Array.from(drawer.querySelectorAll('.toc-grp-btn'));
 
@@ -2232,11 +2208,14 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
 
         function buildSevTree() {
           let html = '';
+          let rendered = 0;
           SEV_ORDER.forEach(sev => {
             const items = data.filter(d => d.sev === sev);
             if (!items.length) return;
             const capSev = sev.charAt(0).toUpperCase() + sev.slice(1);
             const sevId = 'sg-' + sev;
+            if (rendered > 0) html += '<div class="tv-sep"></div>';
+            rendered++;
             html += '<div class="tv-tr tv-d0" data-grp-id="' + sevId + '">' +
               chev + dot(sev) +
               '<span class="tv-tl">' + capSev + '</span>' +
@@ -2319,21 +2298,6 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           return html;
         }
 
-        function renderSevBar() {
-          if (!sevbarStrip) return;
-          const total = data.length;
-          if (!total) { sevbarStrip.innerHTML = ''; return; }
-          let html = '';
-          for (const sev of SEV_ORDER) {
-            const n = data.filter(d => d.sev === sev).length;
-            if (!n) continue;
-            const pct = (n / total * 100).toFixed(2);
-            const cap = sev.charAt(0).toUpperCase() + sev.slice(1);
-            html += '<span class="sev-' + sev + '" style="width:' + pct + '%" title="' + n + ' ' + cap + '"></span>';
-          }
-          sevbarStrip.innerHTML = html;
-        }
-
         function initResize() {
           if (!resizeHandle) return;
           const MIN = 240, MAX = 480;
@@ -2382,7 +2346,6 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           });
         }
 
-        renderSevBar();
         initResize();
         treeSev.innerHTML  = buildSevTree();
         treeRule.innerHTML = buildRuleTree();
@@ -2395,7 +2358,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           const tree = header.closest('.toc-tree');
           tree.querySelectorAll('[data-grp-parent]').forEach(el => {
             const parents = el.dataset.grpParent.split(' ');
-            if (parents.includes(id)) el.hidden = !collapsed;
+            if (parents.includes(id)) el.classList.toggle('is-collapsed', !collapsed);
           });
         }
         [treeSev, treeRule].forEach(tree => {
@@ -2417,12 +2380,12 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         setGrouping(savedGrp);
 
         setTocOpen = function(open) {
-          drawer.hidden  = !open;
-          reopenBtn.hidden = open;
+          drawer.hidden = !open;
+          if (toggleBtn) toggleBtn.setAttribute('aria-pressed', String(open));
           try { localStorage.setItem('report.toc', String(open)); } catch (_) {}
         };
         closeBtn.addEventListener('click', () => setTocOpen(false));
-        reopenBtn.addEventListener('click', () => setTocOpen(true));
+        if (toggleBtn) toggleBtn.addEventListener('click', () => setTocOpen(drawer.hidden));
 
         // Leaf link: expand finding + scroll, no new tab
         drawer.addEventListener('click', e => {
