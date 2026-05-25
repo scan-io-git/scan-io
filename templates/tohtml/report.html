@@ -986,6 +986,18 @@
       min-width: 0;
       text-decoration: none;
       white-space: nowrap;
+      transition: color var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+    }
+
+    .report-header__pill svg {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+    }
+
+    .report-header__pill--branch svg {
+      width: 13px;
+      height: 13px;
     }
 
     .report-header__pill span,
@@ -998,7 +1010,8 @@
 
     .report-header__pill:hover {
       color: var(--fg-default);
-      border-color: var(--accent-fg);
+      border-color: var(--accent-brand);
+      box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent-brand) 22%, transparent);
       text-decoration: none;
     }
 
