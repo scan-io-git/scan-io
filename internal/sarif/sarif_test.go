@@ -391,6 +391,59 @@ func TestCollectSeverityInfoMissingSeverityCountsAsUnknown(t *testing.T) {
 
 // --- SortResultsBySeverity ---
 
+func TestEnrichResultsLocationURIPropertyPRWebURL(t *testing.T) {
+	uri := "src/main.go"
+	makeReport := func() Report {
+		al := gosarif.NewSimpleArtifactLocation(uri)
+		al.Properties = gosarif.Properties{}
+		loc := gosarif.NewLocationWithPhysicalLocation(
+			&gosarif.PhysicalLocation{
+				ArtifactLocation: al,
+				Region:           &gosarif.Region{},
+			},
+		)
+		loc.Properties = gosarif.Properties{}
+		result := &gosarif.Result{}
+		result.Locations = []*gosarif.Location{loc}
+		return Report{
+			Report: &gosarif.Report{
+				Version: string(gosarif.Version210),
+				Runs:    []*gosarif.Run{{Results: []*gosarif.Result{result}}},
+			},
+		}
+	}
+
+	webURL := "https://github.com/org/repo/blob/abc/src/main.go#L1"
+	prURL := "https://github.com/org/repo/pull/42/files"
+
+	t.Run("both callbacks set", func(t *testing.T) {
+		report := makeReport()
+		report.EnrichResultsLocationURIProperty(
+			func(_ *gosarif.Location) string { return webURL },
+			func(_ *gosarif.Location) string { return prURL },
+		)
+		loc := report.Runs[0].Results[0].Locations[0]
+		if got, _ := loc.Properties["WebURL"].(string); got != webURL {
+			t.Errorf("WebURL = %q, want %q", got, webURL)
+		}
+		if got, _ := loc.Properties["PRWebURL"].(string); got != prURL {
+			t.Errorf("PRWebURL = %q, want %q", got, prURL)
+		}
+	})
+
+	t.Run("nil prDiffURLCallback does not set PRWebURL", func(t *testing.T) {
+		report := makeReport()
+		report.EnrichResultsLocationURIProperty(
+			func(_ *gosarif.Location) string { return webURL },
+			nil,
+		)
+		loc := report.Runs[0].Results[0].Locations[0]
+		if _, ok := loc.Properties["PRWebURL"]; ok {
+			t.Error("PRWebURL should not be set when prDiffURLCallback is nil")
+		}
+	})
+}
+
 func TestSortResultsBySeverity(t *testing.T) {
 	mkResult := func(severity string) *gosarif.Result {
 		r := &gosarif.Result{}
