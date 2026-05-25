@@ -567,3 +567,104 @@ func calculateMD5Hash(text string) string {
 	io.WriteString(hash, text)
 	return hex.EncodeToString(hash.Sum(nil))
 }
+
+// EnrichResultsCategoryProperty writes Properties["Category"] (display label) and
+// Properties["CategorySlug"] (machine value) for each result. Defaults to CategoryOther
+// when no CWE tag or rule-ID keyword matches.
+func (r Report) EnrichResultsCategoryProperty() {
+	rulesMap := map[string]*sarif.ReportingDescriptor{}
+	for _, rule := range r.Runs[0].Tool.Driver.Rules {
+		rulesMap[rule.ID] = rule
+	}
+
+	for _, result := range r.Runs[0].Results {
+		rule := rulesMap[*result.RuleID]
+		cat, ok := resolveCategory(*result.RuleID, rule)
+		if !ok {
+			cat = CategoryOther
+		}
+		if result.Properties == nil {
+			result.Properties = make(map[string]any)
+		}
+		result.Properties["Category"] = categoryLabels[cat]
+		result.Properties["CategorySlug"] = string(cat)
+	}
+}
+
+// EnrichResultsConfidenceProperty writes Properties["Confidence"] (e.g. "High (85%)")
+// for each result. The key is omitted when no confidence signal is found.
+func (r Report) EnrichResultsConfidenceProperty() {
+	rulesMap := map[string]*sarif.ReportingDescriptor{}
+	for _, rule := range r.Runs[0].Tool.Driver.Rules {
+		rulesMap[rule.ID] = rule
+	}
+
+	for _, result := range r.Runs[0].Results {
+		rule := rulesMap[*result.RuleID]
+		conf, ok := resolveConfidence(result, rule)
+		if !ok {
+			continue
+		}
+		if result.Properties == nil {
+			result.Properties = make(map[string]any)
+		}
+		result.Properties["Confidence"] = formatConfidence(conf)
+	}
+}
+
+// EnrichResultsMetadataProperty writes RuleFull, RuleShort, Scanner, CodeSectionLabel,
+// References, and Fix onto each result's Properties map. Fields are omitted when empty.
+// Must run after EnrichResultsCodeFlowProperty and RemoveDataflowDuplicates so that
+// CodeSectionLabel reflects the final thread-flow count.
+func (r Report) EnrichResultsMetadataProperty() {
+	scanner := r.Runs[0].Tool.Driver.Name
+
+	rulesMap := map[string]*sarif.ReportingDescriptor{}
+	for _, rule := range r.Runs[0].Tool.Driver.Rules {
+		rulesMap[rule.ID] = rule
+	}
+
+	for _, result := range r.Runs[0].Results {
+		if result.Properties == nil {
+			result.Properties = make(map[string]any)
+		}
+
+		ruleID := ""
+		if result.RuleID != nil {
+			ruleID = *result.RuleID
+		}
+
+		// Rule ID chips.
+		if ruleID != "" {
+			result.Properties["RuleFull"] = ruleID
+			short := ruleID
+			if i := strings.LastIndex(ruleID, "."); i >= 0 {
+				short = ruleID[i+1:]
+			}
+			result.Properties["RuleShort"] = short
+		}
+
+		// Scanner name.
+		if scanner != "" {
+			result.Properties["Scanner"] = scanner
+		}
+
+		// Code section label — "Data flow" when a real multi-step thread flow exists.
+		label := "Affected code"
+		if len(result.CodeFlows) > 0 && len(result.CodeFlows[0].ThreadFlows) > 0 {
+			if len(result.CodeFlows[0].ThreadFlows[0].Locations) > 1 {
+				label = "Data flow"
+			}
+		}
+		result.Properties["CodeSectionLabel"] = label
+
+		// References and Fix.
+		rule := rulesMap[ruleID]
+		if refs := extractReferences(result, rule, 3); len(refs) > 0 {
+			result.Properties["References"] = refs
+		}
+		if fix := extractFix(result, rule); fix != "" {
+			result.Properties["Fix"] = fix
+		}
+	}
+}

@@ -561,3 +561,246 @@ func TestEnrichResultsTitleProperty_FallsBackToRuleDescription(t *testing.T) {
 		t.Errorf("Description: want rule fallback %q, got %q", ruleDesc, got)
 	}
 }
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+func makeSimpleReport(_ string, rule *gosarif.ReportingDescriptor, result *gosarif.Result) Report {
+	return Report{
+		Report: &gosarif.Report{
+			Version: string(gosarif.Version210),
+			Runs: []*gosarif.Run{
+				{
+					Tool: gosarif.Tool{
+						Driver: &gosarif.ToolComponent{
+							Name:  "Test Scanner",
+							Rules: []*gosarif.ReportingDescriptor{rule},
+						},
+					},
+					Results: []*gosarif.Result{result},
+				},
+			},
+		},
+	}
+}
+
+func ruleWithTags(id string, tags ...string) *gosarif.ReportingDescriptor {
+	tagIfaces := make([]any, len(tags))
+	for i, t := range tags {
+		tagIfaces[i] = t
+	}
+	return &gosarif.ReportingDescriptor{
+		ID:         id,
+		Properties: gosarif.Properties{"tags": tagIfaces},
+	}
+}
+
+func resultFor(ruleID string) *gosarif.Result {
+	return &gosarif.Result{RuleID: &ruleID}
+}
+
+// ── EnrichResultsCategoryProperty ────────────────────────────────────────────
+
+func TestEnrichResultsCategoryProperty_CWESemgrep(t *testing.T) {
+	id := "semgrep.use-after-free"
+	rule := ruleWithTags(id, "CWE-416: Use After Free", "security")
+	result := resultFor(id)
+	report := makeSimpleReport(id, rule, result)
+
+	report.EnrichResultsCategoryProperty()
+
+	cat, _ := result.Properties["Category"].(string)
+	if cat != "Memory safety" {
+		t.Errorf("Category: want %q, got %q", "Memory safety", cat)
+	}
+	slug, _ := result.Properties["CategorySlug"].(string)
+	if slug != "MEMORY_SAFETY" {
+		t.Errorf("CategorySlug: want %q, got %q", "MEMORY_SAFETY", slug)
+	}
+}
+
+func TestEnrichResultsCategoryProperty_CWECodeQL(t *testing.T) {
+	id := "codeql.injection"
+	rule := ruleWithTags(id, "external/cwe/cwe-089")
+	result := resultFor(id)
+	report := makeSimpleReport(id, rule, result)
+
+	report.EnrichResultsCategoryProperty()
+
+	cat, _ := result.Properties["Category"].(string)
+	if cat != "Injection" {
+		t.Errorf("Category: want %q, got %q", "Injection", cat)
+	}
+}
+
+func TestEnrichResultsCategoryProperty_RuleIDFallback(t *testing.T) {
+	id := "gitleaks.aws-access-token"
+	rule := &gosarif.ReportingDescriptor{ID: id}
+	result := resultFor(id)
+	report := makeSimpleReport(id, rule, result)
+
+	report.EnrichResultsCategoryProperty()
+
+	cat, _ := result.Properties["Category"].(string)
+	if cat != "Hardcoded secret" {
+		t.Errorf("Category: want %q, got %q", "Hardcoded secret", cat)
+	}
+}
+
+func TestEnrichResultsCategoryProperty_FallsBackToOther(t *testing.T) {
+	id := "scanner.unknown-rule-xyz"
+	rule := &gosarif.ReportingDescriptor{ID: id}
+	result := resultFor(id)
+	report := makeSimpleReport(id, rule, result)
+
+	report.EnrichResultsCategoryProperty()
+
+	cat, _ := result.Properties["Category"].(string)
+	if cat != "Other" {
+		t.Errorf("Category: want %q, got %q", "Other", cat)
+	}
+	slug, _ := result.Properties["CategorySlug"].(string)
+	if slug != "OTHER" {
+		t.Errorf("CategorySlug: want %q, got %q", "OTHER", slug)
+	}
+}
+
+// ── EnrichResultsConfidenceProperty ──────────────────────────────────────────
+
+func TestEnrichResultsConfidenceProperty_FloatPropOverridesTag(t *testing.T) {
+	id := "rule.test"
+	rule := ruleWithTags(id, "HIGH CONFIDENCE")
+	result := resultFor(id)
+	result.Properties = gosarif.Properties{"confidence": float64(0.42)}
+	report := makeSimpleReport(id, rule, result)
+
+	report.EnrichResultsConfidenceProperty()
+
+	got, _ := result.Properties["Confidence"].(string)
+	if got != "Low (42%)" {
+		t.Errorf("Confidence: want %q, got %q", "Low (42%)", got)
+	}
+}
+
+func TestEnrichResultsConfidenceProperty_StringValueResolvedViaPrecisionMap(t *testing.T) {
+	id := "rule.test"
+	rule := &gosarif.ReportingDescriptor{ID: id}
+	result := resultFor(id)
+	result.Properties = gosarif.Properties{"confidence": "high"}
+	report := makeSimpleReport(id, rule, result)
+
+	report.EnrichResultsConfidenceProperty()
+
+	got, _ := result.Properties["Confidence"].(string)
+	if got != "High (85%)" {
+		t.Errorf("Confidence: want %q, got %q", "High (85%)", got)
+	}
+}
+
+func TestEnrichResultsConfidenceProperty_PrecisionFallback(t *testing.T) {
+	id := "rule.test"
+	rule := &gosarif.ReportingDescriptor{
+		ID:         id,
+		Properties: gosarif.Properties{"precision": "medium"},
+	}
+	result := resultFor(id)
+	report := makeSimpleReport(id, rule, result)
+
+	report.EnrichResultsConfidenceProperty()
+
+	got, _ := result.Properties["Confidence"].(string)
+	if got != "Medium (65%)" {
+		t.Errorf("Confidence: want %q, got %q", "Medium (65%)", got)
+	}
+}
+
+func TestEnrichResultsConfidenceProperty_SemgrepTag(t *testing.T) {
+	id := "rule.test"
+	rule := ruleWithTags(id, "LOW CONFIDENCE", "security")
+	result := resultFor(id)
+	report := makeSimpleReport(id, rule, result)
+
+	report.EnrichResultsConfidenceProperty()
+
+	got, _ := result.Properties["Confidence"].(string)
+	if got != "Low (40%)" {
+		t.Errorf("Confidence: want %q, got %q", "Low (40%)", got)
+	}
+}
+
+// ── extractReferencesFromMarkdown ─────────────────────────────────────────────
+
+func TestExtractReferences_SemgrepHTMLForm(t *testing.T) {
+	md := "Some description.\n\n<b>References:</b>\n - [CWE-416](https://cwe.mitre.org/data/definitions/416.html)\n"
+	urls := extractReferencesFromMarkdown(md)
+	if len(urls) != 1 || urls[0] != "https://cwe.mitre.org/data/definitions/416.html" {
+		t.Errorf("want one URL, got %v", urls)
+	}
+}
+
+func TestExtractReferences_DedupAndCap(t *testing.T) {
+	md := "## References\nhttps://a.example/\nhttps://b.example/\nhttps://a.example/\nhttps://c.example/\nhttps://d.example/\n"
+	result := resultFor("r")
+	result.Properties = nil
+	rule := &gosarif.ReportingDescriptor{
+		ID: "r",
+		Help: &gosarif.MultiformatMessageString{
+			Markdown: strPtr(md),
+		},
+	}
+	refs := extractReferences(result, rule, 3)
+	if len(refs) != 3 {
+		t.Errorf("want 3 refs, got %d: %v", len(refs), refs)
+	}
+	seen := map[string]bool{}
+	for _, r := range refs {
+		if seen[r] {
+			t.Errorf("duplicate ref: %q", r)
+		}
+		seen[r] = true
+	}
+}
+
+func TestExtractReferences_HelpUriFallback(t *testing.T) {
+	result := resultFor("r")
+	result.Properties = nil
+	uri := "https://help.example/rule"
+	rule := &gosarif.ReportingDescriptor{
+		ID:      "r",
+		HelpURI: &uri,
+	}
+	refs := extractReferences(result, rule, 3)
+	if len(refs) != 1 || refs[0] != uri {
+		t.Errorf("want helpUri %q, got %v", uri, refs)
+	}
+}
+
+// ── extractFix ────────────────────────────────────────────────────────────────
+
+func TestExtractFix_MarkdownSection(t *testing.T) {
+	md := "Description.\n\n## Fix\nUse malloc before reuse.\n\n## References\nhttps://example.com/\n"
+	fix := extractFixFromMarkdown(md)
+	if fix != "Use malloc before reuse." {
+		t.Errorf("Fix: got %q", fix)
+	}
+}
+
+func TestExtractFix_RecommendationPropertyWins(t *testing.T) {
+	id := "rule.test"
+	rule := &gosarif.ReportingDescriptor{
+		ID: id,
+		Help: &gosarif.MultiformatMessageString{
+			Markdown: strPtr("## Fix\nFrom markdown."),
+		},
+	}
+	result := resultFor(id)
+	result.Properties = gosarif.Properties{"recommendation": "From property."}
+	report := makeSimpleReport(id, rule, result)
+	_ = report
+
+	fix := extractFix(result, rule)
+	if fix != "From property." {
+		t.Errorf("Fix: want %q, got %q", "From property.", fix)
+	}
+}
+
+func strPtr(s string) *string { return &s }

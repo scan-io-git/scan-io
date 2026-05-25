@@ -241,6 +241,16 @@
       background: var(--bg-subtle);
     }
 
+    .finding__num {
+      color: var(--fg-muted);
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: var(--text-sm);
+      font-weight: 500;
+      margin-right: 8px;
+      flex-shrink: 0;
+      align-self: center;
+    }
+
     .finding__title {
       font-size: var(--text-lg);
       font-weight: 600;
@@ -349,6 +359,90 @@
       margin-top: 8px;
     }
 
+    .finding__meta-dl {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      column-gap: 12px;
+      row-gap: 4px;
+      margin: 0 0 12px;
+    }
+
+    .finding__meta-key {
+      color: var(--fg-muted);
+      font-size: var(--text-base);
+      font-weight: 400;
+      white-space: nowrap;
+      align-self: center;
+    }
+
+    .finding__meta-dl dd {
+      margin: 0;
+      color: var(--fg-default);
+      font-size: var(--text-base);
+      align-self: center;
+    }
+
+
+
+    .finding__section-h {
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: var(--fg-muted);
+      margin: 0 0 6px;
+    }
+
+    .finding__df-step-label {
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--fg-muted);
+      margin: 10px 0 4px;
+    }
+
+    .finding__fix {
+      border-left: 3px solid #2ea043;
+      background: color-mix(in srgb, #2ea043 8%, transparent);
+      padding: 10px 12px;
+      border-radius: 0 4px 4px 0;
+      margin-top: 12px;
+    }
+
+    [data-theme="dark"] .finding__fix {
+      background: color-mix(in srgb, #2ea043 12%, transparent);
+    }
+
+    .finding__fix pre {
+      margin: 0;
+      font-family: inherit;
+      font-size: var(--text-base);
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--fg-default);
+    }
+
+    .finding__refs {
+      margin-top: 12px;
+    }
+
+    .finding__refs ul {
+      margin: 4px 0 0;
+      padding-left: 18px;
+    }
+
+    .finding__refs li {
+      font-size: var(--text-base);
+      line-height: 1.6;
+    }
+
+    .finding__refs a {
+      color: var(--accent-fg);
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    .finding__refs a:hover {
+      text-decoration: underline;
+    }
+
     .finding__df-header {
       display: flex;
       align-items: center;
@@ -357,8 +451,6 @@
       font-size: var(--text-sm);
       font-weight: 600;
       color: var(--fg-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
     }
 
     .finding__df-filename {
@@ -1874,22 +1966,34 @@
         {{ $locationURI := index $location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
         {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
         {{ $locationWebURL := index $location.Properties "WebURL"}}
-        <details id="issue-{{$i}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}" {{if or (eq $severity "critical") (eq $severity "high")}}open{{end}}>
+        <details id="issue-{{$i}}" data-issue-num="{{add $i 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}" {{if or (eq $severity "critical") (eq $severity "high")}}open{{end}}>
           <summary class="finding__head">
             <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
-            <span class="finding__title">{{index .Properties "Title"}}</span>
+            <span class="finding__num">#{{add $i 1}}</span><span class="finding__title">{{index .Properties "Title"}}</span>
             <span class="finding__meta">
               <span class="finding__path">{{$locationURI}}</span><span class="finding__line">:{{$locationStartLine}}</span>
             </span>
           </summary>
           <div class="finding__body">
+            {{- $metaCat  := index .Properties "Category" -}}
+            {{- $metaConf := index .Properties "Confidence" -}}
+            {{- $metaRule := index .Properties "RuleFull" -}}
+            {{- $metaScan := index .Properties "Scanner" -}}
+            {{- if or $metaCat $metaConf $metaRule $metaScan }}
+            <dl class="finding__meta-dl">
+              {{if $metaCat}}<dt class="finding__meta-key">Category:</dt><dd>{{$metaCat}}</dd>{{end}}
+              {{if $metaConf}}<dt class="finding__meta-key">Confidence:</dt><dd>{{$metaConf}}</dd>{{end}}
+              {{if $metaRule}}<dt class="finding__meta-key">Rule:</dt><dd>{{$metaRule}}</dd>{{end}}
+              {{if $metaScan}}<dt class="finding__meta-key">Scanner:</dt><dd>{{$metaScan}}</dd>{{end}}
+            </dl>
+            {{end -}}
             <p class="finding__description">{{index .Properties "Description"}}</p>
             <div class="finding__location">
               Location: <strong>{{if $locationWebURL}}<a href="{{- $locationWebURL -}}">{{$locationURI}} (line {{$locationStartLine}})</a>{{else}}{{$locationURI}} (line {{$locationStartLine}}){{end}}</strong>
             </div>
             <div class="finding__df-block">
               <header class="finding__df-header">
-                DataFlows:
+                {{index .Properties "CodeSectionLabel"}}:
                 {{$totalDataFlows := 0}}
                 {{range .CodeFlows}}
                   {{range .ThreadFlows}}
@@ -1907,6 +2011,7 @@
                 {{range .CodeFlows}}
                   {{range .ThreadFlows}}
                     <div class="finding__df finding__df--{{$dataFlowCounter}} {{if eq $dataFlowCounter 1}}{{print "finding__df--selected"}}{{end}}">
+                      {{if gt $totalDataFlows 1}}<div class="finding__df-step-label">Step {{$dataFlowCounter}}</div>{{end}}
                       {{ $prevUri := "" }}
                       {{range .Locations}}
 
@@ -1939,6 +2044,18 @@
                 {{end}}
               {{end}}
             </div>
+            {{- with index .Properties "Fix"}}
+            <aside class="finding__fix">
+              <h4 class="finding__section-h">Suggested fix</h4>
+              <pre>{{.}}</pre>
+            </aside>
+            {{- end}}
+            {{- with index .Properties "References"}}
+            <section class="finding__refs">
+              <h4 class="finding__section-h">References</h4>
+              <ul>{{range .}}<li><a href="{{.}}" rel="noopener noreferrer">{{.}}</a></li>{{end}}</ul>
+            </section>
+            {{- end}}
           </div>
         </details>
         {{end}}
@@ -2135,6 +2252,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           const ruleId = f.dataset.ruleId || '';
           return {
             id: 'issue-' + i,
+            num: f.dataset.issueNum || String(i + 1),
             sev: f.dataset.severity || 'unknown',
             title: f.querySelector('.finding__title')?.textContent.trim() || '',
             ruleId,
@@ -2182,9 +2300,9 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           const parentAttr = opts.parents ? ' data-grp-parent="' + opts.parents + '"' : '';
           if (items.length === 1) {
             const d = items[0];
-            return '<a class="tv-tr ' + opts.leafDepth + '" href="#' + d.id + '" target="_self" title="' + titleAttr + '"' + parentAttr + '>' +
+            return '<a class="tv-tr ' + opts.leafDepth + '" href="#' + d.id + '" target="_self" title="' + titleAttr + ' (' + esc(d.file || d.id) + ':' + esc(d.line) + ')"' + parentAttr + '>' +
               chevLeaf + dot(d.sev) +
-              '<span class="tv-tl tv-tl--mono">' + esc(label) + '<span class="tv-ls">:' + esc(d.line) + '</span></span></a>';
+              '<span class="tv-tl tv-tl--mono">' + esc(label) + '<span class="tv-ls"> #' + esc(d.num) + '</span></span></a>';
           }
           // Collapsed row + chip strip. The row anchors to the first finding so a row-click still jumps somewhere sensible.
           const firstId = items[0].id;
@@ -2200,7 +2318,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           });
           html += '<div class="tv-chips ' + (opts.chipClass || '') + '"' + parentAttr + '>';
           for (const d of sorted) {
-            html += '<a href="#' + d.id + '" target="_self" title="' + titleAttr + ' (line ' + esc(d.line) + ')">' + esc(d.line) + '</a>';
+            html += '<a href="#' + d.id + '" target="_self" title="' + titleAttr + ' (' + esc(d.file || d.id) + ':' + esc(d.line) + ')">#' + esc(d.num) + '</a>';
           }
           html += '</div>';
           return html;
@@ -2273,9 +2391,9 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
               const basename = (file || '').split('/').pop() || '(unknown)';
               if (fileItems.length === 1) {
                 const d = fileItems[0];
-                html += '<a class="tv-tr tv-d1" href="#' + d.id + '" target="_self" title="' + esc(file) + ' line ' + esc(d.line) + '" data-grp-parent="' + ruleNodeId + '">' +
+                html += '<a class="tv-tr tv-d1" href="#' + d.id + '" target="_self" title="' + esc(file) + ':' + esc(d.line) + '" data-grp-parent="' + ruleNodeId + '">' +
                   chevLeaf + fileIcon +
-                  '<span class="tv-tl">' + esc(basename) + '<span class="tv-ls">:' + esc(d.line) + '</span></span></a>';
+                  '<span class="tv-tl">' + esc(basename) + '<span class="tv-ls"> #' + esc(d.num) + '</span></span></a>';
               } else {
                 const firstId = fileItems[0].id;
                 html += '<a class="tv-tr tv-d1" href="#' + firstId + '" target="_self" title="' + esc(file) + '" data-grp-parent="' + ruleNodeId + '">' +
@@ -2289,7 +2407,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
                 });
                 html += '<div class="tv-chips tv-chips--rule" data-grp-parent="' + ruleNodeId + '">';
                 for (const d of sorted) {
-                  html += '<a href="#' + d.id + '" target="_self" title="' + esc(file) + ' (line ' + esc(d.line) + ')">' + esc(d.line) + '</a>';
+                  html += '<a href="#' + d.id + '" target="_self" title="' + esc(file) + ':' + esc(d.line) + '">#' + esc(d.num) + '</a>';
                 }
                 html += '</div>';
               }

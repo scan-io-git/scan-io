@@ -214,10 +214,13 @@ var ToHtmlCmd = &cobra.Command{
 
 		sarifReport.EnrichResultsTitleProperty()
 		sarifReport.EnrichResultsCodeFlowProperty(locationURLCallback)
+		sarifReport.RemoveDataflowDuplicates()
 		sarifReport.EnrichResultsLevelProperty()
+		sarifReport.EnrichResultsCategoryProperty()
+		sarifReport.EnrichResultsConfidenceProperty()
+		sarifReport.EnrichResultsMetadataProperty()
 		sarifReport.EnrichResultsLocationURIProperty(locationURLCallback, prDiffURLCallback)
 		sarifReport.SortResultsBySeverity()
-		sarifReport.RemoveDataflowDuplicates()
 
 		toolMetadata, err := sarifReport.ExtractToolNameAndVersion()
 		if err != nil {
