@@ -143,10 +143,10 @@ func (r Report) EnrichResultsTitleProperty() {
 			if rule.ShortDescription != nil {
 				result.Properties["Title"] = rule.ShortDescription.Text
 			}
-			if rule.FullDescription != nil && rule.FullDescription.Text != nil {
-				result.Properties["Description"] = *rule.FullDescription.Text
-			} else if result.Message.Text != nil {
+			if result.Message.Text != nil && *result.Message.Text != "" {
 				result.Properties["Description"] = *result.Message.Text
+			} else if rule.FullDescription != nil && rule.FullDescription.Text != nil {
+				result.Properties["Description"] = *rule.FullDescription.Text
 			}
 		}
 	}

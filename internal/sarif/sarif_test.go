@@ -476,3 +476,88 @@ func TestSortResultsBySeverity(t *testing.T) {
 		}
 	}
 }
+
+func TestEnrichResultsTitleProperty_PrefersResultMessage(t *testing.T) {
+	ruleID := "my-rule"
+	ruleDesc := "`$1` has been added to the ignored list."
+	resultMsg := "`node_modules/` has been added to the ignored list."
+	shortDesc := "My rule title"
+
+	rule := &gosarif.ReportingDescriptor{
+		ID: ruleID,
+		ShortDescription: &gosarif.MultiformatMessageString{
+			Text: &shortDesc,
+		},
+		FullDescription: &gosarif.MultiformatMessageString{
+			Text: &ruleDesc,
+		},
+	}
+	result := &gosarif.Result{
+		RuleID:  &ruleID,
+		Message: *gosarif.NewMessage().WithText(resultMsg),
+	}
+	report := Report{
+		Report: &gosarif.Report{
+			Version: string(gosarif.Version210),
+			Runs: []*gosarif.Run{
+				{
+					Tool: gosarif.Tool{
+						Driver: &gosarif.ToolComponent{
+							Rules: []*gosarif.ReportingDescriptor{rule},
+						},
+					},
+					Results: []*gosarif.Result{result},
+				},
+			},
+		},
+	}
+
+	report.EnrichResultsTitleProperty()
+
+	got, _ := result.Properties["Description"].(string)
+	if got != resultMsg {
+		t.Errorf("Description: want result message %q, got %q", resultMsg, got)
+	}
+	gotTitle, _ := result.Properties["Title"].(*string)
+	if gotTitle == nil || *gotTitle != shortDesc {
+		t.Errorf("Title: want %q, got %v", shortDesc, gotTitle)
+	}
+}
+
+func TestEnrichResultsTitleProperty_FallsBackToRuleDescription(t *testing.T) {
+	ruleID := "my-rule"
+	ruleDesc := "Rule full description text."
+
+	rule := &gosarif.ReportingDescriptor{
+		ID: ruleID,
+		FullDescription: &gosarif.MultiformatMessageString{
+			Text: &ruleDesc,
+		},
+	}
+	result := &gosarif.Result{
+		RuleID:  &ruleID,
+		Message: gosarif.Message{},
+	}
+	report := Report{
+		Report: &gosarif.Report{
+			Version: string(gosarif.Version210),
+			Runs: []*gosarif.Run{
+				{
+					Tool: gosarif.Tool{
+						Driver: &gosarif.ToolComponent{
+							Rules: []*gosarif.ReportingDescriptor{rule},
+						},
+					},
+					Results: []*gosarif.Result{result},
+				},
+			},
+		},
+	}
+
+	report.EnrichResultsTitleProperty()
+
+	got, _ := result.Properties["Description"].(string)
+	if got != ruleDesc {
+		t.Errorf("Description: want rule fallback %q, got %q", ruleDesc, got)
+	}
+}
