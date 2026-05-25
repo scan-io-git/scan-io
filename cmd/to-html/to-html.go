@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
@@ -15,7 +14,6 @@ import (
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
 	"github.com/scan-io-git/scan-io/pkg/shared/errors"
 	"github.com/scan-io-git/scan-io/pkg/shared/files"
-
 	"github.com/scan-io-git/scan-io/pkg/shared/vcsurl"
 
 	scaniosarif "github.com/scan-io-git/scan-io/internal/sarif"
@@ -58,6 +56,7 @@ type ReportMetadata struct {
 	WebURL       string
 	BranchURL    string
 	CommitURL    string
+	PRURL        string
 	VCSURL       *VCSURLInfo
 }
 
@@ -74,7 +73,7 @@ var (
 
   # Use custom templates path for html report generation
   scanio to-html -i /tmp/juice-shop/semgrep_results.sarif -o /tmp/juice-shop/semgrep_results.html -s /tmp/juice-shop/ -t ./templates/tohtml
- 
+
   # Use no-supressions to skip results with supressions sarif property
   scanio to-html -i /tmp/juice-shop/semgrep_results.sarif -o /tmp/juice-shop/semgrep_results.html -s /tmp/juice-shop/ -t ./templates/tohtml --no-supressions`
 )
@@ -94,54 +93,35 @@ func vcsTypeToString(t vcsurl.VCSType) string {
 	}
 }
 
-// this function will implement vcs specific logic to generate web URL to branch or commit + special case for onprem BB
-func buildWebURLToRef(url *vcsurl.VCSURL, refName, refType string) string {
-	var midder string
-	switch refType {
-	case "commit":
-		midder = "commits"
-	case "branch":
-		if url.VCSType == vcsurl.Bitbucket {
-			// Special case for Bitbucket branch
-			return filepath.Join(url.HTTPRepoLink, "browse?at=refs%2Fheads%2F"+refName)
+// vcsHostMap converts the config VCSHosts string map to the vcsurl.VCSType map required by
+// ParseOptions. Entries with unrecognised type strings are skipped.
+func vcsHostMap(cfg *config.Config) map[string]vcsurl.VCSType {
+	if cfg == nil || len(cfg.VCSHosts) == 0 {
+		return nil
+	}
+	m := make(map[string]vcsurl.VCSType, len(cfg.VCSHosts))
+	for host, typeName := range cfg.VCSHosts {
+		if t := vcsurl.StringToVCSType(typeName); t != vcsurl.UnknownVCS {
+			m[host] = t
 		}
-		midder = "tree"
 	}
-	return filepath.Join(url.HTTPRepoLink, midder, refName)
+	return m
 }
 
-// buildGenericLocationURL constructs webURL for a report location
-func buildGenericLocationURL(location *sarif.Location, url vcsurl.VCSURL, repoMetadata *git.RepositoryMetadata) string {
-	// verify that location.PhysicalLocation.ArtifactLocation.Properties["URI"] is not nil
-	if location.PhysicalLocation.ArtifactLocation.Properties["URI"] == nil {
-		return ""
+// locationRegion extracts start and end line numbers from a SARIF location, returning zeros
+// when region or line pointers are nil.
+func locationRegion(loc *sarif.Location) (startLine, endLine int) {
+	if loc.PhysicalLocation == nil || loc.PhysicalLocation.Region == nil {
+		return 0, 0
 	}
-	locationWebURL := filepath.Join(url.HTTPRepoLink, "blob", *repoMetadata.CommitHash, location.PhysicalLocation.ArtifactLocation.Properties["URI"].(string))
-	if location.PhysicalLocation.Region.StartLine != nil {
-		locationWebURL += "#L" + strconv.Itoa(*location.PhysicalLocation.Region.StartLine)
+	r := loc.PhysicalLocation.Region
+	if r.StartLine != nil {
+		startLine = *r.StartLine
 	}
-	if location.PhysicalLocation.Region.EndLine != nil && *location.PhysicalLocation.Region.EndLine != *location.PhysicalLocation.Region.StartLine {
-		locationWebURL += "-L" + strconv.Itoa(*location.PhysicalLocation.Region.EndLine)
+	if r.EndLine != nil {
+		endLine = *r.EndLine
 	}
-	return locationWebURL
-}
-
-// buildBitbucketLocationURL constructs webURL for a report location for bitbucket
-func buildBitbucketLocationURL(location *sarif.Location, url vcsurl.VCSURL, repoMetadata *git.RepositoryMetadata) string {
-	// url example: https://bitbucket.onprem.example/projects/<project_name>/repos/<repo_name>/browse/<path>/<vuln.file>?at=<commit_hash>#<line>
-	// verify that location.PhysicalLocation.ArtifactLocation.Properties["URI"] is not nil
-	if location.PhysicalLocation.ArtifactLocation.Properties["URI"] == nil {
-		return ""
-	}
-	locationWebURL := filepath.Join(url.HTTPRepoLink, "browse", location.PhysicalLocation.ArtifactLocation.Properties["URI"].(string))
-	locationWebURL += "?at=" + *repoMetadata.CommitHash
-	if location.PhysicalLocation.Region.StartLine != nil {
-		locationWebURL += "#" + strconv.Itoa(*location.PhysicalLocation.Region.StartLine)
-	}
-	if location.PhysicalLocation.Region.EndLine != nil && *location.PhysicalLocation.Region.EndLine != *location.PhysicalLocation.Region.StartLine {
-		locationWebURL += "-" + strconv.Itoa(*location.PhysicalLocation.Region.EndLine)
-	}
-	return locationWebURL
+	return startLine, endLine
 }
 
 // Init initializes the global configuration variable.
@@ -158,13 +138,11 @@ var ToHtmlCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logger.Info("to-html called")
 
-		// read sarif report from file
 		sarifReport, err := scaniosarif.ReadReport(allToHTMLOptions.Input, logger, allToHTMLOptions.SourceFolder, allToHTMLOptions.NoSuppressions)
 		if err != nil {
 			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
 
-		// collect metadata for the report template
 		repositoryMetadata, err := git.CollectRepositoryMetadata(allToHTMLOptions.SourceFolder)
 		if err != nil {
 			logger.Warn("can't collect repository metadata", "reason", err)
@@ -191,35 +169,53 @@ var ToHtmlCmd = &cobra.Command{
 			)
 		}
 
-		var url *vcsurl.VCSURL
-		vcsType := vcsurl.GenericVCS
+		var parsedURL *vcsurl.VCSURL
 		if repositoryMetadata.RepositoryFullName != nil {
-			vcsType = vcsurl.StringToVCSType(allToHTMLOptions.VCS)
-			url, err = vcsurl.ParseForVCSType(*repositoryMetadata.RepositoryFullName, vcsType)
+			vcsType := vcsurl.StringToVCSType(allToHTMLOptions.VCS)
+			if vcsType == vcsurl.UnknownVCS {
+				// No --vcs flag: run full detection chain including config host map.
+				parsedURL, err = vcsurl.ParseWithOptions(*repositoryMetadata.RepositoryFullName, vcsurl.ParseOptions{
+					HostMap: vcsHostMap(AppConfig),
+				})
+			} else {
+				// Explicit --vcs value: bypass detection.
+				parsedURL, err = vcsurl.ParseForVCSType(*repositoryMetadata.RepositoryFullName, vcsType)
+			}
 			if err != nil {
 				return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 			}
 		}
 
-		// a callback function to generate web url for location
-		// we need it because neither sarif nor git modules know anything about vcs web URL structures.
-		// so we should implement vcs scpecific logic here
-		// for beginning I started with generic/github implementation
-		locationWebURLCallback := func(location *sarif.Location) string {
-			if url == nil {
-				return ""
-			}
-			if vcsType == vcsurl.Bitbucket {
-				return buildBitbucketLocationURL(location, *url, repositoryMetadata)
-			}
-			return buildGenericLocationURL(location, *url, repositoryMetadata)
+		var commitHash string
+		if repositoryMetadata.CommitHash != nil {
+			commitHash = *repositoryMetadata.CommitHash
 		}
 
-		// enrich sarif report with additional properties and remove duplicates from dataflow results
+		// locationURLCallback produces the file-at-commit permalink for a SARIF location.
+		// It reads the URI property set earlier by EnrichResultsLocationProperty.
+		locationURLCallback := func(loc *sarif.Location) string {
+			if parsedURL == nil {
+				return ""
+			}
+			uri, _ := loc.PhysicalLocation.ArtifactLocation.Properties["URI"].(string)
+			startLine, endLine := locationRegion(loc)
+			return parsedURL.FilePermalink(commitHash, uri, startLine, endLine)
+		}
+
+		// prDiffURLCallback produces a PR-diff deep link when a pull-request ID is present.
+		prDiffURLCallback := func(loc *sarif.Location) string {
+			if parsedURL == nil || parsedURL.PullRequestId == "" {
+				return ""
+			}
+			uri, _ := loc.PhysicalLocation.ArtifactLocation.Properties["URI"].(string)
+			startLine, _ := locationRegion(loc)
+			return parsedURL.PRDiffLink(uri, startLine)
+		}
+
 		sarifReport.EnrichResultsTitleProperty()
-		sarifReport.EnrichResultsCodeFlowProperty(locationWebURLCallback)
+		sarifReport.EnrichResultsCodeFlowProperty(locationURLCallback)
 		sarifReport.EnrichResultsLevelProperty()
-		sarifReport.EnrichResultsLocationURIProperty(locationWebURLCallback)
+		sarifReport.EnrichResultsLocationURIProperty(locationURLCallback, prDiffURLCallback)
 		sarifReport.SortResultsBySeverity()
 		sarifReport.RemoveDataflowDuplicates()
 
@@ -244,31 +240,29 @@ var ToHtmlCmd = &cobra.Command{
 			SourceFolder:       metadataSourceFolder,
 			SeverityInfo:       severityInfo,
 		}
-		if url != nil {
-			metadata.WebURL = url.HTTPRepoLink
-		}
-		if url != nil {
+		if parsedURL != nil {
+			metadata.WebURL = parsedURL.HTTPRepoLink
+			metadata.PRURL = parsedURL.PRURL()
 			metadata.VCSURL = &VCSURLInfo{
-				VCSType:       vcsTypeToString(url.VCSType),
-				Hostname:      url.ParsedURL.Hostname(),
-				Namespace:     url.Namespace,
-				Repository:    url.Repository,
-				Branch:        url.Branch,
-				PullRequestId: url.PullRequestId,
-				HTTPRepoLink:  url.HTTPRepoLink,
-				SSHRepoLink:   url.SSHRepoLink,
+				VCSType:       vcsTypeToString(parsedURL.VCSType),
+				Hostname:      parsedURL.ParsedURL.Hostname(),
+				Namespace:     parsedURL.Namespace,
+				Repository:    parsedURL.Repository,
+				Branch:        parsedURL.Branch,
+				PullRequestId: parsedURL.PullRequestId,
+				HTTPRepoLink:  parsedURL.HTTPRepoLink,
+				SSHRepoLink:   parsedURL.SSHRepoLink,
 			}
-		}
-		if repositoryMetadata.BranchName != nil {
-			metadata.BranchURL = buildWebURLToRef(url, *repositoryMetadata.BranchName, "branch")
-		}
-		if repositoryMetadata.CommitHash != nil {
-			metadata.CommitURL = buildWebURLToRef(url, *repositoryMetadata.CommitHash, "commit")
+			if repositoryMetadata.BranchName != nil {
+				metadata.BranchURL = parsedURL.BranchURL(*repositoryMetadata.BranchName)
+			}
+			if repositoryMetadata.CommitHash != nil {
+				metadata.CommitURL = parsedURL.CommitURL(*repositoryMetadata.CommitHash)
+			}
 		}
 
 		logger.Debug("metadata", "metadata", *metadata)
 
-		// parse html template and generate report file with metadata
 		if allToHTMLOptions.TempatesPath == "" {
 			allToHTMLOptions.TempatesPath = filepath.Join(config.GetScanioHome(AppConfig), defaultHtmlTemplateHome)
 		}
@@ -314,6 +308,6 @@ func init() {
 	ToHtmlCmd.Flags().StringVarP(&allToHTMLOptions.Input, "input", "i", "", "Input file with sarif report")
 	ToHtmlCmd.Flags().StringVarP(&allToHTMLOptions.OutputFile, "output", "o", "scanio-report.html", "output file")
 	ToHtmlCmd.Flags().StringVarP(&allToHTMLOptions.SourceFolder, "source", "s", "", "Source folder")
-	ToHtmlCmd.Flags().StringVar(&allToHTMLOptions.VCS, "vcs", "generic", "VCS type")
+	ToHtmlCmd.Flags().StringVar(&allToHTMLOptions.VCS, "vcs", "", "VCS type override (github, gitlab, bitbucket, generic); leave empty to auto-detect")
 	ToHtmlCmd.Flags().BoolVarP(&allToHTMLOptions.NoSuppressions, "no-supressions", "", false, "Enable removing results with suppressions properties")
 }

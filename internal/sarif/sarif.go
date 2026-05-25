@@ -450,34 +450,38 @@ func toFloat64(v interface{}) (float64, bool) {
 	return 0, false
 }
 
-func (r Report) EnrichResultsLocationURIProperty(locationWebURLCallback func(artifactLocation *sarif.Location) string) {
+// EnrichResultsLocationURIProperty sets the URI property on the first location of every result
+// and calls the provided callbacks to populate WebURL and (optionally) PRWebURL.
+// prDiffURLCallback may be nil, in which case PRWebURL is not set.
+func (r Report) EnrichResultsLocationURIProperty(
+	locationWebURLCallback func(*sarif.Location) string,
+	prDiffURLCallback func(*sarif.Location) string,
+) {
 	for _, result := range r.Runs[0].Results {
-		// if result location length is at least 1
-		if len(result.Locations) > 0 {
-			// get the first location
-			location := result.Locations[0]
-			// get the artifact location
-			artifactLocation := location.PhysicalLocation.ArtifactLocation
-			// if the artifact location has a URI
-			if artifactLocation.URI != nil {
-				// set the URI to the artifact location properties
-				// set artifactLocation.Properties["URI"] to be *artifactLocation.URI if it's a relative path,
-				// otherwise trim prefix of r.sourceFolder from *artifactLocation.URI
-				if !filepath.IsAbs(*artifactLocation.URI) {
-					artifactLocation.Properties["URI"] = *artifactLocation.URI
-				} else {
-					artifactLocation.Properties["URI"] = (*artifactLocation.URI)[len(r.sourceFolder):]
-					// remove slash if string start with slash
-					if len(artifactLocation.Properties["URI"].(string)) > 0 && artifactLocation.Properties["URI"].(string)[0] == '/' {
-						artifactLocation.Properties["URI"] = artifactLocation.Properties["URI"].(string)[1:]
-					}
-				}
+		if len(result.Locations) == 0 {
+			continue
+		}
+		location := result.Locations[0]
+		artifactLocation := location.PhysicalLocation.ArtifactLocation
+		if artifactLocation.URI == nil {
+			continue
+		}
 
-				if location.Properties == nil {
-					location.Properties = make(map[string]interface{})
-				}
-				location.Properties["WebURL"] = locationWebURLCallback(location)
+		if !filepath.IsAbs(*artifactLocation.URI) {
+			artifactLocation.Properties["URI"] = *artifactLocation.URI
+		} else {
+			artifactLocation.Properties["URI"] = (*artifactLocation.URI)[len(r.sourceFolder):]
+			if len(artifactLocation.Properties["URI"].(string)) > 0 && artifactLocation.Properties["URI"].(string)[0] == '/' {
+				artifactLocation.Properties["URI"] = artifactLocation.Properties["URI"].(string)[1:]
 			}
+		}
+
+		if location.Properties == nil {
+			location.Properties = make(map[string]interface{})
+		}
+		location.Properties["WebURL"] = locationWebURLCallback(location)
+		if prDiffURLCallback != nil {
+			location.Properties["PRWebURL"] = prDiffURLCallback(location)
 		}
 	}
 }

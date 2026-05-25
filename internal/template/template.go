@@ -20,6 +20,19 @@ func stripFragment(url string) string {
 	return before
 }
 
+// lineAnchor returns the VCS-dialect-correct URL fragment for a single line number.
+// vcsType is the string form ("bitbucket", "gitlab", "github", "generic", or "").
+// Bitbucket DC uses bare "#N"; GitLab uses "#LN"; GitHub/others use "#LN".
+func lineAnchor(vcsType string, line int) string {
+	if line <= 0 {
+		return ""
+	}
+	if vcsType == "bitbucket" {
+		return fmt.Sprintf("#%d", line)
+	}
+	return fmt.Sprintf("#L%d", line)
+}
+
 // generateSequence generates a slice of integers from 1 to n.
 // helper function for html template
 func generateSequence(n int) []int {
@@ -59,6 +72,7 @@ func NewTemplate(templateFile string, options ...func(*template.Template)) (*tem
 			"generateSequence": generateSequence,
 			"formatDateTime":   formatDateTime,
 			"stripFragment":    stripFragment,
+			"lineAnchor":       lineAnchor,
 		})
 	for _, o := range options {
 		o(t)

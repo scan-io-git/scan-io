@@ -685,9 +685,9 @@
     }
 
     .toc-drawer {
-      width: 272px;
-      min-width: 272px;
-      flex: 0 0 272px;
+      width: 324px;
+      min-width: 240px;
+      flex: 0 0 auto;
       background: var(--bg-canvas);
       border: 1px solid var(--border-default);
       border-radius: var(--radius-sm);
@@ -699,6 +699,46 @@
       overflow: hidden;
       margin: var(--space-4) 0 var(--space-4) var(--space-4);
     }
+
+    /* Resize handle on the inner (right) edge of the drawer */
+    .toc-resize {
+      position: absolute;
+      top: 0; right: -3px; bottom: 0;
+      width: 6px;
+      cursor: col-resize;
+      z-index: 1;
+      background: transparent;
+      transition: background var(--motion-fast);
+    }
+    .toc-resize:hover,
+    .toc-resize.is-dragging { background: color-mix(in oklch, var(--accent-brand) 35%, transparent); }
+    .toc-resize:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+    .toc-drawer { position: sticky; } /* anchor for absolute handle */
+
+    /* Stacked severity summary bar */
+    .toc-sevbar {
+      padding: 7px 12px 8px;
+      background: var(--bg-subtle);
+      border-bottom: 1px solid var(--border-default);
+    }
+    .toc-sevbar__strip {
+      display: flex;
+      height: 5px;
+      background: var(--bg-inset);
+      border-radius: var(--radius-pill);
+      overflow: hidden;
+    }
+    .toc-sevbar__strip > span {
+      display: block;
+      height: 100%;
+      transition: width var(--motion-fast);
+    }
+    .toc-sevbar__strip > span.sev-critical { background: var(--sev-critical-dot); }
+    .toc-sevbar__strip > span.sev-high     { background: var(--sev-high-dot); }
+    .toc-sevbar__strip > span.sev-medium   { background: var(--sev-medium-dot); }
+    .toc-sevbar__strip > span.sev-low      { background: var(--sev-low-dot); }
+    .toc-sevbar__strip > span.sev-info     { background: var(--sev-info-dot); }
+    .toc-sevbar__strip > span.sev-unknown  { background: var(--fg-muted); }
 
     /* Reopen strip — shown when drawer is hidden */
     .toc-reopen {
@@ -868,6 +908,38 @@
 
     /* Separator between rule groups */
     .tv-sep { height: 1px; background: var(--border-muted); margin: 4px 0; }
+
+    /* Line-chip strip (aggressive dedup) */
+    .tv-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 2px 8px 6px 32px;
+    }
+    .tv-chips.tv-chips--rule { padding-left: 20px; }
+    .tv-chips a {
+      min-width: 24px;
+      height: 18px;
+      padding: 0 5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-inset);
+      border: 1px solid var(--border-default);
+      border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      font-size: var(--text-xs);
+      line-height: 1;
+      color: var(--fg-default);
+      text-decoration: none;
+      transition: border-color var(--motion-fast), background var(--motion-fast);
+    }
+    .tv-chips a:hover { border-color: var(--accent-brand); }
+    .tv-chips a[aria-current="true"] {
+      border-color: var(--accent-brand);
+      background: color-mix(in oklch, var(--accent-brand) 18%, var(--bg-inset));
+    }
+    .tv-chips a:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 
     /* Collapsible group headers */
     .tv-tr.tv-d0, .tv-tr.tv-d1[data-grp-id] { cursor: pointer; user-select: none; }
@@ -1799,12 +1871,16 @@
         </button>
       </div>
     </div>
+    <div class="toc-sevbar" id="toc-sevbar" aria-hidden="true">
+      <div class="toc-sevbar__strip" id="toc-sevbar-strip"></div>
+    </div>
     <div class="toc-grouping" role="group" aria-label="Group findings by">
       <button class="toc-grp-btn" data-grp="sev-file" aria-pressed="true"  type="button">By severity</button>
       <button class="toc-grp-btn" data-grp="rule"     aria-pressed="false" type="button">By rule</button>
     </div>
     <div class="toc-tree" id="toc-by-sev"  aria-label="Findings by severity and file"></div>
     <div class="toc-tree" id="toc-by-rule" aria-label="Findings by rule" hidden></div>
+    <div class="toc-resize" id="toc-resize" role="separator" aria-orientation="vertical" aria-label="Resize findings panel" tabindex="0"></div>
   </aside>
 
   <div class="main-container">
@@ -1821,7 +1897,7 @@
         {{ $locationURI := index $location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
         {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
         {{ $locationWebURL := index $location.Properties "WebURL"}}
-        <details id="issue-{{$i}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" {{if or (eq $severity "critical") (eq $severity "high")}}open{{end}}>
+        <details id="issue-{{$i}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}" {{if or (eq $severity "critical") (eq $severity "high")}}open{{end}}>
           <summary class="finding__head">
             <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
             <span class="finding__title">{{index .Properties "Title"}}</span>
@@ -1872,10 +1948,11 @@
                         {{ $endColumn := index .Location.PhysicalLocation.Region.Properties "EndColumn" }}
                         {{ $locationWebURL := index .Location.Properties "WebURL"}}
                         {{ $isSingleLine := eq $startLine $endLine }}
+                        {{ $vcsType := "" }}{{ if $vcs }}{{ $vcsType = $vcs.VCSType }}{{ end }}
 
                         {{range $idx, $lineText := $codeLines}}
                           {{ $lineNum := add $startLine $idx -}}
-                          <div class="finding__df-codeline"><span class="finding__df-linecol">{{if $locationWebURL}}<a href="{{printf "%s#L%d" (stripFragment $locationWebURL) $lineNum}}">{{$lineNum}}</a>{{else}}{{$lineNum}}{{end}}</span><div class="finding__df-code">{{if $isSingleLine}}{{if gt $endColumn $startColumn}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}{{- $lineText -}}{{end}}{{else if eq $idx 0}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn -}}</span>{{else if eq $lineNum $endLine}}<span class="finding__df-highlight">{{- slice $lineText 0 $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}<span class="finding__df-highlight">{{- $lineText -}}</span>{{end}}</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
+                          <div class="finding__df-codeline"><span class="finding__df-linecol">{{if $locationWebURL}}<a href="{{printf "%s%s" (stripFragment $locationWebURL) (lineAnchor $vcsType $lineNum)}}">{{$lineNum}}</a>{{else}}{{$lineNum}}{{end}}</span><div class="finding__df-code">{{if $isSingleLine}}{{if gt $endColumn $startColumn}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}{{- $lineText -}}{{end}}{{else if eq $idx 0}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn -}}</span>{{else if eq $lineNum $endLine}}<span class="finding__df-highlight">{{- slice $lineText 0 $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}<span class="finding__df-highlight">{{- $lineText -}}</span>{{end}}</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
                         {{end}}
 
                       {{end}}
@@ -2069,27 +2146,89 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       }
 
       function initToc() {
-        const drawer    = document.getElementById('toc-drawer');
-        const reopenBtn = document.getElementById('toc-reopen');
-        const closeBtn  = document.getElementById('toc-close');
-        const treeSev   = document.getElementById('toc-by-sev');
-        const treeRule  = document.getElementById('toc-by-rule');
-        const grpBtns   = Array.from(drawer.querySelectorAll('.toc-grp-btn'));
+        const drawer     = document.getElementById('toc-drawer');
+        const reopenBtn  = document.getElementById('toc-reopen');
+        const closeBtn   = document.getElementById('toc-close');
+        const treeSev    = document.getElementById('toc-by-sev');
+        const treeRule   = document.getElementById('toc-by-rule');
+        const sevbarStrip = document.getElementById('toc-sevbar-strip');
+        const resizeHandle = document.getElementById('toc-resize');
+        const grpBtns    = Array.from(drawer.querySelectorAll('.toc-grp-btn'));
 
-        const data = findings.map((f, i) => ({
-          id: 'issue-' + i,
-          sev: f.dataset.severity || 'unknown',
-          title: f.querySelector('.finding__title')?.textContent.trim() || '',
-          file: f.querySelector('.finding__path')?.textContent.trim() || '',
-          line: (f.querySelector('.finding__line')?.textContent || '').replace(/^:/, '')
-        }));
+        const data = findings.map((f, i) => {
+          const ruleId = f.dataset.ruleId || '';
+          return {
+            id: 'issue-' + i,
+            sev: f.dataset.severity || 'unknown',
+            title: f.querySelector('.finding__title')?.textContent.trim() || '',
+            ruleId,
+            ruleShort: shortRule(ruleId),
+            file: f.querySelector('.finding__path')?.textContent.trim() || '',
+            line: (f.querySelector('.finding__line')?.textContent || '').replace(/^:/, '')
+          };
+        });
 
         const SEV_ORDER = ['critical','high','medium','low','info','unknown'];
         const chev = '<span class="tv-ch"><svg aria-hidden="true"><use href="#tb-chevron-right"/></svg></span>';
         const chevLeaf = '<span class="tv-ch tv-ch--leaf" aria-hidden="true"></span>';
         const fileIcon = '<span class="tv-ti"><svg aria-hidden="true"><use href="#tb-file"/></svg></span>';
         function dot(sev) { return '<span class="tv-dot tv-dot--' + sev + '" aria-hidden="true"></span>'; }
-        function esc(s) { return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+        function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+        function shortRule(id) {
+          if (!id) return '';
+          const seg = id.split('.').pop();
+          return seg || id;
+        }
+        // Stable key per (ruleId,title): falls back to title when RuleID is absent
+        function ruleKey(d) { return d.ruleId || d.title || '(unknown)'; }
+        function ruleLabel(d) { return d.ruleShort || d.title || '(unknown rule)'; }
+        function ruleFull(d) { return d.ruleId || d.title || ''; }
+
+        function groupBy(items, keyFn) {
+          const m = new Map();
+          for (const it of items) {
+            const k = keyFn(it);
+            let arr = m.get(k);
+            if (!arr) { arr = []; m.set(k, arr); }
+            arr.push(it);
+          }
+          return m;
+        }
+
+        // Render a list of findings sharing a (file,rule). N>=2: one row + chip strip.
+        // N==1: single leaf row. Returns HTML.
+        function renderRuleCluster(items, opts) {
+          const sample = items[0];
+          const label = ruleLabel(sample);
+          const fullId = ruleFull(sample);
+          const sev = sample.sev;
+          const titleAttr = fullId ? esc(fullId) : esc(sample.title || label);
+          const parentAttr = opts.parents ? ' data-grp-parent="' + opts.parents + '"' : '';
+          if (items.length === 1) {
+            const d = items[0];
+            return '<a class="tv-tr ' + opts.leafDepth + '" href="#' + d.id + '" target="_self" title="' + titleAttr + '"' + parentAttr + '>' +
+              chevLeaf + dot(d.sev) +
+              '<span class="tv-tl tv-tl--mono">' + esc(label) + '<span class="tv-ls">:' + esc(d.line) + '</span></span></a>';
+          }
+          // Collapsed row + chip strip. The row anchors to the first finding so a row-click still jumps somewhere sensible.
+          const firstId = items[0].id;
+          let html = '<a class="tv-tr ' + opts.leafDepth + '" href="#' + firstId + '" target="_self" title="' + titleAttr + '"' + parentAttr + '>' +
+            chevLeaf + dot(sev) +
+            '<span class="tv-tl tv-tl--mono">' + esc(label) + '</span>' +
+            '<span class="tv-tc">' + items.length + '</span></a>';
+          // Sort chips numerically by line number
+          const sorted = items.slice().sort((a, b) => {
+            const an = parseInt(a.line, 10), bn = parseInt(b.line, 10);
+            if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
+            return String(a.line).localeCompare(String(b.line));
+          });
+          html += '<div class="tv-chips ' + (opts.chipClass || '') + '"' + parentAttr + '>';
+          for (const d of sorted) {
+            html += '<a href="#' + d.id + '" target="_self" title="' + titleAttr + ' (line ' + esc(d.line) + ')">' + esc(d.line) + '</a>';
+          }
+          html += '</div>';
+          return html;
+        }
 
         function buildSevTree() {
           let html = '';
@@ -2102,47 +2241,149 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
               chev + dot(sev) +
               '<span class="tv-tl">' + capSev + '</span>' +
               '<span class="tv-tc">' + items.length + '</span></div>';
-            const files = [...new Set(items.map(d => d.file))];
-            files.forEach((file, fi) => {
-              const basename = file.split('/').pop();
-              const fileItems = items.filter(d => d.file === file);
-              const fileId = sevId + '-f' + fi;
+            const byFile = groupBy(items, d => d.file);
+            let fi = 0;
+            for (const [file, fileItems] of byFile) {
+              const basename = (file || '').split('/').pop() || '(unknown)';
+              const fileId = sevId + '-f' + fi++;
               html += '<div class="tv-tr tv-d1" data-grp-parent="' + sevId + '" data-grp-id="' + fileId + '">' +
                 chev + fileIcon +
                 '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
                 '<span class="tv-tc">' + fileItems.length + '</span></div>';
-              fileItems.forEach(d => {
-                html += '<a class="tv-tr tv-d2" href="#' + d.id + '" target="_self" title="' + esc(d.title) + '" data-grp-parent="' + fileId + ' ' + sevId + '">' +
-                  chevLeaf + dot(d.sev) +
-                  '<span class="tv-tl">' + esc(d.title) + '<span class="tv-ls">:' + esc(d.line) + '</span></span></a>';
-              });
-            });
+              // Aggressive dedup: group by rule within this file
+              const byRule = groupBy(fileItems, ruleKey);
+              for (const ruleItems of byRule.values()) {
+                html += renderRuleCluster(ruleItems, {
+                  leafDepth: 'tv-d2',
+                  parents: fileId + ' ' + sevId,
+                  chipClass: ''
+                });
+              }
+            }
           });
           return html;
         }
 
         function buildRuleTree() {
           let html = '';
-          const rules = [...new Set(data.map(d => d.title))].sort();
-          rules.forEach((rule, ri) => {
-            const items = data.filter(d => d.title === rule);
-            const sev = items[0].sev;
-            const ruleId = 'rg-' + ri;
+          // Top-level: one row per unique ruleId (fallback: title). Sorted by severity then label.
+          const byRule = groupBy(data, ruleKey);
+          const ruleEntries = Array.from(byRule.entries()).map(([k, items]) => ({
+            key: k,
+            items,
+            sev: items[0].sev,
+            label: ruleLabel(items[0]),
+            full: ruleFull(items[0])
+          }));
+          ruleEntries.sort((a, b) => {
+            const sa = SEV_ORDER.indexOf(a.sev), sb = SEV_ORDER.indexOf(b.sev);
+            if (sa !== sb) return sa - sb;
+            return a.label.localeCompare(b.label);
+          });
+          ruleEntries.forEach((entry, ri) => {
+            const ruleNodeId = 'rg-' + ri;
             if (ri > 0) html += '<div class="tv-sep"></div>';
-            html += '<div class="tv-tr tv-d0" data-grp-id="' + ruleId + '">' +
-              chev + dot(sev) +
-              '<span class="tv-tl">' + esc(rule) + '</span>' +
-              '<span class="tv-tc">' + items.length + '</span></div>';
-            items.forEach(d => {
-              const basename = d.file.split('/').pop();
-              html += '<a class="tv-tr tv-d1" href="#' + d.id + '" target="_self" title="' + esc(d.file) + ' line ' + esc(d.line) + '" data-grp-parent="' + ruleId + '">' +
-                chevLeaf + fileIcon +
-                '<span class="tv-tl">' + esc(basename) + '<span class="tv-ls">:' + esc(d.line) + '</span></span></a>';
-            });
+            const titleAttr = entry.full ? esc(entry.full) : esc(entry.label);
+            html += '<div class="tv-tr tv-d0" data-grp-id="' + ruleNodeId + '" title="' + titleAttr + '">' +
+              chev + dot(entry.sev) +
+              '<span class="tv-tl tv-tl--mono">' + esc(entry.label) + '</span>' +
+              '<span class="tv-tc">' + entry.items.length + '</span></div>';
+            // Within this rule, group by file. Each (rule,file) cluster becomes one row + chips (or a leaf).
+            const byFile = groupBy(entry.items, d => d.file);
+            for (const [file, fileItems] of byFile) {
+              const basename = (file || '').split('/').pop() || '(unknown)';
+              if (fileItems.length === 1) {
+                const d = fileItems[0];
+                html += '<a class="tv-tr tv-d1" href="#' + d.id + '" target="_self" title="' + esc(file) + ' line ' + esc(d.line) + '" data-grp-parent="' + ruleNodeId + '">' +
+                  chevLeaf + fileIcon +
+                  '<span class="tv-tl">' + esc(basename) + '<span class="tv-ls">:' + esc(d.line) + '</span></span></a>';
+              } else {
+                const firstId = fileItems[0].id;
+                html += '<a class="tv-tr tv-d1" href="#' + firstId + '" target="_self" title="' + esc(file) + '" data-grp-parent="' + ruleNodeId + '">' +
+                  chevLeaf + fileIcon +
+                  '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
+                  '<span class="tv-tc">' + fileItems.length + '</span></a>';
+                const sorted = fileItems.slice().sort((a, b) => {
+                  const an = parseInt(a.line, 10), bn = parseInt(b.line, 10);
+                  if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
+                  return String(a.line).localeCompare(String(b.line));
+                });
+                html += '<div class="tv-chips tv-chips--rule" data-grp-parent="' + ruleNodeId + '">';
+                for (const d of sorted) {
+                  html += '<a href="#' + d.id + '" target="_self" title="' + esc(file) + ' (line ' + esc(d.line) + ')">' + esc(d.line) + '</a>';
+                }
+                html += '</div>';
+              }
+            }
           });
           return html;
         }
 
+        function renderSevBar() {
+          if (!sevbarStrip) return;
+          const total = data.length;
+          if (!total) { sevbarStrip.innerHTML = ''; return; }
+          let html = '';
+          for (const sev of SEV_ORDER) {
+            const n = data.filter(d => d.sev === sev).length;
+            if (!n) continue;
+            const pct = (n / total * 100).toFixed(2);
+            const cap = sev.charAt(0).toUpperCase() + sev.slice(1);
+            html += '<span class="sev-' + sev + '" style="width:' + pct + '%" title="' + n + ' ' + cap + '"></span>';
+          }
+          sevbarStrip.innerHTML = html;
+        }
+
+        function initResize() {
+          if (!resizeHandle) return;
+          const MIN = 240, MAX = 480;
+          let saved = null;
+          try { saved = parseInt(localStorage.getItem('report.toc.width') || '', 10); } catch (_) {}
+          if (Number.isFinite(saved) && saved >= MIN && saved <= MAX) {
+            drawer.style.width = saved + 'px';
+          }
+          let startX = 0, startW = 0, dragging = false;
+          function onMove(e) {
+            if (!dragging) return;
+            const dx = e.clientX - startX;
+            const w = Math.max(MIN, Math.min(MAX, startW + dx));
+            drawer.style.width = w + 'px';
+          }
+          function onUp() {
+            if (!dragging) return;
+            dragging = false;
+            resizeHandle.classList.remove('is-dragging');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            try { localStorage.setItem('report.toc.width', String(parseInt(drawer.style.width, 10))); } catch (_) {}
+          }
+          resizeHandle.addEventListener('mousedown', e => {
+            e.preventDefault();
+            startX = e.clientX;
+            startW = drawer.getBoundingClientRect().width;
+            dragging = true;
+            resizeHandle.classList.add('is-dragging');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+          });
+          // Keyboard resize: left/right arrows shift width by 16px when handle is focused
+          resizeHandle.addEventListener('keydown', e => {
+            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+            const cur = drawer.getBoundingClientRect().width;
+            const step = e.shiftKey ? 32 : 16;
+            const next = Math.max(MIN, Math.min(MAX, cur + (e.key === 'ArrowRight' ? step : -step)));
+            drawer.style.width = next + 'px';
+            try { localStorage.setItem('report.toc.width', String(Math.round(next))); } catch (_) {}
+            e.preventDefault();
+          });
+        }
+
+        renderSevBar();
+        initResize();
         treeSev.innerHTML  = buildSevTree();
         treeRule.innerHTML = buildRuleTree();
 

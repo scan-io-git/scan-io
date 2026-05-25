@@ -256,12 +256,12 @@ func getScannerName(run *sarif.Run) string {
 	return ""
 }
 
-// buildGitHubPermalink builds a permalink to a file and region in GitHub.
+// buildPermalink builds a file permalink for a SARIF finding.
 // It prefers the CLI --ref when provided; otherwise attempts to read the
 // current commit hash from repo metadata (falling back to collecting it
 // directly when metadata is not provided). Returns empty string when any
 // critical component is missing.
-func buildGitHubPermalink(options RunOptions, repoMetadata *git.RepositoryMetadata, fileURI string, start, end int) string {
+func buildPermalink(options RunOptions, repoMetadata *git.RepositoryMetadata, fileURI string, start, end int) string {
 	ref := strings.TrimSpace(options.Ref)
 
 	if ref == "" {
@@ -279,7 +279,13 @@ func buildGitHubPermalink(options RunOptions, repoMetadata *git.RepositoryMetada
 	}
 
 	path := filepath.ToSlash(fileURI)
-	return internalsarif.BuildGitHubPermalink(options.Namespace, options.Repository, ref, path, start, end)
+	u := &vcsurl.VCSURL{
+		VCSType:      vcsurl.Github,
+		Namespace:    options.Namespace,
+		Repository:   options.Repository,
+		HTTPRepoLink: fmt.Sprintf("https://github.com/%s/%s", options.Namespace, options.Repository),
+	}
+	return u.FilePermalink(ref, path, start, end)
 }
 
 // ResolveSourceFolder resolves a source folder path to its absolute form for path calculations.
@@ -389,7 +395,7 @@ func FormatCodeFlows(result *sarif.Result, options RunOptions, repoMetadata *git
 				}
 
 				// Create GitHub permalink
-				permalink := buildGitHubPermalink(options, repoMetadata, fileURI, startLine, endLine)
+				permalink := buildPermalink(options, repoMetadata, fileURI, startLine, endLine)
 
 				// Format step with optional message text
 				messageText := ""
