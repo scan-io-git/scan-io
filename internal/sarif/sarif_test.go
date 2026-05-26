@@ -2,6 +2,7 @@ package sarif
 
 import (
 	"testing"
+	"unicode/utf8"
 
 	gosarif "github.com/owenrumney/go-sarif/v2/sarif"
 )
@@ -518,9 +519,9 @@ func TestEnrichResultsTitleProperty_PrefersResultMessage(t *testing.T) {
 	if got != resultMsg {
 		t.Errorf("Description: want result message %q, got %q", resultMsg, got)
 	}
-	gotTitle, _ := result.Properties["Title"].(*string)
-	if gotTitle == nil || *gotTitle != shortDesc {
-		t.Errorf("Title: want %q, got %v", shortDesc, gotTitle)
+	gotTitle, _ := result.Properties["Title"].(string)
+	if gotTitle != shortDesc {
+		t.Errorf("Title: want %q, got %q", shortDesc, gotTitle)
 	}
 }
 
@@ -804,3 +805,149 @@ func TestExtractFix_RecommendationPropertyWins(t *testing.T) {
 }
 
 func strPtr(s string) *string { return &s }
+
+func TestHumanizeRuleID(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"python.lang.security.audit.dangerous-system-call", "Dangerous system call"},
+		{"my_rule_id", "My rule id"},
+		{"simple", "Simple"},
+		{"x.y.z", "Z"},
+		{"", ""},
+		{"only-dots.", ""},
+	}
+	for _, tc := range cases {
+		got := humanizeRuleID(tc.in)
+		if got != tc.want {
+			t.Errorf("humanizeRuleID(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestFirstSentence(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"SQL injection here. More details follow.", "SQL injection here."},
+		{"No boundary here", ""},
+		{"First. second not capital.", ""},
+		{"One. Two. Three.", "One."},
+		{"", ""},
+	}
+	for _, tc := range cases {
+		got := firstSentence(tc.in)
+		if got != tc.want {
+			t.Errorf("firstSentence(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestResolveFindingTitle(t *testing.T) {
+	makeResult := func(msg string) *gosarif.Result {
+		if msg == "" {
+			return &gosarif.Result{Message: gosarif.Message{}}
+		}
+		return &gosarif.Result{Message: *gosarif.NewMessage().WithText(msg)}
+	}
+	makeRule := func(id, shortDesc, name string) *gosarif.ReportingDescriptor {
+		r := &gosarif.ReportingDescriptor{ID: id}
+		if shortDesc != "" {
+			r.ShortDescription = &gosarif.MultiformatMessageString{Text: strPtr(shortDesc)}
+		}
+		if name != "" {
+			r.Name = strPtr(name)
+		}
+		return r
+	}
+
+	cases := []struct {
+		name      string
+		ruleID    string
+		shortDesc string
+		ruleName  string
+		msg       string
+		want      string
+	}{
+		{
+			name:      "shortDesc clean",
+			ruleID:    "weak-hash",
+			shortDesc: "Use of weak hash",
+			want:      "Use of weak hash",
+		},
+		{
+			name:      "shortDesc contains ruleID short-circuits to humanize",
+			ruleID:    "x.y.bad-call",
+			shortDesc: "Semgrep rule: x.y.bad-call",
+			want:      "Bad call",
+		},
+		{
+			name:      "shortDesc empty falls through to name",
+			ruleID:    "some-rule",
+			ruleName:  "Dangerous System Call",
+			want:      "Dangerous System Call",
+		},
+		{
+			name:     "name contains ruleID short-circuits to humanize",
+			ruleID:   "x.y.bad-call",
+			ruleName: "x.y.bad-call",
+			want:     "Bad call",
+		},
+		{
+			name:   "message first sentence used when rule fields empty",
+			ruleID: "ZZZQ-9999",
+			msg:    "SQL injection here. More details follow.",
+			want:   "SQL injection here.",
+		},
+		{
+			name:   "message first line when no sentence boundary",
+			ruleID: "ZZZQ-9999",
+			msg:    "Just one line\nplus more",
+			want:   "Just one line",
+		},
+		{
+			name:   "all candidates empty falls back to humanize",
+			ruleID: "X.y_test-thing",
+			want:   "Y test thing",
+		},
+		{
+			name: "ruleID and all candidates empty returns Finding",
+			want: "Finding",
+		},
+		{
+			name:      "120-char cap",
+			ruleID:    "ZZZQ-9999",
+			shortDesc: "A very long title that goes well beyond the hundred and twenty character limit imposed by the resolver to prevent pathological titles",
+			want:      "A very long title that goes well beyond the hundred and twenty character limit imposed by the resolver to prevent pathol",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rule := makeRule(tc.ruleID, tc.shortDesc, tc.ruleName)
+			result := makeResult(tc.msg)
+			got := resolveFindingTitle(rule, result)
+			if got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCap120MultibyteChars(t *testing.T) {
+	// Build a string of 130 two-byte runes (é)
+	runes := make([]rune, 130)
+	for i := range runes {
+		runes[i] = 'é'
+	}
+	input := string(runes)
+	got := cap120(input)
+	if utf8.RuneCountInString(got) != 120 {
+		t.Errorf("cap120: want 120 runes, got %d", utf8.RuneCountInString(got))
+	}
+	// Verify no partial byte sequences
+	if !utf8.ValidString(got) {
+		t.Error("cap120: result is not valid UTF-8")
+	}
+}

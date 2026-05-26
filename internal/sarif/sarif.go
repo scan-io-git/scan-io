@@ -9,9 +9,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/owenrumney/go-sarif/v2/sarif"
@@ -128,6 +130,90 @@ func (r Report) CollectSeverityInfo() map[string]int {
 	return counts
 }
 
+var (
+	reSentenceBoundary = regexp.MustCompile(`\.\s+[A-Z]`)
+	reDashUnderscore   = regexp.MustCompile(`[-_]+`)
+)
+
+// humanizeRuleID returns the last dot-segment of ruleID with dashes and underscores
+// replaced by spaces and the first letter uppercased.
+// "python.lang.security.audit.dangerous-system-call" → "Dangerous system call"
+func humanizeRuleID(ruleID string) string {
+	if ruleID == "" {
+		return ""
+	}
+	parts := strings.Split(ruleID, ".")
+	last := parts[len(parts)-1]
+	cleaned := strings.TrimSpace(reDashUnderscore.ReplaceAllString(last, " "))
+	if cleaned == "" {
+		return ""
+	}
+	runes := []rune(cleaned)
+	runes[0] = []rune(strings.ToUpper(string(runes[0])))[0]
+	return string(runes)
+}
+
+// firstSentence returns text up to and including the first period that is followed
+// by whitespace and an uppercase letter. Returns "" when no boundary is found.
+func firstSentence(text string) string {
+	loc := reSentenceBoundary.FindStringIndex(text)
+	if loc == nil {
+		return ""
+	}
+	return strings.TrimSpace(text[:loc[0]+1])
+}
+
+// firstLine returns the first line of text.
+func firstLine(text string) string {
+	return strings.SplitN(text, "\n", 2)[0]
+}
+
+// cap120 truncates s to at most 120 Unicode code points.
+func cap120(s string) string {
+	if utf8.RuneCountInString(s) <= 120 {
+		return s
+	}
+	return string([]rune(s)[:120])
+}
+
+// resolveFindingTitle walks a candidate chain to produce a human-readable title.
+// At each non-empty candidate: if it contains the rule ID, short-circuit to the
+// humanized rule ID. Otherwise use the candidate. Falls back to humanized rule ID
+// (or "Finding") when all candidates are empty.
+func resolveFindingTitle(rule *sarif.ReportingDescriptor, result *sarif.Result) string {
+	ruleID := strings.TrimSpace(rule.ID)
+
+	// Build candidate list — skip nil pointer fields safely.
+	var shortDesc, name, msg string
+	if rule.ShortDescription != nil && rule.ShortDescription.Text != nil {
+		shortDesc = strings.TrimSpace(*rule.ShortDescription.Text)
+	}
+	if rule.Name != nil {
+		name = strings.TrimSpace(*rule.Name)
+	}
+	if result.Message.Text != nil {
+		msg = strings.TrimSpace(*result.Message.Text)
+	}
+
+	humanized := humanizeRuleID(ruleID)
+	fallback := humanized
+	if fallback == "" {
+		fallback = "Finding"
+	}
+
+	for _, c := range []string{shortDesc, name, firstSentence(msg), firstLine(msg)} {
+		c = strings.TrimSpace(c)
+		if c == "" {
+			continue
+		}
+		if ruleID != "" && strings.Contains(c, ruleID) {
+			return cap120(fallback)
+		}
+		return cap120(c)
+	}
+	return cap120(fallback)
+}
+
 // EnrichResultsTitleProperty function enriches sarif results properties with title and description values
 func (r Report) EnrichResultsTitleProperty() {
 	rulesMap := map[string]*sarif.ReportingDescriptor{}
@@ -140,9 +226,7 @@ func (r Report) EnrichResultsTitleProperty() {
 			if result.Properties == nil {
 				result.Properties = make(map[string]interface{})
 			}
-			if rule.ShortDescription != nil {
-				result.Properties["Title"] = rule.ShortDescription.Text
-			}
+			result.Properties["Title"] = resolveFindingTitle(rule, result)
 			if result.Message.Text != nil && *result.Message.Text != "" {
 				result.Properties["Description"] = *result.Message.Text
 			} else if rule.FullDescription != nil && rule.FullDescription.Text != nil {
