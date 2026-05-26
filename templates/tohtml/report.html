@@ -78,7 +78,7 @@
 
       /* Type scale */
       --text-xs: 11px; --text-sm: 12px; --text-base: 13px;
-      --text-md: 14px; --text-lg: 15px; --text-xl: 20px;
+      --text-md: 14px; --text-lg: 15px; --text-xl2: 17px; --text-xl: 20px;
 
       /* Shadow scale */
       --shadow-xs: 0 1px 2px rgba(0,0,0,.06);
@@ -207,6 +207,11 @@
       box-shadow: var(--shadow-xs), 0 0 0 1px var(--border-muted);
     }
 
+    [data-theme="dark"] .finding {
+      background: var(--bg-subtle);
+      border-color: rgba(240, 246, 252, 0.06);
+    }
+
     .finding__head {
       display: flex;
       align-items: flex-start;
@@ -258,6 +263,13 @@
       flex: 1 1 auto;
       min-width: 0;
       text-wrap: balance;
+      overflow-wrap: break-word;
+      word-break: normal;
+      hyphens: none;
+    }
+
+    @media (min-width: 640px) {
+      .finding__title { font-size: var(--text-xl2); }
     }
 
     .finding__meta {
@@ -322,8 +334,10 @@
 
     .finding__description {
       color: var(--fg-default);
-      line-height: 1.5;
+      font-size: var(--text-lg);
+      line-height: 1.55;
       margin: 0 0 12px;
+      max-width: 117ch;
       text-wrap: pretty;
     }
 
@@ -378,9 +392,13 @@
     .finding__meta-dl dd {
       margin: 0;
       color: var(--fg-default);
-      font-size: var(--text-base);
+      font-size: var(--text-lg);
       align-self: center;
+      overflow-wrap: anywhere;
+      word-break: normal;
+      hyphens: none;
     }
+
 
 
 
@@ -497,12 +515,14 @@
       padding-bottom: 8px;
     }
 
+
     .finding__df-linecol {
       flex: 0 0 56px;
       text-align: right;
       margin-right: 16px;
       color: var(--fg-subtle);
       user-select: none;
+      font-variant-numeric: tabular-nums;
     }
 
     .finding__df-code {
@@ -818,10 +838,10 @@
       padding: 7px 12px;
       border-bottom: 1px solid var(--border-default);
       background: var(--bg-subtle);
-      font-size: var(--text-xs);
+      font-size: var(--text-sm);
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: .05em;
+      letter-spacing: .06em;
       color: var(--fg-muted);
       display: flex;
       align-items: center;
@@ -858,7 +878,7 @@
       background: var(--bg-subtle);
       color: var(--fg-muted);
       cursor: pointer;
-      font-size: var(--text-xs);
+      font-size: var(--text-base);
       font-family: inherit;
       transition: background var(--motion-fast), color var(--motion-fast);
     }
@@ -1981,8 +2001,8 @@
             {{- $metaScan := index .Properties "Scanner" -}}
             {{- if or $metaCat $metaConf $metaRule $metaScan }}
             <dl class="finding__meta-dl">
-              {{if $metaCat}}<dt class="finding__meta-key">Category:</dt><dd>{{$metaCat}}</dd>{{end}}
-              {{if $metaConf}}<dt class="finding__meta-key">Confidence:</dt><dd>{{$metaConf}}</dd>{{end}}
+              {{if $metaCat}}<dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">{{$metaCat}}</dd>{{end}}
+              {{if $metaConf}}<dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">{{$metaConf}}</dd>{{end}}
               {{if $metaRule}}<dt class="finding__meta-key">Rule:</dt><dd>{{$metaRule}}</dd>{{end}}
               {{if $metaScan}}<dt class="finding__meta-key">Scanner:</dt><dd>{{$metaScan}}</dd>{{end}}
             </dl>
