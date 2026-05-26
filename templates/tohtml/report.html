@@ -1986,7 +1986,7 @@
         {{ $locationURI := index $location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
         {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
         {{ $locationWebURL := index $location.Properties "WebURL"}}
-        <details id="issue-{{$i}}" data-issue-num="{{add $i 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}" {{if or (eq $severity "critical") (eq $severity "high")}}open{{end}}>
+        <details id="issue-{{$i}}" data-issue-num="{{add $i 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}">
           <summary class="finding__head">
             <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
             <span class="finding__num">#{{add $i 1}}</span><span class="finding__title">{{index .Properties "Title"}}</span>
@@ -2245,6 +2245,11 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         if (_matchCountFn) _matchCountFn();
       }
 
+      function initSmartDefaults() {
+        const SMART_OPEN_CAP = 25;
+        findings.slice(0, SMART_OPEN_CAP).forEach(f => { f.open = true; });
+      }
+
       function initToggleAll() {
         const btn = document.getElementById('toggle-all');
         syncToggleLabel = function() {
@@ -2330,11 +2335,11 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             chevLeaf + dot(sev) +
             '<span class="tv-tl tv-tl--mono">' + esc(label) + '</span>' +
             '<span class="tv-tc">' + items.length + '</span></a>';
-          // Sort chips numerically by line number
+          // Sort chips by finding number (ASC)
           const sorted = items.slice().sort((a, b) => {
-            const an = parseInt(a.line, 10), bn = parseInt(b.line, 10);
+            const an = parseInt(a.num, 10), bn = parseInt(b.num, 10);
             if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
-            return String(a.line).localeCompare(String(b.line));
+            return String(a.num).localeCompare(String(b.num));
           });
           html += '<div class="tv-chips ' + (opts.chipClass || '') + '"' + parentAttr + '>';
           for (const d of sorted) {
@@ -2421,9 +2426,9 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
                   '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
                   '<span class="tv-tc">' + fileItems.length + '</span></a>';
                 const sorted = fileItems.slice().sort((a, b) => {
-                  const an = parseInt(a.line, 10), bn = parseInt(b.line, 10);
+                  const an = parseInt(a.num, 10), bn = parseInt(b.num, 10);
                   if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
-                  return String(a.line).localeCompare(String(b.line));
+                  return String(a.num).localeCompare(String(b.num));
                 });
                 html += '<div class="tv-chips tv-chips--rule" data-grp-parent="' + ruleNodeId + '">';
                 for (const d of sorted) {
@@ -2780,6 +2785,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       initStickyShadow();
       initFilter();
       initSearch();
+      initSmartDefaults();
       initToggleAll();
       initToc();
       initCopy();
