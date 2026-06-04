@@ -43,6 +43,20 @@ make example-report
 
 Then commit the updated `example.html` alongside the template change. See `AGENTS.md` for the full verification checklist.
 
+## Suggested fix
+
+The "Suggested fix" card appears inside each finding body when fix data is available. It is rendered as an Action Card: full brand-green border, neutral background (`--bg-subtle`), wrench icon header.
+
+Fix content is parsed from markdown at report-generation time (Go side, `splitFixParts` in `internal/sarif/help_markdown.go`) into an ordered slice of prose and code parts. Prose renders as `<p class="finding__fix-prose">`. Fenced code blocks (e.g., ` ```python `) render as a `<pre class="finding__fix-pre"><code class="language-X">` block with a header row showing the language badge and a Copy button. Prism picks up the `language-X` class and syntax-highlights automatically.
+
+**Source precedence** (highest first):
+1. `result.properties.recommendation` — plain text, no fences expected
+2. `rule.help.markdown` — the `## Fix` section, may contain fenced code blocks
+
+The `fixes.artifactChanges` SARIF field (machine-executable patch format) is intentionally not rendered; it is not human-readable guidance.
+
+**Copy button** uses the existing `data-copied` pattern: `fix-copy-btn[data-copied="1"]` turns green via `--success-fg`. The handler reads `code.innerText` from the nearest `.finding__fix-codeblock`.
+
 ## Search
 
 The search input filters findings by tokenised full-text match (all tokens must appear, case-insensitive). The index is built once on `DOMContentLoaded` from each finding's:

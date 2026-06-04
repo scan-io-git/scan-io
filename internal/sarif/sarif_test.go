@@ -804,6 +804,74 @@ func TestExtractFix_RecommendationPropertyWins(t *testing.T) {
 	}
 }
 
+// ── splitFixParts ─────────────────────────────────────────────────────────────
+
+func TestSplitFixParts(t *testing.T) {
+	cases := []struct {
+		name string
+		raw  string
+		want []FixPart
+	}{
+		{
+			name: "empty",
+			raw:  "",
+			want: nil,
+		},
+		{
+			name: "prose only",
+			raw:  "Use parameterized queries.",
+			want: []FixPart{{Type: "prose", Content: "Use parameterized queries."}},
+		},
+		{
+			name: "prose then code with lang",
+			raw:  "Replace with:\n```python\ncursor.execute(\"%s\", (id,))\n```",
+			want: []FixPart{
+				{Type: "prose", Content: "Replace with:"},
+				{Type: "code", Content: "cursor.execute(\"%s\", (id,))", Lang: "python"},
+			},
+		},
+		{
+			name: "code only no lang",
+			raw:  "```\nsome code\n```",
+			want: []FixPart{
+				{Type: "code", Content: "some code", Lang: ""},
+			},
+		},
+		{
+			name: "multiple code blocks",
+			raw:  "Before:\n```python\nold()\n```\nAfter:\n```python\nnew()\n```",
+			want: []FixPart{
+				{Type: "prose", Content: "Before:"},
+				{Type: "code", Content: "old()", Lang: "python"},
+				{Type: "prose", Content: "After:"},
+				{Type: "code", Content: "new()", Lang: "python"},
+			},
+		},
+		{
+			name: "prose trimmed of surrounding whitespace",
+			raw:  "  \n  Fix it.  \n  \n```go\nfoo()\n```\n",
+			want: []FixPart{
+				{Type: "prose", Content: "Fix it."},
+				{Type: "code", Content: "foo()", Lang: "go"},
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := splitFixParts(tc.raw)
+			if len(got) != len(tc.want) {
+				t.Fatalf("len=%d, want %d; got %+v", len(got), len(tc.want), got)
+			}
+			for i, p := range got {
+				w := tc.want[i]
+				if p.Type != w.Type || p.Content != w.Content || p.Lang != w.Lang {
+					t.Errorf("part[%d]: got %+v, want %+v", i, p, w)
+				}
+			}
+		})
+	}
+}
+
 func strPtr(s string) *string { return &s }
 
 func TestHumanizeRuleID(t *testing.T) {

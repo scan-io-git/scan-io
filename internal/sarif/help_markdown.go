@@ -7,14 +7,25 @@ import (
 	"github.com/owenrumney/go-sarif/v2/sarif"
 )
 
+// FixPart represents one segment of a suggested-fix body: either a prose
+// paragraph or a fenced code block extracted from markdown.
+type FixPart struct {
+	Type    string // "prose" or "code"
+	Content string
+	Lang    string // non-empty only for "code" parts that carry a language tag
+}
+
 var (
-	urlRE         = regexp.MustCompile(`https?://\S+`)
-	trailRE       = regexp.MustCompile(`[.,);>\]]+$`)
-	refsHeadRE    = regexp.MustCompile(`(?i)^\s*(#{1,6}\s+references|\*\*references\*\*|references)\s*:?\s*$`)
-	fixHeadRE     = regexp.MustCompile(`(?i)^\s*(#{1,6}\s+fix(es)?|\*\*fix(es)?\*\*|fix(es)?)\s*:?\s*$`)
-	nextHeadRE    = regexp.MustCompile(`^\s*#{1,6}\s`)
+	urlRE          = regexp.MustCompile(`https?://\S+`)
+	trailRE        = regexp.MustCompile(`[.,);>\]]+$`)
+	refsHeadRE     = regexp.MustCompile(`(?i)^\s*(#{1,6}\s+references|\*\*references\*\*|references)\s*:?\s*$`)
+	fixHeadRE      = regexp.MustCompile(`(?i)^\s*(#{1,6}\s+fix(es)?|\*\*fix(es)?\*\*|fix(es)?)\s*:?\s*$`)
+	nextHeadRE     = regexp.MustCompile(`^\s*#{1,6}\s`)
 	htmlRefsHeadRE = regexp.MustCompile(`(?i)<b>\s*references\s*:?\s*</b>`)
 	htmlFixHeadRE  = regexp.MustCompile(`(?i)<b>\s*fix(es)?\s*:?\s*</b>`)
+	// codeFenceRE matches a fenced code block: optional language tag on the
+	// opening line, non-greedy body, closing fence.
+	codeFenceRE = regexp.MustCompile("(?s)```(\\w*)\\n(.*?)\\n?```")
 )
 
 // normaliseMarkdown replaces HTML bold headings used by Semgrep (e.g. <b>References:</b>)
@@ -79,6 +90,37 @@ func extractFixFromMarkdown(md string) string {
 	section := extractSection(md, fixHeadRE)
 	trimmed := strings.TrimSpace(strings.Join(section, "\n"))
 	return trimmed
+}
+
+// splitFixParts splits a raw fix string (which may contain markdown fenced code
+// blocks) into an ordered slice of prose and code FixParts. Plain text with no
+// fences produces a single prose part.
+func splitFixParts(raw string) []FixPart {
+	if raw == "" {
+		return nil
+	}
+	var parts []FixPart
+	pos := 0
+	for _, loc := range codeFenceRE.FindAllStringSubmatchIndex(raw, -1) {
+		// loc indices: [full-start full-end lang-start lang-end code-start code-end]
+		if prose := strings.TrimSpace(raw[pos:loc[0]]); prose != "" {
+			parts = append(parts, FixPart{Type: "prose", Content: prose})
+		}
+		lang := ""
+		if loc[2] >= 0 {
+			lang = raw[loc[2]:loc[3]]
+		}
+		code := ""
+		if loc[4] >= 0 {
+			code = raw[loc[4]:loc[5]]
+		}
+		parts = append(parts, FixPart{Type: "code", Content: code, Lang: lang})
+		pos = loc[1]
+	}
+	if trailing := strings.TrimSpace(raw[pos:]); trailing != "" {
+		parts = append(parts, FixPart{Type: "prose", Content: trailing})
+	}
+	return parts
 }
 
 // extractReferences returns up to maxRefs deduplicated http(s) URLs for a result,
