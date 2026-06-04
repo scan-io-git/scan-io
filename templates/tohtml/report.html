@@ -2397,8 +2397,10 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       function updateSuppressedSectionVisibility() {
         const supSection = document.getElementById('suppressed-section');
         if (!supSection) return;
-        const hasVisible = findings.some(f => !f.hidden && f.dataset.suppressed === 'true');
-        supSection.hidden = !hasVisible;
+        const visibleCount = findings.filter(f => !f.hidden && f.dataset.suppressed === 'true').length;
+        supSection.hidden = visibleCount === 0;
+        const countEl = supSection.querySelector('.suppressed-section-count');
+        if (countEl) countEl.textContent = String(visibleCount);
       }
 
       function applyVisibility() {
