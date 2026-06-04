@@ -87,6 +87,8 @@ default-src 'none'; script-src 'nonce-{random}'; style-src 'nonce-{random}'; img
 
 A fresh 16-byte nonce (`crypto/rand`, base64url-encoded) is generated per render and placed on every inline `<script>` and `<style>` tag. No `'unsafe-inline'` or `'unsafe-eval'`. All external links carry `rel="noopener noreferrer"`.
 
+When `--source` is set, disk reads for code snippets are confined to that directory via `os.OpenRoot`. Artifact URIs with `../` traversal or absolute paths outside the source folder produce findings without code snippets rather than reading arbitrary files.
+
 The policy complements Go's `html/template` context-escaping — if a future escaping bypass were discovered, the nonce policy would still refuse injected scripts. Reports are typically shared as email attachments or CI artifacts, so recipients may open files crafted from a malicious SARIF.
 
 Pass `--no-csp` to `scanio to-html` to omit the policy (e.g., for viewers that do not support `<meta>` CSP).

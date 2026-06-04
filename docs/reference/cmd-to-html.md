@@ -79,6 +79,7 @@ Each report is hardened at render time:
   default-src 'none'; script-src 'nonce-{random}'; style-src 'nonce-{random}'; img-src data:; base-uri 'none'; form-action 'none'
   ```
 - All external links use `target="_blank" rel="noopener noreferrer"` to prevent reverse tabnabbing.
+- When `--source` is set, file reads for code snippets are confined to that directory. A SARIF with artifact URIs containing `../` traversal or absolute paths outside the folder will produce findings without code snippets rather than reading arbitrary files.
 
 The CSP is defense-in-depth: Go's `html/template` already context-escapes all SARIF-derived values, but the nonce policy blocks injected `<script>` tags, inline event handlers, and `javascript:` URIs if escaping is ever bypassed. This matters because reports are often shared as email attachments or CI artifacts and opened by people other than the person who ran the scan.
 
