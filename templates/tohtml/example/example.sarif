@@ -1,0 +1,1119 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Semgrep OSS",
+          "semanticVersion": "1.95.0",
+          "rules": [
+            {
+              "id": "python.flask.security.audit.sql-injection",
+              "name": "sql-injection",
+              "shortDescription": { "text": "SQL injection via unsanitized user input" },
+              "fullDescription": { "text": "User-controlled data is passed directly to a SQL query without parameterization. An attacker can manipulate the query to read, modify, or delete arbitrary database records." },
+              "helpUri": "https://semgrep.dev/r/python.flask.security.audit.sql-injection",
+              "help": {
+                "text": "Use parameterized queries.",
+                "markdown": "User-controlled input reaches a SQL sink without sanitization.\n\n<b>References:</b>\n - [OWASP SQL Injection](https://owasp.org/www-community/attacks/SQL_Injection)\n - [CWE-89](https://cwe.mitre.org/data/definitions/89.html)\n\n## Fix\nReplace string concatenation with parameterized queries:\n```python\ncursor.execute(\"SELECT * FROM users WHERE id=%s\", (user_id,))\n```"
+              },
+              "defaultConfiguration": { "level": "error" },
+              "properties": {
+                "tags": ["CWE-89: Improper Neutralization of Special Elements used in an SQL Command", "security", "HIGH CONFIDENCE"],
+                "security-severity": "9.1",
+                "problem.severity": "error",
+                "precision": "high"
+              }
+            },
+            {
+              "id": "generic.secrets.security.hardcoded-aws-key",
+              "name": "hardcoded-aws-key",
+              "shortDescription": { "text": "Hardcoded AWS access key" },
+              "fullDescription": { "text": "An AWS access key is hardcoded in the source file. If this file is committed to version control or exposed, the credentials can be used to access AWS resources." },
+              "helpUri": "https://semgrep.dev/r/generic.secrets.security.hardcoded-aws-key",
+              "help": {
+                "text": "Use environment variables or a secrets manager.",
+                "markdown": "AWS credentials are hardcoded in source code.\n\n<b>References:</b>\n - [CWE-798](https://cwe.mitre.org/data/definitions/798.html)\n - [AWS Secrets Manager](https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html)\n\n## Fix\nRemove the hardcoded key and load it from the environment:\n```python\nAWS_SECRET_KEY = os.environ[\"AWS_SECRET_KEY\"]\n```"
+              },
+              "defaultConfiguration": { "level": "error" },
+              "properties": {
+                "tags": ["CWE-798: Use of Hard-coded Credentials", "security", "HIGH CONFIDENCE"],
+                "security-severity": "9.8",
+                "problem.severity": "error",
+                "precision": "high"
+              }
+            },
+            {
+              "id": "python.lang.security.audit.dangerous-system-call",
+              "name": "dangerous-system-call",
+              "shortDescription": { "text": "OS command injection via user-controlled input" },
+              "fullDescription": { "text": "User-controlled data flows into os.system() or subprocess with shell=True. An attacker can inject arbitrary shell commands." },
+              "helpUri": "https://semgrep.dev/r/python.lang.security.audit.dangerous-system-call",
+              "help": {
+                "text": "Use subprocess with a list argument.",
+                "markdown": "Dangerous system call reached with user input.\n\n<b>References:</b>\n - [CWE-78](https://cwe.mitre.org/data/definitions/78.html)\n - [OWASP Command Injection](https://owasp.org/www-community/attacks/Command_Injection)\n\n## Fix\nAvoid shell=True and pass arguments as a list:\n```python\nsubprocess.run([\"convert\", \"-resize\", size, \"output.png\"], shell=False)\n```"
+              },
+              "defaultConfiguration": { "level": "error" },
+              "properties": {
+                "tags": ["CWE-78: Improper Neutralization of Special Elements used in an OS Command", "security", "HIGH CONFIDENCE"],
+                "security-severity": "8.5",
+                "problem.severity": "error",
+                "precision": "high"
+              }
+            },
+            {
+              "id": "python.requests.security.ssrf-injection",
+              "name": "ssrf-injection",
+              "shortDescription": { "text": "Server-side request forgery (SSRF)" },
+              "fullDescription": { "text": "A URL derived from user input is passed to requests.get() or similar. An attacker can direct the server to make requests to internal network resources or cloud metadata endpoints." },
+              "helpUri": "https://semgrep.dev/r/python.requests.security.ssrf-injection",
+              "defaultConfiguration": { "level": "error" },
+              "properties": {
+                "tags": ["CWE-918: Server-Side Request Forgery", "security", "MEDIUM CONFIDENCE"],
+                "security-severity": "7.5",
+                "problem.severity": "error",
+                "precision": "medium"
+              }
+            },
+            {
+              "id": "javascript.browser.security.dom-xss",
+              "name": "dom-xss",
+              "shortDescription": { "text": "DOM-based cross-site scripting (XSS)" },
+              "fullDescription": { "text": "Unsanitized user-controlled data is written to innerHTML. An attacker can inject arbitrary HTML and execute JavaScript in the victim's browser." },
+              "helpUri": "https://semgrep.dev/r/javascript.browser.security.dom-xss",
+              "defaultConfiguration": { "level": "warning" },
+              "properties": {
+                "tags": ["CWE-79: Improper Neutralization of Input During Web Page Generation", "security", "MEDIUM CONFIDENCE"],
+                "security-severity": "6.1",
+                "problem.severity": "warning",
+                "precision": "medium"
+              }
+            },
+            {
+              "id": "python.lang.security.audit.path-traversal",
+              "name": "path-traversal",
+              "shortDescription": { "text": "Path traversal via unsanitized filename" },
+              "fullDescription": { "text": "A filename from user input is joined with a base directory without sanitization. An attacker can use '../' sequences to escape the intended directory and read arbitrary files." },
+              "helpUri": "https://semgrep.dev/r/python.lang.security.audit.path-traversal",
+              "help": {
+                "text": "Validate and sanitize file paths.",
+                "markdown": "User-controlled path reaches os.path.join or open without validation.\n\n<b>References:</b>\n - [CWE-22](https://cwe.mitre.org/data/definitions/22.html)\n\n## Fix\nUse os.path.realpath and verify the result stays within the allowed directory:\n```python\nsafe_path = os.path.realpath(os.path.join(BASE_DIR, filename))\nif not safe_path.startswith(BASE_DIR):\n    abort(403)\n```"
+              },
+              "defaultConfiguration": { "level": "warning" },
+              "properties": {
+                "tags": ["CWE-22: Improper Limitation of a Pathname to a Restricted Directory", "security", "MEDIUM CONFIDENCE"],
+                "security-severity": "5.5",
+                "problem.severity": "warning",
+                "precision": "medium"
+              }
+            },
+            {
+              "id": "python.lang.security.weak-cryptography.use-of-md5",
+              "name": "use-of-md5",
+              "shortDescription": { "text": "Use of MD5 for cryptographic hashing" },
+              "fullDescription": { "text": "MD5 is a cryptographically broken hash function. Do not use it for passwords, integrity checks, or any security-sensitive purpose." },
+              "helpUri": "https://semgrep.dev/r/python.lang.security.weak-cryptography.use-of-md5",
+              "defaultConfiguration": { "level": "warning" },
+              "properties": {
+                "tags": ["CWE-327: Use of a Broken or Risky Cryptographic Algorithm", "security", "LOW CONFIDENCE"],
+                "security-severity": "4.5",
+                "problem.severity": "warning",
+                "precision": "low"
+              }
+            },
+            {
+              "id": "generic.nginx.security.missing-security-header",
+              "name": "missing-security-header",
+              "shortDescription": { "text": "Missing HTTP security response header" },
+              "fullDescription": { "text": "The nginx server block does not set a recommended HTTP security header. Missing headers can expose users to clickjacking, MIME-sniffing, and XSS attacks." },
+              "helpUri": "https://semgrep.dev/r/generic.nginx.security.missing-security-header",
+              "defaultConfiguration": { "level": "warning" },
+              "properties": {
+                "tags": ["CWE-693: Protection Mechanism Failure", "security", "MEDIUM CONFIDENCE"],
+                "security-severity": "5.0",
+                "problem.severity": "warning",
+                "precision": "medium"
+              }
+            },
+            {
+              "id": "python.flask.security.audit.insecure-cookie",
+              "name": "insecure-cookie",
+              "shortDescription": { "text": "Cookie missing Secure and HttpOnly flags" },
+              "fullDescription": { "text": "The session cookie is set without the Secure or HttpOnly flag. Without Secure the cookie may be sent over plaintext HTTP; without HttpOnly it is accessible to JavaScript." },
+              "helpUri": "https://semgrep.dev/r/python.flask.security.audit.insecure-cookie",
+              "help": {
+                "text": "Set Secure and HttpOnly flags on cookies.",
+                "markdown": "Cookie set without security flags.\n\n## Fix\nPass `secure=True, httponly=True` to set_cookie:\n```python\nresponse.set_cookie('session', token, secure=True, httponly=True, samesite='Lax')\n```"
+              },
+              "defaultConfiguration": { "level": "note" },
+              "properties": {
+                "tags": ["CWE-1004: Sensitive Cookie Without HttpOnly Flag", "security", "LOW CONFIDENCE"],
+                "security-severity": "3.5",
+                "problem.severity": "note",
+                "precision": "low"
+              }
+            },
+            {
+              "id": "python.flask.security.audit.debug-enabled",
+              "name": "debug-enabled",
+              "shortDescription": { "text": "Flask debug mode enabled in production code" },
+              "fullDescription": { "text": "app.run(debug=True) enables the Werkzeug debugger and reloader. If reached in production this exposes an interactive Python console to any user who triggers an exception." },
+              "helpUri": "https://semgrep.dev/r/python.flask.security.audit.debug-enabled",
+              "defaultConfiguration": { "level": "note" },
+              "properties": {
+                "tags": ["CWE-489: Active Debug Code", "security", "LOW CONFIDENCE"],
+                "security-severity": "3.0",
+                "problem.severity": "note",
+                "precision": "low"
+              }
+            },
+            {
+              "id": "generic.web.security.missing-rate-limiting",
+              "name": "missing-rate-limiting",
+              "shortDescription": { "text": "Sensitive endpoint lacks rate limiting" },
+              "fullDescription": { "text": "The login or authentication endpoint does not appear to enforce rate limiting. Without it the endpoint is vulnerable to credential-stuffing and brute-force attacks." },
+              "helpUri": "https://semgrep.dev/r/generic.web.security.missing-rate-limiting",
+              "defaultConfiguration": { "level": "none" },
+              "properties": {
+                "tags": ["security", "LOW CONFIDENCE"],
+                "precision": "low"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "python.flask.security.audit.sql-injection",
+          "level": "error",
+          "message": { "text": "Unsanitized user input from request.args is concatenated directly into a SQL query. Use parameterized queries to prevent SQL injection." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "app/db.py", "properties": {} },
+                "region": {
+                  "startLine": 23,
+                  "endLine": 23,
+                  "startColumn": 5,
+                  "endColumn": 19,
+                  "snippet": { "text": "    cursor.execute(query)" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "app/db.py", "properties": {} },
+                          "region": {
+                            "startLine": 15,
+                            "endLine": 15,
+                            "snippet": { "text": "    user_id = request.args.get('user_id')" }
+                          }
+                        },
+                        "message": { "text": "Source: user input from query parameter" }
+                      }
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "app/db.py", "properties": {} },
+                          "region": {
+                            "startLine": 19,
+                            "endLine": 19,
+                            "snippet": { "text": "    query = \"SELECT * FROM users WHERE id=\" + user_id" }
+                          }
+                        },
+                        "message": { "text": "Taint: string concatenation into SQL query" }
+                      }
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "app/db.py", "properties": {} },
+                          "region": {
+                            "startLine": 23,
+                            "endLine": 23,
+                            "startColumn": 5,
+                            "endColumn": 19,
+                            "snippet": { "text": "    cursor.execute(query)" }
+                          }
+                        },
+                        "message": { "text": "Sink: SQL execution" }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "generic.secrets.security.hardcoded-aws-key",
+          "level": "error",
+          "message": { "text": "Hardcoded AWS secret access key detected. Rotate this credential immediately and store secrets in environment variables or a secrets manager." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "config/settings.py", "properties": {} },
+                "region": {
+                  "startLine": 8,
+                  "endLine": 8,
+                  "startColumn": 19,
+                  "endColumn": 39,
+                  "snippet": { "text": "AWS_SECRET_KEY = \"AKIAIOSFODNN7EXAMPLE\"" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "config/settings.py", "properties": {} },
+                          "region": {
+                            "startLine": 8,
+                            "endLine": 8,
+                            "startColumn": 19,
+                            "endColumn": 39,
+                            "snippet": { "text": "AWS_SECRET_KEY = \"AKIAIOSFODNN7EXAMPLE\"" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "recommendation": "Remove the hardcoded key. Load credentials from environment variables:\n\nAWS_SECRET_KEY = os.environ[\"AWS_SECRET_KEY\"]\n\nOr use AWS IAM roles / instance profiles to avoid storing credentials in code entirely."
+          }
+        },
+        {
+          "ruleId": "python.lang.security.audit.dangerous-system-call",
+          "level": "error",
+          "message": { "text": "User-controlled data flows into os.system(). An attacker can inject shell metacharacters to execute arbitrary commands on the host." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "app/views.py", "properties": {} },
+                "region": {
+                  "startLine": 47,
+                  "endLine": 47,
+                  "startColumn": 5,
+                  "endColumn": 19,
+                  "snippet": { "text": "    os.system(cmd)" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "app/views.py", "properties": {} },
+                          "region": {
+                            "startLine": 42,
+                            "endLine": 42,
+                            "snippet": { "text": "    cmd = request.form.get('command')" }
+                          }
+                        },
+                        "message": { "text": "Source: user input from POST form" }
+                      }
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "app/views.py", "properties": {} },
+                          "region": {
+                            "startLine": 47,
+                            "endLine": 47,
+                            "startColumn": 5,
+                            "endColumn": 19,
+                            "snippet": { "text": "    os.system(cmd)" }
+                          }
+                        },
+                        "message": { "text": "Sink: shell command execution" }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "python.requests.security.ssrf-injection",
+          "level": "error",
+          "message": { "text": "A URL supplied by the user is passed to requests.get() without validation. An attacker can make the server send requests to internal services, cloud metadata APIs, or arbitrary external hosts." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "app/views.py", "properties": {} },
+                "region": {
+                  "startLine": 67,
+                  "endLine": 67,
+                  "startColumn": 12,
+                  "endColumn": 34,
+                  "snippet": { "text": "    resp = requests.get(user_url)" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "app/views.py", "properties": {} },
+                          "region": {
+                            "startLine": 67,
+                            "endLine": 67,
+                            "startColumn": 12,
+                            "endColumn": 34,
+                            "snippet": { "text": "    resp = requests.get(user_url)" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "references": [
+              "https://owasp.org/www-community/attacks/Server_Side_Request_Forgery",
+              "https://cwe.mitre.org/data/definitions/918.html"
+            ]
+          }
+        },
+        {
+          "ruleId": "javascript.browser.security.dom-xss",
+          "level": "warning",
+          "message": { "text": "Unsanitized value assigned to innerHTML. If userInput contains attacker-controlled HTML, JavaScript will execute in the context of this page." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "static/js/profile.js", "properties": {} },
+                "region": {
+                  "startLine": 12,
+                  "endLine": 12,
+                  "startColumn": 34,
+                  "endColumn": 55,
+                  "snippet": { "text": "  document.getElementById('bio').innerHTML = userInput;" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "static/js/profile.js", "properties": {} },
+                          "region": {
+                            "startLine": 12,
+                            "endLine": 12,
+                            "startColumn": 34,
+                            "endColumn": 55,
+                            "snippet": { "text": "  document.getElementById('bio').innerHTML = userInput;" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "python.lang.security.audit.path-traversal",
+          "level": "warning",
+          "message": { "text": "A filename from user input is joined with BASE_DIR without sanitization. An attacker using '../' sequences can escape the intended directory." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "app/views.py", "properties": {} },
+                "region": {
+                  "startLine": 78,
+                  "endLine": 80,
+                  "startColumn": 16,
+                  "endColumn": 27,
+                  "snippet": { "text": "    filename = request.args.get('file')\n    path = os.path.join(BASE_DIR, filename)\n    return send_file(path)" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "app/views.py", "properties": {} },
+                          "region": {
+                            "startLine": 78,
+                            "endLine": 80,
+                            "startColumn": 16,
+                            "endColumn": 27,
+                            "snippet": { "text": "    filename = request.args.get('file')\n    path = os.path.join(BASE_DIR, filename)\n    return send_file(path)" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "recommendation": "Validate the resolved path stays within the intended directory:\n\nsafe = os.path.realpath(os.path.join(BASE_DIR, filename))\nif not safe.startswith(os.path.realpath(BASE_DIR)):\n    abort(403)"
+          }
+        },
+        {
+          "ruleId": "python.lang.security.weak-cryptography.use-of-md5",
+          "level": "warning",
+          "message": { "text": "MD5 is cryptographically broken and must not be used for password hashing or integrity verification. Use hashlib.sha256 or bcrypt instead." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "app/auth.py", "properties": {} },
+                "region": {
+                  "startLine": 44,
+                  "endLine": 44,
+                  "startColumn": 22,
+                  "endColumn": 35,
+                  "snippet": { "text": "    hashed = hashlib.md5(password).hexdigest()" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "app/auth.py", "properties": {} },
+                          "region": {
+                            "startLine": 44,
+                            "endLine": 44,
+                            "startColumn": 22,
+                            "endColumn": 35,
+                            "snippet": { "text": "    hashed = hashlib.md5(password).hexdigest()" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "python.lang.security.weak-cryptography.use-of-md5",
+          "level": "warning",
+          "message": { "text": "MD5 is cryptographically broken. Replace with hashlib.sha256() or a dedicated integrity library." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "app/utils.py", "properties": {} },
+                "region": {
+                  "startLine": 31,
+                  "endLine": 31,
+                  "startColumn": 24,
+                  "endColumn": 33,
+                  "snippet": { "text": "    checksum = hashlib.md5(data).hexdigest()" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "app/utils.py", "properties": {} },
+                          "region": {
+                            "startLine": 31,
+                            "endLine": 31,
+                            "startColumn": 24,
+                            "endColumn": 33,
+                            "snippet": { "text": "    checksum = hashlib.md5(data).hexdigest()" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "generic.nginx.security.missing-security-header",
+          "level": "warning",
+          "message": { "text": "The nginx server block at this location does not set the X-Frame-Options header, leaving the site vulnerable to clickjacking attacks." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "config/nginx.conf", "properties": {} },
+                "region": {
+                  "startLine": 12,
+                  "endLine": 12,
+                  "snippet": { "text": "    server_name example.com;" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "config/nginx.conf", "properties": {} },
+                          "region": {
+                            "startLine": 12,
+                            "endLine": 12,
+                            "snippet": { "text": "    server_name example.com;" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "generic.nginx.security.missing-security-header",
+          "level": "warning",
+          "message": { "text": "The nginx server block does not set the X-Content-Type-Options header. Browsers may MIME-sniff responses to unexpected content types." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "config/nginx.conf", "properties": {} },
+                "region": {
+                  "startLine": 28,
+                  "endLine": 28,
+                  "snippet": { "text": "    server_name api.example.com;" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "config/nginx.conf", "properties": {} },
+                          "region": {
+                            "startLine": 28,
+                            "endLine": 28,
+                            "snippet": { "text": "    server_name api.example.com;" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "generic.nginx.security.missing-security-header",
+          "level": "warning",
+          "message": { "text": "The nginx server block does not set the Strict-Transport-Security (HSTS) header. Clients may connect over unencrypted HTTP." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "config/nginx.conf", "properties": {} },
+                "region": {
+                  "startLine": 44,
+                  "endLine": 44,
+                  "snippet": { "text": "    server_name admin.example.com;" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "config/nginx.conf", "properties": {} },
+                          "region": {
+                            "startLine": 44,
+                            "endLine": 44,
+                            "snippet": { "text": "    server_name admin.example.com;" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "generic.nginx.security.missing-security-header",
+          "level": "warning",
+          "message": { "text": "The Dockerfile does not configure a security-related label or policy. Add X-Content-Type-Options and X-Frame-Options headers in the nginx configuration used with this image." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "Dockerfile", "properties": {} },
+                "region": {
+                  "startLine": 15,
+                  "endLine": 15,
+                  "snippet": { "text": "EXPOSE 8080" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "Dockerfile", "properties": {} },
+                          "region": {
+                            "startLine": 15,
+                            "endLine": 15,
+                            "snippet": { "text": "EXPOSE 8080" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "python.flask.security.audit.insecure-cookie",
+          "level": "note",
+          "message": { "text": "Session cookie set without Secure or HttpOnly flags. The cookie may be sent over HTTP and is readable by JavaScript, exposing it to theft via XSS or network sniffing." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "app/auth.py", "properties": {} },
+                "region": {
+                  "startLine": 58,
+                  "endLine": 58,
+                  "startColumn": 14,
+                  "endColumn": 42,
+                  "snippet": { "text": "    response.set_cookie('session', token)" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "app/auth.py", "properties": {} },
+                          "region": {
+                            "startLine": 58,
+                            "endLine": 58,
+                            "startColumn": 14,
+                            "endColumn": 42,
+                            "snippet": { "text": "    response.set_cookie('session', token)" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "python.flask.security.audit.debug-enabled",
+          "level": "note",
+          "message": { "text": "Flask debug mode is enabled. In production this exposes an interactive debugger to any user who triggers an unhandled exception, allowing arbitrary code execution." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "app/views.py", "properties": {} },
+                "region": {
+                  "startLine": 95,
+                  "endLine": 95,
+                  "startColumn": 13,
+                  "endColumn": 23,
+                  "snippet": { "text": "    app.run(debug=True, host='0.0.0.0')" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "app/views.py", "properties": {} },
+                          "region": {
+                            "startLine": 95,
+                            "endLine": 95,
+                            "startColumn": 13,
+                            "endColumn": 23,
+                            "snippet": { "text": "    app.run(debug=True, host='0.0.0.0')" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "generic.web.security.missing-rate-limiting",
+          "level": "none",
+          "message": { "text": "The /api/login endpoint does not appear to enforce rate limiting. Without it, an attacker can perform unlimited credential-stuffing or brute-force attempts." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "app/views.py", "properties": {} },
+                "region": {
+                  "startLine": 103,
+                  "endLine": 103,
+                  "snippet": { "text": "@app.route('/api/login', methods=['POST'])" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "app/views.py", "properties": {} },
+                          "region": {
+                            "startLine": 103,
+                            "endLine": 103,
+                            "snippet": { "text": "@app.route('/api/login', methods=['POST'])" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "references": [
+              "https://owasp.org/www-community/controls/Blocking_Brute_Force_Attacks"
+            ]
+          }
+        },
+        {
+          "ruleId": "python.flask.security.audit.sql-injection",
+          "level": "error",
+          "message": { "text": "Unsanitized test fixture ID flows into a SQL query. This is a test-only file with controlled input." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "tests/test_db.py", "properties": {} },
+                "region": {
+                  "startLine": 34,
+                  "endLine": 34,
+                  "startColumn": 5,
+                  "endColumn": 19,
+                  "snippet": { "text": "    cursor.execute(\"SELECT * FROM test_users WHERE id=\" + test_id)" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "tests/test_db.py", "properties": {} },
+                          "region": {
+                            "startLine": 34,
+                            "endLine": 34,
+                            "startColumn": 5,
+                            "endColumn": 19,
+                            "snippet": { "text": "    cursor.execute(\"SELECT * FROM test_users WHERE id=\" + test_id)" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "suppressions": [
+            {
+              "kind": "inSource",
+              "status": "accepted",
+              "justification": "Test fixture with controlled, hardcoded IDs only. Not reachable from user input. # nosemgrep: python.flask.security.audit.sql-injection"
+            }
+          ]
+        },
+        {
+          "ruleId": "generic.secrets.security.hardcoded-aws-key",
+          "level": "error",
+          "message": { "text": "Hardcoded AWS key in test configuration file." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "tests/fixtures/test_config.py", "properties": {} },
+                "region": {
+                  "startLine": 5,
+                  "endLine": 5,
+                  "startColumn": 16,
+                  "endColumn": 36,
+                  "snippet": { "text": "TEST_AWS_KEY = \"AKIAIOSFODNN7EXAMPLE\"" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "tests/fixtures/test_config.py", "properties": {} },
+                          "region": {
+                            "startLine": 5,
+                            "endLine": 5,
+                            "startColumn": 16,
+                            "endColumn": 36,
+                            "snippet": { "text": "TEST_AWS_KEY = \"AKIAIOSFODNN7EXAMPLE\"" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "suppressions": [
+            {
+              "kind": "inSource",
+              "status": "accepted",
+              "justification": "Test-only credential. Key is expired and used only in CI mocks. # nosemgrep"
+            }
+          ]
+        },
+        {
+          "ruleId": "python.lang.security.audit.dangerous-system-call",
+          "level": "error",
+          "message": { "text": "os.system call in admin maintenance script with operator-supplied command." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "scripts/admin.py", "properties": {} },
+                "region": {
+                  "startLine": 61,
+                  "endLine": 61,
+                  "startColumn": 5,
+                  "endColumn": 19,
+                  "snippet": { "text": "    os.system(maintenance_cmd)" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "scripts/admin.py", "properties": {} },
+                          "region": {
+                            "startLine": 61,
+                            "endLine": 61,
+                            "startColumn": 5,
+                            "endColumn": 19,
+                            "snippet": { "text": "    os.system(maintenance_cmd)" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "suppressions": [
+            {
+              "kind": "external",
+              "status": "underReview",
+              "justification": "Admin-only script, requires authenticated shell access. Security team reviewing whether subprocess migration is required before next release."
+            }
+          ]
+        },
+        {
+          "ruleId": "python.lang.security.audit.path-traversal",
+          "level": "warning",
+          "message": { "text": "Legacy file handler uses unsanitized path. Migration to secure implementation is tracked in the backlog." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "legacy/file_handler.py", "properties": {} },
+                "region": {
+                  "startLine": 88,
+                  "endLine": 88,
+                  "snippet": { "text": "    content = open(filepath, 'rb').read()" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "legacy/file_handler.py", "properties": {} },
+                          "region": {
+                            "startLine": 88,
+                            "endLine": 88,
+                            "snippet": { "text": "    content = open(filepath, 'rb').read()" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "suppressions": [
+            {
+              "kind": "external",
+              "status": "underReview",
+              "justification": "Legacy module scheduled for replacement in Q3. Tracked in issue #842. Input is validated at the API gateway layer for now."
+            }
+          ]
+        },
+        {
+          "ruleId": "python.flask.security.audit.insecure-cookie",
+          "level": "note",
+          "message": { "text": "Auth cookie set without Secure flag. Suppression was rejected — this must be fixed before the next production release." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "app/auth.py", "properties": {} },
+                "region": {
+                  "startLine": 72,
+                  "endLine": 72,
+                  "startColumn": 14,
+                  "endColumn": 42,
+                  "snippet": { "text": "    response.set_cookie('auth', token, secure=False)" }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": { "uri": "app/auth.py", "properties": {} },
+                          "region": {
+                            "startLine": 72,
+                            "endLine": 72,
+                            "startColumn": 14,
+                            "endColumn": 42,
+                            "snippet": { "text": "    response.set_cookie('auth', token, secure=False)" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "suppressions": [
+            {
+              "kind": "inSource",
+              "status": "rejected",
+              "justification": "Suppression rejected by security review: secure=False is intentional for HTTP-only dev environment but this code path is also reachable in production. Must be fixed."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

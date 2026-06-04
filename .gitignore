@@ -68,6 +68,10 @@ __debug_bin*
 *report.html
 *results.html
 
+# keep the committed example fixture and its rendered output
+!templates/tohtml/example/example.sarif
+!templates/tohtml/example/example.html
+
 data/
 
 .playwright-mcp/

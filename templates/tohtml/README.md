@@ -29,6 +29,20 @@ All tokens live in the `:root` block in `report.html`. The design kit mirrors th
 | Spacing | `--space-1` .. `--space-6` | 4px .. 32px |
 | Syntax | `--syntax-keyword` etc. | Prism token colors |
 
+## Example report
+
+`templates/tohtml/example/` contains a synthetic SARIF (`example.sarif`) and the rendered HTML (`example.html`). The SARIF embeds `region.snippet.text` on every code location, so no source checkout is needed to render it.
+
+The example covers: all five severity levels, all three suppression statuses (accepted / underReview / rejected), single-line column highlights, multi-line highlights, multi-step data flows, affected-code-only findings, findings with and without fix/references, and same-rule deduplication across multiple files (TOC chip clustering).
+
+Regenerate after changing the template:
+
+```
+make example-report
+```
+
+Then commit the updated `example.html` alongside the template change. See `AGENTS.md` for the full verification checklist.
+
 ## Search
 
 The search input filters findings by tokenised full-text match (all tokens must appear, case-insensitive). The index is built once on `DOMContentLoaded` from each finding's:
