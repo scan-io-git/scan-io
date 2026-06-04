@@ -210,42 +210,42 @@
                     {
                       "location": {
                         "physicalLocation": {
-                          "artifactLocation": { "uri": "app/db.py", "properties": {} },
+                          "artifactLocation": { "uri": "app/api.py" },
                           "region": {
-                            "startLine": 15,
-                            "endLine": 15,
+                            "startLine": 31,
+                            "endLine": 31,
                             "snippet": { "text": "    user_id = request.args.get('user_id')" }
                           }
                         },
-                        "message": { "text": "Source: user input from query parameter" }
+                        "message": { "text": "Source: user input from HTTP query parameter" }
                       }
                     },
                     {
                       "location": {
                         "physicalLocation": {
-                          "artifactLocation": { "uri": "app/db.py", "properties": {} },
+                          "artifactLocation": { "uri": "app/services.py" },
                           "region": {
-                            "startLine": 19,
-                            "endLine": 19,
-                            "snippet": { "text": "    query = \"SELECT * FROM users WHERE id=\" + user_id" }
+                            "startLine": 14,
+                            "endLine": 14,
+                            "snippet": { "text": "    return db.get_user(user_id)" }
                           }
                         },
-                        "message": { "text": "Taint: string concatenation into SQL query" }
+                        "message": { "text": "Propagation: passed through service layer" }
                       }
                     },
                     {
                       "location": {
                         "physicalLocation": {
-                          "artifactLocation": { "uri": "app/db.py", "properties": {} },
+                          "artifactLocation": { "uri": "app/db.py" },
                           "region": {
                             "startLine": 23,
                             "endLine": 23,
                             "startColumn": 5,
                             "endColumn": 19,
-                            "snippet": { "text": "    cursor.execute(query)" }
+                            "snippet": { "text": "    cursor.execute(\"SELECT * FROM users WHERE id=\" + user_id)" }
                           }
                         },
-                        "message": { "text": "Sink: SQL execution" }
+                        "message": { "text": "Sink: unsanitized input reaches SQL cursor" }
                       }
                     }
                   ]

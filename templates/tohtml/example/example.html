@@ -2180,6 +2180,52 @@ Or use AWS IAM roles / instance profiles to avoid storing credentials in code en
                         
                         
                         
+                        <div class="finding__df-filename"><span>app/api.py</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
+                        
+                        
+
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+
+                        
+                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/api.py#L31">31</a></span><div class="finding__df-code"><span class="finding__df-highlight">    user_id = request.args.get(&#39;user_id&#39;)</span></div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
+                        
+
+                      
+
+                        
+                        
+                        
+                        <div class="finding__df-filename"><span>app/services.py</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
+                        
+                        
+
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+
+                        
+                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/services.py#L14">14</a></span><div class="finding__df-code"><span class="finding__df-highlight">    return db.get_user(user_id)</span></div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
+                        
+
+                      
+
+                        
+                        
+                        
                         <div class="finding__df-filename"><span>app/db.py</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
                         
                         
@@ -2195,49 +2241,7 @@ Or use AWS IAM roles / instance profiles to avoid storing credentials in code en
                         
 
                         
-                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/db.py#L15">15</a></span><div class="finding__df-code"><span class="finding__df-highlight">    user_id = request.args.get(&#39;user_id&#39;)</span></div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
-                        
-
-                      
-
-                        
-                        
-                        
-                        
-
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-
-                        
-                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/db.py#L19">19</a></span><div class="finding__df-code"><span class="finding__df-highlight">    query = &#34;SELECT * FROM users WHERE id=&#34; &#43; user_id</span></div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
-                        
-
-                      
-
-                        
-                        
-                        
-                        
-
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-
-                        
-                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/db.py#L23">23</a></span><div class="finding__df-code">    <span class="finding__df-highlight">cursor.execute</span>(query)</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
+                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/db.py#L23">23</a></span><div class="finding__df-code">    <span class="finding__df-highlight">cursor.execute</span>(&#34;SELECT * FROM users WHERE id=&#34; &#43; user_id)</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
                         
 
                       
@@ -4844,7 +4848,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
   <div class="report-footer__accent" aria-hidden="true"></div>
   <div class="report-footer__inner">
     <div class="report-footer__left">
-      <span>Generated 4th June 2026 11:05:00 am UTC</span>
+      <span>Generated 4th June 2026 11:18:01 am UTC</span>
     </div>
     <div class="report-footer__right">
       <a href="https://github.com/scan-io-git/scan-io" target="_blank" rel="noopener">scan-io-git/scan-io</a>
