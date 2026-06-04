@@ -2824,7 +2824,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         const chevLeaf = '<span class="tv-ch tv-ch--leaf" aria-hidden="true"></span>';
         const fileIcon = '<span class="tv-ti"><svg aria-hidden="true"><use href="#tb-file"/></svg></span>';
         function dot(sev) { return '<span class="tv-dot tv-dot--' + sev + '" aria-hidden="true"></span>'; }
-        function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+        function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
         function cap60(s) {
           if (!s) return '';
           const arr = Array.from(s);
