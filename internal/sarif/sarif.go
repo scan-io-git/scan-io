@@ -365,18 +365,9 @@ func (r Report) readLinesFromFile(loc *sarif.PhysicalLocation) ([]string, error)
 	}
 	defer root.Close()
 
-	relPath := *loc.ArtifactLocation.URI
-	if filepath.IsAbs(relPath) {
-		rel, err := filepath.Rel(r.sourceFolder, relPath)
-		if err != nil || strings.HasPrefix(rel, "..") {
-			return nil, fmt.Errorf("file path %q is outside the source folder", relPath)
-		}
-		relPath = rel
-	}
-
-	file, err := root.Open(relPath)
+	file, err := root.Open(*loc.ArtifactLocation.URI)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file %q within source folder: %w", relPath, err)
+		return nil, fmt.Errorf("failed to open file %q within source folder: %w", *loc.ArtifactLocation.URI, err)
 	}
 	defer file.Close()
 
