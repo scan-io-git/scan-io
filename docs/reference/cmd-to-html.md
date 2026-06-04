@@ -6,6 +6,7 @@ The `to-html` command converts sarif, standard sast output format, to a human-fr
 - [Syntax](#syntax)
 - [Options](#options)
 - [Usage Examples](#usage-examples)
+- [Report features](#report-features)
 
 ## Syntax
 ```
@@ -53,4 +54,21 @@ If you want to exclude suppressed results from the HTML report, use the `--no-su
 ```bash
 scanio to-html -i /tmp/juice-shop/semgrep_results.sarif -o /tmp/juice-shop/semgrep_results.html -s /tmp/juice-shop/ -t ./templates/tohtml --no-supressions
 ```
+
+## Report features
+
+The generated HTML file is fully self-contained and works offline.
+
+### Filtering
+
+- **Severity pills** -- click a severity label in the toolbar to show only findings of that level.
+- **Free-text search** -- the search box filters findings by any combination of words. Matching text is highlighted in amber wherever it appears: title, file path, description, and metadata fields (Category, Confidence, Rule, Scanner). The findings panel (TOC) updates in sync.
+
+The search index covers: title, description, file path, severity, rule ID, and all metadata field values. Typing `semgrep` finds all Semgrep findings; typing `low confidence` finds findings where both words appear anywhere in the finding.
+
+Both filters combine with AND logic -- active severity pill plus a search term shows only findings that satisfy both.
+
+### Suppressed findings
+
+Suppressions are shown in a collapsed section at the bottom. If the active filter matches no suppressed findings, the section is hidden entirely.
 

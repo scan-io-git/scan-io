@@ -29,6 +29,21 @@ All tokens live in the `:root` block in `report.html`. The design kit mirrors th
 | Spacing | `--space-1` .. `--space-6` | 4px .. 32px |
 | Syntax | `--syntax-keyword` etc. | Prism token colors |
 
+## Search
+
+The search input filters findings by tokenised full-text match (all tokens must appear, case-insensitive). The index is built once on `DOMContentLoaded` from each finding's:
+
+- `.finding__title`
+- `.finding__description`
+- `.finding__path`
+- `data-severity` attribute
+- `data-rule-id` attribute
+- All `<dd>` values inside `.finding__meta-dl` (Category, Confidence, Rule, Scanner)
+
+Matching tokens are highlighted in-place using `<mark class="search-mark">` elements. Highlights are cleared and reapplied on every filter change. The TOC rebuilds from the visible set on every change. The suppressed section is hidden when no suppressed findings are visible.
+
+CSS: `mark.search-mark` -- amber `#fff3b0` (light) / `#5c4000` (dark).
+
 ## Constraints
 
 - Single offline file. No CDN. No build step.

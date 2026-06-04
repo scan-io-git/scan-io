@@ -832,6 +832,17 @@
       display: flex;
     }
 
+    mark.search-mark {
+      background: #fff3b0;
+      color: inherit;
+      border-radius: 2px;
+      padding: 0 1px;
+    }
+    [data-theme="dark"] mark.search-mark {
+      background: #5c4000;
+      color: inherit;
+    }
+
     .btn {
       font-size: var(--text-sm);
       font-family: inherit;
@@ -2301,12 +2312,15 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       const findings = Array.from(document.querySelectorAll('.finding'));
       const total = findings.length;
 
-      // Index search text once per finding (title + description + path).
+      // Index search text once per finding (title + description + path + severity + rule ID + metadata values).
       findings.forEach(f => {
-        const title = f.querySelector('.finding__title')?.textContent || '';
-        const desc  = f.querySelector('.finding__description')?.textContent || '';
-        const path  = f.querySelector('.finding__path')?.textContent || '';
-        f.dataset.searchText = (title + ' ' + desc + ' ' + path).toLowerCase();
+        const title  = f.querySelector('.finding__title')?.textContent || '';
+        const desc   = f.querySelector('.finding__description')?.textContent || '';
+        const path   = f.querySelector('.finding__path')?.textContent || '';
+        const sev    = f.dataset.severity || '';
+        const ruleId = f.dataset.ruleId || '';
+        const meta   = Array.from(f.querySelectorAll('.finding__meta-dl dd')).map(dd => dd.textContent).join(' ');
+        f.dataset.searchText = (title + ' ' + desc + ' ' + path + ' ' + sev + ' ' + ruleId + ' ' + meta).toLowerCase();
       });
 
       // Shared state exposed to cross-cutting handlers
@@ -2329,10 +2343,74 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         return true;
       }
 
+      const HIGHLIGHT_SCOPE = [
+        '.finding__title',
+        '.finding__path',
+        '.finding__description',
+        '.finding__meta-dl dd',
+      ];
+
+      function clearHighlights() {
+        document.querySelectorAll('mark.search-mark').forEach(m => {
+          m.replaceWith(document.createTextNode(m.textContent));
+        });
+        HIGHLIGHT_SCOPE.forEach(sel => {
+          document.querySelectorAll(sel).forEach(el => el.normalize());
+        });
+      }
+
+      function applyHighlights(tokens) {
+        if (!tokens.length) return;
+        const pattern = tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+        const regex = new RegExp(pattern, 'gi');
+        findings.forEach(f => {
+          if (f.hidden) return;
+          HIGHLIGHT_SCOPE.forEach(sel => {
+            f.querySelectorAll(sel).forEach(el => {
+              const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+              const nodes = [];
+              let node;
+              while ((node = walker.nextNode())) nodes.push(node);
+              nodes.forEach(tn => {
+                const text = tn.nodeValue;
+                regex.lastIndex = 0;
+                if (!regex.test(text)) return;
+                regex.lastIndex = 0;
+                const frag = document.createDocumentFragment();
+                let last = 0, m;
+                while ((m = regex.exec(text)) !== null) {
+                  if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+                  const mark = document.createElement('mark');
+                  mark.className = 'search-mark';
+                  mark.textContent = m[0];
+                  frag.appendChild(mark);
+                  last = m.index + m[0].length;
+                }
+                if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+                tn.parentNode.replaceChild(frag, tn);
+              });
+            });
+          });
+        });
+      }
+
+      function updateSuppressedSectionVisibility() {
+        const supSection = document.getElementById('suppressed-section');
+        if (!supSection) return;
+        const hasVisible = findings.some(f => !f.hidden && f.dataset.suppressed === 'true');
+        supSection.hidden = !hasVisible;
+      }
+
       function applyVisibility() {
+        clearHighlights();
         findings.forEach(f => { f.hidden = !isVisible(f); });
         if (refreshToc) refreshToc();
         updateMatchCount();
+        updateSuppressedSectionVisibility();
+        if (activeSearch) {
+          const tokens = activeSearch.toLowerCase().split(/\s+/).filter(Boolean);
+          applyHighlights(tokens);
+        }
       }
 
       function persistSeverities() {
