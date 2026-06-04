@@ -78,8 +78,8 @@
       --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-pill: 999px;
 
       /* Type scale */
-      --text-xs: 12px; --text-sm: 12px; --text-base: 14px;
-      --text-md: 14px; --text-lg: 15px; --text-xl2: 17px; --text-xl: 20px;
+      --text-xs: 11px; --text-sm: 12px; --text-base: 14px;
+      --text-lg: 16px; --text-xl: 18px; --text-2xl: 20px;
 
       /* Shadow scale */
       --shadow-xs: 0 1px 2px rgba(0,0,0,.06);
@@ -125,6 +125,8 @@
       --accent-subtle: var(--accent-subtle-light);
       --accent-brand: var(--brand-green);
       --focus-ring: 0 0 0 3px color-mix(in oklch, var(--brand-green) 45%, transparent);
+      --search-mark-bg: #fff3b0;
+      --on-accent: #ffffff;
 
     }
 
@@ -136,7 +138,7 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
-      font-size: var(--text-md);
+      font-size: var(--text-base);
       line-height: 1.5;
       margin: 0;
       padding: 0;
@@ -188,6 +190,9 @@
       --sev-medium-fg: #e0c060;  --sev-medium-bg: #1c1500;  --sev-medium-border: #907600;  --sev-medium-dot: #9e8200;
       --sev-low-fg: var(--fg-default); --sev-low-bg: #21262d; --sev-low-border: #3d444d;   --sev-low-dot: #6e7681;
       --sev-info-fg: #79c0ff;    --sev-info-bg: #051d4d;    --sev-info-border: #1f6feb;    --sev-info-dot: #1f6feb;
+
+      --search-mark-bg: #5c4000;
+      --on-accent: var(--bg-canvas);
     }
 
     :focus-visible {
@@ -281,7 +286,7 @@
     }
 
     @media (min-width: 640px) {
-      .finding__title { font-size: var(--text-xl2); }
+      .finding__title { font-size: var(--text-xl); }
     }
 
     .finding__meta {
@@ -503,6 +508,7 @@
     }
 
     .fix-copy-btn {
+      position: relative;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -633,6 +639,7 @@
     }
 
     .finding__df-id {
+      position: relative;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -655,12 +662,8 @@
 
     .finding__df-id--selected {
       background-color: var(--accent-brand);
-      color: #ffffff;
+      color: var(--on-accent);
       border-color: var(--accent-brand);
-    }
-
-    [data-theme="dark"] .finding__df-id--selected {
-      color: var(--bg-canvas);
     }
 
     .finding__df {
@@ -848,7 +851,7 @@
       color: var(--fg-default);
     }
     @media (min-width: 640px) {
-      .suppressed-section-header { font-size: var(--text-xl2); }
+      .suppressed-section-header { font-size: var(--text-xl); }
     }
     .suppressed-section-header:hover { background: var(--bg-subtle); }
 
@@ -917,7 +920,7 @@
       outline: 0;
       background: transparent;
       color: var(--fg-default);
-      font-size: var(--text-base);
+      font-size: 16px; /* 16px prevents iOS Safari auto-zoom on focus */
       font-family: inherit;
       min-width: 220px;
     }
@@ -954,14 +957,10 @@
     }
 
     mark.search-mark {
-      background: #fff3b0;
+      background: var(--search-mark-bg);
       color: inherit;
       border-radius: 2px;
       padding: 0 1px;
-    }
-    [data-theme="dark"] mark.search-mark {
-      background: #5c4000;
-      color: inherit;
     }
 
     .btn {
@@ -1046,6 +1045,7 @@
     }
 
     .toc-drawer__close {
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1318,7 +1318,7 @@
     }
 
     .report-header__title {
-      font-size: var(--text-xl);
+      font-size: var(--text-2xl);
       font-weight: 600;
       color: var(--fg-default);
       letter-spacing: -0.015em;
@@ -1625,7 +1625,7 @@
       opacity: 0;
       transition: visibility var(--motion-base) var(--motion-ease), opacity var(--motion-base) var(--motion-ease), transform var(--motion-base) var(--motion-ease),
                   background var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast);
-      z-index: var(--z-dialog);
+      z-index: var(--z-fab);
     }
 
     .scroll-up-button svg {
@@ -1666,6 +1666,33 @@
       opacity: 0;
       pointer-events: none;
       transition: opacity var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast);
+    }
+
+    /* Expand clickable area to 44x44 without changing visual size. The pseudo
+       sits on the button so it inherits the button's pointer-events. */
+    .copy-btn::before,
+    .fix-copy-btn::before,
+    .toc-drawer__close::before,
+    .scroll-up-button::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 44px;
+      height: 44px;
+      transform: translate(-50%, -50%);
+    }
+
+    /* df-id circles sit in a tight row (8px gap); expand vertically to 44px
+       and only fill the gap horizontally so neighbours don't steal taps. */
+    .finding__df-id::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: calc(100% + 8px);
+      height: 44px;
+      transform: translate(-50%, -50%);
     }
 
     .finding__df-codeline:hover .copy-btn,
@@ -1763,7 +1790,7 @@
       border-radius: 12px;
       background: var(--bg-canvas);
       color: var(--fg-default);
-      box-shadow: 0 10px 32px rgba(31, 35, 40, 0.2);
+      box-shadow: var(--shadow-lg);
     }
 
     #help-dialog[open] {
@@ -1784,7 +1811,7 @@
       padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
       border-bottom: 1px solid var(--border-default);
       font-weight: 600;
-      font-size: var(--text-md);
+      font-size: var(--text-base);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -2061,7 +2088,7 @@
             </g>
            </svg>
         </span>
-        <span class="report-header__title">Scanio Report</span>
+        <span class="report-header__title" role="heading" aria-level="1">Scanio Report</span>
       </a>
 
       <div class="report-header__inline-right">
@@ -2199,7 +2226,7 @@
         <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}">
           <summary class="finding__head">
             <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
-            <span class="finding__num">#{{add $n 1}}</span><span class="finding__title">{{index .Properties "Title"}}</span>
+            <span class="finding__num">#{{add $n 1}}</span><span class="finding__title" role="heading" aria-level="2">{{index .Properties "Title"}}</span>
             <span class="finding__meta">
               <span class="finding__path">{{$locationURI}}</span><span class="finding__line">:{{$locationStartLine}}</span>
             </span>
@@ -2209,7 +2236,7 @@
             {{- if $supStatus}}
             <div class="finding__suppression finding__suppression--{{$supStatus}}">
               <span class="sup-label">{{if eq $supStatus "underReview"}}Suppression under review{{else if eq $supStatus "rejected"}}Suppression rejected{{else}}Suppressed{{end}}</span>
-              {{with index .Properties "SuppressionJustification"}}<span class="sup-justification">{{.}}</span>{{end}}
+              {{with index .Properties "SuppressionJustification"}}<span class="sup-justification" title="{{.}}">{{.}}</span>{{end}}
               <span class="sup-kind">{{index .Properties "SuppressionKind"}}</span>
             </div>
             {{- end}}
@@ -2304,7 +2331,7 @@
             {{- end}}
             {{- with index .Properties "References"}}
             <section class="finding__refs">
-              <h4 class="finding__section-h">References</h4>
+              <h3 class="finding__section-h">References</h3>
               <ul>{{range .}}<li><a href="{{.}}" target="_blank" rel="noopener noreferrer">{{.}}</a></li>{{end}}</ul>
             </section>
             {{- end}}
@@ -2339,7 +2366,7 @@
           <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}} finding--suppressed" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}" data-suppressed="true">
             <summary class="finding__head">
               <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
-              <span class="finding__num">#{{add $n 1}}</span><span class="finding__title">{{index .Properties "Title"}}</span>
+              <span class="finding__num">#{{add $n 1}}</span><span class="finding__title" role="heading" aria-level="2">{{index .Properties "Title"}}</span>
               <span class="finding__meta">
                 <span class="finding__path">{{$locationURI}}</span><span class="finding__line">:{{$locationStartLine}}</span>
               </span>
@@ -2348,7 +2375,7 @@
               {{- $supStatus := index .Properties "SuppressionStatus" -}}
               <div class="finding__suppression finding__suppression--{{if $supStatus}}{{$supStatus}}{{else}}accepted{{end}}">
                 <span class="sup-label">{{if eq $supStatus "underReview"}}Suppression under review{{else if eq $supStatus "rejected"}}Suppression rejected{{else}}Suppressed{{end}}</span>
-                {{with index .Properties "SuppressionJustification"}}<span class="sup-justification">{{.}}</span>{{end}}
+                {{with index .Properties "SuppressionJustification"}}<span class="sup-justification" title="{{.}}">{{.}}</span>{{end}}
                 <span class="sup-kind">{{index .Properties "SuppressionKind"}}</span>
               </div>
               {{- $metaCat  := index .Properties "Category" -}}
@@ -2442,7 +2469,7 @@
               {{- end}}
               {{- with index .Properties "References"}}
               <section class="finding__refs">
-                <h4 class="finding__section-h">References</h4>
+                <h3 class="finding__section-h">References</h3>
                 <ul>{{range .}}<li><a href="{{.}}" target="_blank" rel="noopener noreferrer">{{.}}</a></li>{{end}}</ul>
               </section>
               {{- end}}
