@@ -1,6 +1,8 @@
 package sarif
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"unicode/utf8"
 
@@ -1018,4 +1020,52 @@ func TestCap120MultibyteChars(t *testing.T) {
 	if !utf8.ValidString(got) {
 		t.Error("cap120: result is not valid UTF-8")
 	}
+}
+
+func TestEnrichResultsLocationPropertyConfinesReadsToSourceFolder(t *testing.T) {
+	srcDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(srcDir, "app.go"), []byte("line1\nline2\nINSIDE\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// Sensitive file one level above the source folder.
+	secretPath := filepath.Join(filepath.Dir(srcDir), "secret.txt")
+	if err := os.WriteFile(secretPath, []byte("TOP-SECRET\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Remove(secretPath) })
+
+	newLoc := func(uri string) *gosarif.Location {
+		u := uri
+		start := 1
+		return &gosarif.Location{
+			PhysicalLocation: &gosarif.PhysicalLocation{
+				ArtifactLocation: &gosarif.ArtifactLocation{URI: &u},
+				Region:           &gosarif.Region{StartLine: &start},
+			},
+		}
+	}
+	report := Report{Report: &gosarif.Report{}, sourceFolder: srcDir}
+
+	t.Run("relative traversal rejected", func(t *testing.T) {
+		loc := newLoc("../secret.txt")
+		if err := report.EnrichResultsLocationProperty(loc); err == nil {
+			t.Fatalf("expected error for ../ traversal, got nil; Code=%v",
+				loc.PhysicalLocation.ArtifactLocation.Properties["Code"])
+		}
+	})
+	t.Run("absolute path outside source rejected", func(t *testing.T) {
+		loc := newLoc(secretPath)
+		if err := report.EnrichResultsLocationProperty(loc); err == nil {
+			t.Fatalf("expected error for absolute outside path, got nil")
+		}
+	})
+	t.Run("legit relative path inside source is read", func(t *testing.T) {
+		loc := newLoc("app.go")
+		if err := report.EnrichResultsLocationProperty(loc); err != nil {
+			t.Fatalf("unexpected error reading legit file: %v", err)
+		}
+		if got, _ := loc.PhysicalLocation.ArtifactLocation.Properties["Code"].(string); got != "line1" {
+			t.Fatalf("expected %q, got %q", "line1", got)
+		}
+	})
 }

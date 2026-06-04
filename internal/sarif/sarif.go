@@ -298,11 +298,8 @@ func (r Report) EnrichResultsLocationProperty(location *sarif.Location) error {
 	if !filepath.IsAbs(*artifactLocation.URI) {
 		artifactLocation.Properties["URI"] = *artifactLocation.URI
 	} else {
-		artifactLocation.Properties["URI"] = (*artifactLocation.URI)[len(r.sourceFolder):]
-		// remove slash if string start with slash
-		if len(artifactLocation.Properties["URI"].(string)) > 0 && artifactLocation.Properties["URI"].(string)[0] == '/' {
-			artifactLocation.Properties["URI"] = artifactLocation.Properties["URI"].(string)[1:]
-		}
+		trimmed := strings.TrimPrefix(*artifactLocation.URI, r.sourceFolder)
+		artifactLocation.Properties["URI"] = strings.TrimPrefix(trimmed, "/")
 	}
 
 	if location.PhysicalLocation.Region.Properties == nil {
@@ -362,18 +359,24 @@ func (r Report) readLinesFromFile(loc *sarif.PhysicalLocation) ([]string, error)
 		return nil, fmt.Errorf("region or StartLine is nil")
 	}
 
-	filePath := *loc.ArtifactLocation.URI
-	if !filepath.IsAbs(filePath) {
-		fixedFilePath, err := files.ExpandPath(filepath.Join(r.sourceFolder, *loc.ArtifactLocation.URI))
+	root, err := os.OpenRoot(r.sourceFolder)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open source root %q: %w", r.sourceFolder, err)
+	}
+	defer root.Close()
+
+	relPath := *loc.ArtifactLocation.URI
+	if filepath.IsAbs(relPath) {
+		rel, err := filepath.Rel(r.sourceFolder, relPath)
 		if err != nil {
-			return nil, fmt.Errorf("failed to construct a file path: %w", err)
+			return nil, fmt.Errorf("file path %q is outside the source folder: %w", relPath, err)
 		}
-		filePath = fixedFilePath
+		relPath = rel
 	}
 
-	file, err := os.Open(filePath)
+	file, err := root.Open(relPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file: %w", err)
+		return nil, fmt.Errorf("failed to open file %q within source folder: %w", relPath, err)
 	}
 	defer file.Close()
 
@@ -604,10 +607,8 @@ func (r Report) EnrichResultsLocationURIProperty(
 		if !filepath.IsAbs(*artifactLocation.URI) {
 			artifactLocation.Properties["URI"] = *artifactLocation.URI
 		} else {
-			artifactLocation.Properties["URI"] = (*artifactLocation.URI)[len(r.sourceFolder):]
-			if len(artifactLocation.Properties["URI"].(string)) > 0 && artifactLocation.Properties["URI"].(string)[0] == '/' {
-				artifactLocation.Properties["URI"] = artifactLocation.Properties["URI"].(string)[1:]
-			}
+			trimmed := strings.TrimPrefix(*artifactLocation.URI, r.sourceFolder)
+			artifactLocation.Properties["URI"] = strings.TrimPrefix(trimmed, "/")
 		}
 
 		if location.Properties == nil {
