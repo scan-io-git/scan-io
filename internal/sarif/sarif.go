@@ -368,8 +368,8 @@ func (r Report) readLinesFromFile(loc *sarif.PhysicalLocation) ([]string, error)
 	relPath := *loc.ArtifactLocation.URI
 	if filepath.IsAbs(relPath) {
 		rel, err := filepath.Rel(r.sourceFolder, relPath)
-		if err != nil {
-			return nil, fmt.Errorf("file path %q is outside the source folder: %w", relPath, err)
+		if err != nil || strings.HasPrefix(rel, "..") {
+			return nil, fmt.Errorf("file path %q is outside the source folder", relPath)
 		}
 		relPath = rel
 	}
