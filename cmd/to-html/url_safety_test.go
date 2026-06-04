@@ -36,6 +36,9 @@ func TestReportNeutralizesDangerousURLSchemes(t *testing.T) {
 		PropertyBag: gosarif.PropertyBag{Properties: gosarif.Properties{
 			"Severity":   "high",
 			"Title":      "XSS probe",
+			// References is set directly to bypass the extractReferences filter (which
+			// already strips non-http URLs in production). This tests html/template's
+			// URL sanitization as a defense-in-depth layer.
 			"References": []string{"javascript:alert(document.domain)"},
 		}},
 	}
@@ -83,7 +86,7 @@ func TestReportNeutralizesDangerousURLSchemes(t *testing.T) {
 	if strings.Contains(out, `href="javascript:`) {
 		t.Fatalf("dangerous javascript: URL was rendered into an href")
 	}
-	if !strings.Contains(out, "#ZgotmplZ") {
-		t.Fatalf("expected html/template to neutralize the dangerous URL to #ZgotmplZ")
+	if !strings.Contains(out, `href="#ZgotmplZ"`) {
+		t.Fatalf("expected html/template to neutralize the dangerous URL to href=\"#ZgotmplZ\"")
 	}
 }
