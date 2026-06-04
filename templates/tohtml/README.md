@@ -23,11 +23,14 @@ All tokens live in the `:root` block in `report.html`. The design kit mirrors th
 |-------|--------|-------|
 | Brand | `--brand-green` | `#0f7a51` light / `#3ddc8e` dark |
 | Severity | `--sev-{level}-{fg/bg}` | per severity, per theme |
-| Type | `--text-xs` .. `--text-xl` | 12px .. 20px |
+| Type | `--text-xs` .. `--text-2xl` | 11px .. 20px |
 | Shadow | `--shadow-xs` .. `--shadow-lg` | |
 | Z-index | `--z-sticky` .. `--z-dialog` | 20 .. 1000 |
 | Spacing | `--space-1` .. `--space-6` | 4px .. 32px |
 | Syntax | `--syntax-keyword` etc. | Prism token colors |
+| Semantic | `--search-mark-bg`, `--on-accent` | per theme |
+
+Type steps are distinct (no aliases): `xs` 11, `sm` 12, `base` 14, `lg` 16, `xl` 18 (finding title), `2xl` 20 (report title).
 
 ## Example report
 
@@ -72,7 +75,7 @@ Matching tokens are highlighted in-place using `<mark class="search-mark">` elem
 
 When the active (non-suppressed) visible count reaches zero, `#no-results` (`.findings-empty`) is shown with a "Clear filters" button that resets both the severity filter and the search string. The toolbar `#search-count` span shows "N of M shown" whenever any filter is active.
 
-CSS: `mark.search-mark` -- amber `#fff3b0` (light) / `#5c4000` (dark).
+CSS: `mark.search-mark` uses the `--search-mark-bg` token -- amber `#fff3b0` (light) / `#5c4000` (dark).
 
 ## Security
 
@@ -87,6 +90,13 @@ A fresh 16-byte nonce (`crypto/rand`, base64url-encoded) is generated per render
 The policy complements Go's `html/template` context-escaping — if a future escaping bypass were discovered, the nonce policy would still refuse injected scripts. Reports are typically shared as email attachments or CI artifacts, so recipients may open files crafted from a malicious SARIF.
 
 Pass `--no-csp` to `scanio to-html` to omit the policy (e.g., for viewers that do not support `<meta>` CSP).
+
+## Accessibility
+
+- Heading hierarchy: the report title is level 1, each finding title is level 2 (`role="heading" aria-level`), and the References list inside a finding is level 3 (`<h3>`). Preserve this order when editing.
+- Touch targets: small icon buttons (line copy, copy-all, data-flow step circles, TOC close, scroll-to-top) keep their compact visual size but expand to a >=44px hit area via a `::before` pseudo-element. The data-flow step circles only fill their row gap, so the hit area never overlaps a neighbour.
+- The search input is pinned to 16px to stop iOS Safari auto-zoom on focus.
+- Every interactive element shows a `--focus-ring` on `:focus-visible`; motion respects `prefers-reduced-motion`.
 
 ## Constraints
 
