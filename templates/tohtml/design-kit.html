@@ -69,7 +69,7 @@
 
     /* Type scale */
     --text-xs: 11px; --text-sm: 12px; --text-base: 13px;
-    --text-md: 14px; --text-lg: 15px; --text-xl: 20px;
+    --text-md: 14px; --text-lg: 15px; --text-xl2: 17px; --text-xl: 20px;
 
     /* Shadow scale */
     --shadow-xs: 0 1px 2px rgba(0,0,0,.06);
@@ -88,6 +88,11 @@
 
     /* Motion scale */
     --motion-fast: 150ms; --motion-base: 200ms; --motion-ease: ease;
+
+    /* Suppression status palette — light */
+    --sup-accepted-fg: #59636e; --sup-accepted-bg: #f6f8fa; --sup-accepted-border: #d1d9e0;
+    --sup-review-fg: #92400e;   --sup-review-bg: #fef3c7;   --sup-review-border: #f59e0b;
+    --sup-rejected-fg: #9a1313; --sup-rejected-bg: #fff0f0;  --sup-rejected-border: #cf222e;
 
     /* Severity palette — light */
     --sev-critical-fg: #82071e; --sev-critical-bg: #ffebe9; --sev-critical-border: #cf222e; --sev-critical-dot: #cf222e;
@@ -150,6 +155,11 @@
     --syntax-property:    #7ee787;
     --syntax-variable:    #ffa657;
     --syntax-punctuation: #c9d1d9;
+
+    /* Suppression status palette — dark */
+    --sup-accepted-fg: #8b949e; --sup-accepted-bg: #21262d; --sup-accepted-border: #3d444d;
+    --sup-review-fg: #e0a020;   --sup-review-bg: #1c1200;   --sup-review-border: #9e6c00;
+    --sup-rejected-fg: #ff7b72; --sup-rejected-bg: #490202;  --sup-rejected-border: #f85149;
 
     /* Severity palette — dark */
     --sev-critical-fg: #ff7b72; --sev-critical-bg: #490202; --sev-critical-border: #f85149; --sev-critical-dot: #f85149;
@@ -631,7 +641,7 @@
     background: var(--bg-inset);
   }
 
-  /* kbd chips (from report.html) */
+  /* kbd chips (from report.html — scoped to .help-dialog__body kbd) */
   kbd {
     display: inline-flex;
     align-items: center;
@@ -642,10 +652,11 @@
     font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
     border: 1px solid var(--border-default);
     border-radius: var(--radius-sm);
-    background: var(--bg-inset);
+    background: var(--neutral-subtle, var(--bg-inset));
     color: var(--fg-muted);
     box-shadow: 0 1px 0 var(--border-default);
     white-space: nowrap;
+    flex-shrink: 0;
   }
 
   /* Header kebab button (from report.html) */
@@ -823,6 +834,26 @@
     <p style="font-size:var(--text-xs);color:var(--fg-muted);margin:var(--space-3) 0 0;">Toggle theme to see dark-mode values. WCAG contrast ratio computed in JS against active colors.</p>
   </section>
 
+  <!-- 2b Suppression Status Colors -->
+  <section class="dk-card">
+    <h2 class="dk-card__heading">Suppression Status Colors</h2>
+    <div class="dk-sev-grid" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="dk-sev-cell" style="background:var(--sup-accepted-bg);color:var(--sup-accepted-fg);border-color:var(--sup-accepted-border);">
+        <div class="dk-sev-cell__name">Accepted</div>
+        <div class="dk-sev-cell__hex">--sup-accepted-*</div>
+      </div>
+      <div class="dk-sev-cell" style="background:var(--sup-review-bg);color:var(--sup-review-fg);border-color:var(--sup-review-border);">
+        <div class="dk-sev-cell__name">Under Review</div>
+        <div class="dk-sev-cell__hex">--sup-review-*</div>
+      </div>
+      <div class="dk-sev-cell" style="background:var(--sup-rejected-bg);color:var(--sup-rejected-fg);border-color:var(--sup-rejected-border);">
+        <div class="dk-sev-cell__name">Rejected</div>
+        <div class="dk-sev-cell__hex">--sup-rejected-*</div>
+      </div>
+    </div>
+    <p style="font-size:var(--text-xs);color:var(--fg-muted);margin:var(--space-3) 0 0;">Used in the suppression notice banner inside finding cards. Toggle theme to see dark-mode values.</p>
+  </section>
+
   <!-- 3 Type Scale -->
   <section class="dk-card">
     <h2 class="dk-card__heading">Type Scale</h2>
@@ -846,6 +877,10 @@
       <div class="dk-type-item">
         <span class="dk-type-sample" style="font-size:var(--text-lg);">Aa</span>
         <span class="dk-type-meta">--text-lg &bull; 15px</span>
+      </div>
+      <div class="dk-type-item">
+        <span class="dk-type-sample" style="font-size:var(--text-xl2);">Aa</span>
+        <span class="dk-type-meta">--text-xl2 &bull; 17px &mdash; finding title</span>
       </div>
       <div class="dk-type-item">
         <span class="dk-type-sample" style="font-size:var(--text-xl);">Aa</span>
