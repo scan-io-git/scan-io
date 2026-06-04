@@ -1,6 +1,8 @@
 package tohtml
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -33,6 +35,7 @@ type ToHTMLOptions struct {
 	SourceFolder   string `json:"source_folder,omitempty"`
 	VCS            string `json:"vcs,omitempty"`
 	NoSuppressions bool   `json:"nosuppressions,omitempty"`
+	NoCSP          bool   `json:"no_csp,omitempty"`
 }
 
 type VCSURLInfo struct {
@@ -44,6 +47,11 @@ type VCSURLInfo struct {
 	PullRequestId string
 	HTTPRepoLink  string
 	SSHRepoLink   string
+}
+
+type cspData struct {
+	Enabled bool
+	Nonce   string
 }
 
 type ReportMetadata struct {
@@ -284,12 +292,26 @@ var ToHtmlCmd = &cobra.Command{
 			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
 
+		cspNonce := ""
+		if !allToHTMLOptions.NoCSP {
+			raw := make([]byte, 16)
+			if _, err := rand.Read(raw); err != nil {
+				return errors.NewCommandError(allToHTMLOptions, nil, fmt.Errorf("failed to generate CSP nonce: %w", err), 1)
+			}
+			cspNonce = base64.RawURLEncoding.EncodeToString(raw)
+		}
+
 		data := struct {
 			Metadata *ReportMetadata
 			Report   *scaniosarif.Report
+			CSP      cspData
 		}{
 			Metadata: metadata,
 			Report:   sarifReport,
+			CSP: cspData{
+				Enabled: !allToHTMLOptions.NoCSP,
+				Nonce:   cspNonce,
+			},
 		}
 
 		file, err := os.Create(allToHTMLOptions.OutputFile)
@@ -317,4 +339,5 @@ func init() {
 	ToHtmlCmd.Flags().StringVarP(&allToHTMLOptions.SourceFolder, "source", "s", "", "Source folder")
 	ToHtmlCmd.Flags().StringVar(&allToHTMLOptions.VCS, "vcs", "", "VCS type override (github, gitlab, bitbucket, generic); leave empty to auto-detect")
 	ToHtmlCmd.Flags().BoolVarP(&allToHTMLOptions.NoSuppressions, "no-supressions", "", false, "Enable removing results with suppressions properties")
+	ToHtmlCmd.Flags().BoolVar(&allToHTMLOptions.NoCSP, "no-csp", false, "Disable Content-Security-Policy meta tag in generated report")
 }

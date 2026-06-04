@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+  {{ if .CSP.Enabled }}<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-{{ .CSP.Nonce }}'; style-src 'nonce-{{ .CSP.Nonce }}'; img-src data:; base-uri 'none'; form-action 'none'">{{ end }}
   <script{{ if .CSP.Nonce }} nonce="{{ .CSP.Nonce }}"{{ end }}>
 (function(){
   var stored = localStorage.getItem('theme');
@@ -18,7 +19,6 @@
   <title>{{ .Metadata.Title }}</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='4' fill='%230f7a51'/><text x='8' y='12' font-family='system-ui,sans-serif' font-size='11' font-weight='700' text-anchor='middle' fill='white'>S</text></svg>">
   <base target="_blank">
-  {{ if .CSP.Enabled }}<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-{{ .CSP.Nonce }}'; style-src 'nonce-{{ .CSP.Nonce }}'; img-src data:; base-uri 'none'; form-action 'none'">{{ end }}
 
   <style type="text/css"{{ if .CSP.Nonce }} nonce="{{ .CSP.Nonce }}"{{ end }}>
     :root {
@@ -2305,7 +2305,7 @@
             {{- with index .Properties "References"}}
             <section class="finding__refs">
               <h4 class="finding__section-h">References</h4>
-              <ul>{{range .}}<li><a href="{{.}}" rel="noopener noreferrer">{{.}}</a></li>{{end}}</ul>
+              <ul>{{range .}}<li><a href="{{.}}" target="_blank" rel="noopener noreferrer">{{.}}</a></li>{{end}}</ul>
             </section>
             {{- end}}
           </div>
@@ -2443,7 +2443,7 @@
               {{- with index .Properties "References"}}
               <section class="finding__refs">
                 <h4 class="finding__section-h">References</h4>
-                <ul>{{range .}}<li><a href="{{.}}" rel="noopener noreferrer">{{.}}</a></li>{{end}}</ul>
+                <ul>{{range .}}<li><a href="{{.}}" target="_blank" rel="noopener noreferrer">{{.}}</a></li>{{end}}</ul>
               </section>
               {{- end}}
             </div>
