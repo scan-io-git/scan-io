@@ -98,6 +98,11 @@
       /* Motion scale */
       --motion-fast: 150ms; --motion-base: 200ms; --motion-ease: ease;
 
+      /* Suppression palette — light */
+      --sup-accepted-fg: #59636e; --sup-accepted-bg: #f6f8fa; --sup-accepted-border: #d1d9e0;
+      --sup-review-fg: #92400e;   --sup-review-bg: #fef3c7;   --sup-review-border: #f59e0b;
+      --sup-rejected-fg: #9a1313; --sup-rejected-bg: #fff0f0;  --sup-rejected-border: #cf222e;
+
       /* Severity palette — light */
       --sev-critical-fg: #82071e; --sev-critical-bg: #ffebe9; --sev-critical-border: #cf222e; --sev-critical-dot: #cf222e;
       --sev-high-fg: #762c00;    --sev-high-bg: #fff1e5;    --sev-high-border: #bc4c00;    --sev-high-dot: #bc4c00;
@@ -171,6 +176,11 @@
       --syntax-variable:    #ffa657;
       --syntax-punctuation: #c9d1d9;
 
+      /* Suppression palette — dark */
+      --sup-accepted-fg: #8b949e; --sup-accepted-bg: #21262d; --sup-accepted-border: #3d444d;
+      --sup-review-fg: #e0a020;   --sup-review-bg: #1c1200;   --sup-review-border: #9e6c00;
+      --sup-rejected-fg: #ff7b72; --sup-rejected-bg: #490202;  --sup-rejected-border: #f85149;
+
       /* Severity palette — dark (wider hue gap: High=orange, Medium=amber-gold) */
       --sev-critical-fg: #ff7b72; --sev-critical-bg: #490202; --sev-critical-border: #f85149; --sev-critical-dot: #f85149;
       --sev-high-fg: #f0883e;    --sev-high-bg: #281300;    --sev-high-border: #c05818;    --sev-high-dot: #d06020;
@@ -197,6 +207,7 @@
       background: var(--bg-canvas);
       margin: 8px 0;
       overflow: hidden;
+      scroll-margin-top: 64px;
     }
 
     .finding[open] {
@@ -578,6 +589,9 @@
       background-color: color-mix(in oklch, var(--accent-brand) 18%, transparent);
       padding: 1px 2px;
     }
+    .finding__df-codeline--hl {
+      background-color: color-mix(in oklch, var(--accent-brand) 9%, transparent);
+    }
 
     /* Sticky summary bar (count + filter pills + search + collapse-all) */
     .summary-bar {
@@ -607,22 +621,10 @@
       flex-wrap: wrap;
     }
 
-    .summary-bar__count {
-      font-size: var(--text-md);
-      color: var(--fg-muted);
-    }
-
-    .summary-bar__count strong {
-      font-weight: 600;
-      color: var(--fg-default);
-      font-size: var(--text-md);
-      font-variant-numeric: tabular-nums;
-    }
-
-    .summary-bar__match {
-      margin-left: 8px;
+    .search-count {
       font-size: var(--text-sm);
       color: var(--fg-subtle);
+      white-space: nowrap;
     }
 
     .summary-bar__pills {
@@ -706,6 +708,68 @@
       align-items: center;
       margin-left: auto;
     }
+
+
+    /* ── Suppressed findings section ─────────────────────────── */
+    .findings--suppressed {
+      border-top: 2px solid var(--border-muted);
+    }
+
+    .suppressed-section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 14px 12px;
+      cursor: pointer;
+      user-select: none;
+      font-size: var(--text-lg);
+      font-weight: 600;
+      color: var(--fg-default);
+    }
+    @media (min-width: 640px) {
+      .suppressed-section-header { font-size: var(--text-xl2); }
+    }
+    .suppressed-section-header:hover { background: var(--bg-subtle); }
+
+    .suppressed-section-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      border-radius: 999px;
+      font-size: var(--text-sm);
+      font-weight: 600;
+      background: var(--bg-inset);
+      color: var(--fg-muted);
+    }
+
+    .suppressed-section-toggle { margin-left: auto; color: var(--fg-subtle); display: flex; align-items: center; }
+    .suppressed-section-toggle svg { width: 16px; height: 16px; transform: rotate(0deg); transition: transform var(--motion-fast, .12s); }
+    .suppressed-section-header[aria-expanded="true"] .suppressed-section-toggle svg { transform: rotate(90deg); }
+
+    /* ── Suppression notice in finding card body ─────────────── */
+    .finding__suppression {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid;
+      font-size: var(--text-sm);
+      min-width: 0;
+    }
+    .finding__suppression--accepted  { background: var(--sup-accepted-bg); border-color: var(--sup-accepted-border); color: var(--sup-accepted-fg); }
+    .finding__suppression--underReview { background: var(--sup-review-bg);   border-color: var(--sup-review-border);   color: var(--sup-review-fg); }
+    .finding__suppression--rejected  { background: var(--sup-rejected-bg);  border-color: var(--sup-rejected-border);  color: var(--sup-rejected-fg); }
+
+    .sup-label { font-weight: 600; flex-shrink: 0; }
+    .sup-justification { flex: 1 1 auto; min-width: 0; font-style: italic; opacity: .85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sup-justification::before { content: '\201C'; }
+    .sup-justification::after  { content: '\201D'; }
+    .sup-kind { font-size: var(--text-xs); font-weight: 500; opacity: .75; flex-shrink: 0; margin-left: auto; }
 
     .search {
       position: relative;
@@ -975,6 +1039,7 @@
     /* Separator between rule groups */
     .tv-sep { height: 1px; background: var(--border-muted); margin: 4px 0; }
     .tv-empty { padding: 12px 14px; color: var(--fg-muted); font-size: var(--text-xs); font-style: italic; }
+    .tv-grp--suppressed {}
 
     /* Line-chip strip (aggressive dedup) */
     .tv-chips {
@@ -983,7 +1048,6 @@
       gap: 4px;
       padding: 2px 8px 6px 32px;
     }
-    .tv-chips.tv-chips--rule { padding-left: 20px; }
     .tv-chips a {
       min-width: 24px;
       height: 18px;
@@ -1031,6 +1095,8 @@
       opacity: 0;
       padding-top: 0;
       padding-bottom: 0;
+      margin-top: 0;
+      margin-bottom: 0;
       pointer-events: none;
     }
     @media (prefers-reduced-motion: reduce) {
@@ -1918,9 +1984,8 @@
   <div id="summary-bar-sentinel" aria-hidden="true" style="height:0;overflow:hidden"></div>
   <div id="summary-bar" class="summary-bar">
     <div class="summary-bar__inner">
-      <span class="summary-bar__count"><strong>{{index .Metadata.SeverityInfo "total"}}</strong> findings <span id="search-count" class="summary-bar__match" aria-live="polite"></span></span>
       <div class="summary-bar__pills" role="group" aria-label="Filter by severity">
-        <button class="pill" data-filter="all" aria-pressed="true">All</button>
+        <button class="pill" data-filter="all" aria-pressed="true">All <span class="pill__n">{{index .Metadata.SeverityInfo "total"}}</span></button>
         <button class="pill pill--critical" data-filter="critical" aria-pressed="false"><span class="pill__dot"></span>Critical <span class="pill__n">{{index .Metadata.SeverityInfo "critical"}}</span></button>
         <button class="pill pill--high"     data-filter="high"     aria-pressed="false"><span class="pill__dot"></span>High <span class="pill__n">{{index .Metadata.SeverityInfo "high"}}</span></button>
         <button class="pill pill--medium"   data-filter="medium"   aria-pressed="false"><span class="pill__dot"></span>Medium <span class="pill__n">{{index .Metadata.SeverityInfo "medium"}}</span></button>
@@ -1935,6 +2000,7 @@
             <svg class="icon" aria-hidden="true" width="12" height="12"><use href="#tb-x"></use></svg>
           </button>
         </label>
+        <span id="search-count" class="search-count" aria-live="polite"></span>
         <button id="toc-toggle" class="btn btn--ghost btn--with-icon" type="button" aria-pressed="true" aria-label="Toggle findings panel" title="Toggle findings panel (o)">
           <svg class="btn__icon" aria-hidden="true"><use href="#tb-sidebar"/></svg>
           <span>Findings panel</span>
@@ -1971,22 +2037,32 @@
       <!-- <div class="main-body-summary">
       </div> -->
 
+      {{$n := 0}}
       <div class="findings">
-        {{range $i, $r := .Results}}
+        {{range .Results}}
+        {{- if ne (index .Properties "Suppressed") "true"}}
         {{ $severity := index .Properties "Severity"}}
         {{ $location := index .Locations 0}}
         {{ $locationURI := index $location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
         {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
         {{ $locationWebURL := index $location.Properties "WebURL"}}
-        <details id="issue-{{$i}}" data-issue-num="{{add $i 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}">
+        <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}">
           <summary class="finding__head">
             <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
-            <span class="finding__num">#{{add $i 1}}</span><span class="finding__title">{{index .Properties "Title"}}</span>
+            <span class="finding__num">#{{add $n 1}}</span><span class="finding__title">{{index .Properties "Title"}}</span>
             <span class="finding__meta">
               <span class="finding__path">{{$locationURI}}</span><span class="finding__line">:{{$locationStartLine}}</span>
             </span>
           </summary>
           <div class="finding__body">
+            {{- $supStatus := index .Properties "SuppressionStatus" -}}
+            {{- if $supStatus}}
+            <div class="finding__suppression finding__suppression--{{$supStatus}}">
+              <span class="sup-label">{{if eq $supStatus "underReview"}}Suppression under review{{else if eq $supStatus "rejected"}}Suppression rejected{{else}}Suppressed{{end}}</span>
+              {{with index .Properties "SuppressionJustification"}}<span class="sup-justification">{{.}}</span>{{end}}
+              <span class="sup-kind">{{index .Properties "SuppressionKind"}}</span>
+            </div>
+            {{- end}}
             {{- $metaCat  := index .Properties "Category" -}}
             {{- $metaConf := index .Properties "Confidence" -}}
             {{- $metaRule := index .Properties "RuleFull" -}}
@@ -2046,7 +2122,9 @@
 
                         {{range $idx, $lineText := $codeLines}}
                           {{ $lineNum := add $startLine $idx -}}
-                          <div class="finding__df-codeline"><span class="finding__df-linecol">{{if $locationWebURL}}<a href="{{printf "%s%s" (stripFragment $locationWebURL) (lineAnchor $vcsType $lineNum)}}">{{$lineNum}}</a>{{else}}{{$lineNum}}{{end}}</span><div class="finding__df-code">{{if $isSingleLine}}{{if gt $endColumn $startColumn}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}{{- $lineText -}}{{end}}{{else if eq $idx 0}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn -}}</span>{{else if eq $lineNum $endLine}}<span class="finding__df-highlight">{{- slice $lineText 0 $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}<span class="finding__df-highlight">{{- $lineText -}}</span>{{end}}</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
+                          {{ $lineIsHl := false -}}
+                          {{ if $isSingleLine }}{{ if gt $endColumn $startColumn }}{{ $lineIsHl = true }}{{ end }}{{ else if eq $idx 0 }}{{ $lineIsHl = true }}{{ else if eq $lineNum $endLine }}{{ if gt $endColumn 0 }}{{ $lineIsHl = true }}{{ end }}{{ else }}{{ $lineIsHl = true }}{{ end -}}
+                          <div class="finding__df-codeline{{if $lineIsHl}} finding__df-codeline--hl{{end}}"><span class="finding__df-linecol">{{if $locationWebURL}}<a href="{{printf "%s%s" (stripFragment $locationWebURL) (lineAnchor $vcsType $lineNum)}}">{{$lineNum}}</a>{{else}}{{$lineNum}}{{end}}</span><div class="finding__df-code">{{if $isSingleLine}}{{if gt $endColumn $startColumn}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}{{- $lineText -}}{{end}}{{else if eq $idx 0}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn -}}</span>{{else if eq $lineNum $endLine}}{{if gt $endColumn 0}}<span class="finding__df-highlight">{{- slice $lineText 0 $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}{{- $lineText -}}{{end}}{{else}}<span class="finding__df-highlight">{{- $lineText -}}</span>{{end}}</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
                         {{end}}
 
                       {{end}}
@@ -2070,9 +2148,133 @@
             {{- end}}
           </div>
         </details>
+        {{$n = add $n 1}}
+        {{- end}}
         {{end}}
       </div>
-    
+
+      {{if gt (index $.Metadata.SuppressionInfo "suppressed") 0}}
+      <section id="suppressed-section" class="findings findings--suppressed">
+        <div class="suppressed-section-header" id="suppressed-section-header" role="button" tabindex="0" aria-expanded="false" aria-controls="suppressed-section-list">
+          Suppressed
+          <span class="suppressed-section-count">{{index $.Metadata.SuppressionInfo "suppressed"}}</span>
+          <span class="suppressed-section-toggle" id="sup-section-toggle"><svg aria-hidden="true"><use href="#tb-chevron-right"/></svg></span>
+        </div>
+        <div id="suppressed-section-list" hidden>
+          {{range .Results}}
+          {{- if eq (index .Properties "Suppressed") "true"}}
+          {{ $severity := index .Properties "Severity"}}
+          {{ $location := index .Locations 0}}
+          {{ $locationURI := index $location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
+          {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
+          {{ $locationWebURL := index $location.Properties "WebURL"}}
+          <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}} finding--suppressed" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}" data-suppressed="true">
+            <summary class="finding__head">
+              <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
+              <span class="finding__num">#{{add $n 1}}</span><span class="finding__title">{{index .Properties "Title"}}</span>
+              <span class="finding__meta">
+                <span class="finding__path">{{$locationURI}}</span><span class="finding__line">:{{$locationStartLine}}</span>
+              </span>
+            </summary>
+            <div class="finding__body">
+              {{- $supStatus := index .Properties "SuppressionStatus" -}}
+              <div class="finding__suppression finding__suppression--{{if $supStatus}}{{$supStatus}}{{else}}accepted{{end}}">
+                <span class="sup-label">{{if eq $supStatus "underReview"}}Suppression under review{{else if eq $supStatus "rejected"}}Suppression rejected{{else}}Suppressed{{end}}</span>
+                {{with index .Properties "SuppressionJustification"}}<span class="sup-justification">{{.}}</span>{{end}}
+                <span class="sup-kind">{{index .Properties "SuppressionKind"}}</span>
+              </div>
+              {{- $metaCat  := index .Properties "Category" -}}
+              {{- $metaConf := index .Properties "Confidence" -}}
+              {{- $metaRule := index .Properties "RuleFull" -}}
+              {{- $metaScan := index .Properties "Scanner" -}}
+              {{- if or $metaCat $metaConf $metaRule $metaScan }}
+              <dl class="finding__meta-dl">
+                {{if $metaCat}}<dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">{{$metaCat}}</dd>{{end}}
+                {{if $metaConf}}<dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">{{$metaConf}}</dd>{{end}}
+                {{if $metaRule}}<dt class="finding__meta-key">Rule:</dt><dd>{{$metaRule}}</dd>{{end}}
+                {{if $metaScan}}<dt class="finding__meta-key">Scanner:</dt><dd>{{$metaScan}}</dd>{{end}}
+              </dl>
+              {{end -}}
+              <p class="finding__description">{{index .Properties "Description"}}</p>
+              <div class="finding__location">
+                Location: <strong>{{if $locationWebURL}}<a href="{{- $locationWebURL -}}">{{$locationURI}} (line {{$locationStartLine}})</a>{{else}}{{$locationURI}} (line {{$locationStartLine}}){{end}}</strong>
+              </div>
+              <div class="finding__df-block">
+                <header class="finding__df-header">
+                  {{index .Properties "CodeSectionLabel"}}:
+                  {{$totalDataFlows := 0}}
+                  {{range .CodeFlows}}
+                    {{range .ThreadFlows}}
+                      {{ $totalDataFlows = add $totalDataFlows 1 }}
+                    {{end}}
+                  {{end}}
+                  {{ if gt $totalDataFlows 1 }}
+                    {{ range $index, $dataFlowCounter := generateSequence $totalDataFlows }}
+                      <span class="finding__df-id finding__df-id--{{$dataFlowCounter}} {{if eq $dataFlowCounter 1}}{{print "finding__df-id--selected"}}{{end}}" data-dataflow-id="{{$dataFlowCounter}}" role="button" tabindex="0">{{$dataFlowCounter}}</span>
+                    {{end}}
+                  {{end}}
+                </header>
+                {{if gt (len .CodeFlows) 0}}
+                  {{ $dataFlowCounter := 1 }}
+                  {{range .CodeFlows}}
+                    {{range .ThreadFlows}}
+                      <div class="finding__df finding__df--{{$dataFlowCounter}} {{if eq $dataFlowCounter 1}}{{print "finding__df--selected"}}{{end}}">
+                        {{if gt $totalDataFlows 1}}<div class="finding__df-step-label">Step {{$dataFlowCounter}}</div>{{end}}
+                        {{ $prevUri := "" }}
+                        {{range .Locations}}
+
+                          {{/* figure out whether we should add a filename block here */}}
+                          {{ $curUri := index .Location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
+                          {{ if ne $curUri $prevUri }}
+                          <div class="finding__df-filename"><span>{{$curUri}}</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
+                          {{end}}
+                          {{ $prevUri = $curUri }}
+
+                          {{/* render the snippet as one row per source line */}}
+                          {{ $codeLines := index .Location.PhysicalLocation.ArtifactLocation.Properties "CodeLines" }}
+                          {{ $startLine := index .Location.PhysicalLocation.Region.Properties "StartLine" }}
+                          {{ $endLine := index .Location.PhysicalLocation.Region.Properties "EndLine" }}
+                          {{ $startColumn := index .Location.PhysicalLocation.Region.Properties "StartColumn" }}
+                          {{ $endColumn := index .Location.PhysicalLocation.Region.Properties "EndColumn" }}
+                          {{ $locationWebURL := index .Location.Properties "WebURL"}}
+                          {{ $isSingleLine := eq $startLine $endLine }}
+                          {{ $vcsType := "" }}{{ if $vcs }}{{ $vcsType = $vcs.VCSType }}{{ end }}
+
+                          {{range $idx, $lineText := $codeLines}}
+                            {{ $lineNum := add $startLine $idx -}}
+                            {{ $lineIsHl := false -}}
+                            {{ if $isSingleLine }}{{ if gt $endColumn $startColumn }}{{ $lineIsHl = true }}{{ end }}{{ else if eq $idx 0 }}{{ $lineIsHl = true }}{{ else if eq $lineNum $endLine }}{{ if gt $endColumn 0 }}{{ $lineIsHl = true }}{{ end }}{{ else }}{{ $lineIsHl = true }}{{ end -}}
+                            <div class="finding__df-codeline{{if $lineIsHl}} finding__df-codeline--hl{{end}}"><span class="finding__df-linecol">{{if $locationWebURL}}<a href="{{printf "%s%s" (stripFragment $locationWebURL) (lineAnchor $vcsType $lineNum)}}">{{$lineNum}}</a>{{else}}{{$lineNum}}{{end}}</span><div class="finding__df-code">{{if $isSingleLine}}{{if gt $endColumn $startColumn}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}{{- $lineText -}}{{end}}{{else if eq $idx 0}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn -}}</span>{{else if eq $lineNum $endLine}}{{if gt $endColumn 0}}<span class="finding__df-highlight">{{- slice $lineText 0 $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}{{- $lineText -}}{{end}}{{else}}<span class="finding__df-highlight">{{- $lineText -}}</span>{{end}}</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
+                          {{end}}
+
+                        {{end}}
+                      </div>
+                      {{ $dataFlowCounter = add $dataFlowCounter 1 }}
+                    {{end}}
+                  {{end}}
+                {{end}}
+              </div>
+              {{- with index .Properties "Fix"}}
+              <aside class="finding__fix">
+                <h4 class="finding__section-h">Suggested fix</h4>
+                <pre>{{.}}</pre>
+              </aside>
+              {{- end}}
+              {{- with index .Properties "References"}}
+              <section class="finding__refs">
+                <h4 class="finding__section-h">References</h4>
+                <ul>{{range .}}<li><a href="{{.}}" rel="noopener noreferrer">{{.}}</a></li>{{end}}</ul>
+              </section>
+              {{- end}}
+            </div>
+          </details>
+          {{$n = add $n 1}}
+          {{- end}}
+          {{end}}
+        </div>
+      </section>
+      {{end}}
+
     </div>
     {{end}}
   </div>
@@ -2259,9 +2461,24 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
 
       function updateMatchCount() {}
 
+      function initSuppressedSection() {
+        const supList   = document.getElementById('suppressed-section-list');
+        const supHeader = document.getElementById('suppressed-section-header');
+        if (!supHeader || !supList) return;
+        function toggleSupSection() {
+          const open = supList.hidden;
+          supList.hidden = !open;
+          supHeader.setAttribute('aria-expanded', String(open));
+        }
+        supHeader.addEventListener('click', toggleSupSection);
+        supHeader.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSupSection(); }
+        });
+      }
+
       function initSmartDefaults() {
         const SMART_OPEN_CAP = 25;
-        findings.slice(0, SMART_OPEN_CAP).forEach(f => { f.open = true; });
+        findings.filter(f => f.dataset.suppressed !== 'true').slice(0, SMART_OPEN_CAP).forEach(f => { f.open = true; });
       }
 
       function initToggleAll() {
@@ -2297,7 +2514,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             ruleId,
             ruleShort: shortRule(ruleId),
             file: f.querySelector('.finding__path')?.textContent.trim() || '',
-            line: (f.querySelector('.finding__line')?.textContent || '').replace(/^:/, '')
+            line: (f.querySelector('.finding__line')?.textContent || '').replace(/^:/, ''),
+            suppressed: f.dataset.suppressed === 'true'
           };
         });
 
@@ -2372,8 +2590,10 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         function buildSevTree(dataset) {
           let html = '';
           let rendered = 0;
+          const activeItems = dataset.filter(d => !d.suppressed);
+          const suppItems   = dataset.filter(d => d.suppressed);
           SEV_ORDER.forEach(sev => {
-            const items = dataset.filter(d => d.sev === sev);
+            const items = activeItems.filter(d => d.sev === sev);
             if (!items.length) return;
             const capSev = sev.charAt(0).toUpperCase() + sev.slice(1);
             const sevId = 'sg-' + sev;
@@ -2403,61 +2623,107 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
               }
             }
           });
+          // Suppressed group
+          if (suppItems.length) {
+            const supGrpId = 'sg-suppressed';
+            if (rendered > 0) html += '<div class="tv-sep"></div>';
+            rendered++;
+            html += '<div class="tv-tr tv-d0" data-grp-id="' + supGrpId + '">' +
+              chev +
+              '<span class="tv-tl">Suppressed</span>' +
+              '<span class="tv-tc">' + suppItems.length + '</span></div>';
+            const byFile = groupBy(suppItems, d => d.file);
+            let fi = 0;
+            for (const [file, fileItems] of byFile) {
+              const basename = (file || '').split('/').pop() || '(unknown)';
+              const fileId = supGrpId + '-f' + fi++;
+              html += '<div class="tv-tr tv-d1 tv-grp--suppressed" data-grp-parent="' + supGrpId + '" data-grp-id="' + fileId + '">' +
+                chev + fileIcon +
+                '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
+                '<span class="tv-tc">' + fileItems.length + '</span></div>';
+              const byRule = groupBy(fileItems, ruleKey);
+              for (const ruleItems of byRule.values()) {
+                html += renderRuleCluster(ruleItems, {
+                  leafDepth: 'tv-d2 tv-grp--suppressed',
+                  parents: fileId + ' ' + supGrpId,
+                  chipClass: 'tv-grp--suppressed'
+                });
+              }
+            }
+          }
           return html;
         }
 
         function buildRuleTree(dataset) {
           let html = '';
-          // Top-level: one row per unique ruleId (fallback: title). Sorted by severity then label.
-          const byRule = groupBy(dataset, ruleKey);
-          const ruleEntries = Array.from(byRule.entries()).map(([k, items]) => ({
-            key: k,
-            items,
-            sev: items[0].sev,
-            label: ruleLabel(items[0]),
-            full: ruleFull(items[0])
-          }));
-          ruleEntries.sort((a, b) => {
-            const sa = SEV_ORDER.indexOf(a.sev), sb = SEV_ORDER.indexOf(b.sev);
-            if (sa !== sb) return sa - sb;
-            return a.label.localeCompare(b.label);
-          });
-          ruleEntries.forEach((entry, ri) => {
-            const ruleNodeId = 'rg-' + ri;
-            if (ri > 0) html += '<div class="tv-sep"></div>';
-            const titleAttr = entry.full ? esc(entry.full) : esc(entry.label);
-            html += '<div class="tv-tr tv-d0" data-grp-id="' + ruleNodeId + '" title="' + titleAttr + '">' +
-              chev + dot(entry.sev) +
-              '<span class="tv-tl">' + esc(cap60(entry.label)) + '</span>' +
-              '<span class="tv-tc">' + entry.items.length + '</span></div>';
-            // Within this rule, group by file. Each (rule,file) cluster becomes one row + chips (or a leaf).
-            const byFile = groupBy(entry.items, d => d.file);
-            for (const [file, fileItems] of byFile) {
-              const basename = (file || '').split('/').pop() || '(unknown)';
-              if (fileItems.length === 1) {
-                const d = fileItems[0];
-                html += '<a class="tv-tr tv-d1" href="#' + d.id + '" target="_self" title="' + esc(file) + ':' + esc(d.line) + '" data-grp-parent="' + ruleNodeId + '">' +
-                  chevLeaf + fileIcon +
-                  '<span class="tv-tl">' + esc(basename) + '<span class="tv-ls"> #' + esc(d.num) + '</span></span></a>';
-              } else {
-                const firstId = fileItems[0].id;
-                html += '<a class="tv-tr tv-d1" href="#' + firstId + '" target="_self" title="' + esc(file) + '" data-grp-parent="' + ruleNodeId + '">' +
-                  chevLeaf + fileIcon +
-                  '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
-                  '<span class="tv-tc">' + fileItems.length + '</span></a>';
-                const sorted = fileItems.slice().sort((a, b) => {
-                  const an = parseInt(a.num, 10), bn = parseInt(b.num, 10);
-                  if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
-                  return String(a.num).localeCompare(String(b.num));
-                });
-                html += '<div class="tv-chips tv-chips--rule" data-grp-parent="' + ruleNodeId + '">';
-                for (const d of sorted) {
-                  html += '<a href="#' + d.id + '" target="_self" title="' + esc(file) + ':' + esc(d.line) + '">#' + esc(d.num) + '</a>';
+          const activeItems = dataset.filter(d => !d.suppressed);
+          const suppItems   = dataset.filter(d => d.suppressed);
+
+          function renderRuleEntries(items, riOffset, dimmed, parentChain) {
+            const byRule = groupBy(items, ruleKey);
+            const entries = Array.from(byRule.entries()).map(([k, its]) => ({
+              key: k, items: its, sev: its[0].sev,
+              label: ruleLabel(its[0]), full: ruleFull(its[0])
+            }));
+            entries.sort((a, b) => {
+              const sa = SEV_ORDER.indexOf(a.sev), sb = SEV_ORDER.indexOf(b.sev);
+              if (sa !== sb) return sa - sb;
+              return a.label.localeCompare(b.label);
+            });
+            const chain = parentChain ? (' ' + parentChain) : '';
+            let fi = 0;
+            entries.forEach((entry, ri) => {
+              const ruleNodeId = 'rg-' + (riOffset + ri);
+              if (ri > 0 || riOffset > 0) html += '<div class="tv-sep"' + (parentChain ? ' data-grp-parent="' + parentChain + '"' : '') + '></div>';
+              const titleAttr = entry.full ? esc(entry.full) : esc(entry.label);
+              const dimClass = dimmed ? ' tv-grp--suppressed' : '';
+              html += '<div class="tv-tr tv-d0' + dimClass + '" data-grp-id="' + ruleNodeId + '"' +
+                (parentChain ? ' data-grp-parent="' + parentChain + '"' : '') +
+                ' title="' + titleAttr + '">' +
+                chev + dot(entry.sev) +
+                '<span class="tv-tl">' + esc(cap60(entry.label)) + '</span>' +
+                '<span class="tv-tc">' + entry.items.length + '</span></div>';
+              const byFile = groupBy(entry.items, d => d.file);
+              for (const [file, fileItems] of byFile) {
+                const basename = (file || '').split('/').pop() || '(unknown)';
+                if (fileItems.length === 1) {
+                  const d = fileItems[0];
+                  html += '<a class="tv-tr tv-d1' + dimClass + '" href="#' + d.id + '" target="_self" title="' + esc(file) + ':' + esc(d.line) + '" data-grp-parent="' + ruleNodeId + chain + '">' +
+                    chevLeaf + fileIcon +
+                    '<span class="tv-tl">' + esc(basename) + '<span class="tv-ls"> #' + esc(d.num) + '</span></span></a>';
+                } else {
+                  const fileNodeId = ruleNodeId + '-f' + fi++;
+                  html += '<div class="tv-tr tv-d1' + dimClass + '" data-grp-id="' + fileNodeId + '" data-grp-parent="' + ruleNodeId + chain + '">' +
+                    chev + fileIcon +
+                    '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
+                    '<span class="tv-tc">' + fileItems.length + '</span></div>';
+                  const sorted = fileItems.slice().sort((a, b) => {
+                    const an = parseInt(a.num, 10), bn = parseInt(b.num, 10);
+                    if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
+                    return String(a.num).localeCompare(String(b.num));
+                  });
+                  html += '<div class="tv-chips' + (dimmed ? ' tv-grp--suppressed' : '') + '" data-grp-parent="' + fileNodeId + ' ' + ruleNodeId + chain + '">';
+                  for (const d of sorted) {
+                    html += '<a href="#' + d.id + '" target="_self" title="' + esc(file) + ':' + esc(d.line) + '">#' + esc(d.num) + '</a>';
+                  }
+                  html += '</div>';
                 }
-                html += '</div>';
               }
-            }
-          });
+            });
+            return entries.length;
+          }
+
+          // Top-level: one row per unique ruleId (fallback: title). Sorted by severity then label.
+          const activeCount = renderRuleEntries(activeItems, 0, false);
+          if (suppItems.length) {
+            const supGrpId = 'rg-suppressed';
+            if (activeCount > 0) html += '<div class="tv-sep"></div>';
+            html += '<div class="tv-tr tv-d0" data-grp-id="' + supGrpId + '">' +
+              chev +
+              '<span class="tv-tl">Suppressed</span>' +
+              '<span class="tv-tc">' + suppItems.length + '</span></div>';
+            renderRuleEntries(suppItems, activeCount, true, supGrpId);
+          }
           return html;
         }
 
@@ -2510,6 +2776,59 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         }
 
         const tocCountEl = document.getElementById('toc-count');
+        function setTocActive(id) {
+          if (!drawer) return;
+          drawer.querySelectorAll('a[aria-current="true"]').forEach(a => a.removeAttribute('aria-current'));
+          if (!id) return;
+          drawer.querySelectorAll('a[href="#' + id + '"]').forEach(a => a.setAttribute('aria-current', 'true'));
+        }
+
+        let tocSpyRAF = null;
+        function tocSpyTick() {
+          tocSpyRAF = null;
+          const cards = document.querySelectorAll('details.finding[id^="issue-"]');
+          if (!cards.length) { setTocActive(null); return; }
+          const TRIGGER = 120;
+          let bestId = null, bestY = -Infinity;
+          for (const c of cards) {
+            const rect = c.getBoundingClientRect();
+            if (rect.height === 0) continue;
+            if (rect.top <= TRIGGER && rect.top > bestY) { bestY = rect.top; bestId = c.id; }
+          }
+          if (!bestId) {
+            let firstY = Infinity;
+            for (const c of cards) {
+              const rect = c.getBoundingClientRect();
+              if (rect.height === 0) continue;
+              if (rect.top >= 0 && rect.top < firstY) { firstY = rect.top; bestId = c.id; }
+            }
+          }
+          setTocActive(bestId);
+        }
+        let tocSpyPaused = false;
+        function pauseSpy() { tocSpyPaused = true; }
+        function resumeSpy() {
+          if (!tocSpyPaused) return;
+          tocSpyPaused = false;
+          scheduleSpyTick();
+        }
+        function scheduleSpyTick() {
+          if (tocSpyPaused) return;
+          if (tocSpyRAF != null) return;
+          tocSpyRAF = requestAnimationFrame(tocSpyTick);
+        }
+        let tocSpyBound = false;
+        function initTocScrollSpy() {
+          if (!tocSpyBound) {
+            window.addEventListener('scroll', scheduleSpyTick, { passive: true });
+            window.addEventListener('resize', scheduleSpyTick, { passive: true });
+            window.addEventListener('wheel', resumeSpy, { passive: true });
+            window.addEventListener('touchstart', resumeSpy, { passive: true });
+            tocSpyBound = true;
+          }
+          scheduleSpyTick();
+        }
+
         refreshToc = function() {
           const filtered = data.filter(d => {
             const node = document.getElementById(d.id);
@@ -2519,6 +2838,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           treeSev.innerHTML  = filtered.length ? buildSevTree(filtered)  : empty;
           treeRule.innerHTML = filtered.length ? buildRuleTree(filtered) : empty;
           if (tocCountEl) tocCountEl.textContent = String(filtered.length);
+          collapseSupGroupIfAll();
+          initTocScrollSpy();
         };
 
         initResize();
@@ -2535,6 +2856,15 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             if (parents.includes(id)) el.classList.toggle('is-collapsed', !collapsed);
           });
         }
+
+        function collapseSupGroupIfAll() {
+          [treeSev, treeRule].forEach(tree => {
+            tree.querySelectorAll('[data-grp-id="sg-suppressed"], [data-grp-id="rg-suppressed"]').forEach(hdr => {
+              if (hdr.dataset.collapsed !== 'true') toggleGroup(hdr);
+            });
+          });
+        }
+
         [treeSev, treeRule].forEach(tree => {
           tree.addEventListener('click', e => {
             const hdr = e.target.closest('[data-grp-id]');
@@ -2569,10 +2899,18 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           const id = link.getAttribute('href').slice(1);
           const target = document.getElementById(id);
           if (!target) return;
+          // If the card lives inside the suppressed section list, unhide it first
+          const supList = document.getElementById('suppressed-section-list');
+          if (supList && supList.contains(target) && supList.hidden) {
+            supList.hidden = false;
+            const supHeader = document.getElementById('suppressed-section-header');
+            const supToggle = document.getElementById('sup-section-toggle');
+            if (supHeader) supHeader.setAttribute('aria-expanded', 'true');
+          }
           target.open = true;
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          drawer.querySelectorAll('a[aria-current]').forEach(a => a.removeAttribute('aria-current'));
-          link.setAttribute('aria-current', 'true');
+          requestAnimationFrame(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+          setTocActive(id);
+          pauseSpy();
         });
 
         // Open on load if persisted
@@ -2818,6 +3156,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       initStickyShadow();
       initFilter();
       initSearch();
+      initSuppressedSection();
       initSmartDefaults();
       initToggleAll();
       initToc();

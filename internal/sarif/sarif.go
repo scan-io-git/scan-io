@@ -99,7 +99,9 @@ func (r Report) ExtractToolNameAndVersion() (*ToolMetadata, error) {
 }
 
 // CollectSeverityInfo returns counts per severity bucket (critical/high/medium/low/info/unknown)
-// and a total. It reads Properties["Severity"] which is set by EnrichResultsLevelProperty.
+// and a total. Suppressed results are excluded — only active findings are counted.
+// It reads Properties["Severity"] set by EnrichResultsLevelProperty and
+// Properties["Suppressed"] set by EnrichResultsSuppressionProperty.
 func (r Report) CollectSeverityInfo() map[string]int {
 	counts := map[string]int{
 		"critical": 0,
@@ -113,6 +115,9 @@ func (r Report) CollectSeverityInfo() map[string]int {
 
 	for _, run := range r.Runs {
 		for _, result := range run.Results {
+			if result.Properties["Suppressed"] == "true" {
+				continue
+			}
 			sev, _ := result.Properties["Severity"].(string)
 			if sev == "" {
 				sev = "unknown"
@@ -128,6 +133,51 @@ func (r Report) CollectSeverityInfo() map[string]int {
 	}
 
 	return counts
+}
+
+// EnrichResultsSuppressionProperty reads each result's Suppressions field and
+// sets Properties["Suppressed"] = "true" for any result that has at least one
+// suppression entry (regardless of status), plus SuppressionStatus /
+// SuppressionKind / SuppressionJustification for the template.
+func (r *Report) EnrichResultsSuppressionProperty() {
+	for _, run := range r.Runs {
+		for _, result := range run.Results {
+			if len(result.Suppressions) == 0 {
+				continue
+			}
+			sup := result.Suppressions[0]
+			status := ""
+			if sup.Status != nil {
+				status = *sup.Status
+			}
+			result.Properties["Suppressed"] = "true"
+			result.Properties["SuppressionStatus"] = status
+			result.Properties["SuppressionKind"] = sup.Kind
+			if sup.Justification != nil {
+				result.Properties["SuppressionJustification"] = *sup.Justification
+			}
+		}
+	}
+}
+
+// CollectSuppressionInfo returns counts for suppressed, active, and total findings.
+// Must be called after EnrichResultsSuppressionProperty.
+func (r Report) CollectSuppressionInfo() map[string]int {
+	suppressed := 0
+	total := 0
+	for _, run := range r.Runs {
+		for _, result := range run.Results {
+			total++
+			if s, _ := result.Properties["Suppressed"].(string); s == "true" {
+				suppressed++
+			}
+		}
+	}
+	return map[string]int{
+		"suppressed": suppressed,
+		"active":     total - suppressed,
+		"total":      total,
+	}
 }
 
 var (

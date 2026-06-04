@@ -52,7 +52,8 @@ type ReportMetadata struct {
 	Title        string
 	Time         time.Time
 	SourceFolder string
-	SeverityInfo map[string]int
+	SeverityInfo    map[string]int
+	SuppressionInfo map[string]int
 	WebURL       string
 	BranchURL    string
 	CommitURL    string
@@ -220,6 +221,7 @@ var ToHtmlCmd = &cobra.Command{
 		sarifReport.EnrichResultsConfidenceProperty()
 		sarifReport.EnrichResultsMetadataProperty()
 		sarifReport.EnrichResultsLocationURIProperty(locationURLCallback, prDiffURLCallback)
+		sarifReport.EnrichResultsSuppressionProperty()
 		sarifReport.SortResultsBySeverity()
 
 		toolMetadata, err := sarifReport.ExtractToolNameAndVersion()
@@ -229,6 +231,7 @@ var ToHtmlCmd = &cobra.Command{
 		logger.Debug("toolMetadata", "Name", toolMetadata.Name, "Version", toolMetadata.Version)
 
 		severityInfo := sarifReport.CollectSeverityInfo()
+		suppressionInfo := sarifReport.CollectSuppressionInfo()
 
 		metadataSourceFolder := allToHTMLOptions.SourceFolder
 		if config.IsCI(AppConfig) {
@@ -242,6 +245,7 @@ var ToHtmlCmd = &cobra.Command{
 			Time:               time.Now().UTC(),
 			SourceFolder:       metadataSourceFolder,
 			SeverityInfo:       severityInfo,
+			SuppressionInfo:    suppressionInfo,
 		}
 		if parsedURL != nil {
 			metadata.WebURL = parsedURL.HTTPRepoLink
