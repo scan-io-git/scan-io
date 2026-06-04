@@ -74,6 +74,20 @@ When the active (non-suppressed) visible count reaches zero, `#no-results` (`.fi
 
 CSS: `mark.search-mark` -- amber `#fff3b0` (light) / `#5c4000` (dark).
 
+## Security
+
+Each render injects a `<meta http-equiv="Content-Security-Policy">` tag as the first element in `<head>` with a strict nonce-based policy:
+
+```
+default-src 'none'; script-src 'nonce-{random}'; style-src 'nonce-{random}'; img-src data:; base-uri 'none'; form-action 'none'
+```
+
+A fresh 16-byte nonce (`crypto/rand`, base64url-encoded) is generated per render and placed on every inline `<script>` and `<style>` tag. No `'unsafe-inline'` or `'unsafe-eval'`. All external links carry `rel="noopener noreferrer"`.
+
+The policy complements Go's `html/template` context-escaping — if a future escaping bypass were discovered, the nonce policy would still refuse injected scripts. Reports are typically shared as email attachments or CI artifacts, so recipients may open files crafted from a malicious SARIF.
+
+Pass `--no-csp` to `scanio to-html` to omit the policy (e.g., for viewers that do not support `<meta>` CSP).
+
 ## Constraints
 
 - Single offline file. No CDN. No build step.

@@ -7,20 +7,24 @@ The `to-html` command converts sarif, standard sast output format, to a human-fr
 - [Options](#options)
 - [Usage Examples](#usage-examples)
 - [Report features](#report-features)
+  - [Security](#security)
+  - [Filtering](#filtering)
+  - [Suppressed findings](#suppressed-findings)
 
 ## Syntax
 ```
-scanio to-html --input/-i PATH --output/-o PATH [--source/-s PATH] [--templates-path/-t PATH] [--no-supressions]
+scanio to-html --input/-i PATH --output/-o PATH [--source/-s PATH] [--templates-path/-t PATH] [--no-supressions] [--no-csp]
 ```
 
 ### Options
 | Option | Type | Required | Default Value | Description |
 |--------|------|----------|---------------|-------------|
 | `--input`, `-i` | string | Yes | `none` | Path to input file, sarif report |
-| `--output`, `-o` | string | Yes | `none` | Path to output file, html report
+| `--output`, `-o` | string | Yes | `none` | Path to output file, html report |
 | `--source`, `-s` | string | No | `none` | Path to source code folder |
 | `--templates-path`, `-t` | string | No | `none` | Path to templates folder |
 | `--no-supressions` | bool | No | `false` | Enable removing results with suppressions properties |
+| `--no-csp` | bool | No | `false` | Disable the Content-Security-Policy meta tag in the generated report |
 
 ## Usage Examples
 The following examples demonstrate how to use the `to-html` command.
@@ -55,9 +59,30 @@ If you want to exclude suppressed results from the HTML report, use the `--no-su
 scanio to-html -i /tmp/juice-shop/semgrep_results.sarif -o /tmp/juice-shop/semgrep_results.html -s /tmp/juice-shop/ -t ./templates/tohtml --no-supressions
 ```
 
+**Disable CSP (for legacy viewers)**
+By default, the report includes a strict Content-Security-Policy (see [Security](#security) below). Some email clients and legacy document viewers strip or reject `<meta>` CSP tags, which can prevent the report from rendering correctly. Use `--no-csp` to omit the policy for those environments.
+```bash
+scanio to-html -i /path/to/results.sarif -o /path/to/results.html --no-csp
+```
+
 ## Report features
 
 The generated HTML file is fully self-contained and works offline.
+
+### Security
+
+Each report is hardened at render time:
+
+- A 16-byte random nonce is generated with `crypto/rand` and embedded into every inline `<script>` and `<style>` tag.
+- A `<meta http-equiv="Content-Security-Policy">` tag is injected as the first element in `<head>` with this policy:
+  ```
+  default-src 'none'; script-src 'nonce-{random}'; style-src 'nonce-{random}'; img-src data:; base-uri 'none'; form-action 'none'
+  ```
+- All external links use `target="_blank" rel="noopener noreferrer"` to prevent reverse tabnabbing.
+
+The CSP is defense-in-depth: Go's `html/template` already context-escapes all SARIF-derived values, but the nonce policy blocks injected `<script>` tags, inline event handlers, and `javascript:` URIs if escaping is ever bypassed. This matters because reports are often shared as email attachments or CI artifacts and opened by people other than the person who ran the scan.
+
+Use `--no-csp` to omit the policy if the viewing environment does not support `<meta>` CSP tags.
 
 ### Filtering
 
