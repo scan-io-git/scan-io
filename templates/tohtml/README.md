@@ -23,7 +23,7 @@ All tokens live in the `:root` block in `report.html`. The design kit mirrors th
 |-------|--------|-------|
 | Brand | `--brand-green` | `#0f7a51` light / `#3ddc8e` dark |
 | Severity | `--sev-{level}-{fg/bg}` | per severity, per theme |
-| Type | `--text-xs` .. `--text-xl` | 11px .. 20px |
+| Type | `--text-xs` .. `--text-xl` | 12px .. 20px |
 | Shadow | `--shadow-xs` .. `--shadow-lg` | |
 | Z-index | `--z-sticky` .. `--z-dialog` | 20 .. 1000 |
 | Spacing | `--space-1` .. `--space-6` | 4px .. 32px |
@@ -69,6 +69,8 @@ The search input filters findings by tokenised full-text match (all tokens must 
 - All `<dd>` values inside `.finding__meta-dl` (Category, Confidence, Rule, Scanner)
 
 Matching tokens are highlighted in-place using `<mark class="search-mark">` elements. Highlights are cleared and reapplied on every filter change. The TOC rebuilds from the visible set on every change. The suppressed section is hidden when no suppressed findings are visible.
+
+When the active (non-suppressed) visible count reaches zero, `#no-results` (`.findings-empty`) is shown with a "Clear filters" button that resets both the severity filter and the search string. The toolbar `#search-count` span shows "N of M shown" whenever any filter is active.
 
 CSS: `mark.search-mark` -- amber `#fff3b0` (light) / `#5c4000` (dark).
 
