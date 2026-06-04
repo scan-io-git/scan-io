@@ -641,6 +641,17 @@
     background: var(--bg-inset);
   }
 
+  mark.search-mark {
+    background: #fff3b0;
+    color: inherit;
+    border-radius: 2px;
+    padding: 0 1px;
+  }
+  [data-theme="dark"] mark.search-mark {
+    background: #5c4000;
+    color: inherit;
+  }
+
   /* kbd chips (from report.html — scoped to .help-dialog__body kbd) */
   kbd {
     display: inline-flex;
@@ -998,6 +1009,13 @@
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
+    </div>
+
+    <div class="dk-comp-label">Search highlight (mark.search-mark)</div>
+    <div class="dk-comp-row">
+      <span>Use-after-free in <mark class="search-mark">memory</mark> allocator</span>
+      <span>Category: <mark class="search-mark">Injection</mark></span>
+      <span>Scanner: <mark class="search-mark">Semgrep</mark> OSS</span>
     </div>
 
     <div class="dk-comp-label">Keyboard shortcuts (kbd chips)</div>
