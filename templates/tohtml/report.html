@@ -2819,6 +2819,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           };
         });
 
+        const fileLabels = buildFileLabels(data);
         const SEV_ORDER = ['critical','high','medium','low','info','unknown'];
         const chev = '<span class="tv-ch"><svg aria-hidden="true"><use href="#tb-chevron-right"/></svg></span>';
         const chevLeaf = '<span class="tv-ch tv-ch--leaf" aria-hidden="true"></span>';
@@ -2939,7 +2940,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           return html;
         }
 
-        function buildSevTree(dataset) {
+        function buildSevTree(dataset, fileLabels) {
           let html = '';
           let rendered = 0;
           const activeItems = dataset.filter(d => !d.suppressed);
@@ -2958,7 +2959,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             const byFile = groupBy(items, d => d.file);
             let fi = 0;
             for (const [file, fileItems] of byFile) {
-              const basename = (file || '').split('/').pop() || '(unknown)';
+              const basename = fileLabels.get(file) || '(unknown)';
               const fileId = sevId + '-f' + fi++;
               html += '<div class="tv-tr tv-d1" data-grp-parent="' + sevId + '" data-grp-id="' + fileId + '">' +
                 chev + fileIcon +
@@ -2987,7 +2988,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             const byFile = groupBy(suppItems, d => d.file);
             let fi = 0;
             for (const [file, fileItems] of byFile) {
-              const basename = (file || '').split('/').pop() || '(unknown)';
+              const basename = fileLabels.get(file) || '(unknown)';
               const fileId = supGrpId + '-f' + fi++;
               html += '<div class="tv-tr tv-d1 tv-grp--suppressed" data-grp-parent="' + supGrpId + '" data-grp-id="' + fileId + '">' +
                 chev + fileIcon +
@@ -3006,7 +3007,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           return html;
         }
 
-        function buildRuleTree(dataset) {
+        function buildRuleTree(dataset, fileLabels) {
           let html = '';
           const activeItems = dataset.filter(d => !d.suppressed);
           const suppItems   = dataset.filter(d => d.suppressed);
@@ -3037,7 +3038,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
                 '<span class="tv-tc">' + entry.items.length + '</span></div>';
               const byFile = groupBy(entry.items, d => d.file);
               for (const [file, fileItems] of byFile) {
-                const basename = (file || '').split('/').pop() || '(unknown)';
+                const basename = fileLabels.get(file) || '(unknown)';
                 if (fileItems.length === 1) {
                   const d = fileItems[0];
                   html += '<a class="tv-tr tv-d1' + dimClass + '" href="#' + d.id + '" target="_self" title="' + esc(file) + ':' + esc(d.line) + '" data-grp-parent="' + ruleNodeId + chain + '">' +
@@ -3187,8 +3188,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             return node && !node.hidden;
           });
           const empty = '<div class="tv-empty">No findings match the current filter.</div>';
-          treeSev.innerHTML  = filtered.length ? buildSevTree(filtered)  : empty;
-          treeRule.innerHTML = filtered.length ? buildRuleTree(filtered) : empty;
+          treeSev.innerHTML  = filtered.length ? buildSevTree(filtered, fileLabels)  : empty;
+          treeRule.innerHTML = filtered.length ? buildRuleTree(filtered, fileLabels) : empty;
           if (tocCountEl) tocCountEl.textContent = String(filtered.length);
           collapseSupGroupIfAll();
           initTocScrollSpy();
