@@ -389,6 +389,15 @@
       text-decoration: underline;
     }
 
+    .finding__location-secondary {
+      display: block;
+      font-size: var(--text-base);
+      color: var(--fg-muted);
+      margin-top: 4px;
+      padding-left: 6px;
+      border-left: 2px solid var(--border-default);
+    }
+
     [data-theme="dark"] .finding__df-filename,
     [data-theme="dark"] .finding__df-id:not(.finding__df-id--selected) {
       border-color: var(--border-default);
@@ -2285,6 +2294,7 @@
         {{ $locationURI := index $location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
         {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
         {{ $locationWebURL := index $location.Properties "WebURL"}}
+        {{ $locationPRWebURL := index $location.Properties "PRWebURL"}}
         <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}">
           <summary class="finding__head">
             <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
@@ -2316,7 +2326,7 @@
             {{end -}}
             <p class="finding__description">{{index .Properties "Description"}}</p>
             <div class="finding__location">
-              Location: <strong>{{if $locationWebURL}}<a href="{{- $locationWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationURI}} (line {{$locationStartLine}})</a>{{else}}{{$locationURI}} (line {{$locationStartLine}}){{end}}</strong>
+              {{if $locationPRWebURL}}Location in PR: <strong><a href="{{- $locationPRWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationURI}} (line {{$locationStartLine}})</a></strong>{{if $locationWebURL}}<span class="finding__location-secondary">at commit <a href="{{- $locationWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationURI}} (line {{$locationStartLine}})</a></span>{{end}}{{else}}Location: <strong>{{if $locationWebURL}}<a href="{{- $locationWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationURI}} (line {{$locationStartLine}})</a>{{else}}{{$locationURI}} (line {{$locationStartLine}}){{end}}</strong>{{end}}
             </div>
             <div class="finding__df-block">
               <header class="finding__df-header">
@@ -2425,6 +2435,7 @@
           {{ $locationURI := index $location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
           {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
           {{ $locationWebURL := index $location.Properties "WebURL"}}
+          {{ $locationPRWebURL := index $location.Properties "PRWebURL"}}
           <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}} finding--suppressed" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}" data-suppressed="true">
             <summary class="finding__head">
               <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
@@ -2454,7 +2465,7 @@
               {{end -}}
               <p class="finding__description">{{index .Properties "Description"}}</p>
               <div class="finding__location">
-                Location: <strong>{{if $locationWebURL}}<a href="{{- $locationWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationURI}} (line {{$locationStartLine}})</a>{{else}}{{$locationURI}} (line {{$locationStartLine}}){{end}}</strong>
+                {{if $locationPRWebURL}}Location in PR: <strong><a href="{{- $locationPRWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationURI}} (line {{$locationStartLine}})</a></strong>{{if $locationWebURL}}<span class="finding__location-secondary">at commit <a href="{{- $locationWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationURI}} (line {{$locationStartLine}})</a></span>{{end}}{{else}}Location: <strong>{{if $locationWebURL}}<a href="{{- $locationWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationURI}} (line {{$locationStartLine}})</a>{{else}}{{$locationURI}} (line {{$locationStartLine}}){{end}}</strong>{{end}}
               </div>
               <div class="finding__df-block">
                 <header class="finding__df-header">
