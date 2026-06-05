@@ -279,10 +279,18 @@
       color: var(--fg-default);
       flex: 1 1 auto;
       min-width: 0;
-      text-wrap: balance;
       overflow-wrap: break-word;
       word-break: normal;
       hyphens: none;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+    }
+
+    .finding[open] .finding__title {
+      display: block;
+      overflow: visible;
     }
 
     @media (min-width: 640px) {
@@ -306,6 +314,7 @@
       text-overflow: ellipsis;
       white-space: nowrap;
       min-width: 0;
+      direction: rtl;
     }
 
     .finding__line {
@@ -548,6 +557,8 @@
     .finding__refs ul {
       margin: 4px 0 0;
       padding-left: 18px;
+      max-height: 160px;
+      overflow-y: auto;
     }
 
     .finding__refs li {
@@ -596,9 +607,9 @@
 
     .finding__df-filename > span {
       min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      white-space: normal;
+      word-break: break-all;
+      overflow-wrap: anywhere;
     }
 
     .finding__df-codeline {
@@ -672,6 +683,51 @@
 
     .finding__df.finding__df--selected {
       display: block;
+      max-height: 420px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .finding__df.finding__df--selected.finding__df--expanded {
+      max-height: none;
+      overflow: visible;
+    }
+
+    /* Gradient fade signals clipped content — only when capped, hidden once expanded */
+    .finding__df.finding__df--selected.finding__df--capped:not(.finding__df--expanded)::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 48px;
+      background: linear-gradient(transparent, var(--bg-canvas));
+      pointer-events: none;
+      border-radius: 0 0 6px 6px;
+    }
+
+    .finding__df-expand-btn {
+      display: block;
+      width: 100%;
+      padding: 5px 12px;
+      margin-top: 0;
+      font-size: var(--text-sm);
+      color: var(--accent-fg);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-default);
+      border-top: 0;
+      border-radius: 0 0 6px 6px;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .finding__df-expand-btn:hover {
+      background: var(--bg-inset);
+    }
+
+    .finding__df-expand-btn svg {
+      transform: rotate(90deg);
+      vertical-align: middle;
     }
 
     .finding__df-highlight {
@@ -920,15 +976,20 @@
       outline: 0;
       background: transparent;
       color: var(--fg-default);
-      font-size: 16px; /* 16px prevents iOS Safari auto-zoom on focus */
+      font-size: var(--text-base);
       font-family: inherit;
-      min-width: 220px;
+      min-width: 180px;
+    }
+
+    /* Restore 16px on touch devices to prevent iOS Safari auto-zoom on focus */
+    @media (hover: none) and (pointer: coarse) {
+      .search input { font-size: 16px; }
     }
 
     .search input:focus-visible { box-shadow: none; outline: none; }
 
     .search input::placeholder {
-      color: var(--fg-muted);
+      color: var(--fg-subtle);
     }
 
     .search__clear {
@@ -1141,6 +1202,7 @@
       font-size: var(--text-xs);
       color: var(--fg-muted);
       margin-left: 2px;
+      flex: 0 0 auto;
     }
 
     /* Count badge */
@@ -2226,7 +2288,7 @@
         <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}">
           <summary class="finding__head">
             <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
-            <span class="finding__num">#{{add $n 1}}</span><span class="finding__title" role="heading" aria-level="2">{{index .Properties "Title"}}</span>
+            <span class="finding__num">#{{add $n 1}}</span><span class="finding__title" role="heading" aria-level="2" title="{{index .Properties "Title"}}">{{index .Properties "Title"}}</span>
             <span class="finding__meta">
               <span class="finding__path">{{$locationURI}}</span><span class="finding__line">:{{$locationStartLine}}</span>
             </span>
@@ -2366,7 +2428,7 @@
           <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}} finding--suppressed" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}" data-suppressed="true">
             <summary class="finding__head">
               <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
-              <span class="finding__num">#{{add $n 1}}</span><span class="finding__title" role="heading" aria-level="2">{{index .Properties "Title"}}</span>
+              <span class="finding__num">#{{add $n 1}}</span><span class="finding__title" role="heading" aria-level="2" title="{{index .Properties "Title"}}">{{index .Properties "Title"}}</span>
               <span class="finding__meta">
                 <span class="finding__path">{{$locationURI}}</span><span class="finding__line">:{{$locationStartLine}}</span>
               </span>
@@ -2918,7 +2980,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             const d = items[0];
             return '<a class="tv-tr ' + opts.leafDepth + '" href="#' + d.id + '" target="_self" title="' + titleAttr + ' (' + esc(d.file || d.id) + ':' + esc(d.line) + ')"' + parentAttr + '>' +
               chevLeaf + dot(d.sev) +
-              '<span class="tv-tl">' + esc(cap60(label)) + '<span class="tv-ls"> #' + esc(d.num) + '</span></span></a>';
+              '<span class="tv-tl">' + esc(cap60(label)) + '</span><span class="tv-ls">#' + esc(d.num) + '</span></a>';
           }
           // Collapsed row + chip strip. The row anchors to the first finding so a row-click still jumps somewhere sensible.
           const firstId = items[0].id;
@@ -3043,7 +3105,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
                   const d = fileItems[0];
                   html += '<a class="tv-tr tv-d1' + dimClass + '" href="#' + d.id + '" target="_self" title="' + esc(file) + ':' + esc(d.line) + '" data-grp-parent="' + ruleNodeId + chain + '">' +
                     chevLeaf + fileIcon +
-                    '<span class="tv-tl">' + esc(basename) + '<span class="tv-ls"> #' + esc(d.num) + '</span></span></a>';
+                    '<span class="tv-tl">' + esc(basename) + '</span><span class="tv-ls">#' + esc(d.num) + '</span></a>';
                 } else {
                   const fileNodeId = ruleNodeId + '-f' + fi++;
                   html += '<div class="tv-tr tv-d1' + dimClass + '" data-grp-id="' + fileNodeId + '" data-grp-parent="' + ruleNodeId + chain + '">' +
@@ -3323,7 +3385,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         }
         document.addEventListener('click', e => {
           const pill = e.target.closest('[data-dataflow-id]');
-          if (pill) activatePill(pill);
+          if (pill) { activatePill(pill); syncDfExpandBtn(pill.closest('.finding__df-block')); }
         });
         document.addEventListener('keydown', e => {
           if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -3331,6 +3393,36 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           if (!pill) return;
           if (e.key === ' ') e.preventDefault();
           activatePill(pill);
+        });
+      }
+
+      function syncDfExpandBtn(block) {
+        if (!block) return;
+        block.querySelector('.finding__df-expand-btn')?.remove();
+        const df = block.querySelector('.finding__df--selected');
+        df?.classList.remove('finding__df--capped');
+        if (!df || df.classList.contains('finding__df--expanded')) return;
+        const cap = parseInt(getComputedStyle(df).maxHeight, 10);
+        if (!Number.isFinite(cap) || df.scrollHeight <= cap) return;
+        df.classList.add('finding__df--capped');
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'finding__df-expand-btn';
+        btn.innerHTML = 'Show full data flow&thinsp;<svg width="10" height="10" aria-hidden="true"><use href="#tb-chevron-right"/></svg>';
+        btn.addEventListener('click', () => {
+          df.classList.add('finding__df--expanded');
+          df.classList.remove('finding__df--capped');
+          btn.remove();
+        });
+        df.after(btn);
+      }
+
+      function initFlowExpand() {
+        // Scan cards already open on load
+        document.querySelectorAll('.finding__df-block').forEach(syncDfExpandBtn);
+        // Scan when a card is opened for the first time
+        findings.forEach(f => {
+          f.addEventListener('toggle', () => { if (f.open) syncDfExpandBtn(f.querySelector('.finding__df-block')); });
         });
       }
 
@@ -3531,6 +3623,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       initCopyAll();
       initFixCopy();
       initDataflowSwitcher();
+      initFlowExpand();
       initHelp();
       initShortcuts();
       initSyntaxHighlight();

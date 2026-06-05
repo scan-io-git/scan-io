@@ -786,7 +786,7 @@ func (r Report) EnrichResultsMetadataProperty() {
 
 		// References and Fix.
 		rule := rulesMap[ruleID]
-		if refs := extractReferences(result, rule, 3); len(refs) > 0 {
+		if refs := extractReferences(result, rule, 10); len(refs) > 0 {
 			result.Properties["References"] = refs
 		}
 		if parts := splitFixParts(extractFix(result, rule)); len(parts) > 0 {
