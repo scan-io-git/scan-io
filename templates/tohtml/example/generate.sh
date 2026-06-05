@@ -28,4 +28,13 @@ go run . to-html \
   --templates-path "$SCRIPT_DIR/.." \
   --title    "Scanio Demo Report"
 
-echo "Report written to templates/tohtml/example/example.html"
+go run . to-html \
+  --input        "$SCRIPT_DIR/example.sarif" \
+  --output       "$SCRIPT_DIR/example-pr.html" \
+  --source       "$TMP" \
+  --vcs          github \
+  --pull-request 42 \
+  --templates-path "$SCRIPT_DIR/.." \
+  --title        "Scanio Demo Report (PR #42)"
+
+echo "Reports written to templates/tohtml/example/example.html and example-pr.html"

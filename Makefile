@@ -174,5 +174,5 @@ test: ## Run Go tests
 	go test -v ./... && echo "All tests passed"
 
 .PHONY: example-report
-example-report: check-go-dependency ## Render the example HTML report from the synthetic SARIF fixture
+example-report: check-go-dependency ## Render example HTML reports from the synthetic SARIF fixture (branch + PR #42 variants)
 	@bash templates/tohtml/example/generate.sh
