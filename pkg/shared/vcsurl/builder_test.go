@@ -200,10 +200,17 @@ func TestPRDiffLink(t *testing.T) {
 			want:     "",
 		},
 		{
-			name:     "github pr files link",
+			name:     "github pr diff line-precise",
 			u:        ghURL("https://github.com/scan-io-git/scan-io", "42"),
 			filePath: "src/main.go",
 			line:     10,
+			want:     "https://github.com/scan-io-git/scan-io/pull/42/files#diff-9e185f29fa355d7dd8fdd9c9ff1d0723b85206aa7d37c4eec93997005dc291ebR10",
+		},
+		{
+			name:     "github line zero falls back to files tab",
+			u:        ghURL("https://github.com/scan-io-git/scan-io", "42"),
+			filePath: "src/main.go",
+			line:     0,
 			want:     "https://github.com/scan-io-git/scan-io/pull/42/files",
 		},
 		{
@@ -214,10 +221,17 @@ func TestPRDiffLink(t *testing.T) {
 			want:     "",
 		},
 		{
-			name:     "gitlab mr diffs link",
+			name:     "gitlab mr diff line-precise",
 			u:        glURL("https://gitlab.com/sec/scan-io", "7"),
 			filePath: "main.go",
 			line:     3,
+			want:     "https://gitlab.com/sec/scan-io/-/merge_requests/7/diffs#0607f785dfa3c3861b3239f6723eb276d8056461_3_3",
+		},
+		{
+			name:     "gitlab line zero falls back to diffs tab",
+			u:        glURL("https://gitlab.com/sec/scan-io", "7"),
+			filePath: "main.go",
+			line:     0,
 			want:     "https://gitlab.com/sec/scan-io/-/merge_requests/7/diffs",
 		},
 	}

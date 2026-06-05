@@ -1,6 +1,9 @@
 package vcsurl
 
 import (
+	"crypto/sha1" // #nosec G505 -- anchor only, not a security primitive
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strings"
 )
@@ -63,24 +66,40 @@ func (u *VCSURL) FilePermalink(ref, filePath string, startLine, endLine int) str
 
 // PRDiffLink returns a deep link to a specific line inside a PR diff.
 // Returns empty string when PullRequestId is empty.
-// For Bitbucket DC, line < 1 also returns empty string (single-line anchor required).
-// For GitHub and GitLab a best-effort PR files/diffs tab link is returned regardless of line.
+//   - GitHub/Generic: /pull/<id>/files#diff-<sha256(path)>R<line>
+//   - GitLab:         /-/merge_requests/<id>/diffs#<sha1(path)>_<line>_<line>
+//   - Bitbucket DC:   /pull-requests/<id>/diff#<path>?t=<line>
+//
+// When path is empty or line < 1, GitHub/GitLab fall back to the bare files/diffs tab
+// and Bitbucket (which has no tab-level link) returns empty.
+// GitHub/GitLab deep anchors are best-effort: the target line must be inside an
+// expanded diff hunk for the browser to scroll to it.
 func (u *VCSURL) PRDiffLink(filePath string, line int) string {
 	if u.HTTPRepoLink == "" || u.PullRequestId == "" {
 		return ""
 	}
+	file := normalizeFilePath(filePath)
 	switch u.VCSType {
 	case Bitbucket:
-		if line < 1 || filePath == "" {
+		if line < 1 || file == "" {
 			return ""
 		}
-		file := normalizeFilePath(filePath)
 		// Fragment encodes the file path; ?t=LINE is part of the fragment value.
 		return fmt.Sprintf("%s/pull-requests/%s/diff#%s?t=%d", u.HTTPRepoLink, u.PullRequestId, file, line)
 	case Gitlab:
-		return fmt.Sprintf("%s/-/merge_requests/%s/diffs", u.HTTPRepoLink, u.PullRequestId)
+		base := fmt.Sprintf("%s/-/merge_requests/%s/diffs", u.HTTPRepoLink, u.PullRequestId)
+		if file == "" || line < 1 {
+			return base
+		}
+		h := sha1.Sum([]byte(file)) // #nosec G401 -- anchor only, not a security primitive
+		return fmt.Sprintf("%s#%s_%d_%d", base, hex.EncodeToString(h[:]), line, line)
 	default: // Github, GenericVCS
-		return fmt.Sprintf("%s/pull/%s/files", u.HTTPRepoLink, u.PullRequestId)
+		base := fmt.Sprintf("%s/pull/%s/files", u.HTTPRepoLink, u.PullRequestId)
+		if file == "" || line < 1 {
+			return base
+		}
+		h := sha256.Sum256([]byte(file))
+		return fmt.Sprintf("%s#diff-%sR%d", base, hex.EncodeToString(h[:]), line)
 	}
 }
 
