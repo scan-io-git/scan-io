@@ -13,7 +13,7 @@ The `to-html` command converts sarif, standard sast output format, to a human-fr
 
 ## Syntax
 ```
-scanio to-html --input/-i PATH --output/-o PATH [--source/-s PATH] [--templates-path/-t PATH] [--no-supressions] [--no-csp]
+scanio to-html --input/-i PATH --output/-o PATH [--source/-s PATH] [--templates-path/-t PATH] [--pull-request/-p ID] [--no-supressions] [--no-csp]
 ```
 
 ### Options
@@ -23,6 +23,7 @@ scanio to-html --input/-i PATH --output/-o PATH [--source/-s PATH] [--templates-
 | `--output`, `-o` | string | Yes | `none` | Path to output file, html report |
 | `--source`, `-s` | string | No | `none` | Path to source code folder |
 | `--templates-path`, `-t` | string | No | `none` | Path to templates folder |
+| `--pull-request`, `-p` | string | No | `none` | Pull request ID. Enables PR-aware links: the header pill links to the PR and each finding's "Location in PR" links to the PR diff at the exact line, with a secondary commit-permalink link. When omitted, auto-detected from CI env vars: GITHUB_REF (refs/pull/N/merge), CI_MERGE_REQUEST_IID, BITBUCKET_PR_ID |
 | `--no-supressions` | bool | No | `false` | Enable removing results with suppressions properties |
 | `--no-csp` | bool | No | `false` | Disable the Content-Security-Policy meta tag in the generated report |
 
@@ -64,6 +65,13 @@ By default, the report includes a strict Content-Security-Policy (see [Security]
 ```bash
 scanio to-html -i /path/to/results.sarif -o /path/to/results.html --no-csp
 ```
+
+**PR mode**
+When `--pull-request` is set (or detected from CI env vars), the report renders in PR mode:
+- The header shows a PR pill linking to the pull/merge request.
+- Each finding card shows "Location in PR" linking to the PR diff at the exact line (GitHub: `#diff-<sha256>R<line>`, GitLab: `#<sha1>_<line>_<line>`, Bitbucket: `#<path>?t=<line>`).
+- A secondary "at commit" link is shown beneath, preserving the exact-line commit permalink.
+- Inline data-flow step links are unaffected (always commit links).
 
 ## Report features
 
