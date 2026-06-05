@@ -28,6 +28,7 @@ The [`Makefile`](../../Makefile) automates building, cleaning, and managing arti
     - [Clean Docker Images](#clean-docker-images)
     - [Clean Python Venv](#clean-python-venv)
     - [Run Go Tests](#run-go-tests)
+    - [Render Example Reports](#render-example-reports)
 
 
 ## Variables
@@ -72,6 +73,7 @@ Variables can be overridden by setting them via the command line.
 | `help`                 | Display available commands                                 |    
 | `prepare-plugins   `   | Prepare plugin directory                                   |              
 | `setup-python-env`     | Set up Python virtual environment and install dependencies |
+| `example-report`       | Render example HTML reports (branch + PR variant) from the synthetic SARIF fixture |
 | `test`                 | Run Go tests                                               |
 
 ## Requirements
@@ -424,6 +426,26 @@ make clean-python-env
 ```bash
 Cleaning Python virtual environment...
 rm -rf .venv
+```
+
+### Render Example Reports
+
+Regenerate the bundled example HTML reports from the synthetic SARIF fixture at `templates/tohtml/example/example.sarif`. Two reports are produced:
+
+| Output file | Mode | Notes |
+|-------------|------|-------|
+| `templates/tohtml/example/example.html` | Branch scan | Commit permalinks in Location links |
+| `templates/tohtml/example/example-pr.html` | PR scan (PR #42) | "Location in PR" links + secondary commit links |
+
+```bash
+make example-report
+```
+
+Run this after modifying the report template to verify the changes look correct in both modes.
+
+**Sample output:**
+```
+Reports written to templates/tohtml/example/example.html and example-pr.html
 ```
 
 ### Run Go Tests

@@ -66,10 +66,37 @@ By default, the report includes a strict Content-Security-Policy (see [Security]
 scanio to-html -i /path/to/results.sarif -o /path/to/results.html --no-csp
 ```
 
-**PR mode**
+**PR mode — explicit flag**
+Pass the PR/MR number directly. The provider is detected from the git remote (override with `--vcs` if needed).
+```bash
+# GitHub pull request
+scanio to-html -i /path/to/results.sarif -o /path/to/report.html -s /path/to/project --pull-request 42
+
+# GitLab merge request
+scanio to-html -i /path/to/results.sarif -o /path/to/report.html -s /path/to/project --vcs gitlab --pull-request 7
+
+# Bitbucket pull request
+scanio to-html -i /path/to/results.sarif -o /path/to/report.html -s /path/to/project --vcs bitbucket --pull-request 123
+```
+
+**PR mode — CI env auto-detection**
+When `--pull-request` is omitted, the id is read from the CI environment automatically. No flag needed in CI pipelines:
+
+| CI system | Variable read | Format |
+|-----------|--------------|--------|
+| GitHub Actions | `GITHUB_REF` | `refs/pull/N/merge` |
+| GitLab CI | `CI_MERGE_REQUEST_IID` | numeric id |
+| Bitbucket Pipelines | `BITBUCKET_PR_ID` | numeric id |
+
+Example (GitHub Actions step, no explicit flag):
+```yaml
+- run: scanio to-html -i results.sarif -o report.html -s .
+  # GITHUB_REF is set automatically by the runner on pull_request events
+```
+
 When `--pull-request` is set (or detected from CI env vars), the report renders in PR mode:
 - The header shows a PR pill linking to the pull/merge request.
-- Each finding card shows "Location in PR" linking to the PR diff at the exact line (GitHub: `#diff-<sha256>R<line>`, GitLab: `#<sha1>_<line>_<line>`, Bitbucket: `#<path>?t=<line>`).
+- Each finding card shows "Location in PR" linking to the PR diff at the exact line (GitHub: `#diff-<sha256(path)>R<line>`, GitLab: `#<sha1(path)>_<line>_<line>`, Bitbucket: `#<path>?t=<line>`).
 - A secondary "at commit" link is shown beneath, preserving the exact-line commit permalink.
 - Inline data-flow step links are unaffected (always commit links).
 
