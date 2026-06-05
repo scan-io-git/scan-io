@@ -34,6 +34,7 @@ type ToHTMLOptions struct {
 	Input          string `json:"input,omitempty"`
 	SourceFolder   string `json:"source_folder,omitempty"`
 	VCS            string `json:"vcs,omitempty"`
+	PullRequest    string `json:"pull_request,omitempty"`
 	NoSuppressions bool   `json:"nosuppressions,omitempty"`
 	NoCSP          bool   `json:"no_csp,omitempty"`
 }
@@ -195,6 +196,12 @@ var ToHtmlCmd = &cobra.Command{
 			}
 		}
 
+		if parsedURL != nil {
+			if prID := resolvePullRequestID(allToHTMLOptions.PullRequest, parsedURL.VCSType); prID != "" {
+				parsedURL.PullRequestId = prID
+			}
+		}
+
 		var commitHash string
 		if repositoryMetadata.CommitHash != nil {
 			commitHash = *repositoryMetadata.CommitHash
@@ -338,6 +345,7 @@ func init() {
 	ToHtmlCmd.Flags().StringVarP(&allToHTMLOptions.OutputFile, "output", "o", "scanio-report.html", "output file")
 	ToHtmlCmd.Flags().StringVarP(&allToHTMLOptions.SourceFolder, "source", "s", "", "Source folder")
 	ToHtmlCmd.Flags().StringVar(&allToHTMLOptions.VCS, "vcs", "", "VCS type override (github, gitlab, bitbucket, generic); leave empty to auto-detect")
+	ToHtmlCmd.Flags().StringVar(&allToHTMLOptions.PullRequest, "pull-request", "", "Pull request ID; enables PR-aware links in the report. Falls back to CI env vars (GITHUB_REF, CI_MERGE_REQUEST_IID, BITBUCKET_PR_ID) when omitted.")
 	ToHtmlCmd.Flags().BoolVarP(&allToHTMLOptions.NoSuppressions, "no-supressions", "", false, "Enable removing results with suppressions properties")
 	ToHtmlCmd.Flags().BoolVar(&allToHTMLOptions.NoCSP, "no-csp", false, "Disable Content-Security-Policy meta tag in generated report")
 }
