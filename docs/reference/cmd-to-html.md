@@ -13,7 +13,7 @@ The `to-html` command converts sarif, standard sast output format, to a human-fr
 
 ## Syntax
 ```
-scanio to-html --input/-i PATH --output/-o PATH [--source/-s PATH] [--templates-path/-t PATH] [--pull-request/-p ID] [--no-supressions] [--no-csp]
+scanio to-html --input/-i PATH --output/-o PATH [--source/-s PATH] [--templates-path/-t PATH] [--pull-request ID] [--no-supressions] [--no-csp]
 ```
 
 ### Options
@@ -23,7 +23,7 @@ scanio to-html --input/-i PATH --output/-o PATH [--source/-s PATH] [--templates-
 | `--output`, `-o` | string | Yes | `none` | Path to output file, html report |
 | `--source`, `-s` | string | No | `none` | Path to source code folder |
 | `--templates-path`, `-t` | string | No | `none` | Path to templates folder |
-| `--pull-request`, `-p` | string | No | `none` | Pull request ID. Enables PR-aware links: the header pill links to the PR and each finding's "Location in PR" links to the PR diff at the exact line, with a secondary commit-permalink link. When omitted, auto-detected from CI env vars: GITHUB_REF (refs/pull/N/merge), CI_MERGE_REQUEST_IID, BITBUCKET_PR_ID |
+| `--pull-request` | string | No | `none` | Pull request ID. Enables PR-aware links: the header pill links to the PR and each finding's "Location in PR" links to the PR diff at the exact line, with a secondary commit-permalink link. When omitted, auto-detected from CI env vars: GITHUB_REF (refs/pull/N/merge), CI_MERGE_REQUEST_IID, BITBUCKET_PR_ID |
 | `--no-supressions` | bool | No | `false` | Enable removing results with suppressions properties |
 | `--no-csp` | bool | No | `false` | Disable the Content-Security-Policy meta tag in the generated report |
 
