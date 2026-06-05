@@ -2852,6 +2852,58 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           return m;
         }
 
+        // === buildFileLabels:start (extracted verbatim by cmd/to-html/toc_labels_test.go) ===
+        // buildFileLabels returns Map<fullPath,label> giving each path the shortest
+        // trailing path suffix that is unique across the whole dataset (zsh-style).
+        // Paths sharing a basename grow more segments until every label is globally
+        // distinct. Empty paths are skipped so callers fall back to '(unknown)'.
+        // Self-contained: no external helpers, so the Go test can run it standalone.
+        function buildFileLabels(dataset) {
+          const paths = [];
+          const seen = new Set();
+          for (const d of dataset) {
+            const p = d.file;
+            if (!p || seen.has(p)) continue;
+            seen.add(p);
+            paths.push(p);
+          }
+          const segs = new Map();
+          const depth = new Map();
+          for (const p of paths) {
+            segs.set(p, p.split('/').filter(Boolean));
+            depth.set(p, 1);
+          }
+          const labelFor = p => {
+            const parts = segs.get(p);
+            const n = Math.min(depth.get(p), parts.length);
+            return parts.slice(parts.length - n).join('/');
+          };
+          for (;;) {
+            const byLabel = new Map();
+            for (const p of paths) {
+              const l = labelFor(p);
+              let arr = byLabel.get(l);
+              if (!arr) { arr = []; byLabel.set(l, arr); }
+              arr.push(p);
+            }
+            let grew = false;
+            for (const group of byLabel.values()) {
+              if (group.length < 2) continue;
+              for (const p of group) {
+                if (depth.get(p) < segs.get(p).length) {
+                  depth.set(p, depth.get(p) + 1);
+                  grew = true;
+                }
+              }
+            }
+            if (!grew) break;
+          }
+          const out = new Map();
+          for (const p of paths) out.set(p, labelFor(p));
+          return out;
+        }
+        // === buildFileLabels:end ===
+
         // Render a list of findings sharing a (file,rule). N>=2: one row + chip strip.
         // N==1: single leaf row. Returns HTML.
         function renderRuleCluster(items, opts) {
