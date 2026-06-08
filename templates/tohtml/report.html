@@ -2270,6 +2270,10 @@
         <button class="pill pill--medium"   data-filter="medium"   aria-pressed="false"><span class="pill__dot"></span>Medium <span class="pill__n">{{index .Metadata.SeverityInfo "medium"}}</span></button>
         <button class="pill pill--low"      data-filter="low"      aria-pressed="false"><span class="pill__dot"></span>Low <span class="pill__n">{{index .Metadata.SeverityInfo "low"}}</span></button>
         <button class="pill pill--info"     data-filter="info"     aria-pressed="false"><span class="pill__dot"></span>Info <span class="pill__n">{{index .Metadata.SeverityInfo "info"}}</span></button>
+        {{- if .Metadata.RequiredEnabled}}
+        <span class="pill-sep" aria-hidden="true"></span>
+        <button class="pill pill--required" data-filter="required" aria-pressed="false">&#9873; Required <span class="pill__n">{{index .Metadata.RequiredInfo "required"}}</span></button>
+        {{- end}}
       </div>
       <div class="summary-bar__tools">
         <label class="search">
@@ -2647,11 +2651,13 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       // Unified filter state
       let activeSeverities = new Set();  // empty = "all"
       let activeSearch = '';
+      let requiredOnly = false;
 
       function isVisible(f) {
         if (activeSeverities.size > 0) {
           if (!activeSeverities.has(f.dataset.severity || 'unknown')) return false;
         }
+        if (requiredOnly && f.dataset.classification !== 'required') return false;
         if (activeSearch) {
           const tokens = activeSearch.toLowerCase().split(/\s+/).filter(Boolean);
           const hay = f.dataset.searchText || '';
@@ -2723,6 +2729,14 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       function applyVisibility() {
         clearHighlights();
         findings.forEach(f => { f.hidden = !isVisible(f); });
+        document.querySelectorAll('.findings-section').forEach(hdr => {
+          let el = hdr.nextElementSibling, anyVisible = false;
+          while (el && !el.classList.contains('findings-section')) {
+            if (el.classList.contains('finding') && !el.hidden) { anyVisible = true; break; }
+            el = el.nextElementSibling;
+          }
+          hdr.hidden = !anyVisible;
+        });
         if (refreshToc) refreshToc();
         updateMatchCount();
         updateSuppressedSectionVisibility();
@@ -2810,6 +2824,12 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         pills.forEach(p => p.addEventListener('click', () => {
           if (p.getAttribute('aria-disabled') === 'true') return;
           const sev = p.dataset.filter;
+          if (sev === 'required') {
+            requiredOnly = !requiredOnly;
+            p.setAttribute('aria-pressed', String(requiredOnly));
+            applyVisibility();
+            return;
+          }
           if (sev === 'all') {
             activeSeverities.clear();
           } else {
