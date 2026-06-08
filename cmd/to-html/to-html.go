@@ -37,6 +37,7 @@ type ToHTMLOptions struct {
 	PullRequest    string `json:"pull_request,omitempty"`
 	NoSuppressions bool   `json:"nosuppressions,omitempty"`
 	NoCSP          bool   `json:"no_csp,omitempty"`
+	Required       string `json:"required,omitempty"`
 }
 
 type VCSURLInfo struct {
@@ -63,6 +64,8 @@ type ReportMetadata struct {
 	SourceFolder string
 	SeverityInfo    map[string]int
 	SuppressionInfo map[string]int
+	RequiredEnabled bool
+	RequiredInfo    map[string]int
 	WebURL       string
 	BranchURL    string
 	CommitURL    string
@@ -237,7 +240,14 @@ var ToHtmlCmd = &cobra.Command{
 		sarifReport.EnrichResultsMetadataProperty()
 		sarifReport.EnrichResultsLocationURIProperty(locationURLCallback, prDiffURLCallback)
 		sarifReport.EnrichResultsSuppressionProperty()
-		sarifReport.SortResultsBySeverity()
+
+		requiredPolicy, requiredEnabled := parseRequiredPolicy(allToHTMLOptions.Required)
+		if requiredEnabled {
+			sarifReport.EnrichResultsRequiredProperty(requiredPolicy)
+			sarifReport.SortResultsByRequiredThenSeverity()
+		} else {
+			sarifReport.SortResultsBySeverity()
+		}
 
 		toolMetadata, err := sarifReport.ExtractToolNameAndVersion()
 		if err != nil {
@@ -247,6 +257,10 @@ var ToHtmlCmd = &cobra.Command{
 
 		severityInfo := sarifReport.CollectSeverityInfo()
 		suppressionInfo := sarifReport.CollectSuppressionInfo()
+		requiredInfo := map[string]int{"required": 0, "recommended": 0}
+		if requiredEnabled {
+			requiredInfo = sarifReport.CollectRequiredInfo()
+		}
 
 		metadataSourceFolder := allToHTMLOptions.SourceFolder
 		if config.IsCI(AppConfig) {
@@ -261,6 +275,8 @@ var ToHtmlCmd = &cobra.Command{
 			SourceFolder:       metadataSourceFolder,
 			SeverityInfo:       severityInfo,
 			SuppressionInfo:    suppressionInfo,
+			RequiredEnabled:    requiredEnabled,
+			RequiredInfo:       requiredInfo,
 		}
 		if parsedURL != nil {
 			metadata.WebURL = parsedURL.HTTPRepoLink
@@ -348,4 +364,5 @@ func init() {
 	ToHtmlCmd.Flags().StringVar(&allToHTMLOptions.PullRequest, "pull-request", "", "Pull request ID; enables PR-aware links in the report. Falls back to CI env vars (GITHUB_REF, CI_MERGE_REQUEST_IID, BITBUCKET_PR_ID) when omitted.")
 	ToHtmlCmd.Flags().BoolVarP(&allToHTMLOptions.NoSuppressions, "no-supressions", "", false, "Enable removing results with suppressions properties")
 	ToHtmlCmd.Flags().BoolVar(&allToHTMLOptions.NoCSP, "no-csp", false, "Disable Content-Security-Policy meta tag in generated report")
+	ToHtmlCmd.Flags().StringVar(&allToHTMLOptions.Required, "required", "", "Enable Required/Recommended classification. Comma list of blocker severities with optional per-severity confidence threshold, e.g. \"critical:0.50,high\". Falls back to SCANIO_BLOCKER_SEVERITIES and SCANIO_CONFIDENCE_THRESHOLD_<SEV> env vars when omitted.")
 }
