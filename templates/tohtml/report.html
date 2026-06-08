@@ -111,6 +111,10 @@
       --sev-low-fg: #59636e;     --sev-low-bg: #f6f8fa;     --sev-low-border: #d1d9e0;     --sev-low-dot: #636e79;
       --sev-info-fg: #0550ae;    --sev-info-bg: #ddf4ff;    --sev-info-border: #0969da;    --sev-info-dot: #0969da;
 
+      /* Required / Recommended palette — light */
+      --req-fg: #5a3f00; --req-bg: #fff8e0; --req-border: #c49000;
+      --rec-fg: #1a5e3a; --rec-bg: #e6f4ef; --rec-border: #2da06c;
+
       /* Primer tokens — light mode defaults */
       --bg-canvas: var(--bg-canvas-light);
       --bg-subtle: var(--bg-subtle-light);
@@ -190,6 +194,10 @@
       --sev-medium-fg: #e0c060;  --sev-medium-bg: #1c1500;  --sev-medium-border: #907600;  --sev-medium-dot: #9e8200;
       --sev-low-fg: var(--fg-default); --sev-low-bg: #21262d; --sev-low-border: #3d444d;   --sev-low-dot: #6e7681;
       --sev-info-fg: #79c0ff;    --sev-info-bg: #051d4d;    --sev-info-border: #1f6feb;    --sev-info-dot: #1f6feb;
+
+      /* Required / Recommended palette — dark */
+      --req-fg: #ffd86e; --req-bg: #2a1f00; --req-border: #9e7200;
+      --rec-fg: #56d399; --rec-bg: #0a2118; --rec-border: #1a7f4a;
 
       --search-mark-bg: #5c4000;
       --on-accent: var(--bg-canvas);
@@ -350,6 +358,29 @@
     .finding__badge--medium   .sev-dot, .finding__badge--warning  .sev-dot { background: var(--sev-medium-dot); }
     .finding__badge--low      .sev-dot, .finding__badge--unknown  .sev-dot, .finding__badge--note .sev-dot { background: var(--sev-low-dot); }
     .finding__badge--info     .sev-dot, .finding__badge--none     .sev-dot { background: var(--sev-info-dot); }
+
+    /* Required/Recommended in-card notice */
+    .req-notice { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); margin-bottom: var(--space-3); font-size: var(--text-sm); border: 1px solid; }
+    .req-notice--required    { background: var(--req-bg); color: var(--req-fg); border-color: var(--req-border); }
+    .req-notice--recommended { background: var(--rec-bg); color: var(--rec-fg); border-color: var(--rec-border); }
+    .req-notice__text strong { font-weight: 700; }
+
+    /* Section headers in the findings list */
+    .findings-section { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); margin: var(--space-3) 0 var(--space-2); border-radius: var(--radius-sm); font-size: var(--text-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+    .findings-section--required    { background: var(--req-bg); color: var(--req-fg); }
+    .findings-section--recommended { background: var(--rec-bg); color: var(--rec-fg); }
+    .findings-section__count { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; }
+
+    /* Required filter pill */
+    .pill--required { border-color: var(--req-border); color: var(--req-fg); background: var(--req-bg); }
+    .pill--required[aria-pressed="true"] { background: var(--req-fg); color: var(--req-bg); border-color: var(--req-fg); }
+    .pill-sep { display: inline-block; width: 1px; height: 18px; background: var(--border-default); margin: 0 var(--space-1); vertical-align: middle; }
+
+    /* TOC priority banners */
+    .tv-prio-hdr { display: flex; align-items: center; gap: var(--space-1); height: 24px; padding: 0 var(--space-2); border-radius: var(--radius-sm); margin: 4px var(--space-2) 1px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; user-select: none; }
+    .tv-prio-hdr--required    { background: var(--req-bg); color: var(--req-fg); }
+    .tv-prio-hdr--recommended { background: var(--rec-bg); color: var(--rec-fg); }
+    .tv-prio-hdr .tv-tc { margin-left: auto; }
 
     .finding__body {
       padding: var(--space-3) var(--space-4);
@@ -2295,7 +2326,7 @@
         {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
         {{ $locationWebURL := index $location.Properties "WebURL"}}
         {{ $locationPRWebURL := index $location.Properties "PRWebURL"}}
-        <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}">
+        <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-classification="{{if $.Metadata.RequiredEnabled}}{{if eq (index .Properties "Required") "true"}}required{{else}}recommended{{end}}{{end}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}">
           <summary class="finding__head">
             <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
             <span class="finding__num">#{{add $n 1}}</span><span class="finding__title" role="heading" aria-level="2" title="{{index .Properties "Title"}}">{{index .Properties "Title"}}</span>
@@ -2304,6 +2335,12 @@
             </span>
           </summary>
           <div class="finding__body">
+            {{- if $.Metadata.RequiredEnabled}}
+            {{- $req := eq (index .Properties "Required") "true"}}
+            <div class="req-notice req-notice--{{if $req}}required{{else}}recommended{{end}}">
+              <span class="req-notice__text"><strong>{{if $req}}Required to fix{{else}}Recommended{{end}}</strong>{{with index .Properties "RequiredReason"}} &mdash; {{.}}{{end}}</span>
+            </div>
+            {{- end}}
             {{- $supStatus := index .Properties "SuppressionStatus" -}}
             {{- if $supStatus}}
             <div class="finding__suppression finding__suppression--{{$supStatus}}">
