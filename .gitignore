@@ -78,3 +78,6 @@ data/
 playground/
 screenshots/
 *.local*
+.superpowers/
+.claude/
+docs/superpowers/
