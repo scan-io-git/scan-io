@@ -2956,9 +2956,12 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             ruleShort: shortRule(ruleId),
             file: f.querySelector('.finding__path')?.textContent.trim() || '',
             line: (f.querySelector('.finding__line')?.textContent || '').replace(/^:/, ''),
+            classification: f.dataset.classification || '',
             suppressed: f.dataset.suppressed === 'true'
           };
         });
+
+        const requiredEnabled = data.some(d => d.classification === 'required' || d.classification === 'recommended');
 
         const fileLabels = buildFileLabels(data);
         const SEV_ORDER = ['critical','high','medium','low','info','unknown'];
@@ -3082,46 +3085,65 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         }
 
         function buildSevTree(dataset, fileLabels) {
-          let html = '';
-          let rendered = 0;
           const activeItems = dataset.filter(d => !d.suppressed);
           const suppItems   = dataset.filter(d => d.suppressed);
-          SEV_ORDER.forEach(sev => {
-            const items = activeItems.filter(d => d.sev === sev);
-            if (!items.length) return;
-            const capSev = sev.charAt(0).toUpperCase() + sev.slice(1);
-            const sevId = 'sg-' + sev;
-            if (rendered > 0) html += '<div class="tv-sep"></div>';
-            rendered++;
-            html += '<div class="tv-tr tv-d0" data-grp-id="' + sevId + '">' +
-              chev + dot(sev) +
-              '<span class="tv-tl">' + capSev + '</span>' +
-              '<span class="tv-tc">' + items.length + '</span></div>';
-            const byFile = groupBy(items, d => d.file);
-            let fi = 0;
-            for (const [file, fileItems] of byFile) {
-              const basename = fileLabels.get(file) || '(unknown)';
-              const fileId = sevId + '-f' + fi++;
-              html += '<div class="tv-tr tv-d1" data-grp-parent="' + sevId + '" data-grp-id="' + fileId + '">' +
-                chev + fileIcon +
-                '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
-                '<span class="tv-tc">' + fileItems.length + '</span></div>';
-              // Aggressive dedup: group by rule within this file
-              const byRule = groupBy(fileItems, ruleKey);
-              for (const ruleItems of byRule.values()) {
-                html += renderRuleCluster(ruleItems, {
-                  leafDepth: 'tv-d2',
-                  parents: fileId + ' ' + sevId,
-                  chipClass: ''
-                });
+
+          function renderSevGroups(items, idSuffix) {
+            let html = '', rendered = 0;
+            SEV_ORDER.forEach(sev => {
+              const sevItems = items.filter(d => d.sev === sev);
+              if (!sevItems.length) return;
+              const capSev = sev.charAt(0).toUpperCase() + sev.slice(1);
+              const sevId = 'sg-' + sev + (idSuffix ? '-' + idSuffix : '');
+              if (rendered > 0) html += '<div class="tv-sep"></div>';
+              rendered++;
+              html += '<div class="tv-tr tv-d0" data-grp-id="' + sevId + '">' +
+                chev + dot(sev) +
+                '<span class="tv-tl">' + capSev + '</span>' +
+                '<span class="tv-tc">' + sevItems.length + '</span></div>';
+              const byFile = groupBy(sevItems, d => d.file);
+              let fi = 0;
+              for (const [file, fileItems] of byFile) {
+                const basename = fileLabels.get(file) || '(unknown)';
+                const fileId = sevId + '-f' + fi++;
+                html += '<div class="tv-tr tv-d1" data-grp-parent="' + sevId + '" data-grp-id="' + fileId + '">' +
+                  chev + fileIcon +
+                  '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
+                  '<span class="tv-tc">' + fileItems.length + '</span></div>';
+                const byRule = groupBy(fileItems, ruleKey);
+                for (const ruleItems of byRule.values()) {
+                  html += renderRuleCluster(ruleItems, {
+                    leafDepth: 'tv-d2',
+                    parents: fileId + ' ' + sevId,
+                    chipClass: ''
+                  });
+                }
               }
+            });
+            return html;
+          }
+
+          let html = '';
+          if (requiredEnabled) {
+            const req = activeItems.filter(d => d.classification === 'required');
+            const rec = activeItems.filter(d => d.classification !== 'required');
+            if (req.length) {
+              html += '<div class="tv-prio-hdr tv-prio-hdr--required" data-grp-id="pg-required">' +
+                '<span>&#9873; Required to fix</span><span class="tv-tc">' + req.length + '</span></div>';
+              html += '<div data-grp-parent="pg-required">' + renderSevGroups(req, 'req') + '</div>';
             }
-          });
-          // Suppressed group
+            if (rec.length) {
+              html += '<div class="tv-prio-hdr tv-prio-hdr--recommended" data-grp-id="pg-recommended">' +
+                '<span>&#10003; Recommended</span><span class="tv-tc">' + rec.length + '</span></div>';
+              html += '<div data-grp-parent="pg-recommended">' + renderSevGroups(rec, 'rec') + '</div>';
+            }
+          } else {
+            html += renderSevGroups(activeItems, '');
+          }
+
           if (suppItems.length) {
             const supGrpId = 'sg-suppressed';
-            if (rendered > 0) html += '<div class="tv-sep"></div>';
-            rendered++;
+            html += '<div class="tv-sep"></div>';
             html += '<div class="tv-tr tv-d0" data-grp-id="' + supGrpId + '">' +
               chev +
               '<span class="tv-tl">Suppressed</span>' +
