@@ -27,11 +27,12 @@ type Fetcher struct {
 	CleanWorkdir   bool               // Reset the working tree to HEAD and remove untracked files
 	ConcurrentJobs int                // Number of concurrent jobs to run
 	FetchScope     ftutils.FetchScope // Used to mark diff fetch mode.
+	FetchBase      bool               // Fetch the PR base commit into the local git store (PR mode only).
 	logger         hclog.Logger       // Logger for logging messages and errors
 }
 
 // New creates a new Fetcher instance with the provided configuration.
-func New(pluginName, authType, sshKey, outputPath string, rmListExts []string, repair, clean bool, jobs int, scope ftutils.FetchScope, logger hclog.Logger) *Fetcher {
+func New(pluginName, authType, sshKey, outputPath string, rmListExts []string, repair, clean bool, jobs int, scope ftutils.FetchScope, fetchBase bool, logger hclog.Logger) *Fetcher {
 	return &Fetcher{
 		PluginName:     pluginName,
 		AuthType:       authType,
@@ -42,6 +43,7 @@ func New(pluginName, authType, sshKey, outputPath string, rmListExts []string, r
 		CleanWorkdir:   clean,
 		ConcurrentJobs: jobs,
 		FetchScope:     scope,
+		FetchBase:      fetchBase,
 		logger:         logger,
 	}
 }
@@ -65,6 +67,10 @@ func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.Repository
 			f.logger.Warn("pr fetch mode", "msg", err)
 		}
 
+		if f.FetchBase && mode == ftutils.ModeDefault {
+			return nil, fmt.Errorf("--fetch-base requires PR mode (--pr-mode): %q has no pull request ID", repo.Repository)
+		}
+
 		if f.PluginName == "bitbucket" && strings.HasPrefix(repo.Namespace, "~") {
 			repo.Namespace = strings.TrimPrefix(repo.Namespace, "~") // in the case of user repos we should put results into the same folder for ssh and http links
 		}
@@ -79,7 +85,7 @@ func (f *Fetcher) PrepFetchReqList(cfg *config.Config, repos []shared.Repository
 		}
 
 		f.logger.Debug("Final destination determined", "outputPath", targetFolder)
-		fetchReqList = append(fetchReqList, f.createFetchRequest(repo, cloneURL, targetFolder, mode, depth, singleBranch, tagMode))
+		fetchReqList = append(fetchReqList, f.createFetchRequest(repo, cloneURL, targetFolder, mode, depth, singleBranch, tagMode, f.FetchBase))
 	}
 	return fetchReqList, nil
 }
@@ -93,7 +99,7 @@ func (f *Fetcher) getCloneURL(repo shared.RepositoryParams) string {
 }
 
 // createFetchRequest creates a VCSFetchRequest with the specified parameters.
-func (f *Fetcher) createFetchRequest(repo shared.RepositoryParams, cloneURL, targetFolder string, fetchMode ftutils.FetchMode, depth int, singleBranch bool, tagMode git.TagMode) shared.VCSFetchRequest {
+func (f *Fetcher) createFetchRequest(repo shared.RepositoryParams, cloneURL, targetFolder string, fetchMode ftutils.FetchMode, depth int, singleBranch bool, tagMode git.TagMode, fetchBase bool) shared.VCSFetchRequest {
 	return shared.VCSFetchRequest{
 		CloneURL:     cloneURL,
 		Branch:       repo.Branch,
@@ -108,6 +114,7 @@ func (f *Fetcher) createFetchRequest(repo shared.RepositoryParams, cloneURL, tar
 		AutoRepair:   f.AutoRepair,
 		CleanWorkdir: f.CleanWorkdir,
 		RepoParam:    repo,
+		FetchBase:    fetchBase,
 	}
 }
 

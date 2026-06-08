@@ -285,6 +285,23 @@ func sortedKeys(m map[string]map[int]string) []string {
 	return keys
 }
 
+// EnsureCommitPresent fetches the given commit SHA into repoPath if it is not
+// already present in the local object store. It is safe to call when the commit
+// is already available (no-op). Returns an error if the SHA is empty or the
+// fetch fails.
+func EnsureCommitPresent(gitClient *Client, repoPath, sha string) error {
+	if sha == "" {
+		return fmt.Errorf("commit SHA is required")
+	}
+
+	repo, err := git.PlainOpen(repoPath)
+	if err != nil {
+		return fmt.Errorf("failed to open repository %q: %w", repoPath, err)
+	}
+
+	return ensureCommitPresent(gitClient, repo, plumbing.NewHash(sha))
+}
+
 // ensureCommitPresent verifies that the given commit hash exists locally, using
 // the supplied gitClient to fetch it from the remote when required.
 func ensureCommitPresent(gitClient *Client, repo *git.Repository, hash plumbing.Hash) error {
