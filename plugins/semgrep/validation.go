@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/scan-io-git/scan-io/pkg/shared"
@@ -12,7 +13,9 @@ func (g *ScannerSemgrep) validateScan(args *shared.ScannerScanRequest) error {
 	if err := validation.ValidateScanArgs(args); err != nil {
 		return err
 	}
-
+	if args.Command != "" && args.Command != ciCommand {
+		return fmt.Errorf("unsupported command %q: only %q is supported", args.Command, ciCommand)
+	}
 	return nil
 }
 

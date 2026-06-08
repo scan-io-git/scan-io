@@ -21,17 +21,19 @@ type Scanner struct {
 	ConfigPath     string       // Path to the configuration file for the scanner
 	ReportFormat   string       // Format of the report to generate (e.g., JSON, Sarif)
 	AdditionalArgs []string     // Additional arguments for the scanner
+	Command        string       // Scanner subcommand override; interpretation is plugin-specific, not all plugins support this
 	ConcurrentJobs int          // Number of concurrent jobs to run
 	logger         hclog.Logger // Logger for logging messages and errors
 }
 
 // New creates a new Scanner instance with the provided configuration.
-func New(pluginName, configPath, reportFormat string, additionalArgs []string, concurrentJobs int, logger hclog.Logger) *Scanner {
+func New(pluginName, configPath, reportFormat, command string, additionalArgs []string, concurrentJobs int, logger hclog.Logger) *Scanner {
 	return &Scanner{
 		PluginName:     pluginName,
 		ConfigPath:     configPath,
 		ReportFormat:   reportFormat,
 		AdditionalArgs: additionalArgs,
+		Command:        command,
 		ConcurrentJobs: concurrentJobs,
 		logger:         logger,
 	}
@@ -138,6 +140,7 @@ func (s *Scanner) createScanRequest(targetPath, resultsFile string) shared.Scann
 		ConfigPath:     s.ConfigPath,
 		ReportFormat:   s.ReportFormat,
 		AdditionalArgs: s.AdditionalArgs,
+		Command:        s.Command,
 	}
 }
 

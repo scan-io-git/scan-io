@@ -111,6 +111,11 @@ func (g *ScannerTrufflehog3) Scan(args shared.ScannerScanRequest) (shared.Scanne
 	g.logger.Info("Scan is starting", "project", args.TargetPath)
 	g.logger.Debug("Scan arguments", "args", args)
 
+	if err := g.validateScan(&args); err != nil {
+		g.logger.Error("validation failed for scan operation", "error", err)
+		return result, err
+	}
+
 	if err := g.handleGlobalConfig(args); err != nil {
 		g.logger.Error("Failed to handle global configuration", "error", err)
 		return result, fmt.Errorf("failed to handle global configuration: %w", err)

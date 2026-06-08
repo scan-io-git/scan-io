@@ -13,7 +13,9 @@ func (g *ScannerCodeQL) validateScan(args *shared.ScannerScanRequest) error {
 	if err := validation.ValidateScanArgs(args); err != nil {
 		return err
 	}
-
+	if args.Command != "" {
+		g.logger.Warn("--command is not supported by this scanner and will be ignored", "command", args.Command)
+	}
 	return nil
 }
 
