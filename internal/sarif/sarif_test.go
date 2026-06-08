@@ -667,6 +667,63 @@ func TestEnrichResultsCategoryProperty_FallsBackToOther(t *testing.T) {
 	}
 }
 
+func TestEnrichResultsCategoryProperty_TruffleHog3DriverName(t *testing.T) {
+	// TruffleHog3 uses detector names as rule IDs with no CWE tags.
+	id := "Generic API Key"
+	rule := &gosarif.ReportingDescriptor{ID: id}
+	result := resultFor(id)
+	report := makeSimpleReport(id, rule, result)
+	report.Runs[0].Tool.Driver.Name = "TruffleHog3"
+
+	report.EnrichResultsCategoryProperty()
+
+	cat, _ := result.Properties["Category"].(string)
+	if cat != "Hardcoded secret" {
+		t.Errorf("Category: want %q, got %q", "Hardcoded secret", cat)
+	}
+	slug, _ := result.Properties["CategorySlug"].(string)
+	if slug != "SECRETS" {
+		t.Errorf("CategorySlug: want %q, got %q", "SECRETS", slug)
+	}
+}
+
+func TestEnrichResultsCategoryProperty_GitleaksDriverName(t *testing.T) {
+	// Gitleaks uses detector names as rule IDs with no CWE tags.
+	id := "aws-access-key"
+	rule := &gosarif.ReportingDescriptor{ID: id}
+	result := resultFor(id)
+	report := makeSimpleReport(id, rule, result)
+	report.Runs[0].Tool.Driver.Name = "gitleaks"
+
+	report.EnrichResultsCategoryProperty()
+
+	cat, _ := result.Properties["Category"].(string)
+	if cat != "Hardcoded secret" {
+		t.Errorf("Category: want %q, got %q", "Hardcoded secret", cat)
+	}
+	slug, _ := result.Properties["CategorySlug"].(string)
+	if slug != "SECRETS" {
+		t.Errorf("CategorySlug: want %q, got %q", "SECRETS", slug)
+	}
+}
+
+func TestEnrichResultsCategoryProperty_SecretScannerOverridesKeyword(t *testing.T) {
+	// "github-oauth" contains "auth" — keyword path would resolve AUTH, but the
+	// scanner-name path must win and return SECRETS.
+	id := "github-oauth"
+	rule := &gosarif.ReportingDescriptor{ID: id}
+	result := resultFor(id)
+	report := makeSimpleReport(id, rule, result)
+	report.Runs[0].Tool.Driver.Name = "gitleaks"
+
+	report.EnrichResultsCategoryProperty()
+
+	slug, _ := result.Properties["CategorySlug"].(string)
+	if slug != "SECRETS" {
+		t.Errorf("CategorySlug: want %q (scanner path wins), got %q", "SECRETS", slug)
+	}
+}
+
 // ── EnrichResultsConfidenceProperty ──────────────────────────────────────────
 
 func TestEnrichResultsConfidenceProperty_FloatPropOverridesTag(t *testing.T) {

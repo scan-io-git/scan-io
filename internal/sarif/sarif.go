@@ -698,6 +698,8 @@ func calculateMD5Hash(text string) string {
 // Properties["CategorySlug"] (machine value) for each result. Defaults to CategoryOther
 // when no CWE tag or rule-ID keyword matches.
 func (r Report) EnrichResultsCategoryProperty() {
+	scanner := r.Runs[0].Tool.Driver.Name
+
 	rulesMap := map[string]*sarif.ReportingDescriptor{}
 	for _, rule := range r.Runs[0].Tool.Driver.Rules {
 		rulesMap[rule.ID] = rule
@@ -705,7 +707,7 @@ func (r Report) EnrichResultsCategoryProperty() {
 
 	for _, result := range r.Runs[0].Results {
 		rule := rulesMap[*result.RuleID]
-		cat, ok := resolveCategory(*result.RuleID, rule)
+		cat, ok := resolveCategory(scanner, *result.RuleID, rule)
 		if !ok {
 			cat = CategoryOther
 		}

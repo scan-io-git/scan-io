@@ -168,9 +168,22 @@ var (
 	cweCodeQLRE  = regexp.MustCompile(`(?i)^external/cwe/cwe-(\d+)$`)
 )
 
-// resolveCategory derives a Category from rule taxonomy tags, with a rule-ID keyword fallback.
-// Returns ("", false) when no signal is present — caller should omit the property.
-func resolveCategory(ruleID string, rule *sarif.ReportingDescriptor) (Category, bool) {
+// secretScanners are dedicated secret scanners whose every finding is a secret.
+// They emit no CWE tags and use detector names as rule IDs, so the CWE and
+// keyword paths below never fire — match them by tool driver name instead.
+var secretScanners = map[string]Category{
+	"trufflehog3": CategorySecrets,
+	"trufflehog":  CategorySecrets,
+	"gitleaks":    CategorySecrets,
+}
+
+// resolveCategory derives a Category from the tool driver name, rule taxonomy tags,
+// or rule-ID keywords (in that order). Returns ("", false) when no signal is present.
+func resolveCategory(scanner, ruleID string, rule *sarif.ReportingDescriptor) (Category, bool) {
+	if cat, ok := secretScanners[strings.ToLower(strings.TrimSpace(scanner))]; ok {
+		return cat, true
+	}
+
 	if rule != nil {
 		tags, _ := rule.Properties["tags"].([]any)
 		for _, t := range tags {
