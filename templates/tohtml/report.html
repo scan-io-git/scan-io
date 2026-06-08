@@ -2317,9 +2317,20 @@
       </div> -->
 
       {{$n := 0}}
+      {{$lastSection := ""}}
       <div class="findings">
         {{range .Results}}
         {{- if ne (index .Properties "Suppressed") "true"}}
+        {{- if $.Metadata.RequiredEnabled}}
+        {{- $sec := "recommended"}}{{if eq (index .Properties "Required") "true"}}{{$sec = "required"}}{{end}}
+        {{- if ne $sec $lastSection}}
+        <div class="findings-section findings-section--{{$sec}}" data-section="{{$sec}}">
+          {{if eq $sec "required"}}&#9873; Required to fix{{else}}&#10003; Recommended{{end}}
+          <span class="findings-section__count">{{if eq $sec "required"}}{{index $.Metadata.RequiredInfo "required"}}{{else}}{{index $.Metadata.RequiredInfo "recommended"}}{{end}}</span>
+        </div>
+        {{- $lastSection = $sec}}
+        {{- end}}
+        {{- end}}
         {{ $severity := index .Properties "Severity"}}
         {{ $location := index .Locations 0}}
         {{ $locationURI := index $location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
