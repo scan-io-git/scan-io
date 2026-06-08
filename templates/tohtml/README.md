@@ -23,6 +23,8 @@ All tokens live in the `:root` block in `report.html`. The design kit mirrors th
 |-------|--------|-------|
 | Brand | `--brand-green` | `#0f7a51` light / `#3ddc8e` dark |
 | Severity | `--sev-{level}-{fg/bg}` | per severity, per theme |
+| Required | `--req-fg/bg/border` | amber palette, per theme |
+| Recommended | `--rec-fg/bg/border` | green palette, per theme |
 | Type | `--text-xs` .. `--text-2xl` | 11px .. 20px |
 | Shadow | `--shadow-xs` .. `--shadow-lg` | |
 | Z-index | `--z-sticky` .. `--z-dialog` | 20 .. 1000 |
@@ -34,7 +36,13 @@ Type steps are distinct (no aliases): `xs` 11, `sm` 12, `base` 14, `lg` 16, `xl`
 
 ## Example report
 
-`templates/tohtml/example/` contains a synthetic SARIF (`example.sarif`) and the rendered HTML (`example.html`). The SARIF embeds `region.snippet.text` on every code location, so no source checkout is needed to render it.
+`templates/tohtml/example/` contains a synthetic SARIF (`example.sarif`) and three rendered HTML reports:
+
+- `example.html` — baseline report (no classification)
+- `example-pr.html` — PR mode with `--pull-request 42`
+- `example-required.html` — Required/Recommended mode with `--required "critical,high"`
+
+The SARIF embeds `region.snippet.text` on every code location, so no source checkout is needed to render it.
 
 The example covers: all five severity levels, all three suppression statuses (accepted / underReview / rejected), single-line column highlights, multi-line highlights, multi-step data flows, affected-code-only findings, findings with and without fix/references, and same-rule deduplication across multiple files (TOC chip clustering).
 
@@ -44,7 +52,25 @@ Regenerate after changing the template:
 make example-report
 ```
 
-Then commit the updated `example.html` alongside the template change. See `AGENTS.md` for the full verification checklist.
+Then commit the updated HTML files alongside the template change. See `AGENTS.md` for the full verification checklist.
+
+## Required / Recommended classification
+
+When `--required` is passed to `scanio to-html`, findings are classified as Required to fix or Recommended based on severity and confidence.
+
+**Template data:** `Metadata.RequiredEnabled` (bool) gates all classification output. When `false` the report is byte-identical to the baseline. `Metadata.RequiredInfo` carries `"required"` and `"recommended"` counts.
+
+**Per-finding data:** `Properties["Required"]` (`"true"`/`"false"`) and `Properties["RequiredReason"]` (human-readable rationale, e.g. `"High severity, confidence 85% >= 60% threshold"`). Set by `EnrichResultsRequiredProperty` in `internal/sarif/required.go`; absent when classification is off.
+
+**DOM attributes:** each active `.finding` element carries `data-classification="required"` or `data-classification="recommended"` (empty string when off). The JS filter and TOC read from this attribute.
+
+**UI surfaces:**
+- `.findings-section` divs emitted on classification transition in the findings loop (Required group first, then Recommended). Hidden by `applyVisibility` when all their findings are filtered out.
+- `.req-notice` banner inside each `.finding__body` (guarded by `RequiredEnabled`).
+- `.pill--required` filter pill in the summary bar (template-gated). Toggling it sets `requiredOnly` and calls `applyVisibility`. Reset by the "All" pill, Escape, and the clear-filters button.
+- TOC `buildSevTree` splits active items into Required/Recommended bands under `.tv-prio-hdr` banner headers when `requiredEnabled` is derived from the dataset.
+
+**Design tokens:** `--req-fg/bg/border` (amber) and `--rec-fg/bg/border` (green), both themes.
 
 ## Suggested fix
 
