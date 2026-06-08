@@ -2832,6 +2832,11 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           }
           if (sev === 'all') {
             activeSeverities.clear();
+            if (requiredOnly) {
+              requiredOnly = false;
+              const reqPill = document.querySelector('.pill[data-filter="required"]');
+              if (reqPill) reqPill.setAttribute('aria-pressed', 'false');
+            }
           } else {
             if (activeSeverities.has(sev)) activeSeverities.delete(sev);
             else activeSeverities.add(sev);
@@ -2883,7 +2888,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         const visible = findings.filter(f => !f.hidden && f.dataset.suppressed !== 'true').length;
         noResults.hidden = visible > 0;
         if (countEl) {
-          const isFiltered = activeSeverities.size > 0 || activeSearch !== '';
+          const isFiltered = activeSeverities.size > 0 || activeSearch !== '' || requiredOnly;
           countEl.textContent = isFiltered ? `${visible} of {{index .Metadata.SeverityInfo "active"}} shown` : '';
         }
       }
@@ -2893,6 +2898,9 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         if (!btn) return;
         btn.addEventListener('click', () => {
           activeSeverities.clear();
+          requiredOnly = false;
+          const reqPill = document.querySelector('.pill[data-filter="required"]');
+          if (reqPill) reqPill.setAttribute('aria-pressed', 'false');
           activeSearch = '';
           if (searchInput) searchInput.value = '';
           if (syncPillState) syncPillState();
@@ -3560,6 +3568,9 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           if (e.key === 'Escape') {
             if (helpDialog?.open) { closeHelp(); e.preventDefault(); return; }
             activeSeverities.clear();
+            requiredOnly = false;
+            const reqPill = document.querySelector('.pill[data-filter="required"]');
+            if (reqPill) reqPill.setAttribute('aria-pressed', 'false');
             activeSearch = '';
             if (searchInput) searchInput.value = '';
             if (syncPillState) syncPillState();
