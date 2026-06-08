@@ -13,7 +13,7 @@ The `to-html` command converts sarif, standard sast output format, to a human-fr
 
 ## Syntax
 ```
-scanio to-html --input/-i PATH --output/-o PATH [--source/-s PATH] [--templates-path/-t PATH] [--pull-request ID] [--no-supressions] [--no-csp]
+scanio to-html --input/-i PATH --output/-o PATH [--source/-s PATH] [--templates-path/-t PATH] [--pull-request ID] [--required SEVERITIES] [--no-supressions] [--no-csp]
 ```
 
 ### Options
@@ -26,6 +26,7 @@ scanio to-html --input/-i PATH --output/-o PATH [--source/-s PATH] [--templates-
 | `--pull-request` | string | No | `none` | Pull request ID. Enables PR-aware links: the header pill links to the PR and each finding's "Location in PR" links to the PR diff at the exact line, with a secondary commit-permalink link. When omitted, auto-detected from CI env vars: GITHUB_REF (refs/pull/N/merge), CI_MERGE_REQUEST_IID, BITBUCKET_PR_ID |
 | `--no-supressions` | bool | No | `false` | Enable removing results with suppressions properties |
 | `--no-csp` | bool | No | `false` | Disable the Content-Security-Policy meta tag in the generated report |
+| `--required` | string | No | `none` | Comma-separated severities that must be fixed, with optional per-severity confidence threshold, e.g. `critical:0.50,high:0.90,medium`. When set, findings are split into "Required to fix" and "Recommended" sections. Env var fallback: `SCANIO_BLOCKER_SEVERITIES` (comma list); per-severity threshold via `SCANIO_CONFIDENCE_THRESHOLD_<SEV>` (e.g. `SCANIO_CONFIDENCE_THRESHOLD_HIGH=0.90`). The flag wins over env vars. |
 
 ## Usage Examples
 The following examples demonstrate how to use the `to-html` command.
@@ -99,6 +100,45 @@ When `--pull-request` is set (or detected from CI env vars), the report renders 
 - Each finding card shows "Location in PR" linking to the PR diff at the exact line (GitHub: `#diff-<sha256(path)>R<line>`, GitLab: `#<sha1(path)>_<line>_<line>`, Bitbucket: `#<path>?t=<line>`).
 - A secondary "at commit" link is shown beneath, preserving the exact-line commit permalink.
 - Inline data-flow step links are unaffected (always commit links).
+
+**Required to fix — block on critical and high findings**
+Mark critical and high severity findings as required. Any finding at those severities is required regardless of confidence.
+```bash
+scanio to-html -i results.sarif -o report.html --required "critical,high"
+```
+
+**Required to fix — with per-severity confidence thresholds**
+Only require a finding if its confidence score is at or below the threshold. For example, require critical findings with confidence up to 0.50 and high findings with confidence up to 0.90.
+```bash
+scanio to-html -i results.sarif -o report.html --required "critical:0.50,high:0.90"
+```
+
+Default thresholds when a severity is listed without an explicit value:
+
+| Severity | Default threshold |
+|----------|------------------|
+| critical | 0.50 |
+| high | 0.60 |
+| medium | 0.70 |
+| low | 0.80 |
+| info | 1.10 |
+
+**Required to fix — env var configuration**
+Set `SCANIO_BLOCKER_SEVERITIES` and optional `SCANIO_CONFIDENCE_THRESHOLD_<SEV>` env vars instead of passing the flag. The `--required` flag wins if both are set.
+```bash
+export SCANIO_BLOCKER_SEVERITIES="critical,high"
+export SCANIO_CONFIDENCE_THRESHOLD_HIGH=0.90
+scanio to-html -i results.sarif -o report.html
+```
+
+When `--required` is set (or detected from env vars):
+- Findings are split into "Required to fix" and "Recommended" sections in the findings list and TOC.
+- A "Required" filter pill appears in the summary bar.
+- Each expanded finding card shows a notice banner explaining why the finding is required.
+- The TOC groups findings by priority (Required first) before severity.
+- Findings with no confidence score are treated as fully confident and are required if their severity matches.
+
+When `--required` is absent, the report is identical to the default — no Required/Recommended distinction.
 
 ## Report features
 

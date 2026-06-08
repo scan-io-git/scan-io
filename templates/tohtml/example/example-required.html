@@ -2,8 +2,8 @@
 <html lang="en">
 
 <head>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-FvGYpjj5Est9XQdge011dg'; style-src 'nonce-FvGYpjj5Est9XQdge011dg'; img-src data:; base-uri 'none'; form-action 'none'">
-  <script nonce="FvGYpjj5Est9XQdge011dg">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-1Us2Xx-npz69Xb5BKLhOTw'; style-src 'nonce-1Us2Xx-npz69Xb5BKLhOTw'; img-src data:; base-uri 'none'; form-action 'none'">
+  <script nonce="1Us2Xx-npz69Xb5BKLhOTw">
 (function(){
   var stored = localStorage.getItem('theme');
   var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -16,11 +16,11 @@
   <meta http-equiv="Content-Language" content="en-us">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Scanio Demo Report (PR #42)</title>
+  <title>Scanio Demo Report (Required/Recommended)</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='4' fill='%230f7a51'/><text x='8' y='12' font-family='system-ui,sans-serif' font-size='11' font-weight='700' text-anchor='middle' fill='white'>S</text></svg>">
   <base target="_blank">
 
-  <style type="text/css" nonce="FvGYpjj5Est9XQdge011dg">
+  <style type="text/css" nonce="1Us2Xx-npz69Xb5BKLhOTw">
     :root {
        
       --bg-canvas-light: #ffffff;
@@ -2204,10 +2204,7 @@
           <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-commit"/></svg>
           <code>#daaee19</code>
         </a>
-        <a class="report-header__pill report-header__pill--pr" href="https://github.com/scan-io-git/scanio-demo/pull/42" target="_blank" rel="noopener" title="Pull request #42">
-          <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-pull-request"/></svg>
-          <code>#42</code>
-        </a>
+        
         <span class="report-header__tool-label">Semgrep OSS 1.95.0</span>
         <span class="report-header__inline-divider" aria-hidden="true"></span>
         <button class="report-header__icon-btn report-header__help-btn" type="button" aria-label="Keyboard shortcuts" id="help-btn-inline">
@@ -2239,10 +2236,7 @@
             <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-commit"/></svg>
             <a href="https://github.com/scan-io-git/scanio-demo/commit/daaee1979c3ee11cb403567a256ad250d7a34986" target="_blank" rel="noopener"><code>#daaee19</code></a>
           </div>
-          <div class="header-kebab__meta-item" role="menuitem">
-            <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-pull-request"/></svg>
-            <a href="https://github.com/scan-io-git/scanio-demo/pull/42" target="_blank" rel="noopener">PR #42</a>
-          </div>
+          
           <div class="header-kebab__meta-item header-kebab__meta-item--tool" role="menuitem">
             Semgrep OSS 1.95.0
           </div>
@@ -2268,6 +2262,8 @@
         <button class="pill pill--medium"   data-filter="medium"   aria-pressed="false"><span class="pill__dot"></span>Medium <span class="pill__n">9</span></button>
         <button class="pill pill--low"      data-filter="low"      aria-pressed="false"><span class="pill__dot"></span>Low <span class="pill__n">2</span></button>
         <button class="pill pill--info"     data-filter="info"     aria-pressed="false"><span class="pill__dot"></span>Info <span class="pill__n">1</span></button>
+        <span class="pill-sep" aria-hidden="true"></span>
+        <button class="pill pill--required" data-filter="required" aria-pressed="false">&#9873; Required <span class="pill__n">5</span></button>
       </div>
       <div class="summary-bar__tools">
         <label class="search">
@@ -2317,13 +2313,17 @@
       
       <div class="findings">
         
+        <div class="findings-section findings-section--required" data-section="required">
+          &#9873; Required to fix
+          <span class="findings-section__count">5</span>
+        </div>
         
         
         
         
         
         
-        <details id="issue-0" data-issue-num="1" class="finding finding--critical" data-severity="critical" data-classification="" data-rule-id="python.flask.security.audit.sql-injection">
+        <details id="issue-0" data-issue-num="1" class="finding finding--critical" data-severity="critical" data-classification="required" data-rule-id="python.flask.security.audit.sql-injection">
           <summary class="finding__head">
             <span class="finding__badge finding__badge--critical"><span class="sev-dot" aria-hidden="true"></span>critical</span>
             <span class="finding__num">#1</span><span class="finding__title" role="heading" aria-level="2" title="SQL injection via unsanitized user input">SQL injection via unsanitized user input</span>
@@ -2332,6 +2332,9 @@
             </span>
           </summary>
           <div class="finding__body">
+            <div class="req-notice req-notice--required">
+              <span class="req-notice__text"><strong>Required to fix</strong> &mdash; Critical severity, confidence 85% &gt;= 50% threshold</span>
+            </div>
             <dl class="finding__meta-dl">
               <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Injection</dd>
               <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">High (85%)</dd>
@@ -2340,7 +2343,7 @@
             </dl>
             <p class="finding__description">Unsanitized user input from request.args is concatenated directly into a SQL query. Use parameterized queries to prevent SQL injection.</p>
             <div class="finding__location">
-              Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-2b5515043a2bd4e12be4d1847276b542fcfeaa6232c7d7a655dedab138b32e48R23" target="_blank" rel="noopener noreferrer">app/db.py (line 23)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/db.py#L23" target="_blank" rel="noopener noreferrer">app/db.py (line 23)</a></span>
+              Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/db.py#L23" target="_blank" rel="noopener noreferrer">app/db.py (line 23)</a></strong>
             </div>
             <div class="finding__df-block">
               <header class="finding__df-header">
@@ -2461,7 +2464,7 @@
         
         
         
-        <details id="issue-1" data-issue-num="2" class="finding finding--critical" data-severity="critical" data-classification="" data-rule-id="generic.secrets.security.hardcoded-aws-key">
+        <details id="issue-1" data-issue-num="2" class="finding finding--critical" data-severity="critical" data-classification="required" data-rule-id="generic.secrets.security.hardcoded-aws-key">
           <summary class="finding__head">
             <span class="finding__badge finding__badge--critical"><span class="sev-dot" aria-hidden="true"></span>critical</span>
             <span class="finding__num">#2</span><span class="finding__title" role="heading" aria-level="2" title="Hardcoded AWS access key">Hardcoded AWS access key</span>
@@ -2470,6 +2473,9 @@
             </span>
           </summary>
           <div class="finding__body">
+            <div class="req-notice req-notice--required">
+              <span class="req-notice__text"><strong>Required to fix</strong> &mdash; Critical severity, confidence 85% &gt;= 50% threshold</span>
+            </div>
             <dl class="finding__meta-dl">
               <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Hardcoded secret</dd>
               <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">High (85%)</dd>
@@ -2478,7 +2484,7 @@
             </dl>
             <p class="finding__description">Hardcoded AWS secret access key detected. Rotate this credential immediately and store secrets in environment variables or a secrets manager.</p>
             <div class="finding__location">
-              Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-935426a2f59d34e9506987404f8d78b5b5b43431694101f5be37ad65af4cf193R8" target="_blank" rel="noopener noreferrer">config/settings.py (line 8)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/config/settings.py#L8" target="_blank" rel="noopener noreferrer">config/settings.py (line 8)</a></span>
+              Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/config/settings.py#L8" target="_blank" rel="noopener noreferrer">config/settings.py (line 8)</a></strong>
             </div>
             <div class="finding__df-block">
               <header class="finding__df-header">
@@ -2550,9 +2556,7 @@ Or use AWS IAM roles / instance profiles to avoid storing credentials in code en
         
         
         
-        
-        
-        <details id="issue-2" data-issue-num="3" class="finding finding--high" data-severity="high" data-classification="" data-rule-id="python.lang.security.audit.dangerous-system-call">
+        <details id="issue-2" data-issue-num="3" class="finding finding--high" data-severity="high" data-classification="required" data-rule-id="python.lang.security.audit.dangerous-system-call">
           <summary class="finding__head">
             <span class="finding__badge finding__badge--high"><span class="sev-dot" aria-hidden="true"></span>high</span>
             <span class="finding__num">#3</span><span class="finding__title" role="heading" aria-level="2" title="OS command injection via user-controlled input">OS command injection via user-controlled input</span>
@@ -2561,6 +2565,9 @@ Or use AWS IAM roles / instance profiles to avoid storing credentials in code en
             </span>
           </summary>
           <div class="finding__body">
+            <div class="req-notice req-notice--required">
+              <span class="req-notice__text"><strong>Required to fix</strong> &mdash; High severity, confidence 85% &gt;= 60% threshold</span>
+            </div>
             <dl class="finding__meta-dl">
               <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Command injection</dd>
               <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">High (85%)</dd>
@@ -2569,7 +2576,7 @@ Or use AWS IAM roles / instance profiles to avoid storing credentials in code en
             </dl>
             <p class="finding__description">User-controlled data flows into os.system(). An attacker can inject shell metacharacters to execute arbitrary commands on the host.</p>
             <div class="finding__location">
-              Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-0c2bad94cd303c5944a38a94f62a63355b8bed2e102dc87c0f44de95cf135b8aR47" target="_blank" rel="noopener noreferrer">app/views.py (line 47)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/views.py#L47" target="_blank" rel="noopener noreferrer">app/views.py (line 47)</a></span>
+              Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/views.py#L47" target="_blank" rel="noopener noreferrer">app/views.py (line 47)</a></strong>
             </div>
             <div class="finding__df-block">
               <header class="finding__df-header">
@@ -2665,7 +2672,7 @@ Or use AWS IAM roles / instance profiles to avoid storing credentials in code en
         
         
         
-        <details id="issue-3" data-issue-num="4" class="finding finding--high" data-severity="high" data-classification="" data-rule-id="python.requests.security.ssrf-injection">
+        <details id="issue-3" data-issue-num="4" class="finding finding--high" data-severity="high" data-classification="required" data-rule-id="python.requests.security.ssrf-injection">
           <summary class="finding__head">
             <span class="finding__badge finding__badge--high"><span class="sev-dot" aria-hidden="true"></span>high</span>
             <span class="finding__num">#4</span><span class="finding__title" role="heading" aria-level="2" title="Server-side request forgery (SSRF)">Server-side request forgery (SSRF)</span>
@@ -2674,6 +2681,9 @@ Or use AWS IAM roles / instance profiles to avoid storing credentials in code en
             </span>
           </summary>
           <div class="finding__body">
+            <div class="req-notice req-notice--required">
+              <span class="req-notice__text"><strong>Required to fix</strong> &mdash; High severity, confidence 65% &gt;= 60% threshold</span>
+            </div>
             <dl class="finding__meta-dl">
               <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">SSRF</dd>
               <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Medium (65%)</dd>
@@ -2682,7 +2692,7 @@ Or use AWS IAM roles / instance profiles to avoid storing credentials in code en
             </dl>
             <p class="finding__description">A URL supplied by the user is passed to requests.get() without validation. An attacker can make the server send requests to internal services, cloud metadata APIs, or arbitrary external hosts.</p>
             <div class="finding__location">
-              Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-0c2bad94cd303c5944a38a94f62a63355b8bed2e102dc87c0f44de95cf135b8aR67" target="_blank" rel="noopener noreferrer">app/views.py (line 67)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/views.py#L67" target="_blank" rel="noopener noreferrer">app/views.py (line 67)</a></span>
+              Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/views.py#L67" target="_blank" rel="noopener noreferrer">app/views.py (line 67)</a></strong>
             </div>
             <div class="finding__df-block">
               <header class="finding__df-header">
@@ -2746,7 +2756,7 @@ Or use AWS IAM roles / instance profiles to avoid storing credentials in code en
         
         
         
-        <details id="issue-4" data-issue-num="5" class="finding finding--high" data-severity="high" data-classification="" data-rule-id="python.lang.security.audit.deep-nested-path-traversal-and-archive-extraction">
+        <details id="issue-4" data-issue-num="5" class="finding finding--high" data-severity="high" data-classification="required" data-rule-id="python.lang.security.audit.deep-nested-path-traversal-and-archive-extraction">
           <summary class="finding__head">
             <span class="finding__badge finding__badge--high"><span class="sev-dot" aria-hidden="true"></span>high</span>
             <span class="finding__num">#5</span><span class="finding__title" role="heading" aria-level="2" title="Path traversal via unsanitized filename in archive extraction — arbitrary write outside extraction root">Path traversal via unsanitized filename in archive extraction — arbitrary write outside extraction root</span>
@@ -2755,6 +2765,9 @@ Or use AWS IAM roles / instance profiles to avoid storing credentials in code en
             </span>
           </summary>
           <div class="finding__body">
+            <div class="req-notice req-notice--required">
+              <span class="req-notice__text"><strong>Required to fix</strong> &mdash; High severity, confidence 85% &gt;= 60% threshold</span>
+            </div>
             <dl class="finding__meta-dl">
               <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Path traversal</dd>
               <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">High (85%)</dd>
@@ -2763,7 +2776,7 @@ Or use AWS IAM roles / instance profiles to avoid storing credentials in code en
             </dl>
             <p class="finding__description">Archive member filename from a user-uploaded ZIP is used in os.path.join and passed to zipfile.extract without validating that the resolved path stays inside the extraction root. An attacker can include members named &#39;../../etc/cron.d/backdoor&#39; to write arbitrary files on the host.</p>
             <div class="finding__location">
-              Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-fb40290a28c08b49451f0c1a3fd1e21e404887556f8279414ccd21c7ab2b5c82R56" target="_blank" rel="noopener noreferrer">src/backend/services/archive_processing/extractors/zip_extractor_and_decompression_handler.py (line 56)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/src/backend/services/archive_processing/extractors/zip_extractor_and_decompression_handler.py#L56" target="_blank" rel="noopener noreferrer">src/backend/services/archive_processing/extractors/zip_extractor_and_decompression_handler.py (line 56)</a></span>
+              Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/src/backend/services/archive_processing/extractors/zip_extractor_and_decompression_handler.py#L56" target="_blank" rel="noopener noreferrer">src/backend/services/archive_processing/extractors/zip_extractor_and_decompression_handler.py (line 56)</a></strong>
             </div>
             <div class="finding__df-block">
               <header class="finding__df-header">
@@ -3038,28 +3051,37 @@ def safe_extract(zf: zipfile.ZipFile, dest: str) -&gt; None:
         
         
         
+        <div class="findings-section findings-section--recommended" data-section="recommended">
+          &#10003; Recommended
+          <span class="findings-section__count">12</span>
+        </div>
         
         
         
         
-        <details id="issue-5" data-issue-num="6" class="finding finding--medium" data-severity="medium" data-classification="" data-rule-id="generic.nginx.security.missing-security-header">
+        
+        
+        <details id="issue-5" data-issue-num="6" class="finding finding--medium" data-severity="medium" data-classification="recommended" data-rule-id="javascript.browser.security.dom-xss">
           <summary class="finding__head">
             <span class="finding__badge finding__badge--medium"><span class="sev-dot" aria-hidden="true"></span>medium</span>
-            <span class="finding__num">#6</span><span class="finding__title" role="heading" aria-level="2" title="Missing HTTP security response header">Missing HTTP security response header</span>
+            <span class="finding__num">#6</span><span class="finding__title" role="heading" aria-level="2" title="DOM-based cross-site scripting (XSS)">DOM-based cross-site scripting (XSS)</span>
             <span class="finding__meta">
-              <span class="finding__path">config/nginx.conf</span><span class="finding__line">:28</span>
+              <span class="finding__path">static/js/profile.js</span><span class="finding__line">:12</span>
             </span>
           </summary>
           <div class="finding__body">
+            <div class="req-notice req-notice--recommended">
+              <span class="req-notice__text"><strong>Recommended</strong> &mdash; Medium severity is not in the blocker list</span>
+            </div>
             <dl class="finding__meta-dl">
-              <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Other</dd>
+              <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">XSS</dd>
               <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Medium (65%)</dd>
-              <dt class="finding__meta-key">Rule:</dt><dd>generic.nginx.security.missing-security-header</dd>
+              <dt class="finding__meta-key">Rule:</dt><dd>javascript.browser.security.dom-xss</dd>
               <dt class="finding__meta-key">Scanner:</dt><dd>Semgrep OSS</dd>
             </dl>
-            <p class="finding__description">The nginx server block does not set the X-Content-Type-Options header. Browsers may MIME-sniff responses to unexpected content types.</p>
+            <p class="finding__description">Unsanitized value assigned to innerHTML. If userInput contains attacker-controlled HTML, JavaScript will execute in the context of this page.</p>
             <div class="finding__location">
-              Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-b0f54ac3b708a7e5188200373dca7afcdb188ac453aefd9e51c1b0f8809af0b2R28" target="_blank" rel="noopener noreferrer">config/nginx.conf (line 28)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/config/nginx.conf#L28" target="_blank" rel="noopener noreferrer">config/nginx.conf (line 28)</a></span>
+              Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/static/js/profile.js#L12" target="_blank" rel="noopener noreferrer">static/js/profile.js (line 12)</a></strong>
             </div>
             <div class="finding__df-block">
               <header class="finding__df-header">
@@ -3084,7 +3106,7 @@ def safe_extract(zf: zipfile.ZipFile, dest: str) -&gt; None:
                         
                         
                         
-                        <div class="finding__df-filename"><span>config/nginx.conf</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
+                        <div class="finding__df-filename"><span>static/js/profile.js</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
                         
                         
 
@@ -3099,7 +3121,7 @@ def safe_extract(zf: zipfile.ZipFile, dest: str) -&gt; None:
                         
 
                         
-                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/config/nginx.conf#L28" target="_blank" rel="noopener noreferrer">28</a></span><div class="finding__df-code"><span class="finding__df-highlight">    server_name api.example.com;</span></div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
+                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/static/js/profile.js#L12" target="_blank" rel="noopener noreferrer">12</a></span><div class="finding__df-code">  document.getElementById(&#39;bio&#39;).<span class="finding__df-highlight">innerHTML = userInput</span>;</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
                         
 
                       
@@ -3111,7 +3133,7 @@ def safe_extract(zf: zipfile.ZipFile, dest: str) -&gt; None:
             </div>
             <section class="finding__refs">
               <h3 class="finding__section-h">References</h3>
-              <ul><li><a href="https://semgrep.dev/r/generic.nginx.security.missing-security-header" target="_blank" rel="noopener noreferrer">https://semgrep.dev/r/generic.nginx.security.missing-security-header</a></li></ul>
+              <ul><li><a href="https://semgrep.dev/r/javascript.browser.security.dom-xss" target="_blank" rel="noopener noreferrer">https://semgrep.dev/r/javascript.browser.security.dom-xss</a></li></ul>
             </section>
           </div>
         </details>
@@ -3123,7 +3145,7 @@ def safe_extract(zf: zipfile.ZipFile, dest: str) -&gt; None:
         
         
         
-        <details id="issue-6" data-issue-num="7" class="finding finding--medium" data-severity="medium" data-classification="" data-rule-id="python.lang.security.audit.path-traversal">
+        <details id="issue-6" data-issue-num="7" class="finding finding--medium" data-severity="medium" data-classification="recommended" data-rule-id="python.lang.security.audit.path-traversal">
           <summary class="finding__head">
             <span class="finding__badge finding__badge--medium"><span class="sev-dot" aria-hidden="true"></span>medium</span>
             <span class="finding__num">#7</span><span class="finding__title" role="heading" aria-level="2" title="Path traversal via unsanitized filename">Path traversal via unsanitized filename</span>
@@ -3132,6 +3154,9 @@ def safe_extract(zf: zipfile.ZipFile, dest: str) -&gt; None:
             </span>
           </summary>
           <div class="finding__body">
+            <div class="req-notice req-notice--recommended">
+              <span class="req-notice__text"><strong>Recommended</strong> &mdash; Medium severity is not in the blocker list</span>
+            </div>
             <dl class="finding__meta-dl">
               <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Path traversal</dd>
               <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Medium (65%)</dd>
@@ -3140,7 +3165,7 @@ def safe_extract(zf: zipfile.ZipFile, dest: str) -&gt; None:
             </dl>
             <p class="finding__description">A filename from user input is joined with BASE_DIR without sanitization. An attacker using &#39;../&#39; sequences can escape the intended directory.</p>
             <div class="finding__location">
-              Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-0c2bad94cd303c5944a38a94f62a63355b8bed2e102dc87c0f44de95cf135b8aR78" target="_blank" rel="noopener noreferrer">app/views.py (line 78)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/views.py#L78-L80" target="_blank" rel="noopener noreferrer">app/views.py (line 78)</a></span>
+              Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/views.py#L78-L80" target="_blank" rel="noopener noreferrer">app/views.py (line 78)</a></strong>
             </div>
             <div class="finding__df-block">
               <header class="finding__df-header">
@@ -3216,502 +3241,18 @@ if not safe.startswith(os.path.realpath(BASE_DIR)):
         
         
         
-        <details id="issue-7" data-issue-num="8" class="finding finding--medium" data-severity="medium" data-classification="" data-rule-id="python.lang.security.weak-cryptography.use-of-md5">
+        <details id="issue-7" data-issue-num="8" class="finding finding--medium" data-severity="medium" data-classification="recommended" data-rule-id="python.lang.security.weak-cryptography.use-of-md5">
           <summary class="finding__head">
             <span class="finding__badge finding__badge--medium"><span class="sev-dot" aria-hidden="true"></span>medium</span>
             <span class="finding__num">#8</span><span class="finding__title" role="heading" aria-level="2" title="Use of MD5 for cryptographic hashing">Use of MD5 for cryptographic hashing</span>
-            <span class="finding__meta">
-              <span class="finding__path">tests/utils.py</span><span class="finding__line">:15</span>
-            </span>
-          </summary>
-          <div class="finding__body">
-            <dl class="finding__meta-dl">
-              <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Cryptographic issue</dd>
-              <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Low (40%)</dd>
-              <dt class="finding__meta-key">Rule:</dt><dd>python.lang.security.weak-cryptography.use-of-md5</dd>
-              <dt class="finding__meta-key">Scanner:</dt><dd>Semgrep OSS</dd>
-            </dl>
-            <p class="finding__description">MD5 is cryptographically broken. Replace with hashlib.sha256() or a dedicated integrity library.</p>
-            <div class="finding__location">
-              Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-9e08e8c7769db7b58089fd7659d75ca96df40bb7b5d50299d3a30abd54da9ad6R15" target="_blank" rel="noopener noreferrer">tests/utils.py (line 15)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/tests/utils.py#L15" target="_blank" rel="noopener noreferrer">tests/utils.py (line 15)</a></span>
-            </div>
-            <div class="finding__df-block">
-              <header class="finding__df-header">
-                Affected code:
-                
-                
-                  
-                    
-                  
-                
-                
-              </header>
-              
-                
-                
-                  
-                    <div class="finding__df finding__df--1 finding__df--selected">
-                      
-                      
-                      
-
-                        
-                        
-                        
-                        <div class="finding__df-filename"><span>tests/utils.py</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
-                        
-                        
-
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-
-                        
-                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/tests/utils.py#L15" target="_blank" rel="noopener noreferrer">15</a></span><div class="finding__df-code">    digest = hashli<span class="finding__df-highlight">b.md5(pay</span>load).hexdigest()</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
-                        
-
-                      
-                    </div>
-                    
-                  
-                
-              
-            </div>
-            <section class="finding__refs">
-              <h3 class="finding__section-h">References</h3>
-              <ul><li><a href="https://semgrep.dev/r/python.lang.security.weak-cryptography.use-of-md5" target="_blank" rel="noopener noreferrer">https://semgrep.dev/r/python.lang.security.weak-cryptography.use-of-md5</a></li></ul>
-            </section>
-          </div>
-        </details>
-        
-        
-        
-        
-        
-        
-        
-        
-        <details id="issue-8" data-issue-num="9" class="finding finding--medium" data-severity="medium" data-classification="" data-rule-id="generic.nginx.security.missing-security-header">
-          <summary class="finding__head">
-            <span class="finding__badge finding__badge--medium"><span class="sev-dot" aria-hidden="true"></span>medium</span>
-            <span class="finding__num">#9</span><span class="finding__title" role="heading" aria-level="2" title="Missing HTTP security response header">Missing HTTP security response header</span>
-            <span class="finding__meta">
-              <span class="finding__path">config/nginx.conf</span><span class="finding__line">:44</span>
-            </span>
-          </summary>
-          <div class="finding__body">
-            <dl class="finding__meta-dl">
-              <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Other</dd>
-              <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Medium (65%)</dd>
-              <dt class="finding__meta-key">Rule:</dt><dd>generic.nginx.security.missing-security-header</dd>
-              <dt class="finding__meta-key">Scanner:</dt><dd>Semgrep OSS</dd>
-            </dl>
-            <p class="finding__description">The nginx server block does not set the Strict-Transport-Security (HSTS) header. Clients may connect over unencrypted HTTP.</p>
-            <div class="finding__location">
-              Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-b0f54ac3b708a7e5188200373dca7afcdb188ac453aefd9e51c1b0f8809af0b2R44" target="_blank" rel="noopener noreferrer">config/nginx.conf (line 44)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/config/nginx.conf#L44" target="_blank" rel="noopener noreferrer">config/nginx.conf (line 44)</a></span>
-            </div>
-            <div class="finding__df-block">
-              <header class="finding__df-header">
-                Affected code:
-                
-                
-                  
-                    
-                  
-                
-                
-              </header>
-              
-                
-                
-                  
-                    <div class="finding__df finding__df--1 finding__df--selected">
-                      
-                      
-                      
-
-                        
-                        
-                        
-                        <div class="finding__df-filename"><span>config/nginx.conf</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
-                        
-                        
-
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-
-                        
-                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/config/nginx.conf#L44" target="_blank" rel="noopener noreferrer">44</a></span><div class="finding__df-code"><span class="finding__df-highlight">    server_name admin.example.com;</span></div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
-                        
-
-                      
-                    </div>
-                    
-                  
-                
-              
-            </div>
-            <section class="finding__refs">
-              <h3 class="finding__section-h">References</h3>
-              <ul><li><a href="https://semgrep.dev/r/generic.nginx.security.missing-security-header" target="_blank" rel="noopener noreferrer">https://semgrep.dev/r/generic.nginx.security.missing-security-header</a></li></ul>
-            </section>
-          </div>
-        </details>
-        
-        
-        
-        
-        
-        
-        
-        
-        <details id="issue-9" data-issue-num="10" class="finding finding--medium" data-severity="medium" data-classification="" data-rule-id="generic.nginx.security.missing-security-header">
-          <summary class="finding__head">
-            <span class="finding__badge finding__badge--medium"><span class="sev-dot" aria-hidden="true"></span>medium</span>
-            <span class="finding__num">#10</span><span class="finding__title" role="heading" aria-level="2" title="Missing HTTP security response header">Missing HTTP security response header</span>
-            <span class="finding__meta">
-              <span class="finding__path">Dockerfile</span><span class="finding__line">:15</span>
-            </span>
-          </summary>
-          <div class="finding__body">
-            <dl class="finding__meta-dl">
-              <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Other</dd>
-              <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Medium (65%)</dd>
-              <dt class="finding__meta-key">Rule:</dt><dd>generic.nginx.security.missing-security-header</dd>
-              <dt class="finding__meta-key">Scanner:</dt><dd>Semgrep OSS</dd>
-            </dl>
-            <p class="finding__description">The Dockerfile does not configure a security-related label or policy. Add X-Content-Type-Options and X-Frame-Options headers in the nginx configuration used with this image.</p>
-            <div class="finding__location">
-              Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-dd2c0eb6ea5cfc6c4bd4eac30934e2d5746747af48fef6da689e85b752f39557R15" target="_blank" rel="noopener noreferrer">Dockerfile (line 15)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/Dockerfile#L15" target="_blank" rel="noopener noreferrer">Dockerfile (line 15)</a></span>
-            </div>
-            <div class="finding__df-block">
-              <header class="finding__df-header">
-                Affected code:
-                
-                
-                  
-                    
-                  
-                
-                
-              </header>
-              
-                
-                
-                  
-                    <div class="finding__df finding__df--1 finding__df--selected">
-                      
-                      
-                      
-
-                        
-                        
-                        
-                        <div class="finding__df-filename"><span>Dockerfile</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
-                        
-                        
-
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-
-                        
-                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/Dockerfile#L15" target="_blank" rel="noopener noreferrer">15</a></span><div class="finding__df-code"><span class="finding__df-highlight">EXPOSE 8080</span></div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
-                        
-
-                      
-                    </div>
-                    
-                  
-                
-              
-            </div>
-            <section class="finding__refs">
-              <h3 class="finding__section-h">References</h3>
-              <ul><li><a href="https://semgrep.dev/r/generic.nginx.security.missing-security-header" target="_blank" rel="noopener noreferrer">https://semgrep.dev/r/generic.nginx.security.missing-security-header</a></li></ul>
-            </section>
-          </div>
-        </details>
-        
-        
-        
-        
-        
-        
-        
-        
-        <details id="issue-10" data-issue-num="11" class="finding finding--medium" data-severity="medium" data-classification="" data-rule-id="javascript.browser.security.dom-xss">
-          <summary class="finding__head">
-            <span class="finding__badge finding__badge--medium"><span class="sev-dot" aria-hidden="true"></span>medium</span>
-            <span class="finding__num">#11</span><span class="finding__title" role="heading" aria-level="2" title="DOM-based cross-site scripting (XSS)">DOM-based cross-site scripting (XSS)</span>
-            <span class="finding__meta">
-              <span class="finding__path">static/js/profile.js</span><span class="finding__line">:12</span>
-            </span>
-          </summary>
-          <div class="finding__body">
-            <dl class="finding__meta-dl">
-              <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">XSS</dd>
-              <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Medium (65%)</dd>
-              <dt class="finding__meta-key">Rule:</dt><dd>javascript.browser.security.dom-xss</dd>
-              <dt class="finding__meta-key">Scanner:</dt><dd>Semgrep OSS</dd>
-            </dl>
-            <p class="finding__description">Unsanitized value assigned to innerHTML. If userInput contains attacker-controlled HTML, JavaScript will execute in the context of this page.</p>
-            <div class="finding__location">
-              Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-d155fa6a18da3200cda7b66a70e421e85fb7e6c9bd2166b8dbec90ec9b5bbf1bR12" target="_blank" rel="noopener noreferrer">static/js/profile.js (line 12)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/static/js/profile.js#L12" target="_blank" rel="noopener noreferrer">static/js/profile.js (line 12)</a></span>
-            </div>
-            <div class="finding__df-block">
-              <header class="finding__df-header">
-                Affected code:
-                
-                
-                  
-                    
-                  
-                
-                
-              </header>
-              
-                
-                
-                  
-                    <div class="finding__df finding__df--1 finding__df--selected">
-                      
-                      
-                      
-
-                        
-                        
-                        
-                        <div class="finding__df-filename"><span>static/js/profile.js</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
-                        
-                        
-
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-
-                        
-                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/static/js/profile.js#L12" target="_blank" rel="noopener noreferrer">12</a></span><div class="finding__df-code">  document.getElementById(&#39;bio&#39;).<span class="finding__df-highlight">innerHTML = userInput</span>;</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
-                        
-
-                      
-                    </div>
-                    
-                  
-                
-              
-            </div>
-            <section class="finding__refs">
-              <h3 class="finding__section-h">References</h3>
-              <ul><li><a href="https://semgrep.dev/r/javascript.browser.security.dom-xss" target="_blank" rel="noopener noreferrer">https://semgrep.dev/r/javascript.browser.security.dom-xss</a></li></ul>
-            </section>
-          </div>
-        </details>
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        <details id="issue-11" data-issue-num="12" class="finding finding--medium" data-severity="medium" data-classification="" data-rule-id="generic.nginx.security.missing-security-header">
-          <summary class="finding__head">
-            <span class="finding__badge finding__badge--medium"><span class="sev-dot" aria-hidden="true"></span>medium</span>
-            <span class="finding__num">#12</span><span class="finding__title" role="heading" aria-level="2" title="Missing HTTP security response header">Missing HTTP security response header</span>
-            <span class="finding__meta">
-              <span class="finding__path">config/nginx.conf</span><span class="finding__line">:12</span>
-            </span>
-          </summary>
-          <div class="finding__body">
-            <dl class="finding__meta-dl">
-              <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Other</dd>
-              <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Medium (65%)</dd>
-              <dt class="finding__meta-key">Rule:</dt><dd>generic.nginx.security.missing-security-header</dd>
-              <dt class="finding__meta-key">Scanner:</dt><dd>Semgrep OSS</dd>
-            </dl>
-            <p class="finding__description">The nginx server block at this location does not set the X-Frame-Options header, leaving the site vulnerable to clickjacking attacks.</p>
-            <div class="finding__location">
-              Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-b0f54ac3b708a7e5188200373dca7afcdb188ac453aefd9e51c1b0f8809af0b2R12" target="_blank" rel="noopener noreferrer">config/nginx.conf (line 12)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/config/nginx.conf#L12" target="_blank" rel="noopener noreferrer">config/nginx.conf (line 12)</a></span>
-            </div>
-            <div class="finding__df-block">
-              <header class="finding__df-header">
-                Affected code:
-                
-                
-                  
-                    
-                  
-                
-                
-              </header>
-              
-                
-                
-                  
-                    <div class="finding__df finding__df--1 finding__df--selected">
-                      
-                      
-                      
-
-                        
-                        
-                        
-                        <div class="finding__df-filename"><span>config/nginx.conf</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
-                        
-                        
-
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-
-                        
-                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/config/nginx.conf#L12" target="_blank" rel="noopener noreferrer">12</a></span><div class="finding__df-code"><span class="finding__df-highlight">    server_name example.com;</span></div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
-                        
-
-                      
-                    </div>
-                    
-                  
-                
-              
-            </div>
-            <section class="finding__refs">
-              <h3 class="finding__section-h">References</h3>
-              <ul><li><a href="https://semgrep.dev/r/generic.nginx.security.missing-security-header" target="_blank" rel="noopener noreferrer">https://semgrep.dev/r/generic.nginx.security.missing-security-header</a></li></ul>
-            </section>
-          </div>
-        </details>
-        
-        
-        
-        
-        
-        
-        
-        
-        <details id="issue-12" data-issue-num="13" class="finding finding--medium" data-severity="medium" data-classification="" data-rule-id="python.lang.security.weak-cryptography.use-of-md5">
-          <summary class="finding__head">
-            <span class="finding__badge finding__badge--medium"><span class="sev-dot" aria-hidden="true"></span>medium</span>
-            <span class="finding__num">#13</span><span class="finding__title" role="heading" aria-level="2" title="Use of MD5 for cryptographic hashing">Use of MD5 for cryptographic hashing</span>
-            <span class="finding__meta">
-              <span class="finding__path">app/utils.py</span><span class="finding__line">:31</span>
-            </span>
-          </summary>
-          <div class="finding__body">
-            <dl class="finding__meta-dl">
-              <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Cryptographic issue</dd>
-              <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Low (40%)</dd>
-              <dt class="finding__meta-key">Rule:</dt><dd>python.lang.security.weak-cryptography.use-of-md5</dd>
-              <dt class="finding__meta-key">Scanner:</dt><dd>Semgrep OSS</dd>
-            </dl>
-            <p class="finding__description">MD5 is cryptographically broken. Replace with hashlib.sha256() or a dedicated integrity library.</p>
-            <div class="finding__location">
-              Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-ac7b8d56e509c921efaadb5a776e1c9037531c4d2af78787f06f67a1f3533ae4R31" target="_blank" rel="noopener noreferrer">app/utils.py (line 31)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/utils.py#L31" target="_blank" rel="noopener noreferrer">app/utils.py (line 31)</a></span>
-            </div>
-            <div class="finding__df-block">
-              <header class="finding__df-header">
-                Affected code:
-                
-                
-                  
-                    
-                  
-                
-                
-              </header>
-              
-                
-                
-                  
-                    <div class="finding__df finding__df--1 finding__df--selected">
-                      
-                      
-                      
-
-                        
-                        
-                        
-                        <div class="finding__df-filename"><span>app/utils.py</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
-                        
-                        
-
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-
-                        
-                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/utils.py#L31" target="_blank" rel="noopener noreferrer">31</a></span><div class="finding__df-code">    checksum = hashlib.<span class="finding__df-highlight">md5(data)</span>.hexdigest()</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
-                        
-
-                      
-                    </div>
-                    
-                  
-                
-              
-            </div>
-            <section class="finding__refs">
-              <h3 class="finding__section-h">References</h3>
-              <ul><li><a href="https://semgrep.dev/r/python.lang.security.weak-cryptography.use-of-md5" target="_blank" rel="noopener noreferrer">https://semgrep.dev/r/python.lang.security.weak-cryptography.use-of-md5</a></li></ul>
-            </section>
-          </div>
-        </details>
-        
-        
-        
-        
-        
-        
-        
-        
-        <details id="issue-13" data-issue-num="14" class="finding finding--medium" data-severity="medium" data-classification="" data-rule-id="python.lang.security.weak-cryptography.use-of-md5">
-          <summary class="finding__head">
-            <span class="finding__badge finding__badge--medium"><span class="sev-dot" aria-hidden="true"></span>medium</span>
-            <span class="finding__num">#14</span><span class="finding__title" role="heading" aria-level="2" title="Use of MD5 for cryptographic hashing">Use of MD5 for cryptographic hashing</span>
             <span class="finding__meta">
               <span class="finding__path">app/auth.py</span><span class="finding__line">:44</span>
             </span>
           </summary>
           <div class="finding__body">
+            <div class="req-notice req-notice--recommended">
+              <span class="req-notice__text"><strong>Recommended</strong> &mdash; Medium severity is not in the blocker list</span>
+            </div>
             <dl class="finding__meta-dl">
               <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Cryptographic issue</dd>
               <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Low (40%)</dd>
@@ -3720,7 +3261,7 @@ if not safe.startswith(os.path.realpath(BASE_DIR)):
             </dl>
             <p class="finding__description">MD5 is cryptographically broken and must not be used for password hashing or integrity verification. Use hashlib.sha256 or bcrypt instead.</p>
             <div class="finding__location">
-              Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-0f066672bb2866831c8a0b61c48c718390334d798b547ee7519b20977c2b8653R44" target="_blank" rel="noopener noreferrer">app/auth.py (line 44)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/auth.py#L44" target="_blank" rel="noopener noreferrer">app/auth.py (line 44)</a></span>
+              Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/auth.py#L44" target="_blank" rel="noopener noreferrer">app/auth.py (line 44)</a></strong>
             </div>
             <div class="finding__df-block">
               <header class="finding__df-header">
@@ -3784,24 +3325,27 @@ if not safe.startswith(os.path.realpath(BASE_DIR)):
         
         
         
-        <details id="issue-14" data-issue-num="15" class="finding finding--low" data-severity="low" data-classification="" data-rule-id="python.flask.security.audit.debug-enabled">
+        <details id="issue-8" data-issue-num="9" class="finding finding--medium" data-severity="medium" data-classification="recommended" data-rule-id="python.lang.security.weak-cryptography.use-of-md5">
           <summary class="finding__head">
-            <span class="finding__badge finding__badge--low"><span class="sev-dot" aria-hidden="true"></span>low</span>
-            <span class="finding__num">#15</span><span class="finding__title" role="heading" aria-level="2" title="Flask debug mode enabled in production code">Flask debug mode enabled in production code</span>
+            <span class="finding__badge finding__badge--medium"><span class="sev-dot" aria-hidden="true"></span>medium</span>
+            <span class="finding__num">#9</span><span class="finding__title" role="heading" aria-level="2" title="Use of MD5 for cryptographic hashing">Use of MD5 for cryptographic hashing</span>
             <span class="finding__meta">
-              <span class="finding__path">app/views.py</span><span class="finding__line">:95</span>
+              <span class="finding__path">app/utils.py</span><span class="finding__line">:31</span>
             </span>
           </summary>
           <div class="finding__body">
+            <div class="req-notice req-notice--recommended">
+              <span class="req-notice__text"><strong>Recommended</strong> &mdash; Medium severity is not in the blocker list</span>
+            </div>
             <dl class="finding__meta-dl">
-              <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Insecure configuration</dd>
+              <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Cryptographic issue</dd>
               <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Low (40%)</dd>
-              <dt class="finding__meta-key">Rule:</dt><dd>python.flask.security.audit.debug-enabled</dd>
+              <dt class="finding__meta-key">Rule:</dt><dd>python.lang.security.weak-cryptography.use-of-md5</dd>
               <dt class="finding__meta-key">Scanner:</dt><dd>Semgrep OSS</dd>
             </dl>
-            <p class="finding__description">Flask debug mode is enabled. In production this exposes an interactive debugger to any user who triggers an unhandled exception, allowing arbitrary code execution.</p>
+            <p class="finding__description">MD5 is cryptographically broken. Replace with hashlib.sha256() or a dedicated integrity library.</p>
             <div class="finding__location">
-              Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-0c2bad94cd303c5944a38a94f62a63355b8bed2e102dc87c0f44de95cf135b8aR95" target="_blank" rel="noopener noreferrer">app/views.py (line 95)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/views.py#L95" target="_blank" rel="noopener noreferrer">app/views.py (line 95)</a></span>
+              Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/utils.py#L31" target="_blank" rel="noopener noreferrer">app/utils.py (line 31)</a></strong>
             </div>
             <div class="finding__df-block">
               <header class="finding__df-header">
@@ -3826,7 +3370,7 @@ if not safe.startswith(os.path.realpath(BASE_DIR)):
                         
                         
                         
-                        <div class="finding__df-filename"><span>app/views.py</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
+                        <div class="finding__df-filename"><span>app/utils.py</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
                         
                         
 
@@ -3841,7 +3385,7 @@ if not safe.startswith(os.path.realpath(BASE_DIR)):
                         
 
                         
-                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/views.py#L95" target="_blank" rel="noopener noreferrer">95</a></span><div class="finding__df-code">    app.run(<span class="finding__df-highlight">debug=True</span>, host=&#39;0.0.0.0&#39;)</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
+                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/utils.py#L31" target="_blank" rel="noopener noreferrer">31</a></span><div class="finding__df-code">    checksum = hashlib.<span class="finding__df-highlight">md5(data)</span>.hexdigest()</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
                         
 
                       
@@ -3853,7 +3397,427 @@ if not safe.startswith(os.path.realpath(BASE_DIR)):
             </div>
             <section class="finding__refs">
               <h3 class="finding__section-h">References</h3>
-              <ul><li><a href="https://semgrep.dev/r/python.flask.security.audit.debug-enabled" target="_blank" rel="noopener noreferrer">https://semgrep.dev/r/python.flask.security.audit.debug-enabled</a></li></ul>
+              <ul><li><a href="https://semgrep.dev/r/python.lang.security.weak-cryptography.use-of-md5" target="_blank" rel="noopener noreferrer">https://semgrep.dev/r/python.lang.security.weak-cryptography.use-of-md5</a></li></ul>
+            </section>
+          </div>
+        </details>
+        
+        
+        
+        
+        
+        
+        
+        
+        <details id="issue-9" data-issue-num="10" class="finding finding--medium" data-severity="medium" data-classification="recommended" data-rule-id="python.lang.security.weak-cryptography.use-of-md5">
+          <summary class="finding__head">
+            <span class="finding__badge finding__badge--medium"><span class="sev-dot" aria-hidden="true"></span>medium</span>
+            <span class="finding__num">#10</span><span class="finding__title" role="heading" aria-level="2" title="Use of MD5 for cryptographic hashing">Use of MD5 for cryptographic hashing</span>
+            <span class="finding__meta">
+              <span class="finding__path">tests/utils.py</span><span class="finding__line">:15</span>
+            </span>
+          </summary>
+          <div class="finding__body">
+            <div class="req-notice req-notice--recommended">
+              <span class="req-notice__text"><strong>Recommended</strong> &mdash; Medium severity is not in the blocker list</span>
+            </div>
+            <dl class="finding__meta-dl">
+              <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Cryptographic issue</dd>
+              <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Low (40%)</dd>
+              <dt class="finding__meta-key">Rule:</dt><dd>python.lang.security.weak-cryptography.use-of-md5</dd>
+              <dt class="finding__meta-key">Scanner:</dt><dd>Semgrep OSS</dd>
+            </dl>
+            <p class="finding__description">MD5 is cryptographically broken. Replace with hashlib.sha256() or a dedicated integrity library.</p>
+            <div class="finding__location">
+              Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/tests/utils.py#L15" target="_blank" rel="noopener noreferrer">tests/utils.py (line 15)</a></strong>
+            </div>
+            <div class="finding__df-block">
+              <header class="finding__df-header">
+                Affected code:
+                
+                
+                  
+                    
+                  
+                
+                
+              </header>
+              
+                
+                
+                  
+                    <div class="finding__df finding__df--1 finding__df--selected">
+                      
+                      
+                      
+
+                        
+                        
+                        
+                        <div class="finding__df-filename"><span>tests/utils.py</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
+                        
+                        
+
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+
+                        
+                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/tests/utils.py#L15" target="_blank" rel="noopener noreferrer">15</a></span><div class="finding__df-code">    digest = hashli<span class="finding__df-highlight">b.md5(pay</span>load).hexdigest()</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
+                        
+
+                      
+                    </div>
+                    
+                  
+                
+              
+            </div>
+            <section class="finding__refs">
+              <h3 class="finding__section-h">References</h3>
+              <ul><li><a href="https://semgrep.dev/r/python.lang.security.weak-cryptography.use-of-md5" target="_blank" rel="noopener noreferrer">https://semgrep.dev/r/python.lang.security.weak-cryptography.use-of-md5</a></li></ul>
+            </section>
+          </div>
+        </details>
+        
+        
+        
+        
+        
+        
+        
+        
+        <details id="issue-10" data-issue-num="11" class="finding finding--medium" data-severity="medium" data-classification="recommended" data-rule-id="generic.nginx.security.missing-security-header">
+          <summary class="finding__head">
+            <span class="finding__badge finding__badge--medium"><span class="sev-dot" aria-hidden="true"></span>medium</span>
+            <span class="finding__num">#11</span><span class="finding__title" role="heading" aria-level="2" title="Missing HTTP security response header">Missing HTTP security response header</span>
+            <span class="finding__meta">
+              <span class="finding__path">config/nginx.conf</span><span class="finding__line">:12</span>
+            </span>
+          </summary>
+          <div class="finding__body">
+            <div class="req-notice req-notice--recommended">
+              <span class="req-notice__text"><strong>Recommended</strong> &mdash; Medium severity is not in the blocker list</span>
+            </div>
+            <dl class="finding__meta-dl">
+              <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Other</dd>
+              <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Medium (65%)</dd>
+              <dt class="finding__meta-key">Rule:</dt><dd>generic.nginx.security.missing-security-header</dd>
+              <dt class="finding__meta-key">Scanner:</dt><dd>Semgrep OSS</dd>
+            </dl>
+            <p class="finding__description">The nginx server block at this location does not set the X-Frame-Options header, leaving the site vulnerable to clickjacking attacks.</p>
+            <div class="finding__location">
+              Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/config/nginx.conf#L12" target="_blank" rel="noopener noreferrer">config/nginx.conf (line 12)</a></strong>
+            </div>
+            <div class="finding__df-block">
+              <header class="finding__df-header">
+                Affected code:
+                
+                
+                  
+                    
+                  
+                
+                
+              </header>
+              
+                
+                
+                  
+                    <div class="finding__df finding__df--1 finding__df--selected">
+                      
+                      
+                      
+
+                        
+                        
+                        
+                        <div class="finding__df-filename"><span>config/nginx.conf</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
+                        
+                        
+
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+
+                        
+                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/config/nginx.conf#L12" target="_blank" rel="noopener noreferrer">12</a></span><div class="finding__df-code"><span class="finding__df-highlight">    server_name example.com;</span></div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
+                        
+
+                      
+                    </div>
+                    
+                  
+                
+              
+            </div>
+            <section class="finding__refs">
+              <h3 class="finding__section-h">References</h3>
+              <ul><li><a href="https://semgrep.dev/r/generic.nginx.security.missing-security-header" target="_blank" rel="noopener noreferrer">https://semgrep.dev/r/generic.nginx.security.missing-security-header</a></li></ul>
+            </section>
+          </div>
+        </details>
+        
+        
+        
+        
+        
+        
+        
+        
+        <details id="issue-11" data-issue-num="12" class="finding finding--medium" data-severity="medium" data-classification="recommended" data-rule-id="generic.nginx.security.missing-security-header">
+          <summary class="finding__head">
+            <span class="finding__badge finding__badge--medium"><span class="sev-dot" aria-hidden="true"></span>medium</span>
+            <span class="finding__num">#12</span><span class="finding__title" role="heading" aria-level="2" title="Missing HTTP security response header">Missing HTTP security response header</span>
+            <span class="finding__meta">
+              <span class="finding__path">config/nginx.conf</span><span class="finding__line">:28</span>
+            </span>
+          </summary>
+          <div class="finding__body">
+            <div class="req-notice req-notice--recommended">
+              <span class="req-notice__text"><strong>Recommended</strong> &mdash; Medium severity is not in the blocker list</span>
+            </div>
+            <dl class="finding__meta-dl">
+              <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Other</dd>
+              <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Medium (65%)</dd>
+              <dt class="finding__meta-key">Rule:</dt><dd>generic.nginx.security.missing-security-header</dd>
+              <dt class="finding__meta-key">Scanner:</dt><dd>Semgrep OSS</dd>
+            </dl>
+            <p class="finding__description">The nginx server block does not set the X-Content-Type-Options header. Browsers may MIME-sniff responses to unexpected content types.</p>
+            <div class="finding__location">
+              Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/config/nginx.conf#L28" target="_blank" rel="noopener noreferrer">config/nginx.conf (line 28)</a></strong>
+            </div>
+            <div class="finding__df-block">
+              <header class="finding__df-header">
+                Affected code:
+                
+                
+                  
+                    
+                  
+                
+                
+              </header>
+              
+                
+                
+                  
+                    <div class="finding__df finding__df--1 finding__df--selected">
+                      
+                      
+                      
+
+                        
+                        
+                        
+                        <div class="finding__df-filename"><span>config/nginx.conf</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
+                        
+                        
+
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+
+                        
+                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/config/nginx.conf#L28" target="_blank" rel="noopener noreferrer">28</a></span><div class="finding__df-code"><span class="finding__df-highlight">    server_name api.example.com;</span></div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
+                        
+
+                      
+                    </div>
+                    
+                  
+                
+              
+            </div>
+            <section class="finding__refs">
+              <h3 class="finding__section-h">References</h3>
+              <ul><li><a href="https://semgrep.dev/r/generic.nginx.security.missing-security-header" target="_blank" rel="noopener noreferrer">https://semgrep.dev/r/generic.nginx.security.missing-security-header</a></li></ul>
+            </section>
+          </div>
+        </details>
+        
+        
+        
+        
+        
+        
+        
+        
+        <details id="issue-12" data-issue-num="13" class="finding finding--medium" data-severity="medium" data-classification="recommended" data-rule-id="generic.nginx.security.missing-security-header">
+          <summary class="finding__head">
+            <span class="finding__badge finding__badge--medium"><span class="sev-dot" aria-hidden="true"></span>medium</span>
+            <span class="finding__num">#13</span><span class="finding__title" role="heading" aria-level="2" title="Missing HTTP security response header">Missing HTTP security response header</span>
+            <span class="finding__meta">
+              <span class="finding__path">config/nginx.conf</span><span class="finding__line">:44</span>
+            </span>
+          </summary>
+          <div class="finding__body">
+            <div class="req-notice req-notice--recommended">
+              <span class="req-notice__text"><strong>Recommended</strong> &mdash; Medium severity is not in the blocker list</span>
+            </div>
+            <dl class="finding__meta-dl">
+              <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Other</dd>
+              <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Medium (65%)</dd>
+              <dt class="finding__meta-key">Rule:</dt><dd>generic.nginx.security.missing-security-header</dd>
+              <dt class="finding__meta-key">Scanner:</dt><dd>Semgrep OSS</dd>
+            </dl>
+            <p class="finding__description">The nginx server block does not set the Strict-Transport-Security (HSTS) header. Clients may connect over unencrypted HTTP.</p>
+            <div class="finding__location">
+              Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/config/nginx.conf#L44" target="_blank" rel="noopener noreferrer">config/nginx.conf (line 44)</a></strong>
+            </div>
+            <div class="finding__df-block">
+              <header class="finding__df-header">
+                Affected code:
+                
+                
+                  
+                    
+                  
+                
+                
+              </header>
+              
+                
+                
+                  
+                    <div class="finding__df finding__df--1 finding__df--selected">
+                      
+                      
+                      
+
+                        
+                        
+                        
+                        <div class="finding__df-filename"><span>config/nginx.conf</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
+                        
+                        
+
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+
+                        
+                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/config/nginx.conf#L44" target="_blank" rel="noopener noreferrer">44</a></span><div class="finding__df-code"><span class="finding__df-highlight">    server_name admin.example.com;</span></div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
+                        
+
+                      
+                    </div>
+                    
+                  
+                
+              
+            </div>
+            <section class="finding__refs">
+              <h3 class="finding__section-h">References</h3>
+              <ul><li><a href="https://semgrep.dev/r/generic.nginx.security.missing-security-header" target="_blank" rel="noopener noreferrer">https://semgrep.dev/r/generic.nginx.security.missing-security-header</a></li></ul>
+            </section>
+          </div>
+        </details>
+        
+        
+        
+        
+        
+        
+        
+        
+        <details id="issue-13" data-issue-num="14" class="finding finding--medium" data-severity="medium" data-classification="recommended" data-rule-id="generic.nginx.security.missing-security-header">
+          <summary class="finding__head">
+            <span class="finding__badge finding__badge--medium"><span class="sev-dot" aria-hidden="true"></span>medium</span>
+            <span class="finding__num">#14</span><span class="finding__title" role="heading" aria-level="2" title="Missing HTTP security response header">Missing HTTP security response header</span>
+            <span class="finding__meta">
+              <span class="finding__path">Dockerfile</span><span class="finding__line">:15</span>
+            </span>
+          </summary>
+          <div class="finding__body">
+            <div class="req-notice req-notice--recommended">
+              <span class="req-notice__text"><strong>Recommended</strong> &mdash; Medium severity is not in the blocker list</span>
+            </div>
+            <dl class="finding__meta-dl">
+              <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Other</dd>
+              <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Medium (65%)</dd>
+              <dt class="finding__meta-key">Rule:</dt><dd>generic.nginx.security.missing-security-header</dd>
+              <dt class="finding__meta-key">Scanner:</dt><dd>Semgrep OSS</dd>
+            </dl>
+            <p class="finding__description">The Dockerfile does not configure a security-related label or policy. Add X-Content-Type-Options and X-Frame-Options headers in the nginx configuration used with this image.</p>
+            <div class="finding__location">
+              Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/Dockerfile#L15" target="_blank" rel="noopener noreferrer">Dockerfile (line 15)</a></strong>
+            </div>
+            <div class="finding__df-block">
+              <header class="finding__df-header">
+                Affected code:
+                
+                
+                  
+                    
+                  
+                
+                
+              </header>
+              
+                
+                
+                  
+                    <div class="finding__df finding__df--1 finding__df--selected">
+                      
+                      
+                      
+
+                        
+                        
+                        
+                        <div class="finding__df-filename"><span>Dockerfile</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
+                        
+                        
+
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+
+                        
+                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/Dockerfile#L15" target="_blank" rel="noopener noreferrer">15</a></span><div class="finding__df-code"><span class="finding__df-highlight">EXPOSE 8080</span></div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
+                        
+
+                      
+                    </div>
+                    
+                  
+                
+              
+            </div>
+            <section class="finding__refs">
+              <h3 class="finding__section-h">References</h3>
+              <ul><li><a href="https://semgrep.dev/r/generic.nginx.security.missing-security-header" target="_blank" rel="noopener noreferrer">https://semgrep.dev/r/generic.nginx.security.missing-security-header</a></li></ul>
             </section>
           </div>
         </details>
@@ -3866,15 +3830,18 @@ if not safe.startswith(os.path.realpath(BASE_DIR)):
         
         
         
-        <details id="issue-15" data-issue-num="16" class="finding finding--low" data-severity="low" data-classification="" data-rule-id="python.flask.security.audit.insecure-cookie">
+        <details id="issue-14" data-issue-num="15" class="finding finding--low" data-severity="low" data-classification="recommended" data-rule-id="python.flask.security.audit.insecure-cookie">
           <summary class="finding__head">
             <span class="finding__badge finding__badge--low"><span class="sev-dot" aria-hidden="true"></span>low</span>
-            <span class="finding__num">#16</span><span class="finding__title" role="heading" aria-level="2" title="Cookie missing Secure and HttpOnly flags">Cookie missing Secure and HttpOnly flags</span>
+            <span class="finding__num">#15</span><span class="finding__title" role="heading" aria-level="2" title="Cookie missing Secure and HttpOnly flags">Cookie missing Secure and HttpOnly flags</span>
             <span class="finding__meta">
               <span class="finding__path">app/auth.py</span><span class="finding__line">:58</span>
             </span>
           </summary>
           <div class="finding__body">
+            <div class="req-notice req-notice--recommended">
+              <span class="req-notice__text"><strong>Recommended</strong> &mdash; Low severity is not in the blocker list</span>
+            </div>
             <dl class="finding__meta-dl">
               <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Insecure configuration</dd>
               <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Low (40%)</dd>
@@ -3883,7 +3850,7 @@ if not safe.startswith(os.path.realpath(BASE_DIR)):
             </dl>
             <p class="finding__description">Session cookie set without Secure or HttpOnly flags. The cookie may be sent over HTTP and is readable by JavaScript, exposing it to theft via XSS or network sniffing.</p>
             <div class="finding__location">
-              Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-0f066672bb2866831c8a0b61c48c718390334d798b547ee7519b20977c2b8653R58" target="_blank" rel="noopener noreferrer">app/auth.py (line 58)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/auth.py#L58" target="_blank" rel="noopener noreferrer">app/auth.py (line 58)</a></span>
+              Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/auth.py#L58" target="_blank" rel="noopener noreferrer">app/auth.py (line 58)</a></strong>
             </div>
             <div class="finding__df-block">
               <header class="finding__df-header">
@@ -3958,7 +3925,92 @@ if not safe.startswith(os.path.realpath(BASE_DIR)):
         
         
         
-        <details id="issue-16" data-issue-num="17" class="finding finding--info" data-severity="info" data-classification="" data-rule-id="generic.web.security.missing-rate-limiting">
+        <details id="issue-15" data-issue-num="16" class="finding finding--low" data-severity="low" data-classification="recommended" data-rule-id="python.flask.security.audit.debug-enabled">
+          <summary class="finding__head">
+            <span class="finding__badge finding__badge--low"><span class="sev-dot" aria-hidden="true"></span>low</span>
+            <span class="finding__num">#16</span><span class="finding__title" role="heading" aria-level="2" title="Flask debug mode enabled in production code">Flask debug mode enabled in production code</span>
+            <span class="finding__meta">
+              <span class="finding__path">app/views.py</span><span class="finding__line">:95</span>
+            </span>
+          </summary>
+          <div class="finding__body">
+            <div class="req-notice req-notice--recommended">
+              <span class="req-notice__text"><strong>Recommended</strong> &mdash; Low severity is not in the blocker list</span>
+            </div>
+            <dl class="finding__meta-dl">
+              <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Insecure configuration</dd>
+              <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Low (40%)</dd>
+              <dt class="finding__meta-key">Rule:</dt><dd>python.flask.security.audit.debug-enabled</dd>
+              <dt class="finding__meta-key">Scanner:</dt><dd>Semgrep OSS</dd>
+            </dl>
+            <p class="finding__description">Flask debug mode is enabled. In production this exposes an interactive debugger to any user who triggers an unhandled exception, allowing arbitrary code execution.</p>
+            <div class="finding__location">
+              Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/views.py#L95" target="_blank" rel="noopener noreferrer">app/views.py (line 95)</a></strong>
+            </div>
+            <div class="finding__df-block">
+              <header class="finding__df-header">
+                Affected code:
+                
+                
+                  
+                    
+                  
+                
+                
+              </header>
+              
+                
+                
+                  
+                    <div class="finding__df finding__df--1 finding__df--selected">
+                      
+                      
+                      
+
+                        
+                        
+                        
+                        <div class="finding__df-filename"><span>app/views.py</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
+                        
+                        
+
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+
+                        
+                          <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/views.py#L95" target="_blank" rel="noopener noreferrer">95</a></span><div class="finding__df-code">    app.run(<span class="finding__df-highlight">debug=True</span>, host=&#39;0.0.0.0&#39;)</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
+                        
+
+                      
+                    </div>
+                    
+                  
+                
+              
+            </div>
+            <section class="finding__refs">
+              <h3 class="finding__section-h">References</h3>
+              <ul><li><a href="https://semgrep.dev/r/python.flask.security.audit.debug-enabled" target="_blank" rel="noopener noreferrer">https://semgrep.dev/r/python.flask.security.audit.debug-enabled</a></li></ul>
+            </section>
+          </div>
+        </details>
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        <details id="issue-16" data-issue-num="17" class="finding finding--info" data-severity="info" data-classification="recommended" data-rule-id="generic.web.security.missing-rate-limiting">
           <summary class="finding__head">
             <span class="finding__badge finding__badge--info"><span class="sev-dot" aria-hidden="true"></span>info</span>
             <span class="finding__num">#17</span><span class="finding__title" role="heading" aria-level="2" title="Sensitive endpoint lacks rate limiting">Sensitive endpoint lacks rate limiting</span>
@@ -3967,6 +4019,9 @@ if not safe.startswith(os.path.realpath(BASE_DIR)):
             </span>
           </summary>
           <div class="finding__body">
+            <div class="req-notice req-notice--recommended">
+              <span class="req-notice__text"><strong>Recommended</strong> &mdash; Info severity is not in the blocker list</span>
+            </div>
             <dl class="finding__meta-dl">
               <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Other</dd>
               <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">Low (40%)</dd>
@@ -3975,7 +4030,7 @@ if not safe.startswith(os.path.realpath(BASE_DIR)):
             </dl>
             <p class="finding__description">The /api/login endpoint does not appear to enforce rate limiting. Without it, an attacker can perform unlimited credential-stuffing or brute-force attempts.</p>
             <div class="finding__location">
-              Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-0c2bad94cd303c5944a38a94f62a63355b8bed2e102dc87c0f44de95cf135b8aR103" target="_blank" rel="noopener noreferrer">app/views.py (line 103)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/views.py#L103" target="_blank" rel="noopener noreferrer">app/views.py (line 103)</a></span>
+              Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/views.py#L103" target="_blank" rel="noopener noreferrer">app/views.py (line 103)</a></strong>
             </div>
             <div class="finding__df-block">
               <header class="finding__df-header">
@@ -4058,106 +4113,13 @@ if not safe.startswith(os.path.realpath(BASE_DIR)):
           
           
           
-          <details id="issue-17" data-issue-num="18" class="finding finding--critical finding--suppressed" data-severity="critical" data-rule-id="generic.secrets.security.hardcoded-aws-key" data-suppressed="true">
+          
+          
+          
+          <details id="issue-17" data-issue-num="18" class="finding finding--critical finding--suppressed" data-severity="critical" data-rule-id="python.flask.security.audit.sql-injection" data-suppressed="true">
             <summary class="finding__head">
               <span class="finding__badge finding__badge--critical"><span class="sev-dot" aria-hidden="true"></span>critical</span>
-              <span class="finding__num">#18</span><span class="finding__title" role="heading" aria-level="2" title="Hardcoded AWS access key">Hardcoded AWS access key</span>
-              <span class="finding__meta">
-                <span class="finding__path">tests/fixtures/test_config.py</span><span class="finding__line">:5</span>
-              </span>
-            </summary>
-            <div class="finding__body"><div class="finding__suppression finding__suppression--accepted">
-                <span class="sup-label">Suppressed</span>
-                <span class="sup-justification" title="Test-only credential. Key is expired and used only in CI mocks. # nosemgrep">Test-only credential. Key is expired and used only in CI mocks. # nosemgrep</span>
-                <span class="sup-kind">inSource</span>
-              </div>
-              <dl class="finding__meta-dl">
-                <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Hardcoded secret</dd>
-                <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">High (85%)</dd>
-                <dt class="finding__meta-key">Rule:</dt><dd>generic.secrets.security.hardcoded-aws-key</dd>
-                <dt class="finding__meta-key">Scanner:</dt><dd>Semgrep OSS</dd>
-              </dl>
-              <p class="finding__description">Hardcoded AWS key in test configuration file.</p>
-              <div class="finding__location">
-                Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-0ea1d8c79e42ffc00a9a3aac76d7c4edc16c933cb38111bdaa5822ade08765a3R5" target="_blank" rel="noopener noreferrer">tests/fixtures/test_config.py (line 5)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/tests/fixtures/test_config.py#L5" target="_blank" rel="noopener noreferrer">tests/fixtures/test_config.py (line 5)</a></span>
-              </div>
-              <div class="finding__df-block">
-                <header class="finding__df-header">
-                  Affected code:
-                  
-                  
-                    
-                      
-                    
-                  
-                  
-                </header>
-                
-                  
-                  
-                    
-                      <div class="finding__df finding__df--1 finding__df--selected">
-                        
-                        
-                        
-
-                          
-                          
-                          
-                          <div class="finding__df-filename"><span>tests/fixtures/test_config.py</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
-                          
-                          
-
-                          
-                          
-                          
-                          
-                          
-                          
-                          
-                          
-                          
-
-                          
-                            <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/tests/fixtures/test_config.py#L5" target="_blank" rel="noopener noreferrer">5</a></span><div class="finding__df-code">TEST_AWS_KEY = <span class="finding__df-highlight">&#34;AKIAIOSFODNN7EXAMPL</span>E&#34;</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
-                          
-
-                        
-                      </div>
-                      
-                    
-                  
-                
-              </div>
-              <aside class="finding__fix">
-                <div class="finding__fix-header"><svg width="13" height="13" aria-hidden="true"><use href="#tb-wrench"/></svg>Suggested fix</div>
-                <p class="finding__fix-prose">Remove the hardcoded key and load it from the environment:</p>
-                <div class="finding__fix-codeblock">
-                  <div class="finding__fix-code-hdr">
-                    <span class="finding__fix-lang">python</span>
-                    <button class="fix-copy-btn" type="button" aria-label="Copy fix" title="Copy fix"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button>
-                  </div>
-                  <pre class="finding__fix-pre"><code class="language-python">AWS_SECRET_KEY = os.environ[&#34;AWS_SECRET_KEY&#34;]</code></pre>
-                </div>
-              </aside>
-              <section class="finding__refs">
-                <h3 class="finding__section-h">References</h3>
-                <ul><li><a href="https://semgrep.dev/r/generic.secrets.security.hardcoded-aws-key" target="_blank" rel="noopener noreferrer">https://semgrep.dev/r/generic.secrets.security.hardcoded-aws-key</a></li></ul>
-              </section>
-            </div>
-          </details>
-          
-          
-          
-          
-          
-          
-          
-          
-          <details id="issue-18" data-issue-num="19" class="finding finding--critical finding--suppressed" data-severity="critical" data-rule-id="python.flask.security.audit.sql-injection" data-suppressed="true">
-            <summary class="finding__head">
-              <span class="finding__badge finding__badge--critical"><span class="sev-dot" aria-hidden="true"></span>critical</span>
-              <span class="finding__num">#19</span><span class="finding__title" role="heading" aria-level="2" title="SQL injection via unsanitized user input">SQL injection via unsanitized user input</span>
+              <span class="finding__num">#18</span><span class="finding__title" role="heading" aria-level="2" title="SQL injection via unsanitized user input">SQL injection via unsanitized user input</span>
               <span class="finding__meta">
                 <span class="finding__path">tests/test_db.py</span><span class="finding__line">:34</span>
               </span>
@@ -4175,7 +4137,7 @@ if not safe.startswith(os.path.realpath(BASE_DIR)):
               </dl>
               <p class="finding__description">Unsanitized test fixture ID flows into a SQL query. This is a test-only file with controlled input.</p>
               <div class="finding__location">
-                Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-b5f450a5ce32582aed8932f7ef3831dfb48dc85692413ed492fad459f8e8ac8cR34" target="_blank" rel="noopener noreferrer">tests/test_db.py (line 34)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/tests/test_db.py#L34" target="_blank" rel="noopener noreferrer">tests/test_db.py (line 34)</a></span>
+                Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/tests/test_db.py#L34" target="_blank" rel="noopener noreferrer">tests/test_db.py (line 34)</a></strong>
               </div>
               <div class="finding__df-block">
                 <header class="finding__df-header">
@@ -4250,6 +4212,99 @@ if not safe.startswith(os.path.realpath(BASE_DIR)):
           
           
           
+          <details id="issue-18" data-issue-num="19" class="finding finding--critical finding--suppressed" data-severity="critical" data-rule-id="generic.secrets.security.hardcoded-aws-key" data-suppressed="true">
+            <summary class="finding__head">
+              <span class="finding__badge finding__badge--critical"><span class="sev-dot" aria-hidden="true"></span>critical</span>
+              <span class="finding__num">#19</span><span class="finding__title" role="heading" aria-level="2" title="Hardcoded AWS access key">Hardcoded AWS access key</span>
+              <span class="finding__meta">
+                <span class="finding__path">tests/fixtures/test_config.py</span><span class="finding__line">:5</span>
+              </span>
+            </summary>
+            <div class="finding__body"><div class="finding__suppression finding__suppression--accepted">
+                <span class="sup-label">Suppressed</span>
+                <span class="sup-justification" title="Test-only credential. Key is expired and used only in CI mocks. # nosemgrep">Test-only credential. Key is expired and used only in CI mocks. # nosemgrep</span>
+                <span class="sup-kind">inSource</span>
+              </div>
+              <dl class="finding__meta-dl">
+                <dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">Hardcoded secret</dd>
+                <dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">High (85%)</dd>
+                <dt class="finding__meta-key">Rule:</dt><dd>generic.secrets.security.hardcoded-aws-key</dd>
+                <dt class="finding__meta-key">Scanner:</dt><dd>Semgrep OSS</dd>
+              </dl>
+              <p class="finding__description">Hardcoded AWS key in test configuration file.</p>
+              <div class="finding__location">
+                Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/tests/fixtures/test_config.py#L5" target="_blank" rel="noopener noreferrer">tests/fixtures/test_config.py (line 5)</a></strong>
+              </div>
+              <div class="finding__df-block">
+                <header class="finding__df-header">
+                  Affected code:
+                  
+                  
+                    
+                      
+                    
+                  
+                  
+                </header>
+                
+                  
+                  
+                    
+                      <div class="finding__df finding__df--1 finding__df--selected">
+                        
+                        
+                        
+
+                          
+                          
+                          
+                          <div class="finding__df-filename"><span>tests/fixtures/test_config.py</span><button class="copy-all-btn" type="button" aria-label="Copy all code" title="Copy all code"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button></div>
+                          
+                          
+
+                          
+                          
+                          
+                          
+                          
+                          
+                          
+                          
+                          
+
+                          
+                            <div class="finding__df-codeline finding__df-codeline--hl"><span class="finding__df-linecol"><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/tests/fixtures/test_config.py#L5" target="_blank" rel="noopener noreferrer">5</a></span><div class="finding__df-code">TEST_AWS_KEY = <span class="finding__df-highlight">&#34;AKIAIOSFODNN7EXAMPL</span>E&#34;</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
+                          
+
+                        
+                      </div>
+                      
+                    
+                  
+                
+              </div>
+              <aside class="finding__fix">
+                <div class="finding__fix-header"><svg width="13" height="13" aria-hidden="true"><use href="#tb-wrench"/></svg>Suggested fix</div>
+                <p class="finding__fix-prose">Remove the hardcoded key and load it from the environment:</p>
+                <div class="finding__fix-codeblock">
+                  <div class="finding__fix-code-hdr">
+                    <span class="finding__fix-lang">python</span>
+                    <button class="fix-copy-btn" type="button" aria-label="Copy fix" title="Copy fix"><svg width="14" height="14" aria-hidden="true"><use href="#tb-copy-all"/></svg></button>
+                  </div>
+                  <pre class="finding__fix-pre"><code class="language-python">AWS_SECRET_KEY = os.environ[&#34;AWS_SECRET_KEY&#34;]</code></pre>
+                </div>
+              </aside>
+              <section class="finding__refs">
+                <h3 class="finding__section-h">References</h3>
+                <ul><li><a href="https://semgrep.dev/r/generic.secrets.security.hardcoded-aws-key" target="_blank" rel="noopener noreferrer">https://semgrep.dev/r/generic.secrets.security.hardcoded-aws-key</a></li></ul>
+              </section>
+            </div>
+          </details>
+          
+          
+          
+          
+          
           
           
           
@@ -4274,7 +4329,7 @@ if not safe.startswith(os.path.realpath(BASE_DIR)):
               </dl>
               <p class="finding__description">os.system call in admin maintenance script with operator-supplied command.</p>
               <div class="finding__location">
-                Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-acb4ddaa9f354b7154b8c1f41154e1820ae8fab1edbf8ae52769ec56858fd069R61" target="_blank" rel="noopener noreferrer">scripts/admin.py (line 61)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/scripts/admin.py#L61" target="_blank" rel="noopener noreferrer">scripts/admin.py (line 61)</a></span>
+                Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/scripts/admin.py#L61" target="_blank" rel="noopener noreferrer">scripts/admin.py (line 61)</a></strong>
               </div>
               <div class="finding__df-block">
                 <header class="finding__df-header">
@@ -4355,6 +4410,9 @@ if not safe.startswith(os.path.realpath(BASE_DIR)):
           
           
           
+          
+          
+          
           <details id="issue-20" data-issue-num="21" class="finding finding--medium finding--suppressed" data-severity="medium" data-rule-id="python.lang.security.audit.path-traversal" data-suppressed="true">
             <summary class="finding__head">
               <span class="finding__badge finding__badge--medium"><span class="sev-dot" aria-hidden="true"></span>medium</span>
@@ -4376,7 +4434,7 @@ if not safe.startswith(os.path.realpath(BASE_DIR)):
               </dl>
               <p class="finding__description">Legacy file handler uses unsanitized path. Migration to secure implementation is tracked in the backlog.</p>
               <div class="finding__location">
-                Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-38781c7006901c2a9f5aedbb672dc2a18a1c305a7e011d7476e0637f6d22c773R88" target="_blank" rel="noopener noreferrer">legacy/file_handler.py (line 88)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/legacy/file_handler.py#L88" target="_blank" rel="noopener noreferrer">legacy/file_handler.py (line 88)</a></span>
+                Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/legacy/file_handler.py#L88" target="_blank" rel="noopener noreferrer">legacy/file_handler.py (line 88)</a></strong>
               </div>
               <div class="finding__df-block">
                 <header class="finding__df-header">
@@ -4455,8 +4513,6 @@ if not safe_path.startswith(BASE_DIR):
           
           
           
-          
-          
           <details id="issue-21" data-issue-num="22" class="finding finding--low finding--suppressed" data-severity="low" data-rule-id="python.flask.security.audit.insecure-cookie" data-suppressed="true">
             <summary class="finding__head">
               <span class="finding__badge finding__badge--low"><span class="sev-dot" aria-hidden="true"></span>low</span>
@@ -4478,7 +4534,7 @@ if not safe_path.startswith(BASE_DIR):
               </dl>
               <p class="finding__description">Auth cookie set without Secure flag. Suppression was rejected — this must be fixed before the next production release.</p>
               <div class="finding__location">
-                Location in PR: <strong><a href="https://github.com/scan-io-git/scanio-demo/pull/42/files#diff-0f066672bb2866831c8a0b61c48c718390334d798b547ee7519b20977c2b8653R72" target="_blank" rel="noopener noreferrer">app/auth.py (line 72)</a></strong><span class="finding__location-secondary">at commit <a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/auth.py#L72" target="_blank" rel="noopener noreferrer">app/auth.py (line 72)</a></span>
+                Location: <strong><a href="https://github.com/scan-io-git/scanio-demo/blob/daaee1979c3ee11cb403567a256ad250d7a34986/app/auth.py#L72" target="_blank" rel="noopener noreferrer">app/auth.py (line 72)</a></strong>
               </div>
               <div class="finding__df-block">
                 <header class="finding__df-header">
@@ -4548,7 +4604,6 @@ if not safe_path.startswith(BASE_DIR):
           
           
           
-          
         </div>
       </section>
       
@@ -4558,7 +4613,7 @@ if not safe_path.startswith(BASE_DIR):
   </div>
   </div>
 
-  <script nonce="FvGYpjj5Est9XQdge011dg">
+  <script nonce="1Us2Xx-npz69Xb5BKLhOTw">
 window.Prism={manual:true};
 var _self="undefined"!=typeof window?window:"undefined"!=typeof WorkerGlobalScope&&self instanceof WorkerGlobalScope?self:{},Prism=function(e){var n=/(?:^|\s)lang(?:uage)?-([\w-]+)(?=\s|$)/i,t=0,r={},a={manual:e.Prism&&e.Prism.manual,disableWorkerMessageHandler:e.Prism&&e.Prism.disableWorkerMessageHandler,util:{encode:function e(n){return n instanceof i?new i(n.type,e(n.content),n.alias):Array.isArray(n)?n.map(e):n.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/\u00a0/g," ")},type:function(e){return Object.prototype.toString.call(e).slice(8,-1)},objId:function(e){return e.__id||Object.defineProperty(e,"__id",{value:++t}),e.__id},clone:function e(n,t){var r,i;switch(t=t||{},a.util.type(n)){case"Object":if(i=a.util.objId(n),t[i])return t[i];for(var l in r={},t[i]=r,n)n.hasOwnProperty(l)&&(r[l]=e(n[l],t));return r;case"Array":return i=a.util.objId(n),t[i]?t[i]:(r=[],t[i]=r,n.forEach((function(n,a){r[a]=e(n,t)})),r);default:return n}},getLanguage:function(e){for(;e;){var t=n.exec(e.className);if(t)return t[1].toLowerCase();e=e.parentElement}return"none"},setLanguage:function(e,t){e.className=e.className.replace(RegExp(n,"gi"),""),e.classList.add("language-"+t)},currentScript:function(){if("undefined"==typeof document)return null;if("currentScript"in document)return document.currentScript;try{throw new Error}catch(r){var e=(/at [^(\r\n]*\((.*):[^:]+:[^:]+\)$/i.exec(r.stack)||[])[1];if(e){var n=document.getElementsByTagName("script");for(var t in n)if(n[t].src==e)return n[t]}return null}},isActive:function(e,n,t){for(var r="no-"+n;e;){var a=e.classList;if(a.contains(n))return!0;if(a.contains(r))return!1;e=e.parentElement}return!!t}},languages:{plain:r,plaintext:r,text:r,txt:r,extend:function(e,n){var t=a.util.clone(a.languages[e]);for(var r in n)t[r]=n[r];return t},insertBefore:function(e,n,t,r){var i=(r=r||a.languages)[e],l={};for(var o in i)if(i.hasOwnProperty(o)){if(o==n)for(var s in t)t.hasOwnProperty(s)&&(l[s]=t[s]);t.hasOwnProperty(o)||(l[o]=i[o])}var u=r[e];return r[e]=l,a.languages.DFS(a.languages,(function(n,t){t===u&&n!=e&&(this[n]=l)})),l},DFS:function e(n,t,r,i){i=i||{};var l=a.util.objId;for(var o in n)if(n.hasOwnProperty(o)){t.call(n,o,n[o],r||o);var s=n[o],u=a.util.type(s);"Object"!==u||i[l(s)]?"Array"!==u||i[l(s)]||(i[l(s)]=!0,e(s,t,o,i)):(i[l(s)]=!0,e(s,t,null,i))}}},plugins:{},highlightAll:function(e,n){a.highlightAllUnder(document,e,n)},highlightAllUnder:function(e,n,t){var r={callback:t,container:e,selector:'code[class*="language-"], [class*="language-"] code, code[class*="lang-"], [class*="lang-"] code'};a.hooks.run("before-highlightall",r),r.elements=Array.prototype.slice.apply(r.container.querySelectorAll(r.selector)),a.hooks.run("before-all-elements-highlight",r);for(var i,l=0;i=r.elements[l++];)a.highlightElement(i,!0===n,r.callback)},highlightElement:function(n,t,r){var i=a.util.getLanguage(n),l=a.languages[i];a.util.setLanguage(n,i);var o=n.parentElement;o&&"pre"===o.nodeName.toLowerCase()&&a.util.setLanguage(o,i);var s={element:n,language:i,grammar:l,code:n.textContent};function u(e){s.highlightedCode=e,a.hooks.run("before-insert",s),s.element.innerHTML=s.highlightedCode,a.hooks.run("after-highlight",s),a.hooks.run("complete",s),r&&r.call(s.element)}if(a.hooks.run("before-sanity-check",s),(o=s.element.parentElement)&&"pre"===o.nodeName.toLowerCase()&&!o.hasAttribute("tabindex")&&o.setAttribute("tabindex","0"),!s.code)return a.hooks.run("complete",s),void(r&&r.call(s.element));if(a.hooks.run("before-highlight",s),s.grammar)if(t&&e.Worker){var c=new Worker(a.filename);c.onmessage=function(e){u(e.data)},c.postMessage(JSON.stringify({language:s.language,code:s.code,immediateClose:!0}))}else u(a.highlight(s.code,s.grammar,s.language));else u(a.util.encode(s.code))},highlight:function(e,n,t){var r={code:e,grammar:n,language:t};if(a.hooks.run("before-tokenize",r),!r.grammar)throw new Error('The language "'+r.language+'" has no grammar.');return r.tokens=a.tokenize(r.code,r.grammar),a.hooks.run("after-tokenize",r),i.stringify(a.util.encode(r.tokens),r.language)},tokenize:function(e,n){var t=n.rest;if(t){for(var r in t)n[r]=t[r];delete n.rest}var a=new s;return u(a,a.head,e),o(e,a,n,a.head,0),function(e){for(var n=[],t=e.head.next;t!==e.tail;)n.push(t.value),t=t.next;return n}(a)},hooks:{all:{},add:function(e,n){var t=a.hooks.all;t[e]=t[e]||[],t[e].push(n)},run:function(e,n){var t=a.hooks.all[e];if(t&&t.length)for(var r,i=0;r=t[i++];)r(n)}},Token:i};function i(e,n,t,r){this.type=e,this.content=n,this.alias=t,this.length=0|(r||"").length}function l(e,n,t,r){e.lastIndex=n;var a=e.exec(t);if(a&&r&&a[1]){var i=a[1].length;a.index+=i,a[0]=a[0].slice(i)}return a}function o(e,n,t,r,s,g){for(var f in t)if(t.hasOwnProperty(f)&&t[f]){var h=t[f];h=Array.isArray(h)?h:[h];for(var d=0;d<h.length;++d){if(g&&g.cause==f+","+d)return;var v=h[d],p=v.inside,m=!!v.lookbehind,y=!!v.greedy,k=v.alias;if(y&&!v.pattern.global){var x=v.pattern.toString().match(/[imsuy]*$/)[0];v.pattern=RegExp(v.pattern.source,x+"g")}for(var b=v.pattern||v,w=r.next,A=s;w!==n.tail&&!(g&&A>=g.reach);A+=w.value.length,w=w.next){var E=w.value;if(n.length>e.length)return;if(!(E instanceof i)){var P,L=1;if(y){if(!(P=l(b,A,e,m))||P.index>=e.length)break;var S=P.index,O=P.index+P[0].length,j=A;for(j+=w.value.length;S>=j;)j+=(w=w.next).value.length;if(A=j-=w.value.length,w.value instanceof i)continue;for(var C=w;C!==n.tail&&(j<O||"string"==typeof C.value);C=C.next)L++,j+=C.value.length;L--,E=e.slice(A,j),P.index-=A}else if(!(P=l(b,0,E,m)))continue;S=P.index;var N=P[0],_=E.slice(0,S),M=E.slice(S+N.length),W=A+E.length;g&&W>g.reach&&(g.reach=W);var z=w.prev;if(_&&(z=u(n,z,_),A+=_.length),c(n,z,L),w=u(n,z,new i(f,p?a.tokenize(N,p):N,k,N)),M&&u(n,w,M),L>1){var I={cause:f+","+d,reach:W};o(e,n,t,w.prev,A,I),g&&I.reach>g.reach&&(g.reach=I.reach)}}}}}}function s(){var e={value:null,prev:null,next:null},n={value:null,prev:e,next:null};e.next=n,this.head=e,this.tail=n,this.length=0}function u(e,n,t){var r=n.next,a={value:t,prev:n,next:r};return n.next=a,r.prev=a,e.length++,a}function c(e,n,t){for(var r=n.next,a=0;a<t&&r!==e.tail;a++)r=r.next;n.next=r,r.prev=n,e.length-=a}if(e.Prism=a,i.stringify=function e(n,t){if("string"==typeof n)return n;if(Array.isArray(n)){var r="";return n.forEach((function(n){r+=e(n,t)})),r}var i={type:n.type,content:e(n.content,t),tag:"span",classes:["token",n.type],attributes:{},language:t},l=n.alias;l&&(Array.isArray(l)?Array.prototype.push.apply(i.classes,l):i.classes.push(l)),a.hooks.run("wrap",i);var o="";for(var s in i.attributes)o+=" "+s+'="'+(i.attributes[s]||"").replace(/"/g,"&quot;")+'"';return"<"+i.tag+' class="'+i.classes.join(" ")+'"'+o+">"+i.content+"</"+i.tag+">"},!e.document)return e.addEventListener?(a.disableWorkerMessageHandler||e.addEventListener("message",(function(n){var t=JSON.parse(n.data),r=t.language,i=t.code,l=t.immediateClose;e.postMessage(a.highlight(i,a.languages[r],r)),l&&e.close()}),!1),a):a;var g=a.util.currentScript();function f(){a.manual||a.highlightAll()}if(g&&(a.filename=g.src,g.hasAttribute("data-manual")&&(a.manual=!0)),!a.manual){var h=document.readyState;"loading"===h||"interactive"===h&&g&&g.defer?document.addEventListener("DOMContentLoaded",f):window.requestAnimationFrame?window.requestAnimationFrame(f):window.setTimeout(f,16)}return a}(_self);"undefined"!=typeof module&&module.exports&&(module.exports=Prism),"undefined"!=typeof global&&(global.Prism=Prism);
 Prism.languages.clike={comment:[{pattern:/(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/(["'])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,greedy:!0},"class-name":{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i,lookbehind:!0,inside:{punctuation:/[.\\]/}},keyword:/\b(?:break|catch|continue|do|else|finally|for|function|if|in|instanceof|new|null|return|throw|try|while)\b/,boolean:/\b(?:false|true)\b/,function:/\b\w+(?=\()/,number:/\b0x[\da-f]+\b|(?:\b\d+(?:\.\d*)?|\B\.\d+)(?:e[+-]?\d+)?/i,operator:/[<>]=?|[!=]=?=?|--?|\+\+?|&&?|\|\|?|[?*/~^%]/,punctuation:/[{}[\];(),.:]/};
@@ -4573,7 +4628,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
 !function(e){var t="\\b(?:BASH|BASHOPTS|BASH_ALIASES|BASH_ARGC|BASH_ARGV|BASH_CMDS|BASH_COMPLETION_COMPAT_DIR|BASH_LINENO|BASH_REMATCH|BASH_SOURCE|BASH_VERSINFO|BASH_VERSION|COLORTERM|COLUMNS|COMP_WORDBREAKS|DBUS_SESSION_BUS_ADDRESS|DEFAULTS_PATH|DESKTOP_SESSION|DIRSTACK|DISPLAY|EUID|GDMSESSION|GDM_LANG|GNOME_KEYRING_CONTROL|GNOME_KEYRING_PID|GPG_AGENT_INFO|GROUPS|HISTCONTROL|HISTFILE|HISTFILESIZE|HISTSIZE|HOME|HOSTNAME|HOSTTYPE|IFS|INSTANCE|JOB|LANG|LANGUAGE|LC_ADDRESS|LC_ALL|LC_IDENTIFICATION|LC_MEASUREMENT|LC_MONETARY|LC_NAME|LC_NUMERIC|LC_PAPER|LC_TELEPHONE|LC_TIME|LESSCLOSE|LESSOPEN|LINES|LOGNAME|LS_COLORS|MACHTYPE|MAILCHECK|MANDATORY_PATH|NO_AT_BRIDGE|OLDPWD|OPTERR|OPTIND|ORBIT_SOCKETDIR|OSTYPE|PAPERSIZE|PATH|PIPESTATUS|PPID|PS1|PS2|PS3|PS4|PWD|RANDOM|REPLY|SECONDS|SELINUX_INIT|SESSION|SESSIONTYPE|SESSION_MANAGER|SHELL|SHELLOPTS|SHLVL|SSH_AUTH_SOCK|TERM|UID|UPSTART_EVENTS|UPSTART_INSTANCE|UPSTART_JOB|UPSTART_SESSION|USER|WINDOWID|XAUTHORITY|XDG_CONFIG_DIRS|XDG_CURRENT_DESKTOP|XDG_DATA_DIRS|XDG_GREETER_DATA_DIR|XDG_MENU_PREFIX|XDG_RUNTIME_DIR|XDG_SEAT|XDG_SEAT_PATH|XDG_SESSION_DESKTOP|XDG_SESSION_ID|XDG_SESSION_PATH|XDG_SESSION_TYPE|XDG_VTNR|XMODIFIERS)\\b",a={pattern:/(^(["']?)\w+\2)[ \t]+\S.*/,lookbehind:!0,alias:"punctuation",inside:null},n={bash:a,environment:{pattern:RegExp("\\$"+t),alias:"constant"},variable:[{pattern:/\$?\(\([\s\S]+?\)\)/,greedy:!0,inside:{variable:[{pattern:/(^\$\(\([\s\S]+)\)\)/,lookbehind:!0},/^\$\(\(/],number:/\b0x[\dA-Fa-f]+\b|(?:\b\d+(?:\.\d*)?|\B\.\d+)(?:[Ee]-?\d+)?/,operator:/--|\+\+|\*\*=?|<<=?|>>=?|&&|\|\||[=!+\-*/%<>^&|]=?|[?~:]/,punctuation:/\(\(?|\)\)?|,|;/}},{pattern:/\$\((?:\([^)]+\)|[^()])+\)|`[^`]+`/,greedy:!0,inside:{variable:/^\$\(|^`|\)$|`$/}},{pattern:/\$\{[^}]+\}/,greedy:!0,inside:{operator:/:[-=?+]?|[!\/]|##?|%%?|\^\^?|,,?/,punctuation:/[\[\]]/,environment:{pattern:RegExp("(\\{)"+t),lookbehind:!0,alias:"constant"}}},/\$(?:\w+|[#?*!@$])/],entity:/\\(?:[abceEfnrtv\\"]|O?[0-7]{1,3}|U[0-9a-fA-F]{8}|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{1,2})/};e.languages.bash={shebang:{pattern:/^#!\s*\/.*/,alias:"important"},comment:{pattern:/(^|[^"{\\$])#.*/,lookbehind:!0},"function-name":[{pattern:/(\bfunction\s+)[\w-]+(?=(?:\s*\(?:\s*\))?\s*\{)/,lookbehind:!0,alias:"function"},{pattern:/\b[\w-]+(?=\s*\(\s*\)\s*\{)/,alias:"function"}],"for-or-select":{pattern:/(\b(?:for|select)\s+)\w+(?=\s+in\s)/,alias:"variable",lookbehind:!0},"assign-left":{pattern:/(^|[\s;|&]|[<>]\()\w+(?:\.\w+)*(?=\+?=)/,inside:{environment:{pattern:RegExp("(^|[\\s;|&]|[<>]\\()"+t),lookbehind:!0,alias:"constant"}},alias:"variable",lookbehind:!0},parameter:{pattern:/(^|\s)-{1,2}(?:\w+:[+-]?)?\w+(?:\.\w+)*(?=[=\s]|$)/,alias:"variable",lookbehind:!0},string:[{pattern:/((?:^|[^<])<<-?\s*)(\w+)\s[\s\S]*?(?:\r?\n|\r)\2/,lookbehind:!0,greedy:!0,inside:n},{pattern:/((?:^|[^<])<<-?\s*)(["'])(\w+)\2\s[\s\S]*?(?:\r?\n|\r)\3/,lookbehind:!0,greedy:!0,inside:{bash:a}},{pattern:/(^|[^\\](?:\\\\)*)"(?:\\[\s\S]|\$\([^)]+\)|\$(?!\()|`[^`]+`|[^"\\`$])*"/,lookbehind:!0,greedy:!0,inside:n},{pattern:/(^|[^$\\])'[^']*'/,lookbehind:!0,greedy:!0},{pattern:/\$'(?:[^'\\]|\\[\s\S])*'/,greedy:!0,inside:{entity:n.entity}}],environment:{pattern:RegExp("\\$?"+t),alias:"constant"},variable:n.variable,function:{pattern:/(^|[\s;|&]|[<>]\()(?:add|apropos|apt|apt-cache|apt-get|aptitude|aspell|automysqlbackup|awk|basename|bash|bc|bconsole|bg|bzip2|cal|cargo|cat|cfdisk|chgrp|chkconfig|chmod|chown|chroot|cksum|clear|cmp|column|comm|composer|cp|cron|crontab|csplit|curl|cut|date|dc|dd|ddrescue|debootstrap|df|diff|diff3|dig|dir|dircolors|dirname|dirs|dmesg|docker|docker-compose|du|egrep|eject|env|ethtool|expand|expect|expr|fdformat|fdisk|fg|fgrep|file|find|fmt|fold|format|free|fsck|ftp|fuser|gawk|git|gparted|grep|groupadd|groupdel|groupmod|groups|grub-mkconfig|gzip|halt|head|hg|history|host|hostname|htop|iconv|id|ifconfig|ifdown|ifup|import|install|ip|java|jobs|join|kill|killall|less|link|ln|locate|logname|logrotate|look|lpc|lpr|lprint|lprintd|lprintq|lprm|ls|lsof|lynx|make|man|mc|mdadm|mkconfig|mkdir|mke2fs|mkfifo|mkfs|mkisofs|mknod|mkswap|mmv|more|most|mount|mtools|mtr|mutt|mv|nano|nc|netstat|nice|nl|node|nohup|notify-send|npm|nslookup|op|open|parted|passwd|paste|pathchk|ping|pkill|pnpm|podman|podman-compose|popd|pr|printcap|printenv|ps|pushd|pv|quota|quotacheck|quotactl|ram|rar|rcp|reboot|remsync|rename|renice|rev|rm|rmdir|rpm|rsync|scp|screen|sdiff|sed|sendmail|seq|service|sftp|sh|shellcheck|shuf|shutdown|sleep|slocate|sort|split|ssh|stat|strace|su|sudo|sum|suspend|swapon|sync|sysctl|tac|tail|tar|tee|time|timeout|top|touch|tr|traceroute|tsort|tty|umount|uname|unexpand|uniq|units|unrar|unshar|unzip|update-grub|uptime|useradd|userdel|usermod|users|uudecode|uuencode|v|vcpkg|vdir|vi|vim|virsh|vmstat|wait|watch|wc|wget|whereis|which|who|whoami|write|xargs|xdg-open|yarn|yes|zenity|zip|zsh|zypper)(?=$|[)\s;|&])/,lookbehind:!0},keyword:{pattern:/(^|[\s;|&]|[<>]\()(?:case|do|done|elif|else|esac|fi|for|function|if|in|select|then|until|while)(?=$|[)\s;|&])/,lookbehind:!0},builtin:{pattern:/(^|[\s;|&]|[<>]\()(?:\.|:|alias|bind|break|builtin|caller|cd|command|continue|declare|echo|enable|eval|exec|exit|export|getopts|hash|help|let|local|logout|mapfile|printf|pwd|read|readarray|readonly|return|set|shift|shopt|source|test|times|trap|type|typeset|ulimit|umask|unalias|unset)(?=$|[)\s;|&])/,lookbehind:!0,alias:"class-name"},boolean:{pattern:/(^|[\s;|&]|[<>]\()(?:false|true)(?=$|[)\s;|&])/,lookbehind:!0},"file-descriptor":{pattern:/\B&\d\b/,alias:"important"},operator:{pattern:/\d?<>|>\||\+=|=[=~]?|!=?|<<[<-]?|[&\d]?>>|\d[<>]&?|[<>][&=]?|&[>&]?|\|[&|]?/,inside:{"file-descriptor":{pattern:/^\d/,alias:"important"}}},punctuation:/\$?\(\(?|\)\)?|\.\.|[{}[\];\\]/,number:{pattern:/(^|\s)(?:[1-9]\d*|0)(?:[.,]\d+)?\b/,lookbehind:!0}},a.inside=e.languages.bash;for(var s=["comment","function-name","for-or-select","assign-left","parameter","string","environment","function","keyword","builtin","boolean","file-descriptor","operator","punctuation","number"],o=n.variable[1].inside,i=0;i<s.length;i++)o[s[i]]=e.languages.bash[s[i]];e.languages.sh=e.languages.bash,e.languages.shell=e.languages.bash}(Prism);
 !function(e){var n=/\$(?:\w[a-z\d]*(?:_[^\x00-\x1F\s"'\\()$]*)?|\{[^}\s"'\\]+\})/i;e.languages.nginx={comment:{pattern:/(^|[\s{};])#.*/,lookbehind:!0,greedy:!0},directive:{pattern:/(^|\s)\w(?:[^;{}"'\\\s]|\\.|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\s+(?:#.*(?!.)|(?![#\s])))*?(?=\s*[;{])/,lookbehind:!0,greedy:!0,inside:{string:{pattern:/((?:^|[^\\])(?:\\\\)*)(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/,lookbehind:!0,greedy:!0,inside:{escape:{pattern:/\\["'\\nrt]/,alias:"entity"},variable:n}},comment:{pattern:/(\s)#.*/,lookbehind:!0,greedy:!0},keyword:{pattern:/^\S+/,greedy:!0},boolean:{pattern:/(\s)(?:off|on)(?!\S)/,lookbehind:!0},number:{pattern:/(\s)\d+[a-z]*(?!\S)/i,lookbehind:!0},variable:n}},punctuation:/[{};]/}}(Prism);
   </script>
-  <script nonce="FvGYpjj5Est9XQdge011dg">
+  <script nonce="1Us2Xx-npz69Xb5BKLhOTw">
     document.addEventListener("DOMContentLoaded", function () {
       const body = document.body;
       const findings = Array.from(document.querySelectorAll('.finding'));

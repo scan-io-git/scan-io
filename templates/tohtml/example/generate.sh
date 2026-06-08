@@ -37,4 +37,13 @@ go run . to-html \
   --templates-path "$SCRIPT_DIR/.." \
   --title        "Scanio Demo Report (PR #42)"
 
-echo "Reports written to templates/tohtml/example/example.html and example-pr.html"
+go run . to-html \
+  --input    "$SCRIPT_DIR/example.sarif" \
+  --output   "$SCRIPT_DIR/example-required.html" \
+  --source   "$TMP" \
+  --vcs      github \
+  --required "critical,high" \
+  --templates-path "$SCRIPT_DIR/.." \
+  --title    "Scanio Demo Report (Required/Recommended)"
+
+echo "Reports written to templates/tohtml/example/example.html, example-pr.html and example-required.html"
