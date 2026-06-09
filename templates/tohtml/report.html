@@ -2221,7 +2221,7 @@
         </a>{{end}}
         {{if $commit}}<a class="report-header__pill report-header__pill--commit" href="{{if $commitURL}}{{ $commitURL }}{{else}}#{{end}}" {{if $commitURL}}target="_blank" rel="noopener"{{end}} title="{{ $commit }}">
           <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-commit"/></svg>
-          <code>#{{ slice $commit 0 7 }}</code>
+          <code>#{{ with $commit }}{{ slice . 0 7 }}{{ end }}</code>
         </a>{{end}}
         {{if and $vcs $vcs.PullRequestId}}<a class="report-header__pill report-header__pill--pr" href="{{ if eq $vcs.VCSType "bitbucket" }}{{ $vcs.HTTPRepoLink }}/pull-requests/{{ $vcs.PullRequestId }}{{ else if eq $vcs.VCSType "gitlab" }}{{ $vcs.HTTPRepoLink }}/-/merge_requests/{{ $vcs.PullRequestId }}{{ else }}{{ $vcs.HTTPRepoLink }}/pull/{{ $vcs.PullRequestId }}{{ end }}" target="_blank" rel="noopener" title="Pull request #{{ $vcs.PullRequestId }}">
           <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-pull-request"/></svg>
@@ -2256,7 +2256,7 @@
           </div>{{end}}
           {{if $commit}}<div class="header-kebab__meta-item" role="menuitem">
             <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-commit"/></svg>
-            {{if $commitURL}}<a href="{{ $commitURL }}" target="_blank" rel="noopener"><code>#{{ slice $commit 0 7 }}</code></a>{{else}}<code>#{{ slice $commit 0 7 }}</code>{{end}}
+            {{if $commitURL}}<a href="{{ $commitURL }}" target="_blank" rel="noopener"><code>#{{ with $commit }}{{ slice . 0 7 }}{{ end }}</code></a>{{else}}<code>#{{ with $commit }}{{ slice . 0 7 }}{{ end }}</code>{{end}}
           </div>{{end}}
           {{if and $vcs $vcs.PullRequestId}}<div class="header-kebab__meta-item" role="menuitem">
             <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-pull-request"/></svg>
