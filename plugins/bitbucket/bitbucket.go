@@ -382,6 +382,14 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRes
 			return shared.VCSFetchResponse{}, fmt.Errorf("failed to fetch base commit %q: %w", baseSHA, err)
 		}
 		extras["base_sha"] = baseSHA
+
+		headSHA := prData.FromReference.LatestCommit
+		baseBranch := prData.ToReference.DisplayID
+		if mb, mbErr := clientGit.MergeBaseSHA(args.TargetFolder, headSHA, baseBranch, baseSHA); mbErr != nil {
+			g.logger.Warn("failed to compute merge base", "error", mbErr)
+		} else if mb != "" {
+			extras["merge_base_sha"] = mb
+		}
 	}
 
 	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, prID)

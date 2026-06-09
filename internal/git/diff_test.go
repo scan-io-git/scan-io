@@ -3,7 +3,9 @@ package git
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -256,4 +258,118 @@ func compareLineMaps(want, got map[int]string) string {
 		}
 	}
 	return ""
+}
+
+// setupMergeBaseRepo creates a local bare origin with a master branch (C0-C3) and a
+// feature branch that diverges at C1 (adds commits A and B), then shallow-clones the
+// feature branch. Returns the clone directory and C1's SHA (the expected fork point).
+func setupMergeBaseRepo(t *testing.T) (cloneDir, forkPointSHA string) {
+	t.Helper()
+
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git binary not in PATH; skipping merge-base CLI test")
+	}
+
+	tmp := t.TempDir()
+	originDir := filepath.Join(tmp, "origin")
+	seedDir := filepath.Join(tmp, "seed")
+	cloneDir = filepath.Join(tmp, "clone")
+
+	run := func(dir string, args ...string) string {
+		cmd := exec.Command("git", args...)
+		if dir != "" {
+			cmd.Dir = dir
+		}
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v (dir=%q): %v\n%s", args, dir, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+
+	if err := os.MkdirAll(originDir, 0o755); err != nil {
+		t.Fatalf("mkdir origin: %v", err)
+	}
+	run(originDir, "init", "--bare")
+
+	if err := os.MkdirAll(seedDir, 0o755); err != nil {
+		t.Fatalf("mkdir seed: %v", err)
+	}
+	run(seedDir, "init")
+	run(seedDir, "symbolic-ref", "HEAD", "refs/heads/master")
+	run(seedDir, "config", "user.email", "test@test.com")
+	run(seedDir, "config", "user.name", "Test")
+	run(seedDir, "remote", "add", "origin", "file://"+originDir)
+
+	write := func(name, content string) {
+		if err := os.WriteFile(filepath.Join(seedDir, name), []byte(content), 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+
+	write("file.txt", "c0\n")
+	run(seedDir, "add", ".")
+	run(seedDir, "commit", "-m", "C0")
+
+	write("file.txt", "c1\n")
+	run(seedDir, "add", ".")
+	run(seedDir, "commit", "-m", "C1")
+	forkPointSHA = run(seedDir, "rev-parse", "HEAD")
+
+	// Feature branch diverges from C1.
+	run(seedDir, "checkout", "-b", "feature")
+	write("feature.txt", "A\n")
+	run(seedDir, "add", ".")
+	run(seedDir, "commit", "-m", "A")
+	write("feature.txt", "B\n")
+	run(seedDir, "add", ".")
+	run(seedDir, "commit", "-m", "B")
+	run(seedDir, "push", "origin", "feature")
+
+	// Advance master past C1.
+	run(seedDir, "checkout", "master")
+	write("file.txt", "c2\n")
+	run(seedDir, "add", ".")
+	run(seedDir, "commit", "-m", "C2")
+	write("file.txt", "c3\n")
+	run(seedDir, "add", ".")
+	run(seedDir, "commit", "-m", "C3")
+	run(seedDir, "push", "origin", "master")
+
+	if err := os.MkdirAll(cloneDir, 0o755); err != nil {
+		t.Fatalf("mkdir clone: %v", err)
+	}
+	run("", "clone",
+		"--depth=1", "--branch=feature", "--single-branch", "--no-tags",
+		"file://"+originDir, cloneDir)
+	run(cloneDir, "config", "user.email", "test@test.com")
+	run(cloneDir, "config", "user.name", "Test")
+
+	return cloneDir, forkPointSHA
+}
+
+func TestMergeBaseSHA_shallow(t *testing.T) {
+	cloneDir, wantFork := setupMergeBaseRepo(t)
+
+	client := newTestGitClient()
+	got, err := client.MergeBaseSHA(cloneDir, "", "master", "")
+	if err != nil {
+		t.Fatalf("MergeBaseSHA returned unexpected error: %v", err)
+	}
+	if got != wantFork {
+		t.Errorf("merge base = %q, want %q", got, wantFork)
+	}
+}
+
+func TestMergeBaseSHA_noBranch(t *testing.T) {
+	repoDir, _, _ := setupDiffRepo(t)
+	client := newTestGitClient()
+
+	got, err := client.MergeBaseSHA(repoDir, "", "", "")
+	if err != nil {
+		t.Fatalf("MergeBaseSHA with empty inputs returned error: %v", err)
+	}
+	if got != "" {
+		t.Errorf("expected empty result for no-branch skip, got %q", got)
+	}
 }

@@ -373,3 +373,76 @@ func fetchCommit(gitClient *Client, repo *git.Repository, hash plumbing.Hash) er
 	gitClient.logger.Debug("commit fetched", "hash", hash.String())
 	return nil
 }
+
+// MergeBaseSHA computes the merge-base (fork point) SHA between the feature branch
+// at repoPath and the base branch, fetching the minimum history via the git CLI.
+// Best-effort: returns ("", nil) when the fork point cannot be determined (passphrase
+// SSH key, git binary absent, server error) so callers proceed without it.
+// baseBranch may be a short name or refs/heads/<name>; baseSHA is the fallback for
+// non-shallow repos where a direct merge-base lookup is used instead.
+func (c *Client) MergeBaseSHA(repoPath, headSHA, baseBranch, baseSHA string) (string, error) {
+	if baseBranch == "" && baseSHA == "" {
+		c.logger.Warn("merge-base computation skipped: neither base branch nor SHA available")
+		return "", nil
+	}
+
+	env, err := c.gitCLIEnv()
+	if err != nil {
+		c.logger.Warn("merge-base computation skipped: CLI auth not supported", "reason", err)
+		return "", nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
+	defer cancel()
+
+	branch := strings.TrimPrefix(baseBranch, "refs/heads/")
+
+	isShallow, _ := c.runGit(ctx, repoPath, env, "rev-parse", "--is-shallow-repository")
+	if isShallow == "true" {
+		return c.mergeBaseShallow(ctx, repoPath, env, branch)
+	}
+	return c.mergeBaseFull(ctx, repoPath, env, headSHA, baseSHA)
+}
+
+// mergeBaseShallow computes the merge-base for a shallow clone using the
+// --shallow-exclude protocol: deepen the feature branch stopping at the base,
+// pull in one more commit (the fork point), then read the new shallow root.
+func (c *Client) mergeBaseShallow(ctx context.Context, repoPath string, env []string, baseBranch string) (string, error) {
+	if baseBranch == "" {
+		c.logger.Warn("merge-base skipped: no base branch name for --shallow-exclude")
+		return "", nil
+	}
+	if _, err := c.runGit(ctx, repoPath, env, "fetch", "--shallow-exclude="+baseBranch, "origin"); err != nil {
+		c.logger.Warn("merge-base skipped: shallow-exclude fetch failed", "error", err)
+		return "", nil
+	}
+	if _, err := c.runGit(ctx, repoPath, env, "fetch", "--deepen=1"); err != nil {
+		c.logger.Warn("merge-base skipped: deepen fetch failed", "error", err)
+		return "", nil
+	}
+	out, err := c.runGit(ctx, repoPath, env, "rev-list", "--max-parents=0", "HEAD")
+	if err != nil || out == "" {
+		c.logger.Warn("merge-base skipped: rev-list failed", "error", err)
+		return "", nil
+	}
+	roots := strings.Fields(out)
+	if len(roots) > 1 {
+		c.logger.Warn("multiple shallow roots found; using first", "roots", roots)
+	}
+	return roots[0], nil
+}
+
+// mergeBaseFull computes the merge-base for a full (non-shallow) clone.
+// Both commits are already present in the local store, so git merge-base suffices.
+func (c *Client) mergeBaseFull(ctx context.Context, repoPath string, env []string, headSHA, baseSHA string) (string, error) {
+	if headSHA == "" || baseSHA == "" {
+		c.logger.Warn("merge-base skipped: headSHA or baseSHA empty for full-clone path")
+		return "", nil
+	}
+	out, err := c.runGit(ctx, repoPath, env, "merge-base", headSHA, baseSHA)
+	if err != nil {
+		c.logger.Warn("merge-base skipped: merge-base command failed", "error", err)
+		return "", nil
+	}
+	return out, nil
+}

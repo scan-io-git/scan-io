@@ -564,6 +564,16 @@ func (g *VCSGitlab) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRespon
 			return shared.VCSFetchResponse{}, fmt.Errorf("failed to fetch base commit %q: %w", baseSHA, err)
 		}
 		extras["base_sha"] = baseSHA
+
+		headSHA := mrData.DiffRefs.HeadSha
+		if headSHA == "" {
+			headSHA = mrData.SHA
+		}
+		if mb, mbErr := clientGit.MergeBaseSHA(args.TargetFolder, headSHA, mrData.TargetBranch, baseSHA); mbErr != nil {
+			g.logger.Warn("failed to compute merge base", "error", mbErr)
+		} else if mb != "" {
+			extras["merge_base_sha"] = mb
+		}
 	}
 
 	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, mrID)

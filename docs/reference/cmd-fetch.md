@@ -60,7 +60,7 @@ scanio fetch --vcs/-p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [
 | `--no-tags`   | bool  | No         | `false`                                                       | Do not fetch any tags from the repository. If neither `--tags` nor `--no-tags` is set, tag-following is used by default.     |
 | `--auto-repair`   | bool  | No         | `false`                                                       | Automatically repair shallow or corrupted repositories by forcing a refetch and recloning if necessary.     |
 | `-clean-workdir`   | bool  | No         | `false`                                                       | Reset the working tree to HEAD and remove untracked files and directories. Equivalent to `git reset --hard` + `git clean -fdx`.     |
-| `--fetch-base`    | bool  | No          | `false`                                                       | **[PR mode only]** Fetch the PR base commit into the local git object store. Sets `base_sha` in the result extras. Required when passing `--baseline-commit` to a scanner for diff-aware scanning. See [Diff-aware scanning](#diff-aware-scanning).  |
+| `--fetch-base`    | bool  | No          | `false`                                                       | **[PR mode only]** Fetch the PR base commit into the local git object store. Sets `base_sha` (target-branch tip) and `merge_base_sha` (fork point) in the result extras. Use `merge_base_sha` as the `--baseline-commit` argument to semgrep. See [Diff-aware scanning](#diff-aware-scanning).  |
 
 
 **Using List Command Output as Input**<br>
@@ -130,6 +130,7 @@ The `fetch` command generates a JSON file as output, capturing detailed informat
           "diff_files_root": "<path_to_diff_files_folder>",
           "diff_lines_root": "<path_to_diff_lines_folder>",
           "base_sha": "<base_commit_sha>",
+          "merge_base_sha": "<fork_point_sha>",
           "head_sha": "<head_commit_sha>"
         }
       },
@@ -181,7 +182,7 @@ The `fetch` command generates a JSON file as output, capturing detailed informat
 |-------------|-----------------------------------------------------------------------------|
 | `path`      | Path to the repository checkout on disk (always the repo root). When diff modes are enabled inspect the `extras` map for `diff_lines_root` and/or `diff_files_root` to find derived artifacts. |
 | `scope`     | Represents the fetch scope (`full`, `diff-lines`, `diff-files`, or `diff`). Mirrors the active diff flags so downstream automation can branch logic. |
-| `extras`    | Key/value metadata returned by the VCS plugin. Always includes `repo_root`. Optional keys: `diff_files_root` (set when `--diff-files`), `diff_lines_root` (set when `--diff-lines`), `base_sha` (set when `--fetch-base` or `--diff-lines`), `head_sha` (set when `--diff-lines`). When `base_sha` is present the commit is guaranteed to be in the local git object store. |
+| `extras`    | Key/value metadata returned by the VCS plugin. Always includes `repo_root`. Optional keys: `diff_files_root` (set when `--diff-files`), `diff_lines_root` (set when `--diff-lines`), `base_sha` (set when `--fetch-base` or `--diff-lines`), `merge_base_sha` (set when `--fetch-base`; see below), `head_sha` (set when `--diff-lines`). When `base_sha` is present the commit is guaranteed to be in the local git object store. |
 
 ## Diff-aware scanning
 
@@ -195,7 +196,16 @@ Three flags are relevant only in PR mode and work together to support diff-aware
 
 `--fetch-base` is intended for scanners that perform their own diff logic (e.g. `semgrep --baseline-commit`). It is a lighter alternative to `--diff-lines` when you want the base commit available but do not need the materialised diff folder.
 
+When `--fetch-base` is set, two SHA values are populated in `result.extras`:
+
+| Key | Value | Use |
+|-----|-------|-----|
+| `base_sha` | Target-branch tip at clone time | Drift detection; do not pass to `--baseline-commit` when the PR is behind the target |
+| `merge_base_sha` | Fork point (merge-base of HEAD and target) | Pass this to `semgrep --baseline-commit` |
+
+The distinction matters when the PR is behind the target branch: `base_sha` would be a commit the PR author never touched, causing semgrep to exclude unrelated findings. `merge_base_sha` is always the true divergence point.
+
 > [!NOTE]
-> `base_sha` in `result.extras` guarantees the commit is present in the local git object store. It appears only when `--fetch-base` or `--diff-lines` is set; a plain fetch without either flag does not populate this field.
+> `base_sha` appears when `--fetch-base` or `--diff-lines` is set; `merge_base_sha` appears only with `--fetch-base` and only when the fork point can be determined (requires the `git` binary and a resolvable base branch name). A plain fetch without either flag populates neither field.
 
 For a worked example see [How to run diff-aware PR scanning](../how-to/diff-aware-pr-scanning.md).
