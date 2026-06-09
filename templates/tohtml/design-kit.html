@@ -101,9 +101,10 @@
     --sev-low-fg: #59636e;     --sev-low-bg: #f6f8fa;     --sev-low-border: #d1d9e0;     --sev-low-dot: #636e79;
     --sev-info-fg: #0550ae;    --sev-info-bg: #ddf4ff;    --sev-info-border: #0969da;    --sev-info-dot: #0969da;
 
-    /* Required / Recommended palette — light */
-    --req-fg: #5a3f00; --req-bg: #fff8e0; --req-border: #c49000;
-    --rec-fg: #1a5e3a; --rec-bg: #e6f4ef; --rec-border: #2da06c;
+    /* Required / Recommended / Suppressed palette — light */
+    --req-fg: #9a1313; --req-bg: #fff0f0; --req-border: #cf222e;
+    --rec-fg: #0550ae; --rec-bg: #ddf4ff; --rec-border: #0969da;
+    --sup-fg: #3b4450; --sup-bg: #f0f3f6; --sup-border: #b0b9c3;
 
     /* Primer tokens — light mode defaults */
     --bg-canvas: var(--bg-canvas-light);
@@ -174,9 +175,10 @@
     --sev-low-fg: var(--fg-default); --sev-low-bg: #21262d; --sev-low-border: #3d444d;   --sev-low-dot: #6e7681;
     --sev-info-fg: #79c0ff;    --sev-info-bg: #051d4d;    --sev-info-border: #1f6feb;    --sev-info-dot: #1f6feb;
 
-    /* Required / Recommended palette — dark */
-    --req-fg: #ffd86e; --req-bg: #2a1f00; --req-border: #9e7200;
-    --rec-fg: #56d399; --rec-bg: #0a2118; --rec-border: #1a7f4a;
+    /* Required / Recommended / Suppressed palette — dark */
+    --req-fg: #ff7b72; --req-bg: #490202; --req-border: #f85149;
+    --rec-fg: #79c0ff; --rec-bg: #051d4d; --rec-border: #1f6feb;
+    --sup-fg: #9198a1; --sup-bg: #1c2128; --sup-border: #444c56;
 
     --search-mark-bg: #5c4000;
     --on-accent: var(--bg-canvas);
@@ -766,14 +768,22 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
+    cursor: pointer;
+    user-select: none;
   }
-  .findings-section--required    { background: var(--req-bg); color: var(--req-fg); }
-  .findings-section--recommended { background: var(--rec-bg); color: var(--rec-fg); }
-  .findings-section__count { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; }
+  .findings-section--required    { background: var(--req-bg); color: var(--req-fg); border-left: 3px solid var(--req-border); }
+  .findings-section--recommended { background: var(--rec-bg); color: var(--rec-fg); border-left: 3px solid var(--rec-border); }
+  .findings-section--suppressed  { background: var(--sup-bg); color: var(--sup-fg); border-left: 3px solid var(--sup-border); }
+  .findings-section__count { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; margin-right: var(--space-1); }
+  .findings-section__chevron { display: flex; align-items: center; flex-shrink: 0; }
+  .findings-section__chevron svg { width: 13px; height: 13px; transition: transform 150ms; }
+  .findings-section[aria-expanded="true"] .findings-section__chevron svg { transform: rotate(90deg); }
 
-  /* Required filter pill variant (from report.html) */
+  /* Required / Recommended filter pills (from report.html) */
   .pill--required { border-color: var(--req-border); color: var(--req-fg); background: var(--req-bg); }
   .pill--required[aria-pressed="true"] { background: var(--req-fg); color: var(--req-bg); border-color: var(--req-fg); }
+  .pill--recommended { border-color: var(--rec-border); color: var(--rec-fg); background: var(--rec-bg); }
+  .pill--recommended[aria-pressed="true"] { background: var(--rec-fg); color: var(--rec-bg); border-color: var(--rec-fg); }
 
   /* TOC priority banner headers (from report.html) */
   .tv-prio-hdr {
@@ -783,15 +793,16 @@
     height: 24px;
     padding: 0 var(--space-2);
     border-radius: var(--radius-sm);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     cursor: pointer;
     user-select: none;
   }
-  .tv-prio-hdr--required    { background: var(--req-bg); color: var(--req-fg); }
-  .tv-prio-hdr--recommended { background: var(--rec-bg); color: var(--rec-fg); }
+  .tv-prio-hdr--required    { background: var(--req-bg); color: var(--req-fg); border-left: 2px solid var(--req-border); }
+  .tv-prio-hdr--recommended { background: var(--rec-bg); color: var(--rec-fg); border-left: 2px solid var(--rec-border); }
+  .tv-prio-hdr--suppressed  { background: var(--sup-bg); color: var(--sup-fg); border-left: 2px solid var(--sup-border); }
   .tv-prio-hdr .tv-tc { margin-left: auto; font-size: var(--text-xs); background: color-mix(in srgb, currentColor 15%, transparent); border-radius: var(--radius-pill); padding: 1px 6px; font-weight: 500; }
 
   mark.search-mark {
@@ -1145,37 +1156,51 @@
       <button class="pill pill--info" aria-pressed="false" type="button" aria-disabled="true"><span class="pill__dot"></span>Info <span class="pill__n">0</span></button>
     </div>
 
-    <div class="dk-comp-label">Required / Recommended — filter pill</div>
+    <div class="dk-comp-label">Required / Recommended — filter pills</div>
     <div class="dk-comp-row" id="req-pill-bar">
       <button class="pill" aria-pressed="true" type="button">All <span class="pill__n">42</span></button>
       <button class="pill pill--critical" aria-pressed="false" type="button"><span class="pill__dot"></span>Critical <span class="pill__n">3</span></button>
       <button class="pill pill--high" aria-pressed="false" type="button"><span class="pill__dot"></span>High <span class="pill__n">12</span></button>
-      <button class="pill pill--required" aria-pressed="false" type="button">&#9873; Required <span class="pill__n">8</span></button>
+      <span style="display:inline-block;width:1px;height:18px;background:var(--border-default);margin:0 4px;vertical-align:middle"></span>
+      <button class="pill pill--required"    aria-pressed="false" type="button"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L1 14h14L8 2z"/><line x1="8" y1="7" x2="8" y2="10"/><circle cx="8" cy="12" r=".5" fill="currentColor"/></svg> Required <span class="pill__n">8</span></button>
+      <button class="pill pill--recommended" aria-pressed="false" type="button"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><line x1="8" y1="7" x2="8" y2="11"/><circle cx="8" cy="5.5" r=".6" fill="currentColor"/></svg> Recommended <span class="pill__n">34</span></button>
     </div>
 
-    <div class="dk-comp-label">Required / Recommended — section headers</div>
+    <div class="dk-comp-label">Required / Recommended / Suppressed — section headers</div>
     <div class="dk-comp-row" style="flex-direction:column; align-items:stretch; gap:var(--space-2);">
-      <div class="findings-section findings-section--required">&#9873; Required to fix <span class="findings-section__count">8</span></div>
-      <div class="findings-section findings-section--recommended">&#10003; Recommended <span class="findings-section__count">34</span></div>
+      <div class="findings-section findings-section--required" aria-expanded="true">
+        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L1 14h14L8 2z"/><line x1="8" y1="7" x2="8" y2="10"/><circle cx="8" cy="12" r=".5" fill="currentColor"/></svg>
+        Required <span class="findings-section__count">8</span>
+        <span class="findings-section__chevron" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,4 10,8 6,12"/></svg></span>
+      </div>
+      <div class="findings-section findings-section--recommended" aria-expanded="true">
+        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><line x1="8" y1="7" x2="8" y2="11"/><circle cx="8" cy="5.5" r=".6" fill="currentColor"/></svg>
+        Recommended <span class="findings-section__count">34</span>
+        <span class="findings-section__chevron" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,4 10,8 6,12"/></svg></span>
+      </div>
+      <div class="findings-section findings-section--suppressed" aria-expanded="false">
+        &#8856; Suppressed <span class="findings-section__count">5</span>
+        <span class="findings-section__chevron" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,4 10,8 6,12"/></svg></span>
+      </div>
     </div>
 
     <div class="dk-comp-label">Required / Recommended — in-card notice banners</div>
     <div class="dk-comp-row" style="flex-direction:column; align-items:stretch; gap:var(--space-2);">
       <div class="req-notice req-notice--required">
-        <span class="req-notice__text"><strong>Required to fix</strong> &mdash; High severity, confidence 85% &ge; 60% threshold</span>
+        <span class="req-notice__text"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L1 14h14L8 2z"/><line x1="8" y1="7" x2="8" y2="10"/><circle cx="8" cy="12" r=".5" fill="currentColor"/></svg> <strong>Required</strong> &mdash; High severity, confidence 85% &ge; 60% threshold</span>
       </div>
       <div class="req-notice req-notice--recommended">
-        <span class="req-notice__text"><strong>Recommended</strong> &mdash; High severity, confidence 50% &lt; 60% threshold</span>
+        <span class="req-notice__text"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><line x1="8" y1="7" x2="8" y2="11"/><circle cx="8" cy="5.5" r=".6" fill="currentColor"/></svg> <strong>Recommended</strong> &mdash; High severity, confidence 50% &lt; 60% threshold</span>
       </div>
       <div class="req-notice req-notice--required">
-        <span class="req-notice__text"><strong>Required to fix</strong> &mdash; Critical severity, no confidence score (treated as fully confident)</span>
+        <span class="req-notice__text"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L1 14h14L8 2z"/><line x1="8" y1="7" x2="8" y2="10"/><circle cx="8" cy="12" r=".5" fill="currentColor"/></svg> <strong>Required</strong> &mdash; Critical severity, no confidence score (treated as fully confident)</span>
       </div>
     </div>
 
-    <div class="dk-comp-label">Required / Recommended — TOC priority banners</div>
+    <div class="dk-comp-label">Required / Recommended / Suppressed — TOC priority banners</div>
     <div class="dk-comp-row" style="flex-direction:column; align-items:stretch; gap:4px; max-width:260px;">
-      <div class="tv-prio-hdr tv-prio-hdr--required">&#9873; Required to fix <span class="tv-tc">8</span></div>
-      <div class="tv-prio-hdr tv-prio-hdr--recommended">&#10003; Recommended <span class="tv-tc">34</span></div>
+      <div class="tv-prio-hdr tv-prio-hdr--required"><svg width="9" height="9" aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2L1 14h14L8 2z"/></svg><span>Required</span> <span class="tv-tc">8</span></div>
+      <div class="tv-prio-hdr tv-prio-hdr--recommended"><svg width="9" height="9" aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/></svg><span>Recommended</span> <span class="tv-tc">34</span></div>
     </div>
 
     <div class="dk-comp-label">Search input with clear button</div>
@@ -1327,16 +1352,22 @@ document.getElementById('pill-bar').addEventListener('click', function(e) {
   btn.setAttribute('aria-pressed', 'true');
 });
 
-// Required pill toggle demo
+// Required / Recommended pill toggle demo — independent toggles
 document.getElementById('req-pill-bar').addEventListener('click', function(e) {
   var btn = e.target.closest('.pill');
   if (!btn) return;
-  if (btn.classList.contains('pill--required')) {
+  if (btn.classList.contains('pill--required') || btn.classList.contains('pill--recommended')) {
     var pressed = btn.getAttribute('aria-pressed') === 'true';
     btn.setAttribute('aria-pressed', String(!pressed));
+    // deactivate All if any priority pill is active
+    var anyActive = this.querySelector('.pill--required[aria-pressed="true"]') ||
+                    this.querySelector('.pill--recommended[aria-pressed="true"]');
+    this.querySelector('.pill:not(.pill--required):not(.pill--recommended)').setAttribute('aria-pressed', String(!anyActive));
   } else {
-    var pills = this.querySelectorAll('.pill:not(.pill--required)');
-    pills.forEach(function(p) { p.setAttribute('aria-pressed', 'false'); });
+    // severity pill — clear priority pills too when All is clicked
+    var sevPills = this.querySelectorAll('.pill:not(.pill--required):not(.pill--recommended)');
+    sevPills.forEach(function(p) { p.setAttribute('aria-pressed', 'false'); });
+    this.querySelectorAll('.pill--required,.pill--recommended').forEach(function(p) { p.setAttribute('aria-pressed', 'false'); });
     btn.setAttribute('aria-pressed', 'true');
   }
 });

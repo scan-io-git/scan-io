@@ -111,9 +111,10 @@
       --sev-low-fg: #59636e;     --sev-low-bg: #f6f8fa;     --sev-low-border: #d1d9e0;     --sev-low-dot: #636e79;
       --sev-info-fg: #0550ae;    --sev-info-bg: #ddf4ff;    --sev-info-border: #0969da;    --sev-info-dot: #0969da;
 
-      /* Required / Recommended palette — light */
-      --req-fg: #5a3f00; --req-bg: #fff8e0; --req-border: #c49000;
-      --rec-fg: #1a5e3a; --rec-bg: #e6f4ef; --rec-border: #2da06c;
+      /* Required / Recommended / Suppressed palette — light */
+      --req-fg: #9a1313; --req-bg: #fff0f0; --req-border: #cf222e;
+      --rec-fg: #0550ae; --rec-bg: #ddf4ff; --rec-border: #0969da;
+      --sup-fg: #3b4450; --sup-bg: #f0f3f6; --sup-border: #b0b9c3;
 
       /* Primer tokens — light mode defaults */
       --bg-canvas: var(--bg-canvas-light);
@@ -195,9 +196,10 @@
       --sev-low-fg: var(--fg-default); --sev-low-bg: #21262d; --sev-low-border: #3d444d;   --sev-low-dot: #6e7681;
       --sev-info-fg: #79c0ff;    --sev-info-bg: #051d4d;    --sev-info-border: #1f6feb;    --sev-info-dot: #1f6feb;
 
-      /* Required / Recommended palette — dark */
-      --req-fg: #ffd86e; --req-bg: #2a1f00; --req-border: #9e7200;
-      --rec-fg: #56d399; --rec-bg: #0a2118; --rec-border: #1a7f4a;
+      /* Required / Recommended / Suppressed palette — dark */
+      --req-fg: #ff7b72; --req-bg: #490202; --req-border: #f85149;
+      --rec-fg: #79c0ff; --rec-bg: #051d4d; --rec-border: #1f6feb;
+      --sup-fg: #9198a1; --sup-bg: #1c2128; --sup-border: #444c56;
 
       --search-mark-bg: #5c4000;
       --on-accent: var(--bg-canvas);
@@ -366,20 +368,33 @@
     .req-notice__text strong { font-weight: 700; }
 
     /* Section headers in the findings list */
-    .findings-section { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); margin: var(--space-3) 0 var(--space-2); border-radius: var(--radius-sm); font-size: var(--text-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
-    .findings-section--required    { background: var(--req-bg); color: var(--req-fg); }
-    .findings-section--recommended { background: var(--rec-bg); color: var(--rec-fg); }
-    .findings-section__count { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; }
+    .findings-section { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); margin: var(--space-3) 0 var(--space-2); border-radius: var(--radius-sm); font-size: var(--text-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; user-select: none; }
+    .findings-section--required    { background: var(--req-bg); color: var(--req-fg); border-left: 3px solid var(--req-border); }
+    .findings-section--recommended { background: var(--rec-bg); color: var(--rec-fg); border-left: 3px solid var(--rec-border); }
+    .findings-section--suppressed  { background: var(--sup-bg); color: var(--sup-fg); border-left: 3px solid var(--sup-border); }
+    .findings-section__count { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; margin-right: var(--space-1); }
+    .findings-section__chevron { display: flex; align-items: center; flex-shrink: 0; }
+    .findings-section__chevron svg { width: 13px; height: 13px; transition: transform var(--motion-fast); }
+    .findings-section[aria-expanded="true"] .findings-section__chevron svg { transform: rotate(90deg); }
 
-    /* Required filter pill */
-    .pill--required { border-color: var(--req-border); color: var(--req-fg); background: var(--req-bg); }
-    .pill--required[aria-pressed="true"] { background: var(--req-fg); color: var(--req-bg); border-color: var(--req-fg); }
-    .pill-sep { display: inline-block; width: 1px; height: 18px; background: var(--border-default); margin: 0 var(--space-1); vertical-align: middle; }
+    /* Collapsible content animation */
+    .findings-section-content {
+      display: grid;
+      grid-template-rows: 1fr;
+      transition: grid-template-rows var(--motion-base) ease;
+      overflow: hidden;
+    }
+    .findings-section-content.section-collapsed { grid-template-rows: 0fr; }
+    .findings-section-content > .section-content-inner { min-height: 0; overflow: hidden; }
+    @media (prefers-reduced-motion: reduce) { .findings-section-content { transition: none; } }
+
+    .pill-sep { display: block; flex-shrink: 0; width: 1px; height: 18px; background: var(--border-default); margin: 0 var(--space-1); align-self: center; }
 
     /* TOC priority banners */
-    .tv-prio-hdr { display: flex; align-items: center; gap: var(--space-1); height: 24px; padding: 0 var(--space-2); border-radius: var(--radius-sm); margin: 4px var(--space-2) 1px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; user-select: none; }
-    .tv-prio-hdr--required    { background: var(--req-bg); color: var(--req-fg); }
-    .tv-prio-hdr--recommended { background: var(--rec-bg); color: var(--rec-fg); }
+    .tv-prio-hdr { display: flex; align-items: center; gap: var(--space-1); height: 24px; padding: 0 var(--space-2); border-radius: var(--radius-sm); margin: 4px var(--space-2) 1px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; user-select: none; }
+    .tv-prio-hdr--required    { background: var(--req-bg); color: var(--req-fg); border-left: 2px solid var(--req-border); }
+    .tv-prio-hdr--recommended { background: var(--rec-bg); color: var(--rec-fg); border-left: 2px solid var(--rec-border); }
+    .tv-prio-hdr--suppressed  { background: var(--sup-bg); color: var(--sup-fg); border-left: 2px solid var(--sup-border); }
     .tv-prio-hdr .tv-tc { margin-left: auto; }
 
     .finding__body {
@@ -804,7 +819,14 @@
       display: flex;
       gap: 12px;
       align-items: center;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
+    }
+    /* Two-row layout — only when Required/Recommended policy is active */
+    .summary-bar__inner--policy {
+      flex-direction: column;
+      align-items: stretch;
+      padding: 0 var(--space-4);
+      gap: 0;
     }
 
     .search-count {
@@ -816,7 +838,19 @@
     .summary-bar__pills {
       display: flex;
       gap: 6px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      align-items: center;
+      flex-shrink: 1;
+      min-width: 0;
+      scrollbar-width: none;
+    }
+    .summary-bar__pills::-webkit-scrollbar { display: none; }
+    /* Two-row: pills get their own row with a divider below */
+    .summary-bar__inner--policy .summary-bar__pills {
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--border-muted);
+      flex-shrink: 0;
     }
 
     .pill {
@@ -830,6 +864,7 @@
       background: var(--bg-canvas);
       color: var(--fg-default);
       font-size: var(--text-sm);
+      line-height: 1;
       font-family: inherit;
       cursor: pointer;
       transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
@@ -852,6 +887,12 @@
     .pill--medium[aria-pressed="true"]   { background: color-mix(in oklch, var(--sev-medium-border)   12%, transparent); border-color: var(--sev-medium-border);   color: var(--sev-medium-border); }
     .pill--low[aria-pressed="true"]      { background: color-mix(in oklch, var(--sev-low-border)      12%, transparent); border-color: var(--sev-low-border);      color: var(--sev-low-border); }
     .pill--info[aria-pressed="true"]     { background: color-mix(in oklch, var(--sev-info-border)     12%, transparent); border-color: var(--sev-info-border);     color: var(--sev-info-border); }
+
+    /* Required filter pill — must follow base .pill to win the cascade */
+    .pill--required { border-color: var(--req-border); color: var(--req-fg); background: var(--req-bg); }
+    .pill--required[aria-pressed="true"] { background: var(--req-fg); color: var(--req-bg); border-color: var(--req-fg); }
+    .pill--recommended { border-color: var(--rec-border); color: var(--rec-fg); background: var(--rec-bg); }
+    .pill--recommended[aria-pressed="true"] { background: var(--rec-fg); color: var(--rec-bg); border-color: var(--rec-fg); }
 
     /* Count inherits pill color when active */
     .pill[aria-pressed="true"] .pill__n { color: currentColor; opacity: 0.7; }
@@ -893,7 +934,14 @@
       gap: 8px;
       align-items: center;
       margin-left: auto;
+      flex-shrink: 0;
     }
+    /* Two-row: tools get their own row, toc-toggle pushed to the right */
+    .summary-bar__inner--policy .summary-bar__tools {
+      margin-left: 0;
+      padding: var(--space-2) 0;
+    }
+    .summary-bar__inner--policy .summary-bar__tools #toc-toggle { margin-left: auto; }
 
 
     /* ── Filter empty-state ──────────────────────────────────── */
@@ -935,39 +983,6 @@
       border-top: 2px solid var(--border-muted);
     }
 
-    .suppressed-section-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 16px 14px 12px;
-      cursor: pointer;
-      user-select: none;
-      font-size: var(--text-lg);
-      font-weight: 600;
-      color: var(--fg-default);
-    }
-    @media (min-width: 640px) {
-      .suppressed-section-header { font-size: var(--text-xl); }
-    }
-    .suppressed-section-header:hover { background: var(--bg-subtle); }
-
-    .suppressed-section-count {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 20px;
-      height: 20px;
-      padding: 0 6px;
-      border-radius: 999px;
-      font-size: var(--text-sm);
-      font-weight: 600;
-      background: var(--bg-inset);
-      color: var(--fg-muted);
-    }
-
-    .suppressed-section-toggle { margin-left: auto; color: var(--fg-subtle); display: flex; align-items: center; }
-    .suppressed-section-toggle svg { width: 16px; height: 16px; transform: rotate(0deg); transition: transform var(--motion-fast, .12s); }
-    .suppressed-section-header[aria-expanded="true"] .suppressed-section-toggle svg { transform: rotate(90deg); }
 
     /* ── Suppression notice in finding card body ─────────────── */
     .finding__suppression {
@@ -1244,6 +1259,8 @@
       margin-left: 2px;
       flex: 0 0 auto;
     }
+    .tv-ls--required    { color: var(--req-fg); }
+    .tv-ls--recommended { color: var(--rec-fg); }
 
     /* Count badge */
     .tv-tc {
@@ -1305,6 +1322,10 @@
       background: color-mix(in oklch, var(--accent-brand) 18%, var(--bg-inset));
     }
     .tv-chips a:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+    .tv-chips a.tv-chip--required    { border-color: var(--req-border); background: color-mix(in oklch, var(--req-bg) 60%, var(--bg-inset)); color: var(--req-fg); }
+    .tv-chips a.tv-chip--recommended { border-color: var(--rec-border); background: color-mix(in oklch, var(--rec-bg) 60%, var(--bg-inset)); color: var(--rec-fg); }
+    .tv-chips a.tv-chip--required:hover    { border-color: var(--req-fg); }
+    .tv-chips a.tv-chip--recommended:hover { border-color: var(--rec-fg); }
 
     /* Collapsible group headers */
     .tv-tr.tv-d0, .tv-tr.tv-d1[data-grp-id] { cursor: pointer; user-select: none; }
@@ -1353,10 +1374,6 @@
 
     @media (max-width: 640px) {
       .search input { min-width: 0; }
-      .summary-bar__tools {
-        flex: 1 1 100%;
-        margin-left: 0;
-      }
       .search {
         flex: 1;
         min-width: 0;
@@ -2262,7 +2279,7 @@
 
   <div id="summary-bar-sentinel" aria-hidden="true" class="u-sentinel"></div>
   <div id="summary-bar" class="summary-bar">
-    <div class="summary-bar__inner">
+    <div class="summary-bar__inner{{if .Metadata.RequiredEnabled}} summary-bar__inner--policy{{end}}">
       <div class="summary-bar__pills" role="group" aria-label="Filter by severity">
         <button class="pill" data-filter="all" aria-pressed="true">All <span class="pill__n">{{index .Metadata.SeverityInfo "total"}}</span></button>
         <button class="pill pill--critical" data-filter="critical" aria-pressed="false"><span class="pill__dot"></span>Critical <span class="pill__n">{{index .Metadata.SeverityInfo "critical"}}</span></button>
@@ -2272,7 +2289,8 @@
         <button class="pill pill--info"     data-filter="info"     aria-pressed="false"><span class="pill__dot"></span>Info <span class="pill__n">{{index .Metadata.SeverityInfo "info"}}</span></button>
         {{- if .Metadata.RequiredEnabled}}
         <span class="pill-sep" aria-hidden="true"></span>
-        <button class="pill pill--required" data-filter="required" aria-pressed="false">&#9873; Required <span class="pill__n">{{index .Metadata.RequiredInfo "required"}}</span></button>
+        <button class="pill pill--required"    data-filter="required"    aria-pressed="false"><svg aria-hidden="true" width="12" height="12"><use href="#tb-alert-triangle"/></svg> Required <span class="pill__n">{{index .Metadata.RequiredInfo "required"}}</span></button>
+        <button class="pill pill--recommended" data-filter="recommended" aria-pressed="false"><svg aria-hidden="true" width="12" height="12"><use href="#tb-info"/></svg> Recommended <span class="pill__n">{{index .Metadata.RequiredInfo "recommended"}}</span></button>
         {{- end}}
       </div>
       <div class="summary-bar__tools">
@@ -2328,10 +2346,13 @@
         {{- if $.Metadata.RequiredEnabled}}
         {{- $sec := "recommended"}}{{if eq (index .Properties "Required") "true"}}{{$sec = "required"}}{{end}}
         {{- if ne $sec $lastSection}}
-        <div class="findings-section findings-section--{{$sec}}" data-section="{{$sec}}">
-          {{if eq $sec "required"}}&#9873; Required to fix{{else}}&#10003; Recommended{{end}}
+        {{- if ne $lastSection ""}}</div></div>{{end}}
+        <div class="findings-section findings-section--{{$sec}}" data-section="{{$sec}}" role="button" tabindex="0" aria-expanded="true" aria-controls="{{$sec}}-section-content">
+          {{if eq $sec "required"}}<svg aria-hidden="true" width="13" height="13"><use href="#tb-alert-triangle"/></svg> Required{{else}}<svg aria-hidden="true" width="13" height="13"><use href="#tb-info"/></svg> Recommended{{end}}
           <span class="findings-section__count">{{if eq $sec "required"}}{{index $.Metadata.RequiredInfo "required"}}{{else}}{{index $.Metadata.RequiredInfo "recommended"}}{{end}}</span>
+          <span class="findings-section__chevron" aria-hidden="true"><svg width="13" height="13" aria-hidden="true"><use href="#tb-chevron-right"/></svg></span>
         </div>
+        <div id="{{$sec}}-section-content" class="findings-section-content"><div class="section-content-inner">
         {{- $lastSection = $sec}}
         {{- end}}
         {{- end}}
@@ -2353,7 +2374,7 @@
             {{- if $.Metadata.RequiredEnabled}}
             {{- $req := eq (index .Properties "Required") "true"}}
             <div class="req-notice req-notice--{{if $req}}required{{else}}recommended{{end}}">
-              <span class="req-notice__text"><strong>{{if $req}}Required to fix{{else}}Recommended{{end}}</strong>{{with index .Properties "RequiredReason"}} &mdash; {{.}}{{end}}</span>
+              <span class="req-notice__text">{{if $req}}<svg aria-hidden="true" width="12" height="12"><use href="#tb-alert-triangle"/></svg> <strong>Required</strong>{{else}}<svg aria-hidden="true" width="12" height="12"><use href="#tb-info"/></svg> <strong>Recommended</strong>{{end}}{{with index .Properties "RequiredReason"}} &mdash; {{.}}{{end}}</span>
             </div>
             {{- end}}
             {{- $supStatus := index .Properties "SuppressionStatus" -}}
@@ -2464,6 +2485,7 @@
         {{$n = add $n 1}}
         {{- end}}
         {{end}}
+        {{- if ne $lastSection ""}}</div></div>{{end}}
       </div>
 
       <div id="no-results" class="findings-empty" hidden>
@@ -2474,12 +2496,12 @@
 
       {{if gt (index $.Metadata.SuppressionInfo "suppressed") 0}}
       <section id="suppressed-section" class="findings findings--suppressed">
-        <div class="suppressed-section-header" id="suppressed-section-header" role="button" tabindex="0" aria-expanded="false" aria-controls="suppressed-section-list">
-          Suppressed
-          <span class="suppressed-section-count">{{index $.Metadata.SuppressionInfo "suppressed"}}</span>
-          <span class="suppressed-section-toggle" id="sup-section-toggle"><svg aria-hidden="true"><use href="#tb-chevron-right"/></svg></span>
+        <div class="findings-section findings-section--suppressed" role="button" tabindex="0" aria-expanded="false" aria-controls="suppressed-section-content">
+          &#8856; Suppressed
+          <span class="findings-section__count">{{index $.Metadata.SuppressionInfo "suppressed"}}</span>
+          <span class="findings-section__chevron" aria-hidden="true"><svg width="13" height="13" aria-hidden="true"><use href="#tb-chevron-right"/></svg></span>
         </div>
-        <div id="suppressed-section-list" hidden>
+        <div id="suppressed-section-content" class="findings-section-content section-collapsed"><div class="section-content-inner">
           {{range .Results}}
           {{- if eq (index .Properties "Suppressed") "true"}}
           {{ $severity := index .Properties "Severity"}}
@@ -2603,7 +2625,7 @@
           {{$n = add $n 1}}
           {{- end}}
           {{end}}
-        </div>
+        </div></div>
       </section>
       {{end}}
 
@@ -2651,13 +2673,15 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       // Unified filter state
       let activeSeverities = new Set();  // empty = "all"
       let activeSearch = '';
-      let requiredOnly = false;
+      let requiredOnly    = false;
+      let recommendedOnly = false;
 
       function isVisible(f) {
         if (activeSeverities.size > 0) {
           if (!activeSeverities.has(f.dataset.severity || 'unknown')) return false;
         }
-        if (requiredOnly && f.dataset.classification !== 'required') return false;
+        if (requiredOnly    && f.dataset.classification !== 'required')    return false;
+        if (recommendedOnly && f.dataset.classification !== 'recommended') return false;
         if (activeSearch) {
           const tokens = activeSearch.toLowerCase().split(/\s+/).filter(Boolean);
           const hay = f.dataset.searchText || '';
@@ -2722,20 +2746,21 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         if (!supSection) return;
         const visibleCount = findings.filter(f => !f.hidden && f.dataset.suppressed === 'true').length;
         supSection.hidden = visibleCount === 0;
-        const countEl = supSection.querySelector('.suppressed-section-count');
+        const countEl = supSection.querySelector('.findings-section__count');
         if (countEl) countEl.textContent = String(visibleCount);
       }
 
       function applyVisibility() {
         clearHighlights();
         findings.forEach(f => { f.hidden = !isVisible(f); });
-        document.querySelectorAll('.findings-section').forEach(hdr => {
-          let el = hdr.nextElementSibling, anyVisible = false;
-          while (el && !el.classList.contains('findings-section')) {
-            if (el.classList.contains('finding') && !el.hidden) { anyVisible = true; break; }
-            el = el.nextElementSibling;
-          }
-          hdr.hidden = !anyVisible;
+        document.querySelectorAll('.findings-section[aria-controls]').forEach(hdr => {
+          const content = document.getElementById(hdr.getAttribute('aria-controls'));
+          if (!content) { hdr.hidden = true; return; }
+          const sectionFindings = Array.from(content.querySelectorAll('.finding'));
+          const visibleCount = sectionFindings.filter(f => !f.hidden).length;
+          hdr.hidden = visibleCount === 0;
+          const countEl = hdr.querySelector('.findings-section__count');
+          if (countEl) countEl.textContent = String(visibleCount);
         });
         if (refreshToc) refreshToc();
         updateMatchCount();
@@ -2830,12 +2855,23 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             applyVisibility();
             return;
           }
+          if (sev === 'recommended') {
+            recommendedOnly = !recommendedOnly;
+            p.setAttribute('aria-pressed', String(recommendedOnly));
+            applyVisibility();
+            return;
+          }
           if (sev === 'all') {
             activeSeverities.clear();
             if (requiredOnly) {
               requiredOnly = false;
               const reqPill = document.querySelector('.pill[data-filter="required"]');
               if (reqPill) reqPill.setAttribute('aria-pressed', 'false');
+            }
+            if (recommendedOnly) {
+              recommendedOnly = false;
+              const recPill = document.querySelector('.pill[data-filter="recommended"]');
+              if (recPill) recPill.setAttribute('aria-pressed', 'false');
             }
           } else {
             if (activeSeverities.has(sev)) activeSeverities.delete(sev);
@@ -2888,8 +2924,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         const visible = findings.filter(f => !f.hidden && f.dataset.suppressed !== 'true').length;
         noResults.hidden = visible > 0;
         if (countEl) {
-          const isFiltered = activeSeverities.size > 0 || activeSearch !== '' || requiredOnly;
-          countEl.textContent = isFiltered ? `${visible} of {{index .Metadata.SeverityInfo "active"}} shown` : '';
+          const isFiltered = activeSeverities.size > 0 || activeSearch !== '' || requiredOnly || recommendedOnly;
+          countEl.textContent = isFiltered ? `${visible} of {{index .Metadata.SuppressionInfo "active"}} shown` : '';
         }
       }
 
@@ -2899,8 +2935,11 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         btn.addEventListener('click', () => {
           activeSeverities.clear();
           requiredOnly = false;
+          recommendedOnly = false;
           const reqPill = document.querySelector('.pill[data-filter="required"]');
           if (reqPill) reqPill.setAttribute('aria-pressed', 'false');
+          const recPill = document.querySelector('.pill[data-filter="recommended"]');
+          if (recPill) recPill.setAttribute('aria-pressed', 'false');
           activeSearch = '';
           if (searchInput) searchInput.value = '';
           if (syncPillState) syncPillState();
@@ -2910,18 +2949,19 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         });
       }
 
-      function initSuppressedSection() {
-        const supList   = document.getElementById('suppressed-section-list');
-        const supHeader = document.getElementById('suppressed-section-header');
-        if (!supHeader || !supList) return;
-        function toggleSupSection() {
-          const open = supList.hidden;
-          supList.hidden = !open;
-          supHeader.setAttribute('aria-expanded', String(open));
-        }
-        supHeader.addEventListener('click', toggleSupSection);
-        supHeader.addEventListener('keydown', e => {
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSupSection(); }
+      function initCollapsibleSections() {
+        document.querySelectorAll('.findings-section[aria-controls]').forEach(hdr => {
+          const content = document.getElementById(hdr.getAttribute('aria-controls'));
+          if (!content) return;
+          function toggle() {
+            const open = hdr.getAttribute('aria-expanded') === 'true';
+            hdr.setAttribute('aria-expanded', String(!open));
+            content.classList.toggle('section-collapsed', open);
+          }
+          hdr.addEventListener('click', toggle);
+          hdr.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+          });
         });
       }
 
@@ -3096,8 +3136,10 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           const activeItems = dataset.filter(d => !d.suppressed);
           const suppItems   = dataset.filter(d => d.suppressed);
 
-          function renderSevGroups(items, idSuffix) {
+          function renderSevGroups(items, idSuffix, parentId) {
             let html = '', rendered = 0;
+            const pSuffix = parentId ? ' ' + parentId : '';
+            const sevParent = parentId ? ' data-grp-parent="' + parentId + '"' : '';
             SEV_ORDER.forEach(sev => {
               const sevItems = items.filter(d => d.sev === sev);
               if (!sevItems.length) return;
@@ -3105,7 +3147,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
               const sevId = 'sg-' + sev + (idSuffix ? '-' + idSuffix : '');
               if (rendered > 0) html += '<div class="tv-sep"></div>';
               rendered++;
-              html += '<div class="tv-tr tv-d0" data-grp-id="' + sevId + '">' +
+              html += '<div class="tv-tr tv-d0" data-grp-id="' + sevId + '"' + sevParent + '>' +
                 chev + dot(sev) +
                 '<span class="tv-tl">' + capSev + '</span>' +
                 '<span class="tv-tc">' + sevItems.length + '</span></div>';
@@ -3114,7 +3156,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
               for (const [file, fileItems] of byFile) {
                 const basename = fileLabels.get(file) || '(unknown)';
                 const fileId = sevId + '-f' + fi++;
-                html += '<div class="tv-tr tv-d1" data-grp-parent="' + sevId + '" data-grp-id="' + fileId + '">' +
+                html += '<div class="tv-tr tv-d1" data-grp-parent="' + sevId + pSuffix + '" data-grp-id="' + fileId + '">' +
                   chev + fileIcon +
                   '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
                   '<span class="tv-tc">' + fileItems.length + '</span></div>';
@@ -3122,7 +3164,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
                 for (const ruleItems of byRule.values()) {
                   html += renderRuleCluster(ruleItems, {
                     leafDepth: 'tv-d2',
-                    parents: fileId + ' ' + sevId,
+                    parents: fileId + ' ' + sevId + pSuffix,
                     chipClass: ''
                   });
                 }
@@ -3137,13 +3179,15 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             const rec = activeItems.filter(d => d.classification !== 'required');
             if (req.length) {
               html += '<div class="tv-prio-hdr tv-prio-hdr--required" data-grp-id="pg-required">' +
-                '<span>&#9873; Required to fix</span><span class="tv-tc">' + req.length + '</span></div>';
-              html += '<div data-grp-parent="pg-required">' + renderSevGroups(req, 'req') + '</div>';
+                '<svg width="9" height="9" aria-hidden="true"><use href="#tb-alert-triangle"/></svg>' +
+                '<span>Required</span><span class="tv-tc">' + req.length + '</span></div>';
+              html += renderSevGroups(req, 'req', 'pg-required');
             }
             if (rec.length) {
               html += '<div class="tv-prio-hdr tv-prio-hdr--recommended" data-grp-id="pg-recommended">' +
-                '<span>&#10003; Recommended</span><span class="tv-tc">' + rec.length + '</span></div>';
-              html += '<div data-grp-parent="pg-recommended">' + renderSevGroups(rec, 'rec') + '</div>';
+                '<svg width="9" height="9" aria-hidden="true"><use href="#tb-info"/></svg>' +
+                '<span>Recommended</span><span class="tv-tc">' + rec.length + '</span></div>';
+              html += renderSevGroups(rec, 'rec', 'pg-recommended');
             }
           } else {
             html += renderSevGroups(activeItems, '');
@@ -3152,10 +3196,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           if (suppItems.length) {
             const supGrpId = 'sg-suppressed';
             html += '<div class="tv-sep"></div>';
-            html += '<div class="tv-tr tv-d0" data-grp-id="' + supGrpId + '">' +
-              chev +
-              '<span class="tv-tl">Suppressed</span>' +
-              '<span class="tv-tc">' + suppItems.length + '</span></div>';
+            html += '<div class="tv-prio-hdr tv-prio-hdr--suppressed" data-grp-id="' + supGrpId + '">' +
+              '&#8856; <span>Suppressed</span><span class="tv-tc">' + suppItems.length + '</span></div>';
             const byFile = groupBy(suppItems, d => d.file);
             let fi = 0;
             for (const [file, fileItems] of byFile) {
@@ -3212,9 +3254,10 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
                 const basename = fileLabels.get(file) || '(unknown)';
                 if (fileItems.length === 1) {
                   const d = fileItems[0];
+                  const lsCls = d.classification === 'required' ? ' tv-ls--required' : d.classification === 'recommended' ? ' tv-ls--recommended' : '';
                   html += '<a class="tv-tr tv-d1' + dimClass + '" href="#' + d.id + '" target="_self" title="' + esc(file) + ':' + esc(d.line) + '" data-grp-parent="' + ruleNodeId + chain + '">' +
                     chevLeaf + fileIcon +
-                    '<span class="tv-tl">' + esc(basename) + '</span><span class="tv-ls">#' + esc(d.num) + '</span></a>';
+                    '<span class="tv-tl">' + esc(basename) + '</span><span class="tv-ls' + lsCls + '">#' + esc(d.num) + '</span></a>';
                 } else {
                   const fileNodeId = ruleNodeId + '-f' + fi++;
                   html += '<div class="tv-tr tv-d1' + dimClass + '" data-grp-id="' + fileNodeId + '" data-grp-parent="' + ruleNodeId + chain + '">' +
@@ -3228,7 +3271,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
                   });
                   html += '<div class="tv-chips' + (dimmed ? ' tv-grp--suppressed' : '') + '" data-grp-parent="' + fileNodeId + ' ' + ruleNodeId + chain + '">';
                   for (const d of sorted) {
-                    html += '<a href="#' + d.id + '" target="_self" title="' + esc(file) + ':' + esc(d.line) + '">#' + esc(d.num) + '</a>';
+                    const chipCls = d.classification === 'required' ? ' tv-chip--required' : d.classification === 'recommended' ? ' tv-chip--recommended' : '';
+                    html += '<a href="#' + d.id + '" target="_self" title="' + esc(file) + ':' + esc(d.line) + '" class="' + chipCls.trim() + '">#' + esc(d.num) + '</a>';
                   }
                   html += '</div>';
                 }
@@ -3242,10 +3286,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           if (suppItems.length) {
             const supGrpId = 'rg-suppressed';
             if (activeCount > 0) html += '<div class="tv-sep"></div>';
-            html += '<div class="tv-tr tv-d0" data-grp-id="' + supGrpId + '">' +
-              chev +
-              '<span class="tv-tl">Suppressed</span>' +
-              '<span class="tv-tc">' + suppItems.length + '</span></div>';
+            html += '<div class="tv-prio-hdr tv-prio-hdr--suppressed" data-grp-id="' + supGrpId + '">' +
+              '&#8856; <span>Suppressed</span><span class="tv-tc">' + suppItems.length + '</span></div>';
             renderRuleEntries(suppItems, activeCount, true, supGrpId);
           }
           return html;
@@ -3569,8 +3611,11 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             if (helpDialog?.open) { closeHelp(); e.preventDefault(); return; }
             activeSeverities.clear();
             requiredOnly = false;
+            recommendedOnly = false;
             const reqPill = document.querySelector('.pill[data-filter="required"]');
             if (reqPill) reqPill.setAttribute('aria-pressed', 'false');
+            const recPill2 = document.querySelector('.pill[data-filter="recommended"]');
+            if (recPill2) recPill2.setAttribute('aria-pressed', 'false');
             activeSearch = '';
             if (searchInput) searchInput.value = '';
             if (syncPillState) syncPillState();
@@ -3727,7 +3772,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       initFilter();
       initSearch();
       initNoResultsClear();
-      initSuppressedSection();
+      initCollapsibleSections();
       initSmartDefaults();
       initToggleAll();
       initToc();

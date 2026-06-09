@@ -61,7 +61,7 @@ func (r Report) EnrichResultsRequiredProperty(policy RequiredPolicy) {
 		reason := ""
 
 		if !policy.BlockerSeverities[sev] {
-			reason = fmt.Sprintf("%s severity is not in the blocker list", capSev)
+			reason = fmt.Sprintf("%s severity is not required", capSev)
 		} else {
 			var rule *sarif.ReportingDescriptor
 			if result.RuleID != nil {
@@ -78,7 +78,7 @@ func (r Report) EnrichResultsRequiredProperty(policy RequiredPolicy) {
 				reason = fmt.Sprintf("%s severity, no confidence score (treated as fully confident)", capSev)
 			case conf >= thr:
 				required = true
-				reason = fmt.Sprintf("%s severity, confidence %d%% >= %d%% threshold", capSev, pct(conf), pct(thr))
+				reason = fmt.Sprintf("%s severity, confidence %d%% ≥ %d%% threshold", capSev, pct(conf), pct(thr))
 			default:
 				required = false
 				reason = fmt.Sprintf("%s severity, confidence %d%% < %d%% threshold", capSev, pct(conf), pct(thr))
