@@ -7,6 +7,14 @@ import (
 	"time"
 )
 
+// derefStr dereferences a *string, returning "" for nil.
+func derefStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
 // add adds two integers and returns the result.
 // helper function for html template
 func add(a, b int) int {
@@ -69,6 +77,7 @@ func NewTemplate(templateFile string, options ...func(*template.Template)) (*tem
 	t := template.New("report.html").
 		Funcs(template.FuncMap{
 			"add":              add,
+			"derefStr":         derefStr,
 			"generateSequence": generateSequence,
 			"formatDateTime":   formatDateTime,
 			"stripFragment":    stripFragment,
