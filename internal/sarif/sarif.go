@@ -13,7 +13,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/owenrumney/go-sarif/v2/sarif"
@@ -218,12 +217,18 @@ func firstLine(text string) string {
 	return strings.SplitN(text, "\n", 2)[0]
 }
 
-// cap120 truncates s to at most 120 Unicode code points.
+// cap120 truncates s to at most 120 Unicode code points, preferring a sentence
+// boundary within that window over a hard cut.
 func cap120(s string) string {
-	if utf8.RuneCountInString(s) <= 120 {
+	runes := []rune(s)
+	if len(runes) <= 120 {
 		return s
 	}
-	return string([]rune(s)[:120])
+	truncated := string(runes[:120])
+	if loc := reSentenceBoundary.FindStringIndex(truncated); loc != nil {
+		return strings.TrimSpace(truncated[:loc[0]+1])
+	}
+	return truncated
 }
 
 // resolveFindingTitle walks a candidate chain to produce a human-readable title.
