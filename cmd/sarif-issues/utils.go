@@ -279,6 +279,18 @@ func buildPermalink(options RunOptions, repoMetadata *git.RepositoryMetadata, fi
 	}
 
 	path := filepath.ToSlash(fileURI)
+
+	// Prefer parsing RepositoryFullName to auto-detect VCS type (GitHub, GitLab, Bitbucket).
+	if repoMetadata != nil && repoMetadata.RepositoryFullName != nil && *repoMetadata.RepositoryFullName != "" {
+		if u, err := vcsurl.Parse(*repoMetadata.RepositoryFullName); err == nil {
+			return u.FilePermalink(ref, path, start, end)
+		}
+	}
+
+	// Fall back to a bare GitHub VCSURL from the explicit namespace/repository flags.
+	if options.Namespace == "" || options.Repository == "" {
+		return ""
+	}
 	u := &vcsurl.VCSURL{
 		VCSType:      vcsurl.Github,
 		Namespace:    options.Namespace,

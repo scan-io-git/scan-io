@@ -694,18 +694,28 @@ func calculateMD5Hash(text string) string {
 	return hex.EncodeToString(hash.Sum(nil))
 }
 
+// rulesMapForRun0 builds a ruleID→descriptor map for the first run. Shared across the
+// three consecutive Enrich calls (Category, Confidence, Metadata) to avoid rebuilding it
+// three times in sequence.
+func (r Report) rulesMapForRun0() map[string]*sarif.ReportingDescriptor {
+	m := map[string]*sarif.ReportingDescriptor{}
+	for _, rule := range r.Runs[0].Tool.Driver.Rules {
+		m[rule.ID] = rule
+	}
+	return m
+}
+
 // EnrichResultsCategoryProperty writes Properties["Category"] (display label) and
 // Properties["CategorySlug"] (machine value) for each result. Defaults to CategoryOther
 // when no CWE tag or rule-ID keyword matches.
 func (r Report) EnrichResultsCategoryProperty() {
 	scanner := r.Runs[0].Tool.Driver.Name
-
-	rulesMap := map[string]*sarif.ReportingDescriptor{}
-	for _, rule := range r.Runs[0].Tool.Driver.Rules {
-		rulesMap[rule.ID] = rule
-	}
+	rulesMap := r.rulesMapForRun0()
 
 	for _, result := range r.Runs[0].Results {
+		if result.RuleID == nil {
+			continue
+		}
 		rule := rulesMap[*result.RuleID]
 		cat, ok := resolveCategory(scanner, *result.RuleID, rule)
 		if !ok {
@@ -722,12 +732,12 @@ func (r Report) EnrichResultsCategoryProperty() {
 // EnrichResultsConfidenceProperty writes Properties["Confidence"] (e.g. "High (85%)")
 // for each result. The key is omitted when no confidence signal is found.
 func (r Report) EnrichResultsConfidenceProperty() {
-	rulesMap := map[string]*sarif.ReportingDescriptor{}
-	for _, rule := range r.Runs[0].Tool.Driver.Rules {
-		rulesMap[rule.ID] = rule
-	}
+	rulesMap := r.rulesMapForRun0()
 
 	for _, result := range r.Runs[0].Results {
+		if result.RuleID == nil {
+			continue
+		}
 		rule := rulesMap[*result.RuleID]
 		conf, ok := resolveConfidence(result, rule)
 		if !ok {
@@ -746,11 +756,7 @@ func (r Report) EnrichResultsConfidenceProperty() {
 // CodeSectionLabel reflects the final thread-flow count.
 func (r Report) EnrichResultsMetadataProperty() {
 	scanner := r.Runs[0].Tool.Driver.Name
-
-	rulesMap := map[string]*sarif.ReportingDescriptor{}
-	for _, rule := range r.Runs[0].Tool.Driver.Rules {
-		rulesMap[rule.ID] = rule
-	}
+	rulesMap := r.rulesMapForRun0()
 
 	for _, result := range r.Runs[0].Results {
 		if result.Properties == nil {

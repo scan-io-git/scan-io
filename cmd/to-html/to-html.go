@@ -216,6 +216,9 @@ var ToHtmlCmd = &cobra.Command{
 			if parsedURL == nil {
 				return ""
 			}
+			if loc.PhysicalLocation == nil || loc.PhysicalLocation.ArtifactLocation == nil {
+				return ""
+			}
 			uri, _ := loc.PhysicalLocation.ArtifactLocation.Properties["URI"].(string)
 			startLine, endLine := locationRegion(loc)
 			return parsedURL.FilePermalink(commitHash, uri, startLine, endLine)
@@ -224,6 +227,9 @@ var ToHtmlCmd = &cobra.Command{
 		// prDiffURLCallback produces a PR-diff deep link when a pull-request ID is present.
 		prDiffURLCallback := func(loc *sarif.Location) string {
 			if parsedURL == nil || parsedURL.PullRequestId == "" {
+				return ""
+			}
+			if loc.PhysicalLocation == nil || loc.PhysicalLocation.ArtifactLocation == nil {
 				return ""
 			}
 			uri, _ := loc.PhysicalLocation.ArtifactLocation.Properties["URI"].(string)
