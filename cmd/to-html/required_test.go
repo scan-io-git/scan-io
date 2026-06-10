@@ -15,9 +15,9 @@ func TestParseRequiredPolicy(t *testing.T) {
 			name: "disabled when nothing set", flag: "", env: nil, wantEnabled: false,
 		},
 		{
-			name: "flag severities only use defaults", flag: "critical,high", wantEnabled: true,
+			name: "flag severities without threshold have empty thresholds", flag: "critical,high", wantEnabled: true,
 			wantBlocker: map[string]bool{"critical": true, "high": true},
-			wantThr:     map[string]float64{"high": 0.6},
+			wantThr:     map[string]float64{}, // no threshold configured → confidence filtering disabled
 		},
 		{
 			name: "flag with threshold override", flag: "critical:0.50,high:0.90", wantEnabled: true,
@@ -32,7 +32,7 @@ func TestParseRequiredPolicy(t *testing.T) {
 			name: "env fallback when flag empty", flag: "",
 			env:         map[string]string{"SCANIO_BLOCKER_SEVERITIES": "critical,high", "SCANIO_CONFIDENCE_THRESHOLD_HIGH": "0.95"},
 			wantEnabled: true, wantBlocker: map[string]bool{"critical": true, "high": true},
-			wantThr: map[string]float64{"high": 0.95, "critical": 0.5},
+			wantThr: map[string]float64{"high": 0.95}, // critical has no threshold env var → no confidence filtering for it
 		},
 		{
 			name: "case insensitive severities", flag: "CRITICAL,High", wantEnabled: true,
@@ -58,6 +58,9 @@ func TestParseRequiredPolicy(t *testing.T) {
 				if policy.BlockerSeverities[k] != v {
 					t.Errorf("blocker[%q] = %v, want %v", k, policy.BlockerSeverities[k], v)
 				}
+			}
+			if tt.wantThr != nil && len(policy.Thresholds) != len(tt.wantThr) {
+				t.Errorf("thresholds len = %d, want %d: %v", len(policy.Thresholds), len(tt.wantThr), policy.Thresholds)
 			}
 			for k, v := range tt.wantThr {
 				if policy.Thresholds[k] != v {

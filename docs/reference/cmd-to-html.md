@@ -26,7 +26,7 @@ scanio to-html --input/-i PATH --output/-o PATH [--source/-s PATH] [--templates-
 | `--pull-request` | string | No | `none` | Pull request ID. Enables PR-aware links: the header pill links to the PR and each finding's "Location in PR" links to the PR diff at the exact line, with a secondary commit-permalink link. When omitted, auto-detected from CI env vars: GITHUB_REF (refs/pull/N/merge), CI_MERGE_REQUEST_IID, BITBUCKET_PR_ID |
 | `--no-supressions` | bool | No | `false` | Enable removing results with suppressions properties |
 | `--no-csp` | bool | No | `false` | Disable the Content-Security-Policy meta tag in the generated report |
-| `--required` | string | No | `none` | Comma-separated severities that must be fixed, with optional per-severity confidence threshold, e.g. `critical:0.50,high:0.90,medium`. When set, findings are split into "Required to fix" and "Recommended" sections. Env var fallback: `SCANIO_BLOCKER_SEVERITIES` (comma list); per-severity threshold via `SCANIO_CONFIDENCE_THRESHOLD_<SEV>` (e.g. `SCANIO_CONFIDENCE_THRESHOLD_HIGH=0.90`). The flag wins over env vars. |
+| `--required` | string | No | `none` | Comma-separated blocker severities, with optional per-severity confidence threshold. A severity listed without a threshold (e.g. `critical,high`) marks all matching findings as Required regardless of confidence score. A `sev:N` threshold (e.g. `critical:0.50,high:0.90`) demotes findings whose confidence is below N to Recommended; findings at or above N remain Required. When set, findings are split into "Required to fix" and "Recommended" sections. Env var fallback: `SCANIO_BLOCKER_SEVERITIES` (comma list); per-severity threshold via `SCANIO_CONFIDENCE_THRESHOLD_<SEV>` (e.g. `SCANIO_CONFIDENCE_THRESHOLD_HIGH=0.90`). The flag wins over env vars. |
 
 ## Usage Examples
 The following examples demonstrate how to use the `to-html` command.
@@ -108,20 +108,10 @@ scanio to-html -i results.sarif -o report.html --required "critical,high"
 ```
 
 **Required to fix — with per-severity confidence thresholds**
-Only require a finding if its confidence score is at or below the threshold. For example, require critical findings with confidence up to 0.50 and high findings with confidence up to 0.90.
+Demote low-confidence findings to Recommended. A finding is Required only if its confidence score meets or exceeds the threshold; findings below the threshold become Recommended. Severities without a threshold (`critical` in the example below) are always Required.
 ```bash
-scanio to-html -i results.sarif -o report.html --required "critical:0.50,high:0.90"
+scanio to-html -i results.sarif -o report.html --required "critical,high:0.90,medium:0.70"
 ```
-
-Default thresholds when a severity is listed without an explicit value:
-
-| Severity | Default threshold |
-|----------|------------------|
-| critical | 0.50 |
-| high | 0.60 |
-| medium | 0.70 |
-| low | 0.80 |
-| info | 1.10 |
 
 **Required to fix — env var configuration**
 Set `SCANIO_BLOCKER_SEVERITIES` and optional `SCANIO_CONFIDENCE_THRESHOLD_<SEV>` env vars instead of passing the flag. The `--required` flag wins if both are set.
@@ -134,9 +124,10 @@ scanio to-html -i results.sarif -o report.html
 When `--required` is set (or detected from env vars):
 - Findings are split into "Required to fix" and "Recommended" sections in the findings list and TOC.
 - A "Required" filter pill appears in the summary bar.
-- Each expanded finding card shows a notice banner explaining why the finding is required.
+- Each expanded finding card shows a notice banner explaining why the finding is required or recommended.
 - The TOC groups findings by priority (Required first) before severity.
-- Findings with no confidence score are treated as fully confident and are required if their severity matches.
+- A severity listed without a threshold: all matching findings are Required, confidence is not consulted.
+- A severity listed with a threshold: findings with no confidence signal are treated as fully confident (Required); findings with a score below the threshold are Recommended.
 
 When `--required` is absent, the report is identical to the default — no Required/Recommended distinction.
 
@@ -148,17 +139,13 @@ The generated HTML file is fully self-contained and works offline.
 
 Each report is hardened at render time:
 
-- A 16-byte random nonce is generated with `crypto/rand` and embedded into every inline `<script>` and `<style>` tag.
-- A `<meta http-equiv="Content-Security-Policy">` tag is injected as the first element in `<head>` with this policy:
-  ```
-  default-src 'none'; script-src 'nonce-{random}'; style-src 'nonce-{random}'; img-src data:; base-uri 'none'; form-action 'none'
-  ```
-- All external links use `target="_blank" rel="noopener noreferrer"` to prevent reverse tabnabbing.
-- When `--source` is set, file reads for code snippets are confined to that directory. A SARIF with artifact URIs containing `../` traversal or absolute paths outside the folder will produce findings without code snippets rather than reading arbitrary files.
+- A nonce-based `Content-Security-Policy` is injected via a `<meta>` tag. A fresh 16-byte random nonce (`crypto/rand`) is placed on every inline `<script>` and `<style>` tag. Policy: `default-src 'none'; script-src 'nonce-{random}'; style-src 'nonce-{random}'; img-src data:; base-uri 'none'; form-action 'none'`.
+- All external links carry `rel="noopener noreferrer"`.
+- When `--source` is set, file reads for code snippets are confined to that directory; artifact URIs with path traversal or absolute paths outside the folder produce findings without snippets rather than reading arbitrary files.
 
-The CSP is defense-in-depth: Go's `html/template` already context-escapes all SARIF-derived values, but the nonce policy blocks injected `<script>` tags, inline event handlers, and `javascript:` URIs if escaping is ever bypassed. This matters because reports are often shared as email attachments or CI artifacts and opened by people other than the person who ran the scan.
+Use `--no-csp` to omit the policy for email clients or viewers that do not support `<meta>` CSP.
 
-Use `--no-csp` to omit the policy if the viewing environment does not support `<meta>` CSP tags.
+See [Why the HTML Report Embeds a Content-Security-Policy](../explanations/html-report-security.md) for the rationale.
 
 ### Filtering
 

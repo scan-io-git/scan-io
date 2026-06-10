@@ -67,6 +67,23 @@ func TestEnrichRequired_NoConfidenceTreatedAsConfident(t *testing.T) {
 	}
 }
 
+func TestEnrichRequired_NoThresholdAlwaysRequired(t *testing.T) {
+	id := "rule.test"
+	rule := ruleWithTags(id, "LOW CONFIDENCE") // resolves to 0.40 — would fail any default threshold
+	result := resultFor(id)
+	result.Properties = map[string]any{"Severity": "high"}
+	report := makeSimpleReport(id, rule, result)
+
+	report.EnrichResultsRequiredProperty(RequiredPolicy{
+		BlockerSeverities: map[string]bool{"high": true},
+		Thresholds:        map[string]float64{}, // empty → no confidence filtering
+	})
+
+	if got, _ := result.Properties["Required"].(string); got != "true" {
+		t.Errorf("Required = %q, want \"true\" (no threshold → skip confidence check)", got)
+	}
+}
+
 func TestEnrichRequired_SeverityNotBlocker(t *testing.T) {
 	id := "rule.test"
 	rule := ruleWithTags(id, "HIGH CONFIDENCE")

@@ -12,12 +12,17 @@ import (
 // falling back to env vars when the flag is empty. Returns (policy, false) when
 // the feature is not configured. Flag wins over env (repo-wide precedence rule).
 //
-// Flag format: "sev[:threshold],..." e.g. "critical:0.50,high".
+// A severity listed without a threshold (e.g. "high") marks all findings of that
+// severity as Required regardless of their confidence score. A per-severity
+// threshold is only applied when explicitly supplied via the "sev:N" syntax or the
+// SCANIO_CONFIDENCE_THRESHOLD_<SEV> env var; no defaults are injected.
+//
+// Flag format: "sev[:threshold],..." e.g. "critical,high" or "critical:0.50,high:0.90".
 // Env: SCANIO_BLOCKER_SEVERITIES="critical,high",
 //
 //	SCANIO_CONFIDENCE_THRESHOLD_<SEV>="0.95".
 func parseRequiredPolicy(flagValue string) (scaniosarif.RequiredPolicy, bool) {
-	thresholds := scaniosarif.DefaultConfidenceThresholds()
+	thresholds := map[string]float64{}
 	blockers := map[string]bool{}
 
 	if flag := strings.TrimSpace(flagValue); flag != "" {

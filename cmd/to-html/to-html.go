@@ -370,5 +370,5 @@ func init() {
 	ToHtmlCmd.Flags().StringVar(&allToHTMLOptions.PullRequest, "pull-request", "", "Pull request ID; enables PR-aware links in the report. Falls back to CI env vars (GITHUB_REF, CI_MERGE_REQUEST_IID, BITBUCKET_PR_ID) when omitted.")
 	ToHtmlCmd.Flags().BoolVarP(&allToHTMLOptions.NoSuppressions, "no-supressions", "", false, "Enable removing results with suppressions properties")
 	ToHtmlCmd.Flags().BoolVar(&allToHTMLOptions.NoCSP, "no-csp", false, "Disable Content-Security-Policy meta tag in generated report")
-	ToHtmlCmd.Flags().StringVar(&allToHTMLOptions.Required, "required", "", "Enable Required/Recommended classification. Comma list of blocker severities with optional per-severity confidence threshold, e.g. \"critical:0.50,high\". Falls back to SCANIO_BLOCKER_SEVERITIES and SCANIO_CONFIDENCE_THRESHOLD_<SEV> env vars when omitted.")
+	ToHtmlCmd.Flags().StringVar(&allToHTMLOptions.Required, "required", "", "Enable Required/Recommended classification. Comma list of blocker severities; severities without a threshold are always Required regardless of confidence. Use \"sev:N\" to demote findings below a confidence threshold, e.g. \"critical,high:0.60\". Falls back to SCANIO_BLOCKER_SEVERITIES and SCANIO_CONFIDENCE_THRESHOLD_<SEV> env vars when omitted.")
 }

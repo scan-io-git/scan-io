@@ -11,16 +11,20 @@ import (
 )
 
 // RequiredPolicy controls Required/Recommended classification.
-// BlockerSeverities and Thresholds are keyed by lowercase severity bucket
-// (critical/high/medium/low/info).
+// Both maps are keyed by lowercase severity bucket (critical/high/medium/low/info).
+// An empty or nil Thresholds map disables confidence filtering: every finding whose
+// severity is in BlockerSeverities is Required regardless of its confidence score.
+// A threshold is only applied for severities that have an explicit entry in Thresholds.
 type RequiredPolicy struct {
 	BlockerSeverities map[string]bool
 	Thresholds        map[string]float64
 }
 
 // DefaultConfidenceThresholds returns the per-severity demotion thresholds.
-// A finding whose confidence is below its severity's threshold is demoted to
-// Recommended. INFO is effectively suppressed from ever being Required.
+// Callers that want confidence-based filtering can pass this map (or a subset)
+// as RequiredPolicy.Thresholds. An empty Thresholds map disables confidence
+// filtering entirely — all blocker-severity findings become Required regardless
+// of their confidence score.
 func DefaultConfidenceThresholds() map[string]float64 {
 	return map[string]float64{
 		"critical": 0.5,
@@ -35,6 +39,13 @@ func DefaultConfidenceThresholds() map[string]float64 {
 // Required or Recommended per the policy, writing Properties["Required"]
 // ("true"/"false") and Properties["RequiredReason"] (human-readable rationale).
 // Suppressed results are left untouched. In-memory only; never written to disk.
+//
+// Classification per result:
+//   - Severity not in BlockerSeverities → Recommended.
+//   - Severity in BlockerSeverities, no threshold configured for it → Required (confidence ignored).
+//   - Severity in BlockerSeverities, threshold configured, no confidence signal → Required (treated as fully confident).
+//   - Severity in BlockerSeverities, threshold configured, confidence >= threshold → Required.
+//   - Severity in BlockerSeverities, threshold configured, confidence < threshold → Recommended.
 func (r Report) EnrichResultsRequiredProperty(policy RequiredPolicy) {
 	rulesMap := map[string]*sarif.ReportingDescriptor{}
 	for _, rule := range r.Runs[0].Tool.Driver.Rules {
@@ -67,12 +78,12 @@ func (r Report) EnrichResultsRequiredProperty(policy RequiredPolicy) {
 			if result.RuleID != nil {
 				rule = rulesMap[*result.RuleID]
 			}
-			conf, ok := resolveConfidence(result, rule)
 			thr, hasThr := policy.Thresholds[sev]
-			if !hasThr {
-				thr = 1.1
-			}
+			conf, ok := resolveConfidence(result, rule)
 			switch {
+			case !hasThr:
+				required = true
+				reason = fmt.Sprintf("%s severity (blocker, no confidence threshold configured)", capSev)
 			case !ok:
 				required = true
 				reason = fmt.Sprintf("%s severity, no confidence score (treated as fully confident)", capSev)

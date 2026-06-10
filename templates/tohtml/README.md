@@ -56,11 +56,25 @@ Then commit the updated HTML files alongside the template change. See `AGENTS.md
 
 ## Required / Recommended classification
 
-When `--required` is passed to `scanio to-html`, findings are classified as Required to fix or Recommended based on severity and confidence.
+When `--required` is passed to `scanio to-html`, findings are classified as Required to fix or Recommended.
+
+**Basic usage** — list blocker severities; all findings of those severities become Required regardless of confidence score:
+
+```
+scanio to-html --required "critical,high,medium"
+```
+
+**With confidence filtering** — append `:threshold` (0-1) to a severity to demote findings whose confidence falls below it:
+
+```
+scanio to-html --required "critical,high:0.60,medium:0.70"
+```
+
+Severities listed without a threshold (`critical` above) are always Required. Confidence filtering is only applied for severities that have an explicit `sev:N` threshold in the flag or a `SCANIO_CONFIDENCE_THRESHOLD_<SEV>` env var.
 
 **Template data:** `Metadata.RequiredEnabled` (bool) gates all classification output. When `false` the report is byte-identical to the baseline. `Metadata.RequiredInfo` carries `"required"` and `"recommended"` counts.
 
-**Per-finding data:** `Properties["Required"]` (`"true"`/`"false"`) and `Properties["RequiredReason"]` (human-readable rationale, e.g. `"High severity, confidence 85% >= 60% threshold"`). Set by `EnrichResultsRequiredProperty` in `internal/sarif/required.go`; absent when classification is off.
+**Per-finding data:** `Properties["Required"]` (`"true"`/`"false"`) and `Properties["RequiredReason"]` (human-readable rationale, e.g. `"High severity, confidence 85% >= 60% threshold"` or `"High severity (blocker, no confidence threshold configured)"`). Set by `EnrichResultsRequiredProperty` in `internal/sarif/required.go`; absent when classification is off.
 
 **DOM attributes:** each active `.finding` element carries `data-classification="required"` or `data-classification="recommended"` (empty string when off). The JS filter and TOC read from this attribute.
 
