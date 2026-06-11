@@ -385,10 +385,21 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRes
 
 		headSHA := prData.FromReference.LatestCommit
 		baseBranch := prData.ToReference.DisplayID
-		if mb, mbErr := clientGit.MergeBaseSHA(args.TargetFolder, headSHA, baseBranch, baseSHA); mbErr != nil {
-			g.logger.Warn("failed to compute merge base", "error", mbErr)
-		} else if mb != "" {
+
+		// API-first: Bitbucket Server reports the merge-base as fromHash in the
+		// PR changes response. Fall back to the git-based computation when the
+		// API call fails (e.g. older server, network error).
+		if mb, apiErr := prData.GetMergeBaseSHA(); apiErr == nil && mb != "" {
 			extras["merge_base_sha"] = mb
+		} else {
+			if apiErr != nil {
+				g.logger.Warn("API merge-base failed, falling back to git", "error", apiErr)
+			}
+			if mb2, mbErr := clientGit.MergeBaseSHA(args.TargetFolder, headSHA, baseBranch, baseSHA); mbErr != nil {
+				g.logger.Warn("failed to compute merge base", "error", mbErr)
+			} else if mb2 != "" {
+				extras["merge_base_sha"] = mb2
+			}
 		}
 	}
 

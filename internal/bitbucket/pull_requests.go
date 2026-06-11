@@ -212,6 +212,24 @@ func (pr *PullRequest) AddRole(role, login string) (*UserData, error) {
 	return &result, nil
 }
 
+// GetMergeBaseSHA returns the merge-base commit SHA for the pull request.
+// Bitbucket Server reports this as fromHash in the PR changes response — the common
+// ancestor from which the diff is computed. Empty string is returned when unavailable.
+func (pr *PullRequest) GetMergeBaseSHA() (string, error) {
+	path := pr.Links.Self[0].Href + "/changes"
+	response, err := pr.client.get(path, map[string]string{
+		"start": "0", "limit": "1", "withComments": "false",
+	})
+	if err != nil {
+		return "", fmt.Errorf("fetching PR changes for merge-base: %w", err)
+	}
+	var resp ChangesResponse[Change]
+	if err := unmarshalResponse(response, &resp); err != nil {
+		return "", err
+	}
+	return resp.FromHash, nil
+}
+
 // paginateChanges handles pagination for pull request changes.
 func (pr *PullRequest) paginateChanges(path string, client *Client) (*[]Change, error) {
 	var result []Change
