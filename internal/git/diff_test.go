@@ -520,3 +520,30 @@ func TestMergeBaseSHA_shallowCommitClone(t *testing.T) {
 		t.Errorf("merge base = %q, want fork point %q", got, wantFork)
 	}
 }
+
+// TestEnsureMergeBaseReachable verifies the go-git-based materialization path:
+// given a commit-based shallow clone (no fetch refspec, both commits at depth=1
+// with tmp refs removed), EnsureMergeBaseReachable must make the fork-point SHA
+// reachable from HEAD so that change-aware scanners can use "git diff --merge-base <sha>".
+func TestEnsureMergeBaseReachable(t *testing.T) {
+	cloneDir, forkPointSHA, headSHA, _, _ := setupCommitCloneRepo(t)
+
+	client := newTestGitClient()
+
+	if err := EnsureMergeBaseReachable(client, cloneDir, headSHA, forkPointSHA); err != nil {
+		t.Fatalf("EnsureMergeBaseReachable returned error: %v", err)
+	}
+
+	// Verify via the git CLI that a change-aware scanner's diff command would work:
+	// git merge-base headSHA forkPointSHA must return forkPointSHA.
+	cmd := exec.Command("git", "merge-base", headSHA, forkPointSHA)
+	cmd.Dir = cloneDir
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("git merge-base failed after EnsureMergeBaseReachable: %v", err)
+	}
+	got := strings.TrimSpace(string(out))
+	if got != forkPointSHA {
+		t.Errorf("git merge-base = %q, want %q", got, forkPointSHA)
+	}
+}

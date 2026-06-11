@@ -575,19 +575,22 @@ func (g *VCSGithub) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRespon
 		headSHA := prData.Head.GetSHA()
 		baseBranch := prData.Base.GetRef()
 
-		// API-first: use GitHub's compare endpoint to get the merge-base commit.
-		// prData.Head.GetLabel() returns "user:branch" for fork PRs, which the
-		// compare API needs to identify the fork's branch. Fall back to the
-		// git-based computation when the API call fails.
+		// API provides the correct merge-base SHA via GitHub's compare endpoint.
+		// go-git materializes it; git binary fallback computes+materializes.
 		cmp, _, cmpErr := client.Repositories.CompareCommits(context.Background(),
 			args.RepoParam.Namespace, args.RepoParam.Repository,
 			baseBranch, prData.Head.GetLabel(), nil)
 		if cmpErr == nil && cmp.GetMergeBaseCommit() != nil {
-			extras["merge_base_sha"] = cmp.GetMergeBaseCommit().GetSHA()
-		} else {
-			if cmpErr != nil {
-				g.logger.Warn("API merge-base failed, falling back to git", "error", cmpErr)
+			apiMB := cmp.GetMergeBaseCommit().GetSHA()
+			if reachErr := git.EnsureMergeBaseReachable(clientGit, args.TargetFolder, headSHA, apiMB); reachErr == nil {
+				extras["merge_base_sha"] = apiMB
+			} else {
+				g.logger.Warn("go-git materialization failed, falling back to git binary", "sha", apiMB, "error", reachErr)
 			}
+		} else if cmpErr != nil {
+			g.logger.Warn("API merge-base failed, falling back to git binary", "error", cmpErr)
+		}
+		if _, ok := extras["merge_base_sha"]; !ok {
 			if mb, mbErr := clientGit.MergeBaseSHA(args.TargetFolder, headSHA, baseBranch, baseSHA); mbErr != nil {
 				g.logger.Warn("failed to compute merge base", "error", mbErr)
 			} else if mb != "" {

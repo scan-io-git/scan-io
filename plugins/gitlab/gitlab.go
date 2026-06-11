@@ -570,17 +570,20 @@ func (g *VCSGitlab) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRespon
 			headSHA = mrData.SHA
 		}
 
-		// API-first: use GitLab's dedicated merge_base endpoint. This works for
-		// fork MRs where the git-based path fails because the remote has no
-		// configured fetch refspec. Fall back to git when the API call fails.
-		projectID := fmt.Sprintf("%s/%s", args.RepoParam.Namespace, args.RepoParam.Repository)
+		// API provides the correct merge-base SHA via GitLab's merge_base endpoint.
+		// go-git materializes it; git binary fallback computes+materializes.
 		refs := []string{mrData.TargetBranch, headSHA}
 		if mbCommit, _, apiErr := client.Repositories.MergeBase(projectID, &gitlab.MergeBaseOptions{Ref: &refs}); apiErr == nil && mbCommit != nil {
-			extras["merge_base_sha"] = mbCommit.ID
-		} else {
-			if apiErr != nil {
-				g.logger.Warn("API merge-base failed, falling back to git", "error", apiErr)
+			apiMB := mbCommit.ID
+			if reachErr := git.EnsureMergeBaseReachable(clientGit, args.TargetFolder, headSHA, apiMB); reachErr == nil {
+				extras["merge_base_sha"] = apiMB
+			} else {
+				g.logger.Warn("go-git materialization failed, falling back to git binary", "sha", apiMB, "error", reachErr)
 			}
+		} else if apiErr != nil {
+			g.logger.Warn("API merge-base failed, falling back to git binary", "error", apiErr)
+		}
+		if _, ok := extras["merge_base_sha"]; !ok {
 			if mb, mbErr := clientGit.MergeBaseSHA(args.TargetFolder, headSHA, mrData.TargetBranch, baseSHA); mbErr != nil {
 				g.logger.Warn("failed to compute merge base", "error", mbErr)
 			} else if mb != "" {
