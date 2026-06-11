@@ -569,10 +569,23 @@ func (g *VCSGitlab) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRespon
 		if headSHA == "" {
 			headSHA = mrData.SHA
 		}
-		if mb, mbErr := clientGit.MergeBaseSHA(args.TargetFolder, headSHA, mrData.TargetBranch, baseSHA); mbErr != nil {
-			g.logger.Warn("failed to compute merge base", "error", mbErr)
-		} else if mb != "" {
-			extras["merge_base_sha"] = mb
+
+		// API-first: use GitLab's dedicated merge_base endpoint. This works for
+		// fork MRs where the git-based path fails because the remote has no
+		// configured fetch refspec. Fall back to git when the API call fails.
+		projectID := fmt.Sprintf("%s/%s", args.RepoParam.Namespace, args.RepoParam.Repository)
+		refs := []string{mrData.TargetBranch, headSHA}
+		if mbCommit, _, apiErr := client.Repositories.MergeBase(projectID, &gitlab.MergeBaseOptions{Ref: &refs}); apiErr == nil && mbCommit != nil {
+			extras["merge_base_sha"] = mbCommit.ID
+		} else {
+			if apiErr != nil {
+				g.logger.Warn("API merge-base failed, falling back to git", "error", apiErr)
+			}
+			if mb, mbErr := clientGit.MergeBaseSHA(args.TargetFolder, headSHA, mrData.TargetBranch, baseSHA); mbErr != nil {
+				g.logger.Warn("failed to compute merge base", "error", mbErr)
+			} else if mb != "" {
+				extras["merge_base_sha"] = mb
+			}
 		}
 	}
 
