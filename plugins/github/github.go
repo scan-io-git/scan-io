@@ -574,10 +574,25 @@ func (g *VCSGithub) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRespon
 
 		headSHA := prData.Head.GetSHA()
 		baseBranch := prData.Base.GetRef()
-		if mb, mbErr := clientGit.MergeBaseSHA(args.TargetFolder, headSHA, baseBranch, baseSHA); mbErr != nil {
-			g.logger.Warn("failed to compute merge base", "error", mbErr)
-		} else if mb != "" {
-			extras["merge_base_sha"] = mb
+
+		// API-first: use GitHub's compare endpoint to get the merge-base commit.
+		// prData.Head.GetLabel() returns "user:branch" for fork PRs, which the
+		// compare API needs to identify the fork's branch. Fall back to the
+		// git-based computation when the API call fails.
+		cmp, _, cmpErr := client.Repositories.CompareCommits(context.Background(),
+			args.RepoParam.Namespace, args.RepoParam.Repository,
+			baseBranch, prData.Head.GetLabel(), nil)
+		if cmpErr == nil && cmp.GetMergeBaseCommit() != nil {
+			extras["merge_base_sha"] = cmp.GetMergeBaseCommit().GetSHA()
+		} else {
+			if cmpErr != nil {
+				g.logger.Warn("API merge-base failed, falling back to git", "error", cmpErr)
+			}
+			if mb, mbErr := clientGit.MergeBaseSHA(args.TargetFolder, headSHA, baseBranch, baseSHA); mbErr != nil {
+				g.logger.Warn("failed to compute merge base", "error", mbErr)
+			} else if mb != "" {
+				extras["merge_base_sha"] = mb
+			}
 		}
 	}
 
