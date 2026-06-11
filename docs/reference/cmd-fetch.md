@@ -206,6 +206,6 @@ When `--fetch-base` is set, two SHA values are populated in `result.extras`:
 The distinction matters when the PR is behind the target branch: `base_sha` would be a commit the PR author never touched, causing semgrep to exclude unrelated findings. `merge_base_sha` is always the true divergence point.
 
 > [!NOTE]
-> `base_sha` appears when `--fetch-base` or `--diff-lines` is set; `merge_base_sha` appears only with `--fetch-base` and only when the fork point can be determined (requires the `git` binary and a resolvable base branch name). A plain fetch without either flag populates neither field.
+> `base_sha` appears when `--fetch-base` or `--diff-lines` is set; `merge_base_sha` appears only with `--fetch-base` and only when the fork point can be determined. Scanio tries the VCS provider API first (Bitbucket `fromHash`, GitHub compare, GitLab `merge_base`) — this works for fork PRs on all three providers. If the API call fails, a git-based fallback is attempted. If both fail, the field is omitted and the fetch still succeeds. A plain fetch without either flag populates neither field.
 
 For a worked example see [How to run diff-aware PR scanning](../how-to/diff-aware-pr-scanning.md).

@@ -39,7 +39,7 @@ Your pipeline should extract `$MERGE_BASE_SHA` and pass it to the scanner step.
 > Always pass `merge_base_sha` — not `base_sha` — to `--baseline-commit`. When the PR is behind the target branch, `base_sha` is a commit the PR author never touched, which causes semgrep to suppress findings it should report. See [Why `merge_base_sha` and `base_sha` differ](../explanations/diff-aware-baseline.md) for the full explanation.
 
 > [!NOTE]
-> `--fetch-base` is only valid when the URL contains a pull request ID. Using it without a PR URL returns an error. `merge_base_sha` requires the `git` binary to be available; if it cannot be determined the field is absent and the fetch still succeeds with `base_sha` only.
+> `--fetch-base` is only valid when the URL contains a pull request ID. Using it without a PR URL returns an error. `merge_base_sha` is computed by querying the VCS provider API first (Bitbucket `fromHash`, GitHub compare endpoint, GitLab `merge_base` endpoint). This works for fork PRs and stale branches on all three providers. If the API call fails, a git-based fallback is tried. If both fail, the field is absent and the fetch still succeeds with `base_sha` only.
 
 ## Run the scanner with `--baseline-commit`
 

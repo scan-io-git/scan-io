@@ -53,14 +53,22 @@ feature:                     A ── B   ← head
 
 Here `merge_base_sha` = C3 = `base_sha`. Either field gives the same result for semgrep, but using `merge_base_sha` consistently means your pipeline is always correct regardless of PR state.
 
-## Why a shallow clone makes this harder
+## How `merge_base_sha` is computed
 
-Scanio fetches with `--depth 1 --single-branch --no-tags` by default, which downloads only the latest snapshot without history. That is efficient — it avoids transferring the entire repo — but it also means neither C1 nor any other ancestor is in the local git store.
+Scanio tries two approaches in order, using whichever succeeds:
 
-To compute `merge_base_sha`, Scanio uses the git CLI's `--shallow-exclude` protocol: it asks the server to send only the feature branch's commits up to the fork point, then deepens by one commit to include C1 itself. This fetches exactly `N_feature + 2` commits regardless of how far behind main the PR is — the server computes the boundary rather than the client walking the graph.
+**1. VCS provider API (preferred).** Each provider exposes an authoritative merge-base endpoint that the server computes from the full repository graph. Fork PRs and stale branches are handled correctly regardless of local history depth.
 
-Without this, passing `base_sha` to semgrep would fail with `fatal: no merge base found` on a shallow clone, because C3 and B have no graph connection in the local store.
+- Bitbucket Server: `fromHash` in the PR changes response (`/rest/api/1.0/.../pull-requests/{id}/changes`)
+- GitHub: `merge_base_commit` from the Repositories compare API (`GET /repos/{owner}/{repo}/compare/{base}...{head}`)
+- GitLab: `Repositories.MergeBase` API (`GET /api/v4/projects/{id}/repository/merge_base`)
+
+**2. Git-based fallback.** Used when the provider API call fails (network error, older server version, etc.). Scanio re-fetches both the PR head SHA and the base tip SHA from origin with progressively deeper history (1 → 10 → 50 → 200 commits) and then runs `git merge-base head base`. This requires the git binary and authenticated access to the remote.
+
+The fallback uses explicit `sha:tmpRef` fetches rather than `--shallow-exclude` so that it works for both branch-based and commit-based (fork) clones, regardless of whether origin has a configured fetch refspec.
+
+If both approaches fail, `merge_base_sha` is omitted. The value is either the true fork point C1 or absent — it is never an approximation such as the immediate parent of the PR tip.
 
 ## Fallback behaviour
 
-`merge_base_sha` is best-effort. If the git binary is absent, the base branch name is unavailable, or the deepen fetch fails for any reason, the field is omitted from the response. `base_sha` is always returned when the VCS API provides it. Pipelines should check whether `merge_base_sha` is present before using it and fall back to a full scan if it is not.
+`merge_base_sha` is best-effort. If the provider API is unavailable and the git fallback also fails (git binary absent, network error, ancestor not found within 260 commits), the field is omitted from the response. `base_sha` is always returned when the VCS API provides it. Pipelines should check whether `merge_base_sha` is present before using it and fall back to a full scan if it is not.
