@@ -262,8 +262,12 @@ func compareLineMaps(want, got map[int]string) string {
 
 // setupMergeBaseRepo creates a local bare origin with a master branch (C0-C3) and a
 // feature branch that diverges at C1 (adds commits A and B), then shallow-clones the
-// feature branch. Returns the clone directory and C1's SHA (the expected fork point).
-func setupMergeBaseRepo(t *testing.T) (cloneDir, forkPointSHA string) {
+// feature branch. It also simulates EnsureCommitPresent by fetching the master tip into
+// a tmp ref that is immediately removed — leaving masterTipSHA in .git/shallow without
+// any named ref, matching the production state before MergeBaseSHA is called.
+//
+// Returns: cloneDir, forkPointSHA (C1), featureTipSHA (B), masterTipSHA (C3).
+func setupMergeBaseRepo(t *testing.T) (cloneDir, forkPointSHA, featureTipSHA, masterTipSHA string) {
 	t.Helper()
 
 	if _, err := exec.LookPath("git"); err != nil {
@@ -325,6 +329,7 @@ func setupMergeBaseRepo(t *testing.T) (cloneDir, forkPointSHA string) {
 	run(seedDir, "add", ".")
 	run(seedDir, "commit", "-m", "B")
 	run(seedDir, "push", "origin", "feature")
+	featureTipSHA = run(seedDir, "rev-parse", "HEAD")
 
 	// Advance master past C1.
 	run(seedDir, "checkout", "master")
@@ -335,6 +340,7 @@ func setupMergeBaseRepo(t *testing.T) (cloneDir, forkPointSHA string) {
 	run(seedDir, "add", ".")
 	run(seedDir, "commit", "-m", "C3")
 	run(seedDir, "push", "origin", "master")
+	masterTipSHA = run(seedDir, "rev-parse", "HEAD")
 
 	if err := os.MkdirAll(cloneDir, 0o755); err != nil {
 		t.Fatalf("mkdir clone: %v", err)
@@ -345,14 +351,20 @@ func setupMergeBaseRepo(t *testing.T) (cloneDir, forkPointSHA string) {
 	run(cloneDir, "config", "user.email", "test@test.com")
 	run(cloneDir, "config", "user.name", "Test")
 
-	return cloneDir, forkPointSHA
+	// Simulate EnsureCommitPresent: fetch master tip by SHA into a tmp ref then remove it,
+	// leaving the commit in .git/shallow with no named ref (matching production state).
+	masterTmpRef := "refs/scanio/tmp/" + masterTipSHA
+	run(cloneDir, "fetch", "--depth=1", "origin", masterTipSHA+":"+masterTmpRef)
+	run(cloneDir, "update-ref", "-d", masterTmpRef)
+
+	return cloneDir, forkPointSHA, featureTipSHA, masterTipSHA
 }
 
 func TestMergeBaseSHA_shallow(t *testing.T) {
-	cloneDir, wantFork := setupMergeBaseRepo(t)
+	cloneDir, wantFork, headSHA, baseSHA := setupMergeBaseRepo(t)
 
 	client := newTestGitClient()
-	got, err := client.MergeBaseSHA(cloneDir, "", "master", "")
+	got, err := client.MergeBaseSHA(cloneDir, headSHA, "master", baseSHA)
 	if err != nil {
 		t.Fatalf("MergeBaseSHA returned unexpected error: %v", err)
 	}
@@ -371,5 +383,140 @@ func TestMergeBaseSHA_noBranch(t *testing.T) {
 	}
 	if got != "" {
 		t.Errorf("expected empty result for no-branch skip, got %q", got)
+	}
+}
+
+// setupCommitCloneRepo builds the same origin as setupMergeBaseRepo but mimics
+// the cloneCommit + EnsureCommitPresent flow used for fork PRs: the clone is
+// initialised without any branch tracking (no configured fetch refspec), and
+// both the feature tip and the master tip are fetched by SHA into temporary
+// refs that are immediately deleted — leaving both commits in .git/shallow with
+// no named ref. This is the exact state that triggers the merge-base bug.
+//
+// Returns: cloneDir, forkPointSHA (C1 — expected merge-base),
+// featureTipSHA, masterTipSHA, tipMinusOneSHA (the wrong "tip-1" answer).
+func setupCommitCloneRepo(t *testing.T) (cloneDir, forkPointSHA, featureTipSHA, masterTipSHA, tipMinusOneSHA string) {
+	t.Helper()
+
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git binary not in PATH; skipping merge-base CLI test")
+	}
+
+	tmp := t.TempDir()
+	originDir := filepath.Join(tmp, "origin")
+	seedDir := filepath.Join(tmp, "seed")
+	cloneDir = filepath.Join(tmp, "clone")
+
+	run := func(dir string, args ...string) string {
+		cmd := exec.Command("git", args...)
+		if dir != "" {
+			cmd.Dir = dir
+		}
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v (dir=%q): %v\n%s", args, dir, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+
+	if err := os.MkdirAll(originDir, 0o755); err != nil {
+		t.Fatalf("mkdir origin: %v", err)
+	}
+	run(originDir, "init", "--bare")
+
+	if err := os.MkdirAll(seedDir, 0o755); err != nil {
+		t.Fatalf("mkdir seed: %v", err)
+	}
+	run(seedDir, "init")
+	run(seedDir, "symbolic-ref", "HEAD", "refs/heads/master")
+	run(seedDir, "config", "user.email", "test@test.com")
+	run(seedDir, "config", "user.name", "Test")
+	run(seedDir, "remote", "add", "origin", "file://"+originDir)
+
+	write := func(name, content string) {
+		if err := os.WriteFile(filepath.Join(seedDir, name), []byte(content), 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+
+	write("file.txt", "c0\n")
+	run(seedDir, "add", ".")
+	run(seedDir, "commit", "-m", "C0")
+
+	write("file.txt", "c1\n")
+	run(seedDir, "add", ".")
+	run(seedDir, "commit", "-m", "C1")
+	forkPointSHA = run(seedDir, "rev-parse", "HEAD")
+
+	// Feature branch diverges from C1.
+	run(seedDir, "checkout", "-b", "feature")
+	write("feature.txt", "A\n")
+	run(seedDir, "add", ".")
+	run(seedDir, "commit", "-m", "A")
+	tipMinusOneSHA = run(seedDir, "rev-parse", "HEAD") // A is the direct parent of the PR tip
+	write("feature.txt", "B\n")
+	run(seedDir, "add", ".")
+	run(seedDir, "commit", "-m", "B")
+	featureTipSHA = run(seedDir, "rev-parse", "HEAD")
+	run(seedDir, "push", "origin", "feature")
+
+	// Advance master past C1.
+	run(seedDir, "checkout", "master")
+	write("file.txt", "c2\n")
+	run(seedDir, "add", ".")
+	run(seedDir, "commit", "-m", "C2")
+	write("file.txt", "c3\n")
+	run(seedDir, "add", ".")
+	run(seedDir, "commit", "-m", "C3")
+	run(seedDir, "push", "origin", "master")
+	masterTipSHA = run(seedDir, "rev-parse", "HEAD")
+
+	// Simulate cloneCommit (go-git CreateRemote): init + remote add, then immediately
+	// unset the default fetch refspec that "git remote add" injects. go-git's
+	// CreateRemote only stores a URL — no Fetch entries — so the local config has
+	// no remote.origin.fetch. Without a fetch refspec, "git fetch --shallow-exclude"
+	// has nothing to update and fails, reproducing the production fork-PR bug.
+	if err := os.MkdirAll(cloneDir, 0o755); err != nil {
+		t.Fatalf("mkdir clone: %v", err)
+	}
+	run(cloneDir, "init")
+	run(cloneDir, "config", "user.email", "test@test.com")
+	run(cloneDir, "config", "user.name", "Test")
+	run(cloneDir, "remote", "add", "origin", "file://"+originDir)
+	run(cloneDir, "config", "--unset", "remote.origin.fetch") // mirror go-git CreateRemote
+
+	// cloneCommit fetches the PR tip into a tmp ref, checks out, then removes the ref.
+	featureTmpRef := "refs/scanio/tmp/" + featureTipSHA
+	run(cloneDir, "fetch", "--depth=1", "origin", featureTipSHA+":"+featureTmpRef)
+	run(cloneDir, "checkout", "--detach", featureTipSHA)
+	run(cloneDir, "update-ref", "-d", featureTmpRef)
+
+	// EnsureCommitPresent fetches the base (master tip) into a tmp ref then removes it.
+	masterTmpRef := "refs/scanio/tmp/" + masterTipSHA
+	run(cloneDir, "fetch", "--depth=1", "origin", masterTipSHA+":"+masterTmpRef)
+	run(cloneDir, "update-ref", "-d", masterTmpRef)
+
+	return cloneDir, forkPointSHA, featureTipSHA, masterTipSHA, tipMinusOneSHA
+}
+
+// TestMergeBaseSHA_shallowCommitClone is a regression test for the fork-PR merge-base
+// bug: when the repo was cloned by commit SHA (cloneCommit path, no fetch refspec),
+// MergeBaseSHA must return the true fork point, not the immediate parent of the PR tip.
+// Returning tip-1 would silently shrink the diff window and cause missed findings.
+func TestMergeBaseSHA_shallowCommitClone(t *testing.T) {
+	cloneDir, wantFork, headSHA, baseSHA, tipMinusOne := setupCommitCloneRepo(t)
+
+	client := newTestGitClient()
+	got, err := client.MergeBaseSHA(cloneDir, headSHA, "master", baseSHA)
+	if err != nil {
+		t.Fatalf("MergeBaseSHA returned unexpected error: %v", err)
+	}
+	// Guard against the specific tip-1 regression: a wrong baseline silently causes
+	// missed findings in diff-aware scanning.
+	if got == tipMinusOne {
+		t.Errorf("merge base = tip-1 (%q): this causes missed findings; want fork point %q", got, wantFork)
+	}
+	if got != wantFork {
+		t.Errorf("merge base = %q, want fork point %q", got, wantFork)
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
@@ -374,15 +375,13 @@ func fetchCommit(gitClient *Client, repo *git.Repository, hash plumbing.Hash) er
 	return nil
 }
 
-// MergeBaseSHA computes the merge-base (fork point) SHA between the feature branch
-// at repoPath and the base branch, fetching the minimum history via the git CLI.
+// MergeBaseSHA computes the merge-base (fork point) SHA between the PR head and the
+// target branch at repoPath, fetching the minimum history via the git CLI.
 // Best-effort: returns ("", nil) when the fork point cannot be determined (passphrase
 // SSH key, git binary absent, server error) so callers proceed without it.
-// baseBranch may be a short name or refs/heads/<name>; baseSHA is the fallback for
-// non-shallow repos where a direct merge-base lookup is used instead.
 func (c *Client) MergeBaseSHA(repoPath, headSHA, baseBranch, baseSHA string) (string, error) {
-	if baseBranch == "" && baseSHA == "" {
-		c.logger.Warn("merge-base computation skipped: neither base branch nor SHA available")
+	if headSHA == "" && baseSHA == "" {
+		c.logger.Warn("merge-base computation skipped: neither headSHA nor baseSHA available")
 		return "", nil
 	}
 
@@ -395,41 +394,74 @@ func (c *Client) MergeBaseSHA(repoPath, headSHA, baseBranch, baseSHA string) (st
 	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	branch := strings.TrimPrefix(baseBranch, "refs/heads/")
-
 	isShallow, _ := c.runGit(ctx, repoPath, env, "rev-parse", "--is-shallow-repository")
 	if isShallow == "true" {
-		return c.mergeBaseShallow(ctx, repoPath, env, branch)
+		return c.mergeBaseShallow(ctx, repoPath, env, headSHA, baseSHA)
 	}
 	return c.mergeBaseFull(ctx, repoPath, env, headSHA, baseSHA)
 }
 
-// mergeBaseShallow computes the merge-base for a shallow clone using the
-// --shallow-exclude protocol: deepen the feature branch stopping at the base,
-// pull in one more commit (the fork point), then read the new shallow root.
-func (c *Client) mergeBaseShallow(ctx context.Context, repoPath string, env []string, baseBranch string) (string, error) {
-	if baseBranch == "" {
-		c.logger.Warn("merge-base skipped: no base branch name for --shallow-exclude")
+// mergeBaseShallow computes the merge-base for a shallow clone.
+//
+// The repo was produced by cloneCommit (fork PRs) or cloneAtRef (branch PRs). In both
+// cases the origin remote may have no configured fetch refspec, so git operations that
+// require one (--shallow-exclude, --deepen without explicit refs) fail silently or with
+// "no commits selected for shallow requests". Using those would either return an empty
+// result or, worse, tip-1 — a wrong baseline that silently shrinks the diff window and
+// causes missed findings in diff-aware scanning.
+//
+// Instead, re-fetch both headSHA and baseSHA with progressively deeper history using the
+// explicit +<sha>:<tmpRef> refspec that works without a configured fetch refspec. Once
+// their histories overlap, git merge-base returns the true common ancestor. If the
+// histories do not meet within the depth budget the function returns ("", nil), which
+// causes the caller to fall back to a full-tree scan — no missed findings.
+func (c *Client) mergeBaseShallow(ctx context.Context, repoPath string, env []string, headSHA, baseSHA string) (string, error) {
+	if headSHA == "" || baseSHA == "" {
+		c.logger.Warn("merge-base skipped: headSHA and baseSHA required")
 		return "", nil
 	}
-	if _, err := c.runGit(ctx, repoPath, env, "fetch", "--shallow-exclude="+baseBranch, "origin"); err != nil {
-		c.logger.Warn("merge-base skipped: shallow-exclude fetch failed", "error", err)
-		return "", nil
+
+	// Resolve the remote name the same way fetchCommit does: prefer "origin", fall
+	// back to the first configured remote. Hardcoding "origin" would silently fail
+	// for repos whose remote has a different name.
+	remoteName := origin
+	if out, err := c.runGit(ctx, repoPath, env, "remote", "get-url", origin); err != nil || out == "" {
+		if list, lErr := c.runGit(ctx, repoPath, env, "remote"); lErr == nil && list != "" {
+			remoteName = strings.Fields(list)[0]
+		} else {
+			c.logger.Warn("merge-base skipped: no remote configured")
+			return "", nil
+		}
 	}
-	if _, err := c.runGit(ctx, repoPath, env, "fetch", "--deepen=1"); err != nil {
-		c.logger.Warn("merge-base skipped: deepen fetch failed", "error", err)
-		return "", nil
+
+	headRef := tmpRefPrefix + "mb-head-" + headSHA[:12]
+	baseRef := tmpRefPrefix + "mb-base-" + baseSHA[:12]
+	headSpec := fmt.Sprintf("+%s:%s", headSHA, headRef)
+	baseSpec := fmt.Sprintf("+%s:%s", baseSHA, baseRef)
+
+	// Use a background context for cleanup so that expired/cancelled fetch contexts
+	// do not leave tmp refs dangling in the repo.
+	defer func() {
+		cleanCtx, cleanCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cleanCancel()
+		_, _ = c.runGit(cleanCtx, repoPath, env, "update-ref", "-d", headRef)
+		_, _ = c.runGit(cleanCtx, repoPath, env, "update-ref", "-d", baseRef)
+	}()
+
+	for _, depth := range []int{1, 10, 50, 200} {
+		if _, err := c.runGit(ctx, repoPath, env,
+			"fetch", fmt.Sprintf("--depth=%d", depth), remoteName,
+			headSpec, baseSpec); err != nil {
+			c.logger.Warn("merge-base: fetch failed", "depth", depth, "error", err)
+			return "", nil
+		}
+		if mb, err := c.runGit(ctx, repoPath, env, "merge-base", headSHA, baseSHA); err == nil && mb != "" {
+			return mb, nil
+		}
 	}
-	out, err := c.runGit(ctx, repoPath, env, "rev-list", "--max-parents=0", "HEAD")
-	if err != nil || out == "" {
-		c.logger.Warn("merge-base skipped: rev-list failed", "error", err)
-		return "", nil
-	}
-	roots := strings.Fields(out)
-	if len(roots) > 1 {
-		c.logger.Warn("multiple shallow roots found; using first", "roots", roots)
-	}
-	return roots[0], nil
+
+	c.logger.Warn("merge-base skipped: common ancestor not found within depth budget (260 commits); falling back to full scan")
+	return "", nil
 }
 
 // mergeBaseFull computes the merge-base for a full (non-shallow) clone.
