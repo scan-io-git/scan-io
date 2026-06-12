@@ -56,13 +56,9 @@ func fetchCommit(gitClient *Client, repo *git.Repository, hash plumbing.Hash) er
 
 	insecure := InsecureFromCfg(gitClient.globalConfig)
 
-	remoteName := origin
-	if _, err := repo.Remote(remoteName); err != nil {
-		remotes, rErr := repo.Remotes()
-		if rErr != nil || len(remotes) == 0 {
-			return fmt.Errorf("no remotes available to fetch commit %s", hash.String())
-		}
-		remoteName = remotes[0].Config().Name
+	remoteName, err := resolveRemoteName(repo)
+	if err != nil {
+		return fmt.Errorf("no remotes available to fetch commit %s: %w", hash.String(), err)
 	}
 
 	tmpRef := plumbing.ReferenceName(fmt.Sprintf(tmpRefPrefix+"%s", hash.String()))

@@ -3,7 +3,6 @@ package git
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/go-git/go-git/v5"
@@ -225,12 +224,17 @@ func ensureMergeBaseReachableViaCLI(c *Client, ctx context.Context, repoPath, he
 		return fmt.Errorf("git binary unavailable: %w", err)
 	}
 
+	remoteName, err := c.resolveRemoteNameCLI(ctx, repoPath, env)
+	if err != nil {
+		return fmt.Errorf("no remote configured for deepening: %w", err)
+	}
+
 	headTmpRef := mergeBaseTmpRef(headSHA)
 	defer c.removeTmpRefs(repoPath, env, headTmpRef)
 
 	for _, depth := range deepenLadder {
 		if _, err := c.runGit(ctx, repoPath, env,
-			"fetch", fmt.Sprintf("--depth=%d", depth), "--no-tags", origin,
+			"fetch", fmt.Sprintf("--depth=%d", depth), "--no-tags", remoteName,
 			fmt.Sprintf("+%s:%s", headSHA, headTmpRef)); err != nil {
 			c.logger.Warn("git binary deepen failed", "depth", depth, "error", err)
 			return fmt.Errorf("merge-base %s not reachable: git fetch failed: %w", mergeBaseSHA, err)
@@ -288,17 +292,10 @@ func (c *Client) mergeBaseShallow(ctx context.Context, repoPath string, env []st
 		return "", nil
 	}
 
-	// Resolve the remote name the same way fetchCommit does: prefer "origin", fall
-	// back to the first configured remote. Hardcoding "origin" would silently fail
-	// for repos whose remote has a different name.
-	remoteName := origin
-	if out, err := c.runGit(ctx, repoPath, env, "remote", "get-url", origin); err != nil || out == "" {
-		if list, lErr := c.runGit(ctx, repoPath, env, "remote"); lErr == nil && list != "" {
-			remoteName = strings.Fields(list)[0]
-		} else {
-			c.logger.Warn("merge-base skipped: no remote configured")
-			return "", nil
-		}
+	remoteName, err := c.resolveRemoteNameCLI(ctx, repoPath, env)
+	if err != nil {
+		c.logger.Warn("merge-base skipped: no remote configured")
+		return "", nil
 	}
 
 	headRef := mergeBaseTmpRef(headSHA)

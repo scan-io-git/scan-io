@@ -33,6 +33,19 @@ func (c *Client) runGit(ctx context.Context, repoDir string, env []string, args 
 	return strings.TrimSpace(stdout.String()), nil
 }
 
+// resolveRemoteNameCLI mirrors resolveRemoteName via the git binary: prefer
+// "origin", fall back to the first configured remote.
+func (c *Client) resolveRemoteNameCLI(ctx context.Context, repoPath string, env []string) (string, error) {
+	if out, err := c.runGit(ctx, repoPath, env, "remote", "get-url", origin); err == nil && out != "" {
+		return origin, nil
+	}
+	list, err := c.runGit(ctx, repoPath, env, "remote")
+	if err != nil || list == "" {
+		return "", fmt.Errorf("no remotes configured in repository")
+	}
+	return strings.Fields(list)[0], nil
+}
+
 // gitCLIEnv returns environment variables for the git CLI that mirror the
 // authentication configured on the Client. Returns an error when CLI auth is
 // unsupported for this credential type; callers should treat that as a skip.
