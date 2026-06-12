@@ -211,6 +211,36 @@ func cleanShallowEntries(repo *git.Repository) error {
 	return repo.Storer.SetShallow(keep)
 }
 
+// deepenToMergeBase progressively re-fetches fetchSHAs at each depth (a single
+// "git fetch --depth=N --no-tags <remote> +sha:tmpRef..." per depth), then runs
+// "git merge-base headSHA otherSHA". A result is accepted when it equals wantSHA,
+// or is any non-empty SHA when wantSHA is "". Returns (mb, nil) on success,
+// ("", nil) when the depth budget is exhausted, ("", err) when a fetch fails.
+func (c *Client) deepenToMergeBase(ctx context.Context, repoPath string, env []string,
+	remoteName string, depths []int, fetchSHAs []string, headSHA, otherSHA, wantSHA string) (string, error) {
+
+	refspecs := make([]string, 0, len(fetchSHAs))
+	tmpRefs := make([]string, 0, len(fetchSHAs))
+	for _, sha := range fetchSHAs {
+		ref := mergeBaseTmpRef(sha)
+		tmpRefs = append(tmpRefs, ref)
+		refspecs = append(refspecs, fmt.Sprintf("+%s:%s", sha, ref))
+	}
+	defer c.removeTmpRefs(repoPath, env, tmpRefs...)
+
+	for _, depth := range depths {
+		args := append([]string{"fetch", fmt.Sprintf("--depth=%d", depth), "--no-tags", remoteName}, refspecs...)
+		if _, err := c.runGit(ctx, repoPath, env, args...); err != nil {
+			return "", fmt.Errorf("deepen fetch at depth %d: %w", depth, err)
+		}
+		out, err := c.runGit(ctx, repoPath, env, "merge-base", headSHA, otherSHA)
+		if err == nil && out != "" && (wantSHA == "" || out == wantSHA) {
+			return out, nil
+		}
+	}
+	return "", nil
+}
+
 // ensureMergeBaseReachableViaCLI is the git binary fallback for
 // EnsureMergeBaseReachable. It deepens headSHA via explicit SHA fetches and
 // verifies that mergeBaseSHA becomes reachable using git merge-base.
@@ -229,21 +259,15 @@ func ensureMergeBaseReachableViaCLI(c *Client, ctx context.Context, repoPath, he
 		return fmt.Errorf("no remote configured for deepening: %w", err)
 	}
 
-	headTmpRef := mergeBaseTmpRef(headSHA)
-	defer c.removeTmpRefs(repoPath, env, headTmpRef)
-
-	for _, depth := range deepenLadder {
-		if _, err := c.runGit(ctx, repoPath, env,
-			"fetch", fmt.Sprintf("--depth=%d", depth), "--no-tags", remoteName,
-			fmt.Sprintf("+%s:%s", headSHA, headTmpRef)); err != nil {
-			c.logger.Warn("git binary deepen failed", "depth", depth, "error", err)
-			return fmt.Errorf("merge-base %s not reachable: git fetch failed: %w", mergeBaseSHA, err)
-		}
-		if out, err := c.runGit(ctx, repoPath, env, "merge-base", headSHA, mergeBaseSHA); err == nil && out == mergeBaseSHA {
-			return nil
-		}
+	mb, err := c.deepenToMergeBase(ctx, repoPath, env, remoteName, deepenLadder,
+		[]string{headSHA}, headSHA, mergeBaseSHA, mergeBaseSHA)
+	if err != nil {
+		return fmt.Errorf("merge-base %s not reachable: git fetch failed: %w", mergeBaseSHA, err)
 	}
-	return fmt.Errorf("merge-base %s not reachable from %s within depth budget", mergeBaseSHA, headSHA)
+	if mb == "" {
+		return fmt.Errorf("merge-base %s not reachable from %s within depth budget", mergeBaseSHA, headSHA)
+	}
+	return nil
 }
 
 // MergeBaseSHA computes the merge-base (fork point) SHA between the PR head and the
@@ -298,27 +322,16 @@ func (c *Client) mergeBaseShallow(ctx context.Context, repoPath string, env []st
 		return "", nil
 	}
 
-	headRef := mergeBaseTmpRef(headSHA)
-	baseRef := mergeBaseTmpRef(baseSHA)
-	headSpec := fmt.Sprintf("+%s:%s", headSHA, headRef)
-	baseSpec := fmt.Sprintf("+%s:%s", baseSHA, baseRef)
-
-	defer c.removeTmpRefs(repoPath, env, headRef, baseRef)
-
-	for _, depth := range initialDeepenLadder {
-		if _, err := c.runGit(ctx, repoPath, env,
-			"fetch", fmt.Sprintf("--depth=%d", depth), "--no-tags", remoteName,
-			headSpec, baseSpec); err != nil {
-			c.logger.Warn("merge-base: fetch failed", "depth", depth, "error", err)
-			return "", nil
-		}
-		if mb, err := c.runGit(ctx, repoPath, env, "merge-base", headSHA, baseSHA); err == nil && mb != "" {
-			return mb, nil
-		}
+	mb, err := c.deepenToMergeBase(ctx, repoPath, env, remoteName, initialDeepenLadder,
+		[]string{headSHA, baseSHA}, headSHA, baseSHA, "")
+	if err != nil {
+		c.logger.Warn("merge-base: fetch failed", "error", err)
+		return "", nil
 	}
-
-	c.logger.Warn("merge-base skipped: common ancestor not found within depth budget (260 commits); falling back to full scan")
-	return "", nil
+	if mb == "" {
+		c.logger.Warn("merge-base skipped: common ancestor not found within depth budget (260 commits); falling back to full scan")
+	}
+	return mb, nil
 }
 
 // mergeBaseFull computes the merge-base for a full (non-shallow) clone.
