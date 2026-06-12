@@ -540,11 +540,18 @@ func ensureMergeBaseReachableViaCLI(c *Client, ctx context.Context, repoPath, he
 	}
 
 	headTmpRef := fmt.Sprintf("refs/scanio/tmp/mr-head-%s", headSHA[:12])
-	defer c.runGit(ctx, repoPath, env, "update-ref", "-d", headTmpRef) //nolint:errcheck
+	// Use a background context for cleanup so that an expired/cancelled ctx
+	// (e.g. timeout firing during the fetch loop) does not leave the tmp ref
+	// dangling. Mirrors the same pattern used in mergeBaseShallow.
+	defer func() {
+		cleanCtx, cleanCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cleanCancel()
+		_, _ = c.runGit(cleanCtx, repoPath, env, "update-ref", "-d", headTmpRef)
+	}()
 
 	for _, depth := range []int{10, 50, 200} {
 		if _, err := c.runGit(ctx, repoPath, env,
-			"fetch", fmt.Sprintf("--depth=%d", depth), origin,
+			"fetch", fmt.Sprintf("--depth=%d", depth), "--no-tags", origin,
 			fmt.Sprintf("+%s:%s", headSHA, headTmpRef)); err != nil {
 			c.logger.Warn("git binary deepen failed", "depth", depth, "error", err)
 			return fmt.Errorf("merge-base %s not reachable: git fetch failed: %w", mergeBaseSHA, err)
@@ -631,7 +638,7 @@ func (c *Client) mergeBaseShallow(ctx context.Context, repoPath string, env []st
 
 	for _, depth := range []int{1, 10, 50, 200} {
 		if _, err := c.runGit(ctx, repoPath, env,
-			"fetch", fmt.Sprintf("--depth=%d", depth), remoteName,
+			"fetch", fmt.Sprintf("--depth=%d", depth), "--no-tags", remoteName,
 			headSpec, baseSpec); err != nil {
 			c.logger.Warn("merge-base: fetch failed", "depth", depth, "error", err)
 			return "", nil
