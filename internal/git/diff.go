@@ -465,7 +465,12 @@ func EnsureMergeBaseReachable(gitClient *Client, repoPath, headSHA, mergeBaseSHA
 	}
 
 	// Step 5: git binary fallback — deepen and verify via CLI.
-	return ensureMergeBaseReachableViaCLI(gitClient, ctx, repoPath, headSHA, mergeBaseSHA)
+	// Give the fallback its own timeout: the go-git loop may have consumed most of
+	// the original ctx budget, and we don't want three depth iterations to starve
+	// the CLI path of all remaining time.
+	cliCtx, cliCancel := context.WithTimeout(context.Background(), gitClient.timeout)
+	defer cliCancel()
+	return ensureMergeBaseReachableViaCLI(gitClient, cliCtx, repoPath, headSHA, mergeBaseSHA)
 }
 
 // isMergeBaseReachable checks whether mbHash is an ancestor of headHash using
@@ -606,8 +611,9 @@ func (c *Client) MergeBaseSHA(repoPath, headSHA, baseBranch, baseSHA string) (st
 // histories do not meet within the depth budget the function returns ("", nil), which
 // causes the caller to fall back to a full-tree scan — no missed findings.
 func (c *Client) mergeBaseShallow(ctx context.Context, repoPath string, env []string, headSHA, baseSHA string) (string, error) {
-	if headSHA == "" || baseSHA == "" {
-		c.logger.Warn("merge-base skipped: headSHA and baseSHA required")
+	if len(headSHA) < 12 || len(baseSHA) < 12 {
+		c.logger.Warn("merge-base skipped: headSHA and baseSHA must be at least 12 chars",
+			"headSHA", headSHA, "baseSHA", baseSHA)
 		return "", nil
 	}
 
