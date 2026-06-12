@@ -67,14 +67,14 @@ func (c *Client) ResolveMergeBase(repoPath, headSHA, baseBranch, baseSHA string,
 		case apiMB == "":
 			// Provider had no answer; fall through silently.
 		default:
-			if err := EnsureMergeBaseReachable(c, repoPath, headSHA, apiMB); err == nil {
+			if err := c.ensureMergeBaseReachable(repoPath, headSHA, apiMB); err == nil {
 				return apiMB
 			} else {
 				c.logger.Warn("merge-base materialization failed, falling back to git", "sha", apiMB, "error", err)
 			}
 		}
 	}
-	mb, err := c.MergeBaseSHA(repoPath, headSHA, baseBranch, baseSHA)
+	mb, err := c.mergeBaseSHA(repoPath, headSHA, baseBranch, baseSHA)
 	if err != nil {
 		c.logger.Warn("failed to compute merge base", "error", err)
 		return ""
@@ -82,7 +82,7 @@ func (c *Client) ResolveMergeBase(repoPath, headSHA, baseBranch, baseSHA string,
 	return mb
 }
 
-// EnsureMergeBaseReachable progressively deepens headSHA's ancestry via go-git
+// ensureMergeBaseReachable progressively deepens headSHA's ancestry via go-git
 // until mergeBaseSHA is reachable from headSHA. This is required so that
 // change-aware scanners can run "git diff --merge-base <sha>" against the shallow
 // clone.
@@ -106,8 +106,8 @@ func (c *Client) ResolveMergeBase(repoPath, headSHA, baseBranch, baseSHA string,
 //
 // Returns nil when mergeBaseSHA is confirmed reachable from headSHA.
 // Returns an error when the commit cannot be made reachable within the depth
-// budget; callers should fall back to MergeBaseSHA for compute+materialize.
-func EnsureMergeBaseReachable(gitClient *Client, repoPath, headSHA, mergeBaseSHA string) error {
+// budget; callers should fall back to mergeBaseSHA for compute+materialize.
+func (c *Client) ensureMergeBaseReachable(repoPath, headSHA, mergeBaseSHA string) error {
 	if err := shaLongEnough(headSHA, mergeBaseSHA); err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func EnsureMergeBaseReachable(gitClient *Client, repoPath, headSHA, mergeBaseSHA
 	// reachable (e.g. when the merge-base is head's direct parent) although
 	// "git merge-base" fails. Pruning stale shallow entries makes both views agree.
 	if err := cleanShallowEntries(repo); err != nil {
-		gitClient.logger.Warn("cleanShallowEntries failed before reachability check", "error", err)
+		c.logger.Warn("cleanShallowEntries failed before reachability check", "error", err)
 	}
 
 	// Step 1: short-circuit — already reachable (full clone or prior deep fetch).
@@ -141,20 +141,20 @@ func EnsureMergeBaseReachable(gitClient *Client, repoPath, headSHA, mergeBaseSHA
 		return fmt.Errorf("no remote configured for deepening: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), gitClient.timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	headTmpRef := plumbing.ReferenceName(mergeBaseTmpRef(headSHA))
 	headSpec := config.RefSpec(fmt.Sprintf("+%s:%s", headSHA, headTmpRef))
 	defer func() { _ = repo.Storer.RemoveReference(headTmpRef) }()
 
-	insecure := InsecureFromCfg(gitClient.globalConfig)
+	insecure := InsecureFromCfg(c.globalConfig)
 
 	// Steps 3-4: iteratively deepen headSHA and check reachability.
 	for _, depth := range deepenLadder {
 		fetchErr := repo.FetchContext(ctx, &git.FetchOptions{
 			RemoteName:      remoteName,
-			Auth:            gitClient.auth,
+			Auth:            c.auth,
 			InsecureSkipTLS: insecure,
 			Depth:           depth,
 			RefSpecs:        []config.RefSpec{headSpec},
@@ -162,7 +162,7 @@ func EnsureMergeBaseReachable(gitClient *Client, repoPath, headSHA, mergeBaseSHA
 			Force:           true,
 		})
 		if fetchErr != nil && fetchErr != git.NoErrAlreadyUpToDate {
-			gitClient.logger.Warn("go-git deepening failed, trying git binary fallback",
+			c.logger.Warn("go-git deepening failed, trying git binary fallback",
 				"depth", depth, "error", fetchErr)
 			break
 		}
@@ -170,7 +170,7 @@ func EnsureMergeBaseReachable(gitClient *Client, repoPath, headSHA, mergeBaseSHA
 		// Prune stale .git/shallow entries that go-git's updateShallow leaves
 		// behind (it adds new boundaries but never removes old ones).
 		if err := cleanShallowEntries(repo); err != nil {
-			gitClient.logger.Warn("cleanShallowEntries failed", "error", err)
+			c.logger.Warn("cleanShallowEntries failed", "error", err)
 			break
 		}
 
@@ -184,7 +184,7 @@ func EnsureMergeBaseReachable(gitClient *Client, repoPath, headSHA, mergeBaseSHA
 		//   finding mergeBaseSHA — this is NOT a definitive "not an ancestor" since M may
 		//   simply lie beyond the current depth. Never conclude "not an ancestor" until the
 		//   full depth budget is exhausted and the CLI fallback also fails.
-		gitClient.logger.Debug("merge-base not yet reachable, deepening further",
+		c.logger.Debug("merge-base not yet reachable, deepening further",
 			"depth", depth, "reachable", reachable, "err", err)
 	}
 
@@ -192,9 +192,9 @@ func EnsureMergeBaseReachable(gitClient *Client, repoPath, headSHA, mergeBaseSHA
 	// Give the fallback its own timeout: the go-git loop may have consumed most of
 	// the original ctx budget, and we don't want three depth iterations to starve
 	// the CLI path of all remaining time.
-	cliCtx, cliCancel := context.WithTimeout(context.Background(), gitClient.timeout)
+	cliCtx, cliCancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cliCancel()
-	return ensureMergeBaseReachableViaCLI(gitClient, cliCtx, repoPath, headSHA, mergeBaseSHA)
+	return ensureMergeBaseReachableViaCLI(c, cliCtx, repoPath, headSHA, mergeBaseSHA)
 }
 
 // isMergeBaseReachable checks whether mbHash is an ancestor of headHash using
@@ -275,7 +275,7 @@ func (c *Client) deepenToMergeBase(ctx context.Context, repoPath string, env []s
 }
 
 // ensureMergeBaseReachableViaCLI is the git binary fallback for
-// EnsureMergeBaseReachable. It deepens headSHA via explicit SHA fetches and
+// ensureMergeBaseReachable. It deepens headSHA via explicit SHA fetches and
 // verifies that mergeBaseSHA becomes reachable using git merge-base.
 func ensureMergeBaseReachableViaCLI(c *Client, ctx context.Context, repoPath, headSHA, mergeBaseSHA string) error {
 	if err := shaLongEnough(headSHA); err != nil {
@@ -303,11 +303,11 @@ func ensureMergeBaseReachableViaCLI(c *Client, ctx context.Context, repoPath, he
 	return nil
 }
 
-// MergeBaseSHA computes the merge-base (fork point) SHA between the PR head and the
+// mergeBaseSHA computes the merge-base (fork point) SHA between the PR head and the
 // target branch at repoPath, fetching the minimum history via the git CLI.
 // Best-effort: returns ("", nil) when the fork point cannot be determined (passphrase
 // SSH key, git binary absent, server error) so callers proceed without it.
-func (c *Client) MergeBaseSHA(repoPath, headSHA, baseBranch, baseSHA string) (string, error) {
+func (c *Client) mergeBaseSHA(repoPath, headSHA, baseBranch, baseSHA string) (string, error) {
 	if headSHA == "" && baseSHA == "" {
 		c.logger.Warn("merge-base computation skipped: neither headSHA nor baseSHA available")
 		return "", nil

@@ -113,7 +113,7 @@ func TestMergeBaseSHA_shallow(t *testing.T) {
 	cloneDir, wantFork, headSHA, baseSHA := setupMergeBaseRepo(t)
 
 	client := newTestGitClient()
-	got, err := client.MergeBaseSHA(cloneDir, headSHA, "master", baseSHA)
+	got, err := client.mergeBaseSHA(cloneDir, headSHA, "master", baseSHA)
 	if err != nil {
 		t.Fatalf("MergeBaseSHA returned unexpected error: %v", err)
 	}
@@ -126,7 +126,7 @@ func TestMergeBaseSHA_noBranch(t *testing.T) {
 	repoDir, _, _ := setupDiffRepo(t)
 	client := newTestGitClient()
 
-	got, err := client.MergeBaseSHA(repoDir, "", "", "")
+	got, err := client.mergeBaseSHA(repoDir, "", "", "")
 	if err != nil {
 		t.Fatalf("MergeBaseSHA with empty inputs returned error: %v", err)
 	}
@@ -256,7 +256,7 @@ func TestMergeBaseSHA_shallowCommitClone(t *testing.T) {
 	cloneDir, wantFork, headSHA, baseSHA, tipMinusOne := setupCommitCloneRepo(t)
 
 	client := newTestGitClient()
-	got, err := client.MergeBaseSHA(cloneDir, headSHA, "master", baseSHA)
+	got, err := client.mergeBaseSHA(cloneDir, headSHA, "master", baseSHA)
 	if err != nil {
 		t.Fatalf("MergeBaseSHA returned unexpected error: %v", err)
 	}
@@ -279,7 +279,7 @@ func TestEnsureMergeBaseReachable(t *testing.T) {
 
 	client := newTestGitClient()
 
-	if err := EnsureMergeBaseReachable(client, cloneDir, headSHA, forkPointSHA); err != nil {
+	if err := client.ensureMergeBaseReachable(cloneDir, headSHA, forkPointSHA); err != nil {
 		t.Fatalf("EnsureMergeBaseReachable returned error: %v", err)
 	}
 
@@ -406,7 +406,7 @@ func TestEnsureMergeBaseReachable_deepBranch(t *testing.T) {
 	cloneDir, forkPointSHA, headSHA := setupDeepCommitCloneRepo(t)
 
 	client := newTestGitClient()
-	if err := EnsureMergeBaseReachable(client, cloneDir, headSHA, forkPointSHA); err != nil {
+	if err := client.ensureMergeBaseReachable(cloneDir, headSHA, forkPointSHA); err != nil {
 		t.Fatalf("EnsureMergeBaseReachable returned error for 15-commit branch: %v", err)
 	}
 
@@ -528,7 +528,7 @@ func TestEnsureMergeBaseReachable_directParent(t *testing.T) {
 	cloneDir, mergeBaseSHA, headSHA := setupDirectParentCloneRepo(t)
 
 	client := newTestGitClient()
-	if err := EnsureMergeBaseReachable(client, cloneDir, headSHA, mergeBaseSHA); err != nil {
+	if err := client.ensureMergeBaseReachable(cloneDir, headSHA, mergeBaseSHA); err != nil {
 		t.Fatalf("EnsureMergeBaseReachable returned error: %v", err)
 	}
 

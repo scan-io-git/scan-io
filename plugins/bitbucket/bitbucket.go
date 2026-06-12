@@ -385,26 +385,8 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRes
 
 		headSHA := prData.FromReference.LatestCommit
 		baseBranch := prData.ToReference.DisplayID
-
-		// API provides the correct merge-base SHA (works for fork PRs where git
-		// heuristics fail). go-git then materializes it in the local shallow clone
-		// so change-aware scanners can run "git diff --merge-base <sha>". Git binary is the
-		// fallback for both compute and materialize when API/go-git is unavailable.
-		if apiMB, apiErr := prData.GetMergeBaseSHA(); apiErr == nil && apiMB != "" {
-			if reachErr := git.EnsureMergeBaseReachable(clientGit, args.TargetFolder, headSHA, apiMB); reachErr == nil {
-				extras["merge_base_sha"] = apiMB
-			} else {
-				g.logger.Warn("go-git materialization failed, falling back to git binary", "sha", apiMB, "error", reachErr)
-			}
-		} else if apiErr != nil {
-			g.logger.Warn("API merge-base failed, falling back to git binary", "error", apiErr)
-		}
-		if _, ok := extras["merge_base_sha"]; !ok {
-			if mb, mbErr := clientGit.MergeBaseSHA(args.TargetFolder, headSHA, baseBranch, baseSHA); mbErr != nil {
-				g.logger.Warn("failed to compute merge base", "error", mbErr)
-			} else if mb != "" {
-				extras["merge_base_sha"] = mb
-			}
+		if mb := clientGit.ResolveMergeBase(args.TargetFolder, headSHA, baseBranch, baseSHA, prData.GetMergeBaseSHA); mb != "" {
+			extras["merge_base_sha"] = mb
 		}
 	}
 
