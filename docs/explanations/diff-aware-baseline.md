@@ -63,11 +63,13 @@ Scanio tries two approaches in order, using whichever succeeds:
 - GitHub: `merge_base_commit` from the Repositories compare API (`GET /repos/{owner}/{repo}/compare/{base}...{head}`)
 - GitLab: `Repositories.MergeBase` API (`GET /api/v4/projects/{id}/repository/merge_base`)
 
-**2. Git-based fallback.** Used when the provider API call fails (network error, older server version, etc.). Scanio re-fetches both the PR head SHA and the base tip SHA from origin with progressively deeper history (1 → 10 → 50 → 200 commits) and then runs `git merge-base head base`. This requires the git binary and authenticated access to the remote.
+**2. go-git materialization.** Once the correct SHA is known from the API, Scanio deepens the PR head's ancestry in the local shallow clone via go-git's `FetchContext` at increasing absolute depths (10 → 50 → 200 commits) until the merge-base commit is reachable from HEAD. This is required because change-aware scanners call `git diff --merge-base <sha>` in the cloned directory and need `git merge-base HEAD <sha>` to succeed locally. After each deepen, stale `.git/shallow` entries are pruned (go-git adds new shallow boundaries but does not remove obsolete ones) so the git CLI sees the correct ancestry.
 
-The fallback uses explicit `sha:tmpRef` fetches rather than `--shallow-exclude` so that it works for both branch-based and commit-based (fork) clones, regardless of whether origin has a configured fetch refspec.
+**3. Git-binary fallback.** If go-git deepening fails (server does not support the protocol, auth unavailable), the git binary performs the same 10 → 50 → 200 deepen via explicit SHA fetches and verifies with `git merge-base`.
 
-If both approaches fail, `merge_base_sha` is omitted. The value is either the true fork point C1 or absent — it is never an approximation such as the immediate parent of the PR tip.
+If the API is unavailable, the git binary both computes and materializes the merge-base using the target-branch tip as the reference point.
+
+If all approaches fail, `merge_base_sha` is omitted. The value is either the true fork point C1 or absent — it is never an approximation such as the immediate parent of the PR tip.
 
 ## Fallback behaviour
 
