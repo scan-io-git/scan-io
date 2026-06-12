@@ -547,3 +547,128 @@ func TestEnsureMergeBaseReachable(t *testing.T) {
 		t.Errorf("git merge-base = %q, want %q", got, forkPointSHA)
 	}
 }
+
+// setupDeepCommitCloneRepo is like setupCommitCloneRepo but the feature branch
+// has 15 commits from the fork point, so the merge-base lies beyond depth=10.
+// Returns: cloneDir, forkPointSHA, featureTipSHA.
+func setupDeepCommitCloneRepo(t *testing.T) (cloneDir, forkPointSHA, featureTipSHA string) {
+	t.Helper()
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git binary not in PATH; skipping merge-base CLI test")
+	}
+
+	tmp := t.TempDir()
+	originDir := filepath.Join(tmp, "origin")
+	seedDir := filepath.Join(tmp, "seed")
+	cloneDir = filepath.Join(tmp, "clone")
+
+	run := func(dir string, args ...string) string {
+		cmd := exec.Command("git", args...)
+		if dir != "" {
+			cmd.Dir = dir
+		}
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v (dir=%q): %v\n%s", args, dir, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+
+	if err := os.MkdirAll(originDir, 0o755); err != nil {
+		t.Fatalf("mkdir origin: %v", err)
+	}
+	run(originDir, "init", "--bare")
+
+	if err := os.MkdirAll(seedDir, 0o755); err != nil {
+		t.Fatalf("mkdir seed: %v", err)
+	}
+	run(seedDir, "init")
+	run(seedDir, "symbolic-ref", "HEAD", "refs/heads/master")
+	run(seedDir, "config", "user.email", "test@test.com")
+	run(seedDir, "config", "user.name", "Test")
+	run(seedDir, "remote", "add", "origin", "file://"+originDir)
+
+	write := func(name, content string) {
+		if err := os.WriteFile(filepath.Join(seedDir, name), []byte(content), 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+
+	write("file.txt", "base\n")
+	run(seedDir, "add", ".")
+	run(seedDir, "commit", "-m", "C0")
+
+	write("file.txt", "c1\n")
+	run(seedDir, "add", ".")
+	run(seedDir, "commit", "-m", "C1")
+	forkPointSHA = run(seedDir, "rev-parse", "HEAD")
+
+	// Feature branch with 15 commits beyond the fork point (merge-base at depth 16).
+	run(seedDir, "checkout", "-b", "feature")
+	for i := 1; i <= 15; i++ {
+		write("feat.txt", fmt.Sprintf("feature commit %d\n", i))
+		run(seedDir, "add", ".")
+		run(seedDir, "commit", "-m", fmt.Sprintf("F%d", i))
+	}
+	featureTipSHA = run(seedDir, "rev-parse", "HEAD")
+	run(seedDir, "push", "origin", "feature")
+
+	run(seedDir, "checkout", "master")
+	write("file.txt", "c2\n")
+	run(seedDir, "add", ".")
+	run(seedDir, "commit", "-m", "C2")
+	run(seedDir, "push", "origin", "master")
+
+	// Simulate cloneCommit: no fetch refspec, featureTip at depth=1.
+	if err := os.MkdirAll(cloneDir, 0o755); err != nil {
+		t.Fatalf("mkdir clone: %v", err)
+	}
+	run(cloneDir, "init")
+	run(cloneDir, "config", "user.email", "test@test.com")
+	run(cloneDir, "config", "user.name", "Test")
+	run(cloneDir, "remote", "add", "origin", "file://"+originDir)
+	run(cloneDir, "config", "--unset", "remote.origin.fetch")
+
+	featureTmpRef := "refs/scanio/tmp/" + featureTipSHA
+	run(cloneDir, "fetch", "--depth=1", "origin", featureTipSHA+":"+featureTmpRef)
+	run(cloneDir, "checkout", "--detach", featureTipSHA)
+	run(cloneDir, "update-ref", "-d", featureTmpRef)
+
+	// Simulate EnsureCommitPresent(forkPointSHA): pre-fetch the fork point at depth=1
+	// and remove its tmp ref. This mirrors what the Bitbucket plugin does when
+	// baseSHA == apiMergeBase (PR branched from current target tip): the merge-base is
+	// in the object store as a depth-1 shallow root before EnsureMergeBaseReachable runs.
+	// Without this step, isMergeBaseReachable returns (false, ErrObjectNotFound) at
+	// depth=10 (object missing) rather than (false, nil) (object present but unreachable
+	// via shallow walk) — so the pre-fetch is needed to hit the true bug path.
+	forkTmpRef := "refs/scanio/tmp/" + forkPointSHA
+	run(cloneDir, "fetch", "--depth=1", "origin", forkPointSHA+":"+forkTmpRef)
+	run(cloneDir, "update-ref", "-d", forkTmpRef)
+
+	return cloneDir, forkPointSHA, featureTipSHA
+}
+
+// TestEnsureMergeBaseReachable_deepBranch is the regression test for the
+// shallow-boundary premature-termination bug: when the merge-base is more
+// than 10 commits from HEAD, go-git's IsAncestor returns (false, nil) at
+// the depth-10 shallow boundary. The deepening loop must not treat this as
+// "definitively not an ancestor" — it must continue to depth=50.
+func TestEnsureMergeBaseReachable_deepBranch(t *testing.T) {
+	cloneDir, forkPointSHA, headSHA := setupDeepCommitCloneRepo(t)
+
+	client := newTestGitClient()
+	if err := EnsureMergeBaseReachable(client, cloneDir, headSHA, forkPointSHA); err != nil {
+		t.Fatalf("EnsureMergeBaseReachable returned error for 15-commit branch: %v", err)
+	}
+
+	// Confirm via git CLI — this is what change-aware scanners use.
+	cmd := exec.Command("git", "merge-base", headSHA, forkPointSHA)
+	cmd.Dir = cloneDir
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("git merge-base failed after EnsureMergeBaseReachable: %v", err)
+	}
+	if got := strings.TrimSpace(string(out)); got != forkPointSHA {
+		t.Errorf("git merge-base = %q, want %q", got, forkPointSHA)
+	}
+}

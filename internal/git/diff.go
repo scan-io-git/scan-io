@@ -453,16 +453,17 @@ func EnsureMergeBaseReachable(gitClient *Client, repoPath, headSHA, mergeBaseSHA
 		}
 
 		reachable, err := isMergeBaseReachable(repo, headHash, mbHash)
-		if err == nil {
-			if reachable {
-				return nil
-			}
-			// err==nil && !reachable: mergeBaseSHA is definitively not an ancestor.
-			return fmt.Errorf("merge-base %s is not an ancestor of head %s", mergeBaseSHA, headSHA)
+		if err == nil && reachable {
+			return nil
 		}
-		// err != nil: shallow boundary reached before finding mergeBaseSHA; try deeper.
+		// Continue deepening regardless of whether err is nil or non-nil:
+		// - err != nil: IsAncestor hit a shallow boundary (missing parent object); try deeper.
+		// - err == nil && !reachable: go-git stopped cleanly at the shallow boundary without
+		//   finding mergeBaseSHA — this is NOT a definitive "not an ancestor" since M may
+		//   simply lie beyond the current depth. Never conclude "not an ancestor" until the
+		//   full depth budget is exhausted and the CLI fallback also fails.
 		gitClient.logger.Debug("merge-base not yet reachable, deepening further",
-			"depth", depth, "error", err)
+			"depth", depth, "reachable", reachable, "err", err)
 	}
 
 	// Step 5: git binary fallback — deepen and verify via CLI.
