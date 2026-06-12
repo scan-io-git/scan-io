@@ -11,6 +11,45 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 )
 
+const (
+	// minSHALength is the minimum accepted SHA length; tmp ref names embed sha[:minSHALength].
+	minSHALength = 12
+	// tmpRefCleanupTimeout bounds the background-context cleanup of temporary refs.
+	tmpRefCleanupTimeout = 10 * time.Second
+)
+
+var (
+	// deepenLadder deepens an already-present head commit's ancestry.
+	deepenLadder = []int{10, 50, 200}
+	// initialDeepenLadder starts at depth 1 because the SHAs may be absent entirely.
+	initialDeepenLadder = []int{1, 10, 50, 200}
+)
+
+// shaLongEnough validates that every SHA is at least minSHALength chars.
+func shaLongEnough(shas ...string) error {
+	for _, s := range shas {
+		if len(s) < minSHALength {
+			return fmt.Errorf("invalid SHA %q: must be at least %d chars", s, minSHALength)
+		}
+	}
+	return nil
+}
+
+// mergeBaseTmpRef returns the temporary ref name used for merge-base fetches of sha.
+func mergeBaseTmpRef(sha string) string {
+	return tmpRefPrefix + "mb-" + sha[:minSHALength]
+}
+
+// removeTmpRefs deletes refs via the git CLI using a background context so an
+// expired caller context cannot leave refs dangling.
+func (c *Client) removeTmpRefs(repoPath string, env []string, refs ...string) {
+	ctx, cancel := context.WithTimeout(context.Background(), tmpRefCleanupTimeout)
+	defer cancel()
+	for _, ref := range refs {
+		_, _ = c.runGit(ctx, repoPath, env, "update-ref", "-d", ref)
+	}
+}
+
 // EnsureMergeBaseReachable progressively deepens headSHA's ancestry via go-git
 // until mergeBaseSHA is reachable from headSHA. This is required so that
 // change-aware scanners can run "git diff --merge-base <sha>" against the shallow
@@ -37,8 +76,8 @@ import (
 // Returns an error when the commit cannot be made reachable within the depth
 // budget; callers should fall back to MergeBaseSHA for compute+materialize.
 func EnsureMergeBaseReachable(gitClient *Client, repoPath, headSHA, mergeBaseSHA string) error {
-	if len(headSHA) < 12 || len(mergeBaseSHA) < 12 {
-		return fmt.Errorf("invalid SHA: headSHA=%q mergeBaseSHA=%q (both must be at least 12 chars)", headSHA, mergeBaseSHA)
+	if err := shaLongEnough(headSHA, mergeBaseSHA); err != nil {
+		return err
 	}
 
 	repo, err := git.PlainOpen(repoPath)
@@ -73,14 +112,14 @@ func EnsureMergeBaseReachable(gitClient *Client, repoPath, headSHA, mergeBaseSHA
 	ctx, cancel := context.WithTimeout(context.Background(), gitClient.timeout)
 	defer cancel()
 
-	headTmpRef := plumbing.ReferenceName(tmpRefPrefix + "mr-head-" + headSHA[:12])
+	headTmpRef := plumbing.ReferenceName(mergeBaseTmpRef(headSHA))
 	headSpec := config.RefSpec(fmt.Sprintf("+%s:%s", headSHA, headTmpRef))
 	defer func() { _ = repo.Storer.RemoveReference(headTmpRef) }()
 
 	insecure := InsecureFromCfg(gitClient.globalConfig)
 
 	// Steps 3-4: iteratively deepen headSHA and check reachability.
-	for _, depth := range []int{10, 50, 200} {
+	for _, depth := range deepenLadder {
 		fetchErr := repo.FetchContext(ctx, &git.FetchOptions{
 			RemoteName:      remoteName,
 			Auth:            gitClient.auth,
@@ -177,8 +216,8 @@ func cleanShallowEntries(repo *git.Repository) error {
 // EnsureMergeBaseReachable. It deepens headSHA via explicit SHA fetches and
 // verifies that mergeBaseSHA becomes reachable using git merge-base.
 func ensureMergeBaseReachableViaCLI(c *Client, ctx context.Context, repoPath, headSHA, mergeBaseSHA string) error {
-	if len(headSHA) < 12 {
-		return fmt.Errorf("invalid headSHA %q: must be at least 12 chars", headSHA)
+	if err := shaLongEnough(headSHA); err != nil {
+		return err
 	}
 
 	env, err := c.gitCLIEnv()
@@ -186,17 +225,10 @@ func ensureMergeBaseReachableViaCLI(c *Client, ctx context.Context, repoPath, he
 		return fmt.Errorf("git binary unavailable: %w", err)
 	}
 
-	headTmpRef := fmt.Sprintf("refs/scanio/tmp/mr-head-%s", headSHA[:12])
-	// Use a background context for cleanup so that an expired/cancelled ctx
-	// (e.g. timeout firing during the fetch loop) does not leave the tmp ref
-	// dangling. Mirrors the same pattern used in mergeBaseShallow.
-	defer func() {
-		cleanCtx, cleanCancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cleanCancel()
-		_, _ = c.runGit(cleanCtx, repoPath, env, "update-ref", "-d", headTmpRef)
-	}()
+	headTmpRef := mergeBaseTmpRef(headSHA)
+	defer c.removeTmpRefs(repoPath, env, headTmpRef)
 
-	for _, depth := range []int{10, 50, 200} {
+	for _, depth := range deepenLadder {
 		if _, err := c.runGit(ctx, repoPath, env,
 			"fetch", fmt.Sprintf("--depth=%d", depth), "--no-tags", origin,
 			fmt.Sprintf("+%s:%s", headSHA, headTmpRef)); err != nil {
@@ -251,9 +283,8 @@ func (c *Client) MergeBaseSHA(repoPath, headSHA, baseBranch, baseSHA string) (st
 // histories do not meet within the depth budget the function returns ("", nil), which
 // causes the caller to fall back to a full-tree scan — no missed findings.
 func (c *Client) mergeBaseShallow(ctx context.Context, repoPath string, env []string, headSHA, baseSHA string) (string, error) {
-	if len(headSHA) < 12 || len(baseSHA) < 12 {
-		c.logger.Warn("merge-base skipped: headSHA and baseSHA must be at least 12 chars",
-			"headSHA", headSHA, "baseSHA", baseSHA)
+	if err := shaLongEnough(headSHA, baseSHA); err != nil {
+		c.logger.Warn("merge-base skipped", "reason", err)
 		return "", nil
 	}
 
@@ -270,21 +301,14 @@ func (c *Client) mergeBaseShallow(ctx context.Context, repoPath string, env []st
 		}
 	}
 
-	headRef := tmpRefPrefix + "mb-head-" + headSHA[:12]
-	baseRef := tmpRefPrefix + "mb-base-" + baseSHA[:12]
+	headRef := mergeBaseTmpRef(headSHA)
+	baseRef := mergeBaseTmpRef(baseSHA)
 	headSpec := fmt.Sprintf("+%s:%s", headSHA, headRef)
 	baseSpec := fmt.Sprintf("+%s:%s", baseSHA, baseRef)
 
-	// Use a background context for cleanup so that expired/cancelled fetch contexts
-	// do not leave tmp refs dangling in the repo.
-	defer func() {
-		cleanCtx, cleanCancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cleanCancel()
-		_, _ = c.runGit(cleanCtx, repoPath, env, "update-ref", "-d", headRef)
-		_, _ = c.runGit(cleanCtx, repoPath, env, "update-ref", "-d", baseRef)
-	}()
+	defer c.removeTmpRefs(repoPath, env, headRef, baseRef)
 
-	for _, depth := range []int{1, 10, 50, 200} {
+	for _, depth := range initialDeepenLadder {
 		if _, err := c.runGit(ctx, repoPath, env,
 			"fetch", fmt.Sprintf("--depth=%d", depth), "--no-tags", remoteName,
 			headSpec, baseSpec); err != nil {
