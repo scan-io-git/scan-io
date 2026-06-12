@@ -49,6 +49,39 @@ func (c *Client) removeTmpRefs(repoPath string, env []string, refs ...string) {
 	}
 }
 
+// MergeBaseAPIFunc returns the merge-base SHA computed by the VCS provider API,
+// or "" when the provider has no answer.
+type MergeBaseAPIFunc func() (string, error)
+
+// ResolveMergeBase returns the merge-base SHA between headSHA and the target
+// branch, preferring the provider API result (materialized locally so that
+// "git diff --merge-base <sha>" works in the shallow clone) and falling back
+// to local git computation. Best-effort: returns "" when undeterminable;
+// failures are logged, never returned.
+func (c *Client) ResolveMergeBase(repoPath, headSHA, baseBranch, baseSHA string, api MergeBaseAPIFunc) string {
+	if api != nil {
+		apiMB, apiErr := api()
+		switch {
+		case apiErr != nil:
+			c.logger.Warn("API merge-base failed, falling back to git", "error", apiErr)
+		case apiMB == "":
+			// Provider had no answer; fall through silently.
+		default:
+			if err := EnsureMergeBaseReachable(c, repoPath, headSHA, apiMB); err == nil {
+				return apiMB
+			} else {
+				c.logger.Warn("merge-base materialization failed, falling back to git", "sha", apiMB, "error", err)
+			}
+		}
+	}
+	mb, err := c.MergeBaseSHA(repoPath, headSHA, baseBranch, baseSHA)
+	if err != nil {
+		c.logger.Warn("failed to compute merge base", "error", err)
+		return ""
+	}
+	return mb
+}
+
 // EnsureMergeBaseReachable progressively deepens headSHA's ancestry via go-git
 // until mergeBaseSHA is reachable from headSHA. This is required so that
 // change-aware scanners can run "git diff --merge-base <sha>" against the shallow

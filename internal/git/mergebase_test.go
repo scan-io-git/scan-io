@@ -543,3 +543,30 @@ func TestEnsureMergeBaseReachable_directParent(t *testing.T) {
 		t.Errorf("git merge-base = %q, want %q", got, mergeBaseSHA)
 	}
 }
+
+// TestResolveMergeBase_apiPath: API returns the known fork point → result == apiMB
+// and "git merge-base head mb" succeeds in the clone (materialized).
+func TestResolveMergeBase_apiPath(t *testing.T) {
+	cloneDir, forkPoint, headSHA, baseSHA, _ := setupCommitCloneRepo(t)
+	client := newTestGitClient()
+	api := func() (string, error) { return forkPoint, nil }
+	got := client.ResolveMergeBase(cloneDir, headSHA, "master", baseSHA, api)
+	if got != forkPoint {
+		t.Fatalf("ResolveMergeBase = %q, want %q", got, forkPoint)
+	}
+	out, err := exec.Command("git", "-C", cloneDir, "merge-base", headSHA, forkPoint).Output()
+	if err != nil || strings.TrimSpace(string(out)) != forkPoint {
+		t.Errorf("git merge-base after ResolveMergeBase: out=%q err=%v", out, err)
+	}
+}
+
+// TestResolveMergeBase_apiFails: API errors → falls back to git computation,
+// still returns the fork point.
+func TestResolveMergeBase_apiFails(t *testing.T) {
+	cloneDir, forkPoint, headSHA, baseSHA, _ := setupCommitCloneRepo(t)
+	client := newTestGitClient()
+	api := func() (string, error) { return "", fmt.Errorf("api down") }
+	if got := client.ResolveMergeBase(cloneDir, headSHA, "master", baseSHA, api); got != forkPoint {
+		t.Errorf("ResolveMergeBase fallback = %q, want %q", got, forkPoint)
+	}
+}
