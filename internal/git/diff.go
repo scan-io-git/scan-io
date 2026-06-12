@@ -407,6 +407,17 @@ func EnsureMergeBaseReachable(gitClient *Client, repoPath, headSHA, mergeBaseSHA
 	mbHash := plumbing.NewHash(mergeBaseSHA)
 	headHash := plumbing.NewHash(headSHA)
 
+	// Sync .git/shallow with the object store BEFORE any reachability check.
+	// go-git's IsAncestor walks raw parent links and ignores .git/shallow, while
+	// the git CLI (what change-aware scanners invoke) respects it. After separate
+	// depth-1 fetches of head and base, both commit objects can be present while
+	// .git/shallow still lists head as a parentless root — IsAncestor then reports
+	// reachable (e.g. when the merge-base is head's direct parent) although
+	// "git merge-base" fails. Pruning stale shallow entries makes both views agree.
+	if err := cleanShallowEntries(repo); err != nil {
+		gitClient.logger.Warn("cleanShallowEntries failed before reachability check", "error", err)
+	}
+
 	// Step 1: short-circuit — already reachable (full clone or prior deep fetch).
 	if reachable, _ := isMergeBaseReachable(repo, headHash, mbHash); reachable {
 		return nil

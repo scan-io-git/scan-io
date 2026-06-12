@@ -672,3 +672,125 @@ func TestEnsureMergeBaseReachable_deepBranch(t *testing.T) {
 		t.Errorf("git merge-base = %q, want %q", got, forkPointSHA)
 	}
 }
+
+// setupDirectParentCloneRepo reproduces the topology where the PR head sits
+// directly on top of the target tip: head's parent IS the merge-base. Both
+// commits are fetched at depth=1 (cloneCommit + EnsureCommitPresent), so both
+// commit objects exist in the store while .git/shallow lists both as parentless
+// roots. go-git's IsAncestor ignores .git/shallow and sees head→parent→mb, but
+// the git CLI respects .git/shallow and reports "no merge base found".
+// Returns: cloneDir, mergeBaseSHA (= head's parent = target tip), headSHA.
+func setupDirectParentCloneRepo(t *testing.T) (cloneDir, mergeBaseSHA, headSHA string) {
+	t.Helper()
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git binary not in PATH; skipping merge-base CLI test")
+	}
+
+	tmp := t.TempDir()
+	originDir := filepath.Join(tmp, "origin")
+	seedDir := filepath.Join(tmp, "seed")
+	cloneDir = filepath.Join(tmp, "clone")
+
+	run := func(dir string, args ...string) string {
+		cmd := exec.Command("git", args...)
+		if dir != "" {
+			cmd.Dir = dir
+		}
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v (dir=%q): %v\n%s", args, dir, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+
+	if err := os.MkdirAll(originDir, 0o755); err != nil {
+		t.Fatalf("mkdir origin: %v", err)
+	}
+	run(originDir, "init", "--bare")
+
+	if err := os.MkdirAll(seedDir, 0o755); err != nil {
+		t.Fatalf("mkdir seed: %v", err)
+	}
+	run(seedDir, "init")
+	run(seedDir, "symbolic-ref", "HEAD", "refs/heads/master")
+	run(seedDir, "config", "user.email", "test@test.com")
+	run(seedDir, "config", "user.name", "Test")
+	run(seedDir, "remote", "add", "origin", "file://"+originDir)
+
+	write := func(name, content string) {
+		if err := os.WriteFile(filepath.Join(seedDir, name), []byte(content), 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+
+	write("file.txt", "c0\n")
+	run(seedDir, "add", ".")
+	run(seedDir, "commit", "-m", "C0")
+
+	// Target tip = merge-base: the PR branches from the current tip.
+	write("file.txt", "c1\n")
+	run(seedDir, "add", ".")
+	run(seedDir, "commit", "-m", "C1")
+	mergeBaseSHA = run(seedDir, "rev-parse", "HEAD")
+	run(seedDir, "push", "origin", "master")
+
+	// Single PR commit directly on top of the target tip.
+	run(seedDir, "checkout", "-b", "feature")
+	write("feature.txt", "F1\n")
+	run(seedDir, "add", ".")
+	run(seedDir, "commit", "-m", "F1")
+	headSHA = run(seedDir, "rev-parse", "HEAD")
+	run(seedDir, "push", "origin", "feature")
+
+	// Simulate cloneCommit: no fetch refspec, head at depth=1.
+	if err := os.MkdirAll(cloneDir, 0o755); err != nil {
+		t.Fatalf("mkdir clone: %v", err)
+	}
+	run(cloneDir, "init")
+	run(cloneDir, "config", "user.email", "test@test.com")
+	run(cloneDir, "config", "user.name", "Test")
+	run(cloneDir, "remote", "add", "origin", "file://"+originDir)
+	run(cloneDir, "config", "--unset", "remote.origin.fetch")
+
+	headTmpRef := "refs/scanio/tmp/" + headSHA
+	run(cloneDir, "fetch", "--depth=1", "origin", headSHA+":"+headTmpRef)
+	run(cloneDir, "checkout", "--detach", headSHA)
+	run(cloneDir, "update-ref", "-d", headTmpRef)
+
+	// Simulate EnsureCommitPresent(baseSHA): fetch the merge-base at depth=1.
+	// Now both commit OBJECTS are in the store, but .git/shallow lists both
+	// as parentless roots — the exact lying-short-circuit precondition.
+	mbTmpRef := "refs/scanio/tmp/" + mergeBaseSHA
+	run(cloneDir, "fetch", "--depth=1", "origin", mergeBaseSHA+":"+mbTmpRef)
+	run(cloneDir, "update-ref", "-d", mbTmpRef)
+
+	return cloneDir, mergeBaseSHA, headSHA
+}
+
+// TestEnsureMergeBaseReachable_directParent is the regression test for the
+// lying-short-circuit bug: when the merge-base is the PR head's direct parent
+// and both objects are present from depth-1 fetches, go-git's IsAncestor
+// (which ignores .git/shallow) reports reachable and EnsureMergeBaseReachable
+// returns success — but the git CLI (which respects .git/shallow) still fails
+// with "no merge base found" because head is listed as a parentless root.
+// EnsureMergeBaseReachable must leave the repo in a state where the git CLI
+// agrees, since that is what change-aware scanners actually invoke.
+func TestEnsureMergeBaseReachable_directParent(t *testing.T) {
+	cloneDir, mergeBaseSHA, headSHA := setupDirectParentCloneRepo(t)
+
+	client := newTestGitClient()
+	if err := EnsureMergeBaseReachable(client, cloneDir, headSHA, mergeBaseSHA); err != nil {
+		t.Fatalf("EnsureMergeBaseReachable returned error: %v", err)
+	}
+
+	// The verdict comes from the git CLI, not go-git.
+	cmd := exec.Command("git", "merge-base", headSHA, mergeBaseSHA)
+	cmd.Dir = cloneDir
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("git merge-base failed after EnsureMergeBaseReachable reported success: %v", err)
+	}
+	if got := strings.TrimSpace(string(out)); got != mergeBaseSHA {
+		t.Errorf("git merge-base = %q, want %q", got, mergeBaseSHA)
+	}
+}
