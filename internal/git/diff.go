@@ -354,14 +354,8 @@ func fetchCommit(gitClient *Client, repo *git.Repository, hash plumbing.Hash) er
 	})
 
 	if fetchErr != nil && fetchErr != git.NoErrAlreadyUpToDate {
-		if fetchErr != nil {
-			if fetchErr == git.NoErrAlreadyUpToDate {
-				gitClient.logger.Debug("commit already available", "hash", hash.String())
-			} else {
-				gitClient.logger.Warn("fetch commit failed", "hash", hash.String(), "error", fetchErr)
-				return fetchErr
-			}
-		}
+		gitClient.logger.Warn("fetch commit failed", "hash", hash.String(), "error", fetchErr)
+		return fetchErr
 	}
 
 	defer func() {
@@ -401,6 +395,10 @@ func fetchCommit(gitClient *Client, repo *git.Repository, hash plumbing.Hash) er
 // Returns an error when the commit cannot be made reachable within the depth
 // budget; callers should fall back to MergeBaseSHA for compute+materialize.
 func EnsureMergeBaseReachable(gitClient *Client, repoPath, headSHA, mergeBaseSHA string) error {
+	if len(headSHA) < 12 || len(mergeBaseSHA) < 12 {
+		return fmt.Errorf("invalid SHA: headSHA=%q mergeBaseSHA=%q (both must be at least 12 chars)", headSHA, mergeBaseSHA)
+	}
+
 	repo, err := git.PlainOpen(repoPath)
 	if err != nil {
 		return fmt.Errorf("open repo: %w", err)
@@ -534,6 +532,10 @@ func resolveRemoteName(repo *git.Repository) (string, error) {
 // EnsureMergeBaseReachable. It deepens headSHA via explicit SHA fetches and
 // verifies that mergeBaseSHA becomes reachable using git merge-base.
 func ensureMergeBaseReachableViaCLI(c *Client, ctx context.Context, repoPath, headSHA, mergeBaseSHA string) error {
+	if len(headSHA) < 12 {
+		return fmt.Errorf("invalid headSHA %q: must be at least 12 chars", headSHA)
+	}
+
 	env, err := c.gitCLIEnv()
 	if err != nil {
 		return fmt.Errorf("git binary unavailable: %w", err)
