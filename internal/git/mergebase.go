@@ -117,22 +117,26 @@ func (c *Client) ensureMergeBaseReachable(repoPath, headSHA, mergeBaseSHA string
 		return fmt.Errorf("open repo: %w", err)
 	}
 
-	mbHash := plumbing.NewHash(mergeBaseSHA)
-	headHash := plumbing.NewHash(headSHA)
+	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
+	defer cancel()
 
 	// Sync .git/shallow with the object store BEFORE any reachability check.
 	// go-git's IsAncestor walks raw parent links and ignores .git/shallow, while
 	// the git CLI (what change-aware scanners invoke) respects it. After separate
 	// depth-1 fetches of head and base, both commit objects can be present while
-	// .git/shallow still lists head as a parentless root — IsAncestor then reports
-	// reachable (e.g. when the merge-base is head's direct parent) although
-	// "git merge-base" fails. Pruning stale shallow entries makes both views agree.
+	// .git/shallow still lists head as a parentless root — go-git would report
+	// reachable although "git merge-base" fails. Pruning stale shallow entries
+	// makes the CLI see the deepest available ancestry.
 	if err := cleanShallowEntries(repo); err != nil {
 		c.logger.Warn("cleanShallowEntries failed before reachability check", "error", err)
 	}
 
 	// Step 1: short-circuit — already reachable (full clone or prior deep fetch).
-	if reachable, _ := isMergeBaseReachable(repo, headHash, mbHash); reachable {
+	// The oracle is the git CLI, never go-git: cleanShallowEntries cannot unshallow
+	// a merge-commit head whose second parent is absent, so go-git's IsAncestor
+	// would still short-circuit "reachable" via the present first parent while the
+	// CLI (what semgrep runs) fails with "no merge base found".
+	if c.cliMergeBaseReachable(ctx, repoPath, headSHA, mergeBaseSHA) {
 		return nil
 	}
 
@@ -140,9 +144,6 @@ func (c *Client) ensureMergeBaseReachable(repoPath, headSHA, mergeBaseSHA string
 	if err != nil {
 		return fmt.Errorf("no remote configured for deepening: %w", err)
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
-	defer cancel()
 
 	headTmpRef := plumbing.ReferenceName(mergeBaseTmpRef(headSHA))
 	headSpec := config.RefSpec(fmt.Sprintf("+%s:%s", headSHA, headTmpRef))
@@ -174,18 +175,13 @@ func (c *Client) ensureMergeBaseReachable(repoPath, headSHA, mergeBaseSHA string
 			break
 		}
 
-		reachable, err := isMergeBaseReachable(repo, headHash, mbHash)
-		if err == nil && reachable {
+		if c.cliMergeBaseReachable(ctx, repoPath, headSHA, mergeBaseSHA) {
 			return nil
 		}
-		// Continue deepening regardless of whether err is nil or non-nil:
-		// - err != nil: IsAncestor hit a shallow boundary (missing parent object); try deeper.
-		// - err == nil && !reachable: go-git stopped cleanly at the shallow boundary without
-		//   finding mergeBaseSHA — this is NOT a definitive "not an ancestor" since M may
-		//   simply lie beyond the current depth. Never conclude "not an ancestor" until the
-		//   full depth budget is exhausted and the CLI fallback also fails.
-		c.logger.Debug("merge-base not yet reachable, deepening further",
-			"depth", depth, "reachable", reachable, "err", err)
+		// Not yet reachable per the git CLI — the merge-base may simply lie beyond
+		// the current depth. Never conclude "not an ancestor" until the full depth
+		// budget is exhausted and the CLI fallback also fails.
+		c.logger.Debug("merge-base not yet reachable, deepening further", "depth", depth)
 	}
 
 	// Step 5: git binary fallback — deepen and verify via CLI.
@@ -197,20 +193,17 @@ func (c *Client) ensureMergeBaseReachable(repoPath, headSHA, mergeBaseSHA string
 	return ensureMergeBaseReachableViaCLI(c, cliCtx, repoPath, headSHA, mergeBaseSHA)
 }
 
-// isMergeBaseReachable checks whether mbHash is an ancestor of headHash using
-// the local go-git object graph. Returns (true, nil) when reachable,
-// (false, nil) when definitively not an ancestor, and (false, err) when the
-// walk hits a shallow boundary before reaching a conclusion.
-func isMergeBaseReachable(repo *git.Repository, headHash, mbHash plumbing.Hash) (bool, error) {
-	headCommit, err := repo.CommitObject(headHash)
-	if err != nil {
-		return false, err
-	}
-	mbCommit, err := repo.CommitObject(mbHash)
-	if err != nil {
-		return false, err
-	}
-	return mbCommit.IsAncestor(headCommit)
+// cliMergeBaseReachable reports whether the git CLI — which honors .git/shallow
+// exactly as change-aware scanners (semgrep) do — can compute a merge-base
+// between headSHA and mergeBaseSHA. This is the authoritative oracle: go-git's
+// IsAncestor walks raw parent links and ignores .git/shallow, so it falsely
+// reports reachable when headSHA is a merge commit whose first parent is
+// mergeBaseSHA but whose other parent is absent (headSHA stays a parentless
+// root in .git/shallow and the CLI then fails with "no merge base found").
+// The check is local-only: "git merge-base" needs no remote or credentials.
+func (c *Client) cliMergeBaseReachable(ctx context.Context, repoPath, headSHA, mergeBaseSHA string) bool {
+	out, err := c.runGit(ctx, repoPath, nil, "merge-base", headSHA, mergeBaseSHA)
+	return err == nil && out != ""
 }
 
 // cleanShallowEntries removes entries from .git/shallow whose parents are now

@@ -37,6 +37,9 @@ type mergeBaseRepoOpts struct {
 	masterAdvance  int         // commits on master after the fork point (0 = head's parent IS the master tip)
 	clone          cloneMethod // how the local clone is produced
 	prefetch       []prefetch  // commits fetched at depth=1 then left ref-less in .git/shallow
+	// headIsMerge makes the clone target a merge commit whose first parent is the
+	// master tip (the base) and whose second parent is the feature tip.
+	headIsMerge bool
 }
 
 // mergeBaseRepo holds the SHAs of the topology built by buildMergeBaseRepo.
@@ -44,7 +47,8 @@ type mergeBaseRepo struct {
 	cloneDir      string
 	forkPointSHA  string   // C1; == masterTipSHA when masterAdvance == 0
 	featureTipSHA string   // last feature commit (the PR head)
-	masterTipSHA  string   // master tip after masterAdvance commits
+	masterTipSHA  string   // master tip after masterAdvance commits (pre-merge; the merge's first parent)
+	mergeHeadSHA  string   // merge commit head (set only when headIsMerge); parents [masterTip, featureTip]
 	featureSHAs   []string // feature commits in order; featureSHAs[len-2] is tip-1
 }
 
@@ -121,6 +125,18 @@ func buildMergeBaseRepo(t *testing.T, opts mergeBaseRepoOpts) mergeBaseRepo {
 	}
 	run(seedDir, "push", "origin", "master")
 
+	// Optionally make the head a merge commit: merge feature into master so the
+	// merge's first parent is the master tip (the base) and its second parent is
+	// the feature tip. masterTipSHA is left pointing at the pre-merge tip (the
+	// base / first parent) so prefetchMasterTip still fetches the base.
+	cloneTarget := repo.featureTipSHA
+	if opts.headIsMerge {
+		run(seedDir, "merge", "--no-ff", "--no-edit", "feature")
+		repo.mergeHeadSHA = run(seedDir, "rev-parse", "HEAD")
+		run(seedDir, "push", "origin", "master")
+		cloneTarget = repo.mergeHeadSHA
+	}
+
 	// Produce the local clone.
 	switch opts.clone {
 	case cloneGitClone:
@@ -135,9 +151,9 @@ func buildMergeBaseRepo(t *testing.T, opts mergeBaseRepoOpts) mergeBaseRepo {
 		run(cloneDir, "config", "user.name", "Test")
 		run(cloneDir, "remote", "add", "origin", "file://"+originDir)
 		run(cloneDir, "config", "--unset", "remote.origin.fetch") // mirror go-git CreateRemote
-		tipRef := "refs/scanio/tmp/" + repo.featureTipSHA
-		run(cloneDir, "fetch", "--depth=1", "origin", repo.featureTipSHA+":"+tipRef)
-		run(cloneDir, "checkout", "--detach", repo.featureTipSHA)
+		tipRef := "refs/scanio/tmp/" + cloneTarget
+		run(cloneDir, "fetch", "--depth=1", "origin", cloneTarget+":"+tipRef)
+		run(cloneDir, "checkout", "--detach", cloneTarget)
 		run(cloneDir, "update-ref", "-d", tipRef)
 	}
 
@@ -205,6 +221,22 @@ func setupDirectParentCloneRepo(t *testing.T) (cloneDir, mergeBaseSHA, headSHA s
 		prefetch:       []prefetch{prefetchMasterTip},
 	})
 	return r.cloneDir, r.forkPointSHA, r.featureTipSHA
+}
+
+// setupMergeHeadCloneRepo: the PR head is a merge commit whose first parent is
+// the target tip (the base) and whose second parent is the feature tip. Both the
+// merge head and the base end up as parentless roots in .git/shallow, but the
+// head's second parent is absent — the topology where go-git's IsAncestor lies
+// (it finds the base via the present first parent) while the git CLI fails.
+func setupMergeHeadCloneRepo(t *testing.T) (cloneDir, baseSHA, headSHA string) {
+	r := buildMergeBaseRepo(t, mergeBaseRepoOpts{
+		featureCommits: 2,
+		masterAdvance:  1,
+		clone:          cloneInitDetach,
+		prefetch:       []prefetch{prefetchMasterTip},
+		headIsMerge:    true,
+	})
+	return r.cloneDir, r.masterTipSHA, r.mergeHeadSHA
 }
 
 func TestMergeBaseSHA_shallow(t *testing.T) {
@@ -332,6 +364,50 @@ func TestEnsureMergeBaseReachable_directParent(t *testing.T) {
 	}
 	if got := strings.TrimSpace(string(out)); got != mergeBaseSHA {
 		t.Errorf("git merge-base = %q, want %q", got, mergeBaseSHA)
+	}
+}
+
+// TestEnsureMergeBaseReachable_mergeCommitHead is the regression test for the
+// merge-commit-head false positive: when the PR head is a merge commit whose
+// first parent is the base (present) but whose second parent is absent,
+// cleanShallowEntries cannot unshallow the head, so go-git's IsAncestor reports
+// reachable via the present first parent while the git CLI still fails with
+// "no merge base found". ensureMergeBaseReachable must deepen until the git CLI
+// — the oracle change-aware scanners use — agrees.
+func TestEnsureMergeBaseReachable_mergeCommitHead(t *testing.T) {
+	cloneDir, baseSHA, headSHA := setupMergeHeadCloneRepo(t)
+
+	client := newTestGitClient()
+	if err := client.ensureMergeBaseReachable(cloneDir, headSHA, baseSHA); err != nil {
+		t.Fatalf("ensureMergeBaseReachable returned error: %v", err)
+	}
+
+	// The verdict comes from the git CLI, not go-git.
+	cmd := exec.Command("git", "merge-base", headSHA, baseSHA)
+	cmd.Dir = cloneDir
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("git merge-base failed after ensureMergeBaseReachable reported success: %v", err)
+	}
+	if got := strings.TrimSpace(string(out)); got != baseSHA {
+		t.Errorf("git merge-base = %q, want %q", got, baseSHA)
+	}
+}
+
+// TestResolveMergeBase_mergeCommitHead: with a merge-commit head, the API returns
+// the base SHA; ResolveMergeBase must return it only after making it CLI-usable.
+func TestResolveMergeBase_mergeCommitHead(t *testing.T) {
+	cloneDir, baseSHA, headSHA := setupMergeHeadCloneRepo(t)
+
+	client := newTestGitClient()
+	api := func() (string, error) { return baseSHA, nil }
+	got := client.ResolveMergeBase(cloneDir, headSHA, "master", baseSHA, api)
+	if got != baseSHA {
+		t.Fatalf("ResolveMergeBase = %q, want %q", got, baseSHA)
+	}
+	out, err := exec.Command("git", "-C", cloneDir, "merge-base", headSHA, baseSHA).Output()
+	if err != nil || strings.TrimSpace(string(out)) != baseSHA {
+		t.Errorf("git merge-base after ResolveMergeBase: out=%q err=%v", out, err)
 	}
 }
 
