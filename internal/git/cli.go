@@ -13,10 +13,10 @@ import (
 	gitssh "github.com/go-git/go-git/v5/plumbing/transport/ssh"
 )
 
-// runGit runs a git command in repoDir with the given env appended to the current
-// process environment. Stdout is returned trimmed; stderr is logged at warn on
-// failure. Env is never logged (may contain credentials).
-func (c *Client) runGit(ctx context.Context, repoDir string, env []string, args ...string) (string, error) {
+// execGit runs a git command in repoDir with env appended to the current process
+// environment, returning trimmed stdout, trimmed stderr, and the run error. Env
+// is never logged (may contain credentials).
+func (c *Client) execGit(ctx context.Context, repoDir string, env []string, args ...string) (string, string, error) {
 	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = repoDir
 	cmd.Env = append(os.Environ(), env...)
@@ -26,11 +26,32 @@ func (c *Client) runGit(ctx context.Context, repoDir string, env []string, args 
 	cmd.Stderr = &stderr
 
 	c.logger.Debug("running git", "args", args, "dir", repoDir)
-	if err := cmd.Run(); err != nil {
-		c.logger.Warn("git command failed", "args", args, "stderr", stderr.String(), "error", err)
-		return "", fmt.Errorf("git %s: %w (stderr: %s)", strings.Join(args, " "), err, stderr.String())
+	err := cmd.Run()
+	return strings.TrimSpace(stdout.String()), strings.TrimSpace(stderr.String()), err
+}
+
+// runGit runs a git command and treats any non-zero exit as a failure: stderr is
+// logged at warn and the error is wrapped. Use for commands that must succeed.
+func (c *Client) runGit(ctx context.Context, repoDir string, env []string, args ...string) (string, error) {
+	out, stderr, err := c.execGit(ctx, repoDir, env, args...)
+	if err != nil {
+		c.logger.Warn("git command failed", "args", args, "stderr", stderr, "error", err)
+		return "", fmt.Errorf("git %s: %w (stderr: %s)", strings.Join(args, " "), err, stderr)
 	}
-	return strings.TrimSpace(stdout.String()), nil
+	return out, nil
+}
+
+// runGitProbe runs git for a boolean check where a non-zero exit is an expected,
+// meaningful outcome rather than a failure — e.g. "git merge-base" exits 1 when
+// there is no common ancestor. Non-zero exits are logged at debug, not warn, so
+// routine negative results do not surface as alarming log noise.
+func (c *Client) runGitProbe(ctx context.Context, repoDir string, env []string, args ...string) (string, error) {
+	out, stderr, err := c.execGit(ctx, repoDir, env, args...)
+	if err != nil {
+		c.logger.Debug("git probe returned non-zero exit", "args", args, "stderr", stderr, "error", err)
+		return "", err
+	}
+	return out, nil
 }
 
 // resolveRemoteNameCLI mirrors resolveRemoteName via the git binary: prefer

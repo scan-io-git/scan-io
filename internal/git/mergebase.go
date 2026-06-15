@@ -202,7 +202,7 @@ func (c *Client) ensureMergeBaseReachable(repoPath, headSHA, mergeBaseSHA string
 // root in .git/shallow and the CLI then fails with "no merge base found").
 // The check is local-only: "git merge-base" needs no remote or credentials.
 func (c *Client) cliMergeBaseReachable(ctx context.Context, repoPath, headSHA, mergeBaseSHA string) bool {
-	out, err := c.runGit(ctx, repoPath, nil, "merge-base", headSHA, mergeBaseSHA)
+	out, err := c.runGitProbe(ctx, repoPath, nil, "merge-base", headSHA, mergeBaseSHA)
 	return err == nil && out != ""
 }
 
@@ -259,7 +259,7 @@ func (c *Client) deepenToMergeBase(ctx context.Context, repoPath string, env []s
 		if _, err := c.runGit(ctx, repoPath, env, args...); err != nil {
 			return "", fmt.Errorf("deepen fetch at depth %d: %w", depth, err)
 		}
-		out, err := c.runGit(ctx, repoPath, env, "merge-base", headSHA, otherSHA)
+		out, err := c.runGitProbe(ctx, repoPath, env, "merge-base", headSHA, otherSHA)
 		if err == nil && out != "" && (wantSHA == "" || out == wantSHA) {
 			return out, nil
 		}
