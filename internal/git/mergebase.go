@@ -362,7 +362,7 @@ func (c *Client) mergeBaseShallow(ctx context.Context, repoPath string, env []st
 		return "", nil
 	}
 	if mb == "" {
-		c.logger.Warn("merge-base skipped: common ancestor not found within depth budget (260 commits); falling back to full scan")
+		c.logger.Warn("merge-base skipped: common ancestor not found within depth budget (200 commits); falling back to full scan")
 	}
 	return mb, nil
 }

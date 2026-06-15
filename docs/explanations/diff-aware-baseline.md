@@ -55,7 +55,7 @@ Here `merge_base_sha` = C3 = `base_sha`. Either field gives the same result for 
 
 ## How `merge_base_sha` is computed
 
-Scanio tries two approaches in order, using whichever succeeds:
+Scanio tries three approaches in order, using whichever succeeds:
 
 **1. VCS provider API (preferred).** Each provider exposes an authoritative merge-base endpoint that the server computes from the full repository graph. Fork PRs and stale branches are handled correctly regardless of local history depth.
 
@@ -73,4 +73,4 @@ If all approaches fail, `merge_base_sha` is omitted. The value is either the tru
 
 ## Fallback behaviour
 
-`merge_base_sha` is best-effort. If the provider API is unavailable and the git fallback also fails (git binary absent, network error, ancestor not found within 260 commits), the field is omitted from the response. `base_sha` is always returned when the VCS API provides it. Pipelines should check whether `merge_base_sha` is present before using it and fall back to a full scan if it is not.
+`merge_base_sha` is best-effort. If the provider API is unavailable and the git fallback also fails (git binary absent, network error, ancestor not found within 200 commits), the field is omitted from the response. `base_sha` is always returned when the VCS API provides it. Pipelines should check whether `merge_base_sha` is present before using it and fall back to a full scan if it is not.
