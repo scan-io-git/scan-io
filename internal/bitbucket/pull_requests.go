@@ -49,6 +49,14 @@ func (prs *pullRequestsService) Get(project, repository string, id int) (*PullRe
 	return &result, nil
 }
 
+// selfLink returns the PR's self URL or an error when the API response carries none.
+func (pr *PullRequest) selfLink() (string, error) {
+	if len(pr.Links.Self) == 0 || pr.Links.Self[0].Href == "" {
+		return "", fmt.Errorf("pull request %d has no self link in API response", pr.ID)
+	}
+	return pr.Links.Self[0].Href, nil
+}
+
 // GetChanges retrieves the changes for a pull request.
 func (pr *PullRequest) GetChanges() (*[]Change, error) {
 	pr.client.Logger.Debug("getting changes for a pull request",
@@ -56,7 +64,11 @@ func (pr *PullRequest) GetChanges() (*[]Change, error) {
 		"repository", pr.ToReference.Repository.Slug,
 		"id", pr.ID,
 	)
-	return pr.paginateChanges(pr.Links.Self[0].Href+"/changes", pr.client)
+	self, err := pr.selfLink()
+	if err != nil {
+		return nil, err
+	}
+	return pr.paginateChanges(self+"/changes", pr.client)
 }
 
 // AddComment adds a comment to a specific pull request along with optional file attachments.
@@ -67,7 +79,11 @@ func (pr *PullRequest) AddComment(commentText string, paths []string) (*PullRequ
 		"id", pr.ID,
 	)
 
-	path := fmt.Sprintf("%s/comments", pr.Links.Self[0].Href) // Works even without /rest/api/1.0/ prefix
+	self, err := pr.selfLink()
+	if err != nil {
+		return nil, err
+	}
+	path := fmt.Sprintf("%s/comments", self) // Works even without /rest/api/1.0/ prefix
 
 	var attachmentsText strings.Builder
 	if len(paths) != 0 {
@@ -114,8 +130,12 @@ func (pr *PullRequest) AttachFileToRepository(path string) (*Attachment, string,
 		"repository", pr.ToReference.Repository.Slug,
 	)
 
+	self, err := pr.selfLink()
+	if err != nil {
+		return nil, "", err
+	}
 	// Trim the PR link to get the repository URL
-	repoURL, err := trimPRLink(pr.Links.Self[0].Href)
+	repoURL, err := trimPRLink(self)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to trim the URL: %w", err)
 	}
@@ -139,6 +159,9 @@ func (pr *PullRequest) AttachFileToRepository(path string) (*Attachment, string,
 	if err := unmarshalResponse(response, &attachmentRoot); err != nil {
 		return nil, "", fmt.Errorf("failed to unmarshal response for %q: %w", path, err)
 	}
+	if len(attachmentRoot.Attachments) == 0 {
+		return nil, "", fmt.Errorf("upload of %q returned no attachment", path)
+	}
 
 	return &attachmentRoot.Attachments[0], fileName, nil
 }
@@ -151,8 +174,12 @@ func (pr *PullRequest) SetStatus(status, login string) (*PullRequest, error) {
 		"id", pr.ID,
 	)
 
+	self, err := pr.selfLink()
+	if err != nil {
+		return nil, err
+	}
 	approval := status == "APPROVED"
-	path := pr.Links.Self[0].Href + "/participants/" + login // Works even without /rest/api/1.0/ prefix
+	path := self + "/participants/" + login // Works even without /rest/api/1.0/ prefix
 	body := map[string]interface{}{
 		"status":   status,
 		"approved": approval,
@@ -182,7 +209,11 @@ func (pr *PullRequest) AddRole(role, login string) (*UserData, error) {
 		"repository", pr.ToReference.Repository.Slug,
 		"id", pr.ID,
 	)
-	path := pr.Links.Self[0].Href + "/participants" // Works even without /rest/api/1.0/ prefix
+	self, err := pr.selfLink()
+	if err != nil {
+		return nil, err
+	}
+	path := self + "/participants" // Works even without /rest/api/1.0/ prefix
 	body := map[string]interface{}{
 		"user": map[string]string{
 			"name": login,
@@ -216,7 +247,11 @@ func (pr *PullRequest) AddRole(role, login string) (*UserData, error) {
 // Bitbucket Server reports this as fromHash in the PR changes response — the common
 // ancestor from which the diff is computed. Empty string is returned when unavailable.
 func (pr *PullRequest) GetMergeBaseSHA() (string, error) {
-	path := pr.Links.Self[0].Href + "/changes"
+	self, err := pr.selfLink()
+	if err != nil {
+		return "", err
+	}
+	path := self + "/changes"
 	response, err := pr.client.get(path, map[string]string{
 		"start": "0", "limit": "1", "withComments": "false",
 	})
