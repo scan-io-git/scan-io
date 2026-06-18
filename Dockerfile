@@ -53,6 +53,10 @@ ARG TARGETARCH
 ARG PLUGINS
 ARG APP_NAME
 
+# Optional dependency overlay (no-op by default). Copied before the dependency
+# RUN so it executes inside the same cleanup window.
+COPY docker-context-files/ /tmp/docker-context-files/
+
 RUN set -euxo pipefail && \
     echo "Building dependencies for '$TARGETOS/$TARGETARCH'" && \
     apk update && \
@@ -101,12 +105,16 @@ RUN set -euxo pipefail && \
         *) echo "No dependencies installed for plugin: $plugin" ;; \
       esac; \
     done && \
+    echo "Running dependency overlay (install-deps.sh)..." && \
+    chmod +x /tmp/docker-context-files/install-deps.sh && \
+    /tmp/docker-context-files/install-deps.sh && \
     apk del .build-deps && \
     find /usr -name '*.o' -delete && \
     find /usr -name '*.a' -delete && \
     rm -rf /var/cache/apk/* && \
     find /usr -name '__pycache__' -exec rm -rf {} + && \
-    rm -rf /root/.cache/pip
+    rm -rf /root/.cache/pip && \
+    rm -rf /tmp/docker-context-files
 
 RUN mkdir -p /$APP_NAME /$APP_NAME/plugins /$APP_NAME/rules /$APP_NAME/templates \
           /$APP_NAME/projects /$APP_NAME/results /$APP_NAME/tmp /$APP_NAME/artifacts /$APP_NAME/log /data
