@@ -10,6 +10,7 @@ IMAGE_NAME ?= scanio
 APP_NAME ?= scanio
 RULES_CONFIG ?= scanio_rules.yaml
 SCANIO_CONFIG ?= config.yml
+INSTALL_DEPS_SCRIPT ?= install-deps.sh
 CLONED_CONFIG_PATH ?= $(SCANIO_REPO_DIR)/$(notdir $(SCANIO_CONFIG))
 CLONED_RULES_PATH ?= $(SCANIO_REPO_DIR)/scripts/rules/$(notdir $(RULES_CONFIG))
 VERSION ?= 1.0
@@ -97,6 +98,17 @@ copy-rules: ## Copy the custom rule set to the cloned Scanio repository
 		echo "[Custom Makefile] Custom rule set $(RULES_CONFIG) not found! Skipping..."; \
 	fi
 
+# Copy optional dependency overlay script into the cloned repo
+.PHONY: copy-deps-script
+copy-deps-script: ## Copy the optional dependency overlay script to the cloned Scanio repository
+	@if [ -f "$(INSTALL_DEPS_SCRIPT)" ]; then \
+		echo "[Custom Makefile] Copying dependency overlay from $(INSTALL_DEPS_SCRIPT) to $(SCANIO_REPO_DIR)/docker-context-files/install-deps.sh..."; \
+		mkdir -p $(SCANIO_REPO_DIR)/docker-context-files; \
+		cp $(INSTALL_DEPS_SCRIPT) $(SCANIO_REPO_DIR)/docker-context-files/install-deps.sh || { echo "Failed to copy $(INSTALL_DEPS_SCRIPT)"; exit 1; }; \
+	else \
+		echo "[Custom Makefile] Dependency overlay $(INSTALL_DEPS_SCRIPT) not found! Using repo default (no-op)..."; \
+	fi
+
 # Build rules
 .PHONY: build-rules
 build-rules: ## Build rules in the cloned Scanio repository
@@ -123,5 +135,5 @@ clean: ## Clean the cloned repository and generated files
 
 # Build process to call all steps in sequence
 .PHONY: build
-build: clone-scanio-repo copy-config copy-rules build-rules build-docker push-docker  ## Run full orchestrator process to build, package, and push
+build: clone-scanio-repo copy-config copy-rules copy-deps-script build-rules build-docker push-docker  ## Run full orchestrator process to build, package, and push
 	@echo "[Custom Makefile] Custom Scanio build process complete!"
