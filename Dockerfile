@@ -6,6 +6,10 @@
 # Dependencies will be installed if the docker file supports it, othervise ignored and only compile binaries of plugins
 ARG PLUGINS="github,gitlab,bitbucket,semgrep,bandit,trufflehog"
 
+# Custom binary name and in-image path root. Filesystem relabel only;
+# does not change the SCANIO_ env prefix, scanio: config key, or magic cookie.
+ARG APP_NAME=scanio
+
 # Stage 1: Build Scanio core and plugins
 FROM golang:1.25.9-alpine3.23 AS build-scanio
 
@@ -27,6 +31,7 @@ COPY plugins/ plugins/
 ARG TARGETOS
 ARG TARGETARCH
 ARG PLUGINS
+ARG APP_NAME
 
 # Install make and other build dependencies
 RUN apk update && \
@@ -37,7 +42,7 @@ RUN apk update && \
 
 # Build the core and plugins using the Makefile
 RUN echo "Building binaries and plugins for '$TARGETOS/$TARGETARCH'"
-RUN make build PLUGINS="$PLUGINS" CORE_BINARY=/usr/bin/scanio PLUGINS_DIR=/usr/bin/plugins
+RUN make build PLUGINS="$PLUGINS" CORE_BINARY=/usr/bin/$APP_NAME PLUGINS_DIR=/usr/bin/plugins
 
 # Stage 2: Prepare the runtime environment
 FROM alpine:3.23.4 AS runtime
@@ -46,6 +51,7 @@ FROM alpine:3.23.4 AS runtime
 ARG TARGETOS
 ARG TARGETARCH
 ARG PLUGINS
+ARG APP_NAME
 
 RUN set -euxo pipefail && \
     echo "Building dependencies for '$TARGETOS/$TARGETARCH'" && \
@@ -102,35 +108,44 @@ RUN set -euxo pipefail && \
     find /usr -name '__pycache__' -exec rm -rf {} + && \
     rm -rf /root/.cache/pip
 
-RUN mkdir -p /scanio /scanio/plugins /scanio/rules /scanio/templates \
-          /scanio/projects /scanio/results /scanio/tmp /scanio/artifacts /scanio/log /data
+RUN mkdir -p /$APP_NAME /$APP_NAME/plugins /$APP_NAME/rules /$APP_NAME/templates \
+          /$APP_NAME/projects /$APP_NAME/results /$APP_NAME/tmp /$APP_NAME/artifacts /$APP_NAME/log /data
 
 # Copy built binaries and other necessary files from the build stage
-COPY --from=build-scanio /usr/bin/scanio /bin/scanio
-COPY --from=build-scanio /usr/bin/plugins/ /scanio/plugins/
+COPY --from=build-scanio /usr/bin/$APP_NAME /bin/$APP_NAME
+COPY --from=build-scanio /usr/bin/plugins/ /$APP_NAME/plugins/
 
 # Copy additional resources
-COPY rules /scanio/rules
-COPY templates /scanio/templates
-COPY VERSION /scanio/VERSION
-COPY config.yml /scanio/config.yml
+COPY rules /$APP_NAME/rules
+COPY templates /$APP_NAME/templates
+COPY VERSION /$APP_NAME/VERSION
+COPY config.yml /$APP_NAME/config.yml
 
 # Set PATH for venv manually
 ENV PATH="/opt/venvs/semgrep/bin:/opt/venvs/trufflehog3/bin:/opt/venvs/bandit/bin:${PATH}"
 
 # Write to config.yml customized values
-RUN echo -e "\n\nscanio:" >> /scanio/config.yml && \
-    echo -e "  home_folder: /scanio" >> /scanio/config.yml && \
-    echo -e "  plugins_folder: /scanio/plugins" >> /scanio/config.yml && \
-    echo -e "  projects_folder: /scanio/projects" >> /scanio/config.yml && \
-    echo -e "  results_folder: /scanio/results" >> /scanio/config.yml && \
-    echo -e "  temp_folder: /scanio/tmp" >> /scanio/config.yml && \
-    echo -e "  artifacts_folder: /scanio/artifacts\n" >> /scanio/config.yml
+RUN echo -e "\n\nscanio:" >> /$APP_NAME/config.yml && \
+    echo -e "  home_folder: /$APP_NAME" >> /$APP_NAME/config.yml && \
+    echo -e "  plugins_folder: /$APP_NAME/plugins" >> /$APP_NAME/config.yml && \
+    echo -e "  projects_folder: /$APP_NAME/projects" >> /$APP_NAME/config.yml && \
+    echo -e "  results_folder: /$APP_NAME/results" >> /$APP_NAME/config.yml && \
+    echo -e "  temp_folder: /$APP_NAME/tmp" >> /$APP_NAME/config.yml && \
+    echo -e "  artifacts_folder: /$APP_NAME/artifacts\n" >> /$APP_NAME/config.yml
 
-RUN addgroup -S scanio && adduser -S -G scanio scanio && \
-    chown -R scanio:scanio /scanio /data
+# The compiled default config search paths are /scanio and ~/.scanio. Once the
+# tree is relocated, point the binary at the moved config explicitly.
+ENV SCANIO_CONFIG_PATH=/$APP_NAME/config.yml
 
-USER scanio
+RUN addgroup -S $APP_NAME && adduser -S -G $APP_NAME $APP_NAME && \
+    chown -R $APP_NAME:$APP_NAME /$APP_NAME /data
 
-ENTRYPOINT ["/bin/scanio"]
+# Exec-form ENTRYPOINT cannot interpolate $APP_NAME, so generate a wrapper that
+# execs the renamed binary with clean arg and signal forwarding.
+RUN printf '#!/bin/sh\nexec "/bin/%s" "$@"\n' "$APP_NAME" > /usr/local/bin/docker-entrypoint && \
+    chmod +x /usr/local/bin/docker-entrypoint
+
+USER $APP_NAME
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint"]
 CMD ["--help"]
