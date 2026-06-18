@@ -7,6 +7,7 @@ SCANIO_REPO_BRANCH ?=
 SCANIO_LOCAL_PATH ?=
 SCANIO_REPO_DIR_ABS := $(abspath $(SCANIO_REPO_DIR))
 IMAGE_NAME ?= scanio
+APP_NAME ?= scanio
 RULES_CONFIG ?= scanio_rules.yaml
 SCANIO_CONFIG ?= config.yml
 CLONED_CONFIG_PATH ?= $(SCANIO_REPO_DIR)/$(notdir $(SCANIO_CONFIG))
@@ -35,6 +36,7 @@ help: ## Display this help message
 	@echo "  TARGET_OS        - Target OS (default: linux)"
 	@echo "  TARGET_ARCH      - Target architecture (default: amd64)"
 	@echo "  REGISTRY         - Docker registry (default: empty)"
+	@echo "  APP_NAME         - In-image binary name and path root (default: scanio)"
 	@echo "Example:"
 	@echo "  make build SCANIO_REPO=<repo_url> RULES_CONFIG=<rules_path> VERSION=<version> TARGET_OS=<os> TARGET_ARCH=<arch> REGISTRY=<registry>"
 	@echo "Targets:"
@@ -105,7 +107,7 @@ build-rules: ## Build rules in the cloned Scanio repository
 .PHONY: build-docker
 build-docker: ## Build Docker image in the cloned Scanio repo
 	@echo "[Custom Makefile] Building Docker image for $(TARGET_OS)/$(TARGET_ARCH)..."
-	@cd $(SCANIO_REPO_DIR) && make docker-build PLUGINS="$(PLUGINS)" TARGETOS=$(TARGET_OS) TARGETARCH=$(TARGET_ARCH) REGISTRY=$(REGISTRY) IMAGE_NAME=$(IMAGE_NAME) VERSION=$(VERSION) || { echo "Failed to build Docker image"; exit 1; }
+	@cd $(SCANIO_REPO_DIR) && make docker-build PLUGINS="$(PLUGINS)" TARGETOS=$(TARGET_OS) TARGETARCH=$(TARGET_ARCH) REGISTRY=$(REGISTRY) IMAGE_NAME=$(IMAGE_NAME) APP_NAME=$(APP_NAME) VERSION=$(VERSION) || { echo "Failed to build Docker image"; exit 1; }
 
 # Push Docker image to registry
 .PHONY: push-docker
