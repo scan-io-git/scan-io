@@ -8,6 +8,7 @@ CORE_BINARY ?= ~/.local/bin/scanio
 PLUGINS_DIR ?= ~/.scanio/plugins
 REGISTRY ?=
 IMAGE_NAME ?= scanio
+APP_NAME ?= scanio
 TARGET_OS ?= linux
 TARGET_ARCH ?= amd64
 PLATFORM ?= linux/amd64
@@ -93,14 +94,14 @@ build-rules: ## Build custom rule sets using Python script
 .PHONY: docker
 docker: check-docker-dependency ## Build local Docker image (no registry push)
 	@echo "Building local Docker image Scanio for personal use..."
-	docker build --build-arg PLUGINS="$(PLUGINS)" -t $(IMAGE_NAME) .
+	docker build --build-arg PLUGINS="$(PLUGINS)" --build-arg APP_NAME="$(APP_NAME)" -t $(IMAGE_NAME) .
 
 # make docker-build TARGET_OS=linux TARGET_ARCH=amd64 REGISTRY=artifactory.example.com/security-tools/scanio IMAGE_NAME=scanio VERSION=1.2
 .PHONY: docker-build
 docker-build: check-docker-dependency ## Build Docker image (tagged by version and latest)
 	@echo "Building Docker image for $(TARGET_OS)/$(TARGET_ARCH)..."
 	docker build --build-arg TARGETOS=$(TARGET_OS) --build-arg TARGETARCH=$(TARGET_ARCH) --platform=$(TARGET_OS)/$(TARGET_ARCH) \
-	--build-arg PLUGINS="$(PLUGINS)" -t $(IMAGE_TAG):$(VERSION) -t $(IMAGE_TAG):latest . || exit 1
+	--build-arg PLUGINS="$(PLUGINS)" --build-arg APP_NAME="$(APP_NAME)" -t $(IMAGE_TAG):$(VERSION) -t $(IMAGE_TAG):latest . || exit 1
 	@echo "Docker image built successfully."
 
 # make docker-push REGISTRY=artifactory.example.com/security-tools/ IMAGE_NAME=scanio VERSION=1.2
