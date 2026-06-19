@@ -44,6 +44,8 @@ Variables can be overridden by setting them via the command line.
 | `TARGET_ARCH`      | `amd64`                                          | Target architecture for Docker builds                         |
 | `REGISTRY`         | (empty)                                          | Docker registry (optional)                                    |
 | `SCANIO_LOCAL_PATH`| (empty)                                          | Path to a local Scanio checkout. When set, `clone-scanio-repo` copies this directory into `SCANIO_REPO_DIR` instead of running `git clone`. `SCANIO_REPO_BRANCH` is ignored in local mode. |
+| `APP_NAME`         | `scanio`                                         | In-image binary name and path root. Must be a simple lowercase identifier, valid as a Unix user name and path component. Filesystem relabel only (does not change the `SCANIO_` env prefix, `scanio:` config key, or report file names). |
+| `INSTALL_DEPS_SCRIPT`| `install-deps.sh`                              | Path to an optional dependency overlay script copied into the cloned repo by `copy-deps-script`. |
 
 ## Targets and Descriptions
 
@@ -56,6 +58,7 @@ Variables can be overridden by setting them via the command line.
 | `clone-scanio-repo`    | Clone the Scanio Git repository                            |
 | `copy-config`          | Copy configuration file to cloned repo                     |
 | `copy-rules`           | Copy rule set to Scanio cloned repository                  |
+| `copy-deps-script`     | Copy optional dependency overlay script to the cloned repo |
 | `clean`                | Clean up cloned repository and generated artifacts         |
 | `push-docker`          | Push the Docker image to the configured registry           |
 | `help`                 | Show usage help and variables                              |
@@ -71,6 +74,7 @@ The files from the [scripts/custom-build](../../scripts/custom-build/) directory
 Currently, the custom build setup supports the following files:
 - `config.yml` — A global Scanio core configuration file. This will override the default config from the cloned Scanio repository.
 - `scanio_rules.yaml` — A configuration file specifying tools and rules for automated rule set building.
+- `install-deps.sh`: an optional dependency overlay script. When present, `copy-deps-script` places it at `docker-context-files/install-deps.sh` in the cloned repo, where the Docker build runs it (as root, in the runtime stage, while build dependencies are still installed) to add extra apk packages, language tools, or downloaded binaries to the image.
 - `Makefile` — A script for building a custom Docker image with your defined global config and custom rule sets.
 
 ## Custom Build Workflow
@@ -97,7 +101,9 @@ The overlay from `copy-config` and `copy-rules` applies to the copy inside `SCAN
 
 ### Things to Consider:
 1. **Custom Plugins**: If you have custom plugins, they can be added to the `plugins/` directory in the cloned repository and will be built as part of the Scanio plugins. Also, you can use the `PLUGINS` argument include particular plugins into your docker image.
-2. **Customization**: You can modify the paths, Docker image versions, and other settings by overriding the default values with command-line variables.
+2. **Custom Dependencies**: If a custom plugin needs an external scanner, or you want a standalone tool in the image, install it via the `install-deps.sh` overlay (see [Copy Dependency Overlay](#copy-dependency-overlay)). This covers both plugin-coupled and image-wide dependencies in one place.
+3. **Relabeling**: Set `APP_NAME` to ship the image under your own binary name and path root (for example `APP_NAME=myscanner` gives `/bin/myscanner` and `/myscanner`). Use a simple lowercase identifier valid as a Unix user name.
+4. **Customization**: You can modify the paths, Docker image versions, and other settings by overriding the default values with command-line variables.
 
 ### Step-by-Step Breakdown
 -> `clone-scanio-repo`
@@ -123,6 +129,10 @@ The rule set configuration file (`scanio_rules.yaml`) is copied into the rules/ 
 Default source: `scanio_rules.yaml` (can be overridden with `RULES_CONFIG`)
 
 Default destination: `./scan-io/scripts/rules/scanio_rules.yaml` (can be overridden with `CLONED_RULES_PATH`)
+
+-> `copy-deps-script`
+
+If an `install-deps.sh` file is present (override with `INSTALL_DEPS_SCRIPT`), it is copied to `docker-context-files/install-deps.sh` in the cloned repo. If absent, this step is skipped and the repo default (a no-op) is used.
 
 -> `build-rules`
 
@@ -224,6 +234,25 @@ make copy-rules
 [Custom Makefile] Copying custom rule set from scanio_rules.yaml to ./scan-io/scripts/rules/scanio_rules.yaml...
 ```
 
+### Copy Dependency Overlay
+
+Copies an optional dependency overlay script into the cloned repo so the Docker build can install extra dependencies into the image. If the source file is missing, the step is skipped and the repo default (a no-op) is used.
+
+```bash
+make copy-deps-script
+```
+
+The overlay runs as root in the runtime stage while the build dependencies are still installed, so it inherits the image cleanup pass. `APP_NAME`, `TARGETOS`, and `TARGETARCH` are available to it as environment variables. Keep it POSIX `sh` with LF line endings, pin versions and verify checksums for any downloads, and do not place secrets in `docker-context-files/`.
+
+**Variables supported**
+- `INSTALL_DEPS_SCRIPT`
+- `SCANIO_REPO_DIR`
+
+**Sample output:**
+```bash
+[Custom Makefile] Copying dependency overlay from install-deps.sh to ./scan-io/docker-context-files/install-deps.sh...
+```
+
 ### Build Rule Set
 
 Runs Scanio's make build-rules internally in the cloned repository using a Python virtual environment.
@@ -274,6 +303,7 @@ make build-docker
 - `VERSION`
 - `PLUGINS`
 - `IMAGE_NAME`
+- `APP_NAME`
 - `TARGET_OS`
 - `TARGET_ARCH`
 - `REGISTRY`
@@ -338,6 +368,8 @@ make build REGISTRY=example.com/security IMAGE_NAME=scanio
 - `SCANIO_REPO`
 - `SCANIO_REPO_DIR`
 - `IMAGE_NAME`
+- `APP_NAME`
+- `INSTALL_DEPS_SCRIPT`
 - `SCANIO_CONFIG`
 - `RULES_CONFIG`
 - `CLONED_CONFIG_PATH`

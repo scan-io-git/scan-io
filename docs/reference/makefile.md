@@ -42,6 +42,7 @@ Variables can be overridden by setting them via the command line.
 | `REGISTRY`         | *(empty)*                                        | Docker registry URL (used in `docker-build`, `docker-push`)   |
 | `IMAGE_NAME`       | `scanio`                                         | Name of the Docker image                                      |
 | `IMAGE_TAG`        | `scanio`, or `<registry>/scanio` if REGISTRY set | Full Docker image tag                                         |
+| `APP_NAME`         | `scanio`                                         | In-image binary name and path root (filesystem relabel). Must be a simple lowercase identifier, valid as a Unix user name and path component |
 | `TARGET_OS`        | `linux`                                          | Target OS for Docker builds                                   |
 | `TARGET_ARCH`      | `amd64`                                          | Target architecture for Docker builds                         |
 | `PLATFORM`         | `linux/amd64`                                    | Platform specifier for Docker builds                          |
@@ -234,7 +235,14 @@ This command will build a local Docker image called `scanio:latest`.
 
 **Variables supported:**
 - `IMAGE_NAME`
+- `APP_NAME`
 - `PLUGINS`
+
+#### Relabeling and Dependency Overlay
+
+`make docker` and `make docker-build` accept `APP_NAME` (default `scanio`) to relabel the in-image binary and path tree. For example, `APP_NAME=myscanner` builds `/bin/myscanner` and the `/myscanner/...` tree. `APP_NAME` is also used as the in-image Unix user and group, so use a simple lowercase identifier that is valid as both a user name and a path component. Relabeling is filesystem only: it does not change the `SCANIO_` environment-variable prefix, the `scanio:` config key, or report file names.
+
+To bake extra OS packages, language tools, or downloaded binaries into the image, edit `docker-context-files/install-deps.sh` (a no-op by default). It runs as root in the runtime stage while the build dependencies are still present, so it inherits the image cleanup pass. `APP_NAME`, `TARGETOS`, and `TARGETARCH` are available to it as environment variables. Keep the script POSIX `sh` with LF line endings, and do not place secrets in `docker-context-files/`.
 
 **Sample output:**
 ```bash
@@ -253,6 +261,7 @@ make docker-build VERSION=1.2 REGISTRY=my.registry.com/scanio
 
 **Variables supported:**
 - `IMAGE_NAME`
+- `APP_NAME`
 - `REGISTRY`
 - `IMAGE_TAG`
 - `TARGET_OS`
