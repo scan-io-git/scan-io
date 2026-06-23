@@ -145,8 +145,13 @@ RUN echo -e "\n\nscanio:" >> /$APP_NAME/config.yml && \
 # tree is relocated, point the binary at the moved config explicitly.
 ENV SCANIO_CONFIG_PATH=/$APP_NAME/config.yml
 
-RUN addgroup -S $APP_NAME && adduser -S -G $APP_NAME $APP_NAME && \
-    chown -R $APP_NAME:$APP_NAME /$APP_NAME /data
+RUN addgroup -S $APP_NAME && adduser -S -G $APP_NAME -h /home/$APP_NAME $APP_NAME && \
+    mkdir -p /home/$APP_NAME && \
+    chown -R $APP_NAME:$APP_NAME /$APP_NAME /data /home/$APP_NAME
+
+# The non-root runtime user needs HOME set so tools that write to ~ (config,
+# caches) resolve it to a writable, user-owned directory.
+ENV HOME=/home/$APP_NAME
 
 # Exec-form ENTRYPOINT cannot interpolate $APP_NAME, so generate a wrapper that
 # execs the renamed binary with clean arg and signal forwarding.
