@@ -437,3 +437,17 @@ func TestResolveMergeBase_apiFails(t *testing.T) {
 		t.Errorf("ResolveMergeBase fallback = %q, want %q", got, forkPoint)
 	}
 }
+
+// TestResolveMergeBase_emptyTreeAPI: when the provider returns git's empty-tree
+// hash (no merge base — initial commit / unrelated histories), ResolveMergeBase
+// returns "" immediately, skipping materialization and the git fallback. The
+// clone has a real fork point, so a non-empty result would mean the short-circuit
+// failed and the git fallback computed one anyway.
+func TestResolveMergeBase_emptyTreeAPI(t *testing.T) {
+	cloneDir, _, headSHA, baseSHA, _ := setupCommitCloneRepo(t)
+	client := newTestGitClient()
+	api := func() (string, error) { return emptyTreeSHA, nil }
+	if got := client.ResolveMergeBase(cloneDir, headSHA, "master", baseSHA, api); got != "" {
+		t.Errorf("ResolveMergeBase with empty-tree API = %q, want \"\" (no baseline)", got)
+	}
+}

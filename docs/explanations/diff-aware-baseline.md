@@ -74,3 +74,7 @@ If all approaches fail, `merge_base_sha` is omitted. The value is either the tru
 ## Fallback behaviour
 
 `merge_base_sha` is best-effort. If the provider API is unavailable and the git fallback also fails (git binary absent, network error, ancestor not found within 200 commits), the field is omitted from the response. `base_sha` is always returned when the VCS API provides it. Pipelines should check whether `merge_base_sha` is present before using it and fall back to a full scan if it is not.
+
+### No merge base (initial commit / unrelated histories)
+
+Some PRs genuinely have no merge base — an initial commit, or a fork whose branch was created with an independent history so it shares no commit with the target. Bitbucket Server signals this by returning git's empty-tree hash (`4b825dc642cb6eb9a060e54bf8d69288fbee4904`) as the changes `fromHash`. Scanio recognises that sentinel, skips the deepening/fallback, and omits `merge_base_sha`. There is no valid baseline to give a change-aware scanner in this case (the empty tree is not a commit, and the unrelated base has no common ancestor), so the entire head is new — consumers must run a full scan by omitting `--baseline-commit`, which for an all-new head is equivalent to a diff-aware scan.

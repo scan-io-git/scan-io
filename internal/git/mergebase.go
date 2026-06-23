@@ -15,6 +15,13 @@ const (
 	minSHALength = 12
 	// tmpRefCleanupTimeout bounds the background-context cleanup of temporary refs.
 	tmpRefCleanupTimeout = 10 * time.Second
+	// emptyTreeSHA is git's fixed, well-known empty-tree object id (the hash of a
+	// directory with no entries; stable across all SHA-1 repos —
+	// `git hash-object -t tree /dev/null`). Git uses it as the "nothing / before
+	// any commit" sentinel. Bitbucket Server returns it as the PR changes
+	// `fromHash` when the from-side has no parent to diff against (initial commit
+	// or unrelated fork histories) — meaning there is no merge base.
+	emptyTreeSHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 )
 
 var (
@@ -66,6 +73,13 @@ func (c *Client) ResolveMergeBase(repoPath, headSHA, baseBranch, baseSHA string,
 			c.logger.Warn("API merge-base failed, falling back to git", "error", apiErr)
 		case apiMB == "":
 			// Provider had no answer; fall through silently.
+		case apiMB == emptyTreeSHA:
+			// Provider reports the empty-tree sentinel: the PR has no merge base
+			// (initial commit / unrelated fork histories). There is nothing to
+			// materialize and the git fallback would only deepen in vain, so omit
+			// merge_base_sha and let the consumer run a full scan.
+			c.logger.Info("provider reports empty-tree merge base (initial commit / unrelated histories); no baseline, scanning full tree")
+			return ""
 		default:
 			if err := c.ensureMergeBaseReachable(repoPath, headSHA, apiMB); err == nil {
 				return apiMB
