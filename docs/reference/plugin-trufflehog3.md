@@ -114,6 +114,10 @@ The Trufflehog3 plugin supports automatic conversion of scan results to SARIF an
 ```
 Scanio will internally run Trufflehog3 with the default `json` output format and then convert the results into the specified format(s). Both the original JSON report and the converted formats will be saved to disk.
 
+The SARIF output includes the following enrichments from the Trufflehog3 JSON report:
+- `region.snippet.text` - the detected secret value, when present
+- `result.fingerprints["th3/v1"]` - the stable issue ID from Trufflehog3, when present; used for deduplication by SARIF-aware tools such as `sarif-issues`
+
 ## Validation
 The Trufflehog3 plugin enforces the following validation rules:
 - **Args Validation**: Verifying that the target path exists and is accessible for args.

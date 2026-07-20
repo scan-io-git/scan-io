@@ -13,15 +13,16 @@ import (
 
 // Trufflehog3Issue represents a single issue found by Trufflehog3.
 type Trufflehog3Issue struct {
-	Rule   *Trufflehog3Rule `json:"rule"`
-	Path   string           `json:"path"`
-	Line   string           `json:"line"`
-	Secret string           `json:"secret"`
-	ID     string           `json:"id,omitempty"`
-	Branch string           `json:"branch,omitempty"`
-	Commit string           `json:"commit,omitempty"`
-	Author string           `json:"author,omitempty"`
-	Date   string           `json:"date,omitempty"`
+	Rule    *Trufflehog3Rule  `json:"rule"`
+	Path    string            `json:"path"`
+	Line    string            `json:"line"`
+	Secret  string            `json:"secret"`
+	Context map[string]string `json:"context,omitempty"`
+	ID      string            `json:"id,omitempty"`
+	Branch  string            `json:"branch,omitempty"`
+	Commit  string            `json:"commit,omitempty"`
+	Author  string            `json:"author,omitempty"`
+	Date    string            `json:"date,omitempty"`
 }
 
 // Trufflehog3Rule represents the rule that triggered an issue.
@@ -135,16 +136,23 @@ func JsonToSarifReport(filePath string) (string, error) {
 		if err != nil {
 			lineNumber = 0
 		}
+		region := sarif.NewRegion().WithStartLine(lineNumber)
+		if issue.Secret != "" {
+			region.WithSnippet(sarif.NewArtifactContent().WithText(issue.Secret))
+		}
 		location := sarif.NewLocation().WithPhysicalLocation(
 			sarif.NewPhysicalLocation().
 				WithArtifactLocation(sarif.NewArtifactLocation().WithUri(issue.Path)).
-				WithRegion(sarif.NewRegion().WithStartLine(lineNumber)),
+				WithRegion(region),
 		)
 
 		result := sarif.NewRuleResult(rule.ID).
 			WithMessage(sarif.NewTextMessage(issue.Rule.Message)).
 			WithLevel(toSarifErrorLevel(issue.Rule.Severity)).
 			WithLocations([]*sarif.Location{location})
+		if issue.ID != "" {
+			result.WithFingerPrints(map[string]interface{}{"th3/v1": issue.ID})
+		}
 		run.AddResult(result)
 	}
 	reportSarif.AddRun(run)
