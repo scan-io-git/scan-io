@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/gitsight/go-vcsurl"
 	"github.com/go-git/go-git/v5"
@@ -68,10 +69,10 @@ func (t TargetKind) String() string {
 }
 
 // determineTarget resolves the desired fetch/checkout target from user input (branch/commit/PR/tag), remote refs, and VCS provider semantics.
-func determineTarget(branchOrCommit, cloneURL, vcs string, args *shared.VCSFetchRequest, auth transport.AuthMethod) (Target, error) {
+func determineTarget(branchOrCommit, cloneURL, vcs string, args *shared.VCSFetchRequest, auth transport.AuthMethod, timeout time.Duration, insecure bool) (Target, error) {
 	var t Target
 
-	remoteRefs, err := listRemoteRefs(cloneURL, auth)
+	remoteRefs, err := listRemoteRefs(cloneURL, auth, timeout, insecure)
 	if err != nil {
 		return t, fmt.Errorf("list remote refs: %w", err)
 	}
@@ -156,12 +157,17 @@ func determineTarget(branchOrCommit, cloneURL, vcs string, args *shared.VCSFetch
 }
 
 // listRemoteRefs returns all advertised references for the remote at cloneURL using the provided auth.
-func listRemoteRefs(cloneURL string, auth transport.AuthMethod) ([]*plumbing.Reference, error) {
+// timeout bounds the ref advertisement; a non-positive value falls back to go-git's internal 10s default.
+func listRemoteRefs(cloneURL string, auth transport.AuthMethod, timeout time.Duration, insecure bool) ([]*plumbing.Reference, error) {
 	remote := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
 		Name: origin,
 		URLs: []string{cloneURL},
 	})
-	return remote.List(&git.ListOptions{Auth: auth})
+	return remote.List(&git.ListOptions{
+		Auth:            auth,
+		Timeout:         int(timeout.Seconds()),
+		InsecureSkipTLS: insecure,
+	})
 }
 
 // indexRefs builds a set of reference names from a remote ref list for 0(1) checks.

@@ -40,7 +40,7 @@ func (c *Client) CloneRepository(args *shared.VCSFetchRequest) (string, error) {
 		return "", fmt.Errorf("failed to parse VCS URL: %w", err)
 	}
 
-	target, err := determineTarget(args.Branch, cloneURL, c.vcs, args, c.auth)
+	target, err := determineTarget(args.Branch, cloneURL, c.vcs, args, c.auth, c.timeout, InsecureFromCfg(c.globalConfig))
 	if err != nil {
 		c.logger.Error("failed to determine target", "error", err, "cloneURL", safeLogURL(cloneURL))
 		return "", err
