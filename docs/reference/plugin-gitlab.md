@@ -290,8 +290,9 @@ The fetch response keeps `path` pointing to the repository checkout, sets `scope
 | `diff_lines_root` | Absolute path to the sparse diff folder (present when `--diff-lines` is used). |
 | `diff_files_root` | Absolute path to the full diff files folder (present when `--diff-files` is used). |
 | `repo_root`       | Path to the repository checkout used when computing the diff (and returned as `path`). |
-| `base_sha`        | Base commit SHA reported by GitLab (empty when the API omits it).            |
-| `head_sha`        | Head commit SHA from `DiffRefs` or the MR SHA.                               |
+| `base_sha`        | Target-branch tip SHA at fetch time. Set when `--fetch-base` or `--diff-lines` is used. |
+| `head_sha`        | PR head commit SHA from `DiffRefs` or the MR SHA. Set when `--diff-lines` is used. |
+| `merge_base_sha`  | True fork point (common ancestor of head and target branch). Set when `--fetch-base` is used. Pass this to `semgrep --baseline-commit`; never pass `base_sha`. |
 
 Without diff flags, the plugin returns `scope: "full"` and the `path`/`repo_root` both point to the repository checkout as in previous releases.
 

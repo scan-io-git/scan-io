@@ -2,22 +2,18 @@ package git
 
 import (
 	"bytes"
-	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/sourcegraph/go-diff/diff"
 
 	sharedfiles "github.com/scan-io-git/scan-io/pkg/shared/files"
-	log "github.com/scan-io-git/scan-io/pkg/shared/logger"
 )
 
 // AddedLines returns, for every file touched between baseHash and headHash, a map
@@ -283,76 +279,4 @@ func sortedKeys(m map[string]map[int]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
-}
-
-// ensureCommitPresent verifies that the given commit hash exists locally, using
-// the supplied gitClient to fetch it from the remote when required.
-func ensureCommitPresent(gitClient *Client, repo *git.Repository, hash plumbing.Hash) error {
-	if _, err := repo.CommitObject(hash); err != nil {
-		gitClient.logger.Debug("commit missing locally, attempting fetch", "hash", hash.String())
-		if err := fetchCommit(gitClient, repo, hash); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// fetchCommit synchronises the provided commit hash into the local repository
-// using the gitClient's authentication, TLS, and timeout settings.
-func fetchCommit(gitClient *Client, repo *git.Repository, hash plumbing.Hash) error {
-	ctx, cancel := context.WithTimeout(context.Background(), gitClient.timeout)
-	defer cancel()
-
-	gitLog := log.GetLoggerOutput(gitClient.logger)
-	output := io.MultiWriter(
-		gitLog,
-		os.Stderr,
-	)
-
-	insecure := InsecureFromCfg(gitClient.globalConfig)
-
-	remoteName := origin
-	if _, err := repo.Remote(remoteName); err != nil {
-		remotes, rErr := repo.Remotes()
-		if rErr != nil || len(remotes) == 0 {
-			return fmt.Errorf("no remotes available to fetch commit %s", hash.String())
-		}
-		remoteName = remotes[0].Config().Name
-	}
-
-	tmpRef := plumbing.ReferenceName(fmt.Sprintf(tmpRefPrefix+"%s", hash.String()))
-	refspec := config.RefSpec(fmt.Sprintf("+%s:%s", hash.String(), tmpRef.String()))
-
-	gitClient.logger.Debug("fetching commit", "remote", remoteName, "hash", hash.String())
-
-	fetchErr := repo.FetchContext(ctx, &git.FetchOptions{
-		RemoteName:      remoteName,
-		Auth:            gitClient.auth,
-		InsecureSkipTLS: insecure,
-		Progress:        output,
-		Depth:           1,
-		RefSpecs:        []config.RefSpec{refspec},
-		Tags:            git.NoTags,
-	})
-
-	if fetchErr != nil && fetchErr != git.NoErrAlreadyUpToDate {
-		if fetchErr != nil {
-			if fetchErr == git.NoErrAlreadyUpToDate {
-				gitClient.logger.Debug("commit already available", "hash", hash.String())
-			} else {
-				gitClient.logger.Warn("fetch commit failed", "hash", hash.String(), "error", fetchErr)
-				return fetchErr
-			}
-		}
-	}
-
-	defer func() {
-		_ = repo.Storer.RemoveReference(tmpRef)
-	}()
-
-	if _, err := repo.CommitObject(hash); err != nil {
-		return err
-	}
-	gitClient.logger.Debug("commit fetched", "hash", hash.String())
-	return nil
 }

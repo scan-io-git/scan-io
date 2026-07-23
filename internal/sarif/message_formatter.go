@@ -8,14 +8,18 @@ import (
 
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/scan-io-git/scan-io/internal/git"
+	"github.com/scan-io-git/scan-io/pkg/shared/vcsurl"
 )
 
-// MessageFormatOptions contains the configuration needed to format SARIF messages with GitHub links
+// MessageFormatOptions contains the configuration needed to format SARIF messages with VCS links.
 type MessageFormatOptions struct {
 	Namespace    string
 	Repository   string
 	Ref          string
 	SourceFolder string
+	// VCSURL, when non-nil, provides VCS-type-aware URL building via its FilePermalink method.
+	// When nil the formatter falls back to GitHub-style URLs using Namespace and Repository.
+	VCSURL *vcsurl.VCSURL
 }
 
 // FormatResultMessage is the main entry point for formatting SARIF result messages
@@ -236,7 +240,9 @@ func formatLocationReferences(text string, refs []int, locations []*sarif.Locati
 	}
 }
 
-// buildLocationLink constructs a GitHub permalink for a SARIF location
+// buildLocationLink constructs a VCS permalink for a SARIF location.
+// When options.VCSURL is set it uses the dialect-aware FilePermalink method;
+// otherwise it falls back to GitHub-style URLs using Namespace and Repository.
 func buildLocationLink(location *sarif.Location, repoMetadata *git.RepositoryMetadata, options MessageFormatOptions) string {
 	if location.PhysicalLocation == nil || location.PhysicalLocation.ArtifactLocation == nil {
 		return ""
@@ -247,11 +253,8 @@ func buildLocationLink(location *sarif.Location, repoMetadata *git.RepositoryMet
 		return ""
 	}
 
-	// Get file path and convert to repository-relative path
-	filePath := *artifact.URI
-	repoPath := ConvertToRepoRelativePath(filePath, repoMetadata, options.SourceFolder)
+	repoPath := ConvertToRepoRelativePath(*artifact.URI, repoMetadata, options.SourceFolder)
 
-	// Get line information
 	region := location.PhysicalLocation.Region
 	if region == nil {
 		return ""
@@ -259,7 +262,6 @@ func buildLocationLink(location *sarif.Location, repoMetadata *git.RepositoryMet
 
 	startLine := 1
 	endLine := 1
-
 	if region.StartLine != nil {
 		startLine = *region.StartLine
 	}
@@ -269,6 +271,19 @@ func buildLocationLink(location *sarif.Location, repoMetadata *git.RepositoryMet
 		endLine = startLine
 	}
 
-	// Build GitHub permalink using shared helper
-	return BuildGitHubPermalink(options.Namespace, options.Repository, options.Ref, repoPath, startLine, endLine)
+	if options.VCSURL != nil {
+		return options.VCSURL.FilePermalink(options.Ref, repoPath, startLine, endLine)
+	}
+
+	// GitHub-style fallback for callers that have not yet been migrated to pass VCSURL.
+	if options.Namespace == "" || options.Repository == "" || options.Ref == "" || repoPath == "" {
+		return ""
+	}
+	u := &vcsurl.VCSURL{
+		VCSType:      vcsurl.Github,
+		Namespace:    options.Namespace,
+		Repository:   options.Repository,
+		HTTPRepoLink: fmt.Sprintf("https://github.com/%s/%s", options.Namespace, options.Repository),
+	}
+	return u.FilePermalink(options.Ref, repoPath, startLine, endLine)
 }

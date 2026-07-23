@@ -268,8 +268,9 @@ The fetch response keeps `path` pointing to the repository checkout, sets `scope
 | `diff_lines_root` | Absolute path to sparse diff artifacts (present when `--diff-lines` is used).|
 | `diff_files_root` | Absolute path to full-file diff artifacts (present when `--diff-files` is used).|
 | `repo_root`       | Path to the fully cloned repository (also returned as `path`).            |
-| `base_sha`        | Base commit SHA returned by GitHub (when available).                          |
-| `head_sha`        | Head commit SHA returned by GitHub.                                           |
+| `base_sha`        | Target-branch tip SHA at fetch time. Set when `--fetch-base` or `--diff-lines` is used. |
+| `head_sha`        | PR head commit SHA. Set when `--diff-lines` is used.                          |
+| `merge_base_sha`  | True fork point (common ancestor of head and target branch). Set when `--fetch-base` is used. Pass this to `semgrep --baseline-commit`; never pass `base_sha`. |
 
 Without diff flags the plugin returns `scope: "full"`; `path` and `extras.repo_root` both point to the repository root, matching the legacy behaviour.
 

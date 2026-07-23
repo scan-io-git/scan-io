@@ -274,7 +274,7 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, s
 			var references []string
 
 			// Append permalink if available
-			if link := buildGitHubPermalink(options, repoMetadata, fileURI, line, endLine); link != "" {
+			if link := buildPermalink(options, repoMetadata, fileURI, line, endLine); link != "" {
 				body += fmt.Sprintf("\n%s\n", link)
 			}
 

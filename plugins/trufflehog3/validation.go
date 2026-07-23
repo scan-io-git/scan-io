@@ -2,7 +2,19 @@ package main
 
 import (
 	"github.com/scan-io-git/scan-io/pkg/shared"
+	"github.com/scan-io-git/scan-io/pkg/shared/validation"
 )
+
+// validateScan checks the necessary fields in ScannerScanRequest and returns errors if they are not set.
+func (g *ScannerTrufflehog3) validateScan(args *shared.ScannerScanRequest) error {
+	if err := validation.ValidateScanArgs(args); err != nil {
+		return err
+	}
+	if args.Command != "" {
+		g.logger.Warn("--command is not supported by this scanner and will be ignored", "command", args.Command)
+	}
+	return nil
+}
 
 // supportedReportFormats is a private variable holding the list of supported report formats by the scanner.
 var supportedReportFormats = []string{"json", "text", "html"}

@@ -9,7 +9,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
@@ -95,32 +97,176 @@ func (r Report) ExtractToolNameAndVersion() (*ToolMetadata, error) {
 	}, nil
 }
 
-// function that collects information about amount of low, mediumn and high severity issues
-// returns a map with this information, and a total amount of issues
+// CollectSeverityInfo returns counts per severity bucket (critical/high/medium/low/info/unknown)
+// and a total. Suppressed results are excluded — only active findings are counted.
+// It reads Properties["Severity"] set by EnrichResultsLevelProperty and
+// Properties["Suppressed"] set by EnrichResultsSuppressionProperty.
 func (r Report) CollectSeverityInfo() map[string]int {
-	severityInfo := map[string]int{
-		"low":    0,
-		"medium": 0,
-		"high":   0,
-		"total":  0,
+	counts := map[string]int{
+		"critical": 0,
+		"high":     0,
+		"medium":   0,
+		"low":      0,
+		"info":     0,
+		"unknown":  0,
+		"total":    0,
 	}
 
 	for _, run := range r.Runs {
 		for _, result := range run.Results {
-			severity := result.Properties["Level"].(string)
-			switch severity {
-			case "error":
-				severityInfo["high"]++
-			case "warning":
-				severityInfo["medium"]++
-			default:
-				severityInfo["low"]++
+			if result.Properties["Suppressed"] == "true" {
+				continue
 			}
-			severityInfo["total"]++
+			sev, _ := result.Properties["Severity"].(string)
+			if sev == "" {
+				sev = "unknown"
+			}
+			if _, ok := counts[sev]; !ok {
+				sev = "unknown"
+			}
+			if sev != "total" {
+				counts[sev]++
+			}
+			counts["total"]++
 		}
 	}
 
-	return severityInfo
+	return counts
+}
+
+// EnrichResultsSuppressionProperty reads each result's Suppressions field and
+// sets Properties["Suppressed"] = "true" for any result that has at least one
+// suppression entry (regardless of status), plus SuppressionStatus /
+// SuppressionKind / SuppressionJustification for the template.
+func (r *Report) EnrichResultsSuppressionProperty() {
+	for _, run := range r.Runs {
+		for _, result := range run.Results {
+			if len(result.Suppressions) == 0 {
+				continue
+			}
+			sup := result.Suppressions[0]
+			status := ""
+			if sup.Status != nil {
+				status = *sup.Status
+			}
+			result.Properties["Suppressed"] = "true"
+			result.Properties["SuppressionStatus"] = status
+			result.Properties["SuppressionKind"] = sup.Kind
+			if sup.Justification != nil {
+				result.Properties["SuppressionJustification"] = *sup.Justification
+			}
+		}
+	}
+}
+
+// CollectSuppressionInfo returns counts for suppressed, active, and total findings.
+// Must be called after EnrichResultsSuppressionProperty.
+func (r Report) CollectSuppressionInfo() map[string]int {
+	suppressed := 0
+	total := 0
+	for _, run := range r.Runs {
+		for _, result := range run.Results {
+			total++
+			if s, _ := result.Properties["Suppressed"].(string); s == "true" {
+				suppressed++
+			}
+		}
+	}
+	return map[string]int{
+		"suppressed": suppressed,
+		"active":     total - suppressed,
+		"total":      total,
+	}
+}
+
+var (
+	reSentenceBoundary = regexp.MustCompile(`\.\s+[A-Z]`)
+	reDashUnderscore   = regexp.MustCompile(`[-_]+`)
+)
+
+// humanizeRuleID returns the last dot-segment of ruleID with dashes and underscores
+// replaced by spaces and the first letter uppercased.
+// "python.lang.security.audit.dangerous-system-call" → "Dangerous system call"
+func humanizeRuleID(ruleID string) string {
+	if ruleID == "" {
+		return ""
+	}
+	parts := strings.Split(ruleID, ".")
+	last := parts[len(parts)-1]
+	cleaned := strings.TrimSpace(reDashUnderscore.ReplaceAllString(last, " "))
+	if cleaned == "" {
+		return ""
+	}
+	runes := []rune(cleaned)
+	runes[0] = []rune(strings.ToUpper(string(runes[0])))[0]
+	return string(runes)
+}
+
+// firstSentence returns text up to and including the first period that is followed
+// by whitespace and an uppercase letter. Returns "" when no boundary is found.
+func firstSentence(text string) string {
+	loc := reSentenceBoundary.FindStringIndex(text)
+	if loc == nil {
+		return ""
+	}
+	return strings.TrimSpace(text[:loc[0]+1])
+}
+
+// firstLine returns the first line of text.
+func firstLine(text string) string {
+	return strings.SplitN(text, "\n", 2)[0]
+}
+
+// cap120 truncates s to at most 120 Unicode code points, preferring a sentence
+// boundary within that window over a hard cut.
+func cap120(s string) string {
+	runes := []rune(s)
+	if len(runes) <= 120 {
+		return s
+	}
+	truncated := string(runes[:120])
+	if loc := reSentenceBoundary.FindStringIndex(truncated); loc != nil {
+		return strings.TrimSpace(truncated[:loc[0]+1])
+	}
+	return truncated
+}
+
+// resolveFindingTitle walks a candidate chain to produce a human-readable title.
+// At each non-empty candidate: if it contains the rule ID, short-circuit to the
+// humanized rule ID. Otherwise use the candidate. Falls back to humanized rule ID
+// (or "Finding") when all candidates are empty.
+func resolveFindingTitle(rule *sarif.ReportingDescriptor, result *sarif.Result) string {
+	ruleID := strings.TrimSpace(rule.ID)
+
+	// Build candidate list — skip nil pointer fields safely.
+	var shortDesc, name, msg string
+	if rule.ShortDescription != nil && rule.ShortDescription.Text != nil {
+		shortDesc = strings.TrimSpace(*rule.ShortDescription.Text)
+	}
+	if rule.Name != nil {
+		name = strings.TrimSpace(*rule.Name)
+	}
+	if result.Message.Text != nil {
+		msg = strings.TrimSpace(*result.Message.Text)
+	}
+
+	humanized := humanizeRuleID(ruleID)
+	fallback := humanized
+	if fallback == "" {
+		fallback = "Finding"
+	}
+
+	for _, c := range []string{shortDesc, name, firstSentence(msg), firstLine(msg)} {
+		c = strings.TrimSpace(c)
+		if c == "" {
+			continue
+		}
+		if ruleID != "" && strings.Contains(c, ruleID) {
+			return cap120(fallback)
+		}
+		return cap120(c)
+	}
+	return cap120(fallback)
 }
 
 // EnrichResultsTitleProperty function enriches sarif results properties with title and description values
@@ -135,13 +281,11 @@ func (r Report) EnrichResultsTitleProperty() {
 			if result.Properties == nil {
 				result.Properties = make(map[string]interface{})
 			}
-			if rule.ShortDescription != nil {
-				result.Properties["Title"] = rule.ShortDescription.Text
-			}
-			if rule.FullDescription != nil && rule.FullDescription.Text != nil {
-				result.Properties["Description"] = *rule.FullDescription.Text
-			} else if result.Message.Text != nil {
+			result.Properties["Title"] = resolveFindingTitle(rule, result)
+			if result.Message.Text != nil && *result.Message.Text != "" {
 				result.Properties["Description"] = *result.Message.Text
+			} else if rule.FullDescription != nil && rule.FullDescription.Text != nil {
+				result.Properties["Description"] = *rule.FullDescription.Text
 			}
 		}
 	}
@@ -159,11 +303,8 @@ func (r Report) EnrichResultsLocationProperty(location *sarif.Location) error {
 	if !filepath.IsAbs(*artifactLocation.URI) {
 		artifactLocation.Properties["URI"] = *artifactLocation.URI
 	} else {
-		artifactLocation.Properties["URI"] = (*artifactLocation.URI)[len(r.sourceFolder):]
-		// remove slash if string start with slash
-		if len(artifactLocation.Properties["URI"].(string)) > 0 && artifactLocation.Properties["URI"].(string)[0] == '/' {
-			artifactLocation.Properties["URI"] = artifactLocation.Properties["URI"].(string)[1:]
-		}
+		trimmed := strings.TrimPrefix(*artifactLocation.URI, r.sourceFolder)
+		artifactLocation.Properties["URI"] = strings.TrimPrefix(trimmed, "/")
 	}
 
 	if location.PhysicalLocation.Region.Properties == nil {
@@ -190,62 +331,77 @@ func (r Report) EnrichResultsLocationProperty(location *sarif.Location) error {
 		location.PhysicalLocation.Region.Properties["EndLine"] = location.PhysicalLocation.Region.Properties["StartLine"]
 	}
 
-	// return if allToHTMLOptions.SourceFolder is not specified
+	// Prefer the SARIF-provided snippet text if present — it already has the full multi-line range.
+	region := location.PhysicalLocation.Region
+	if region != nil && region.Snippet != nil && region.Snippet.Text != nil && *region.Snippet.Text != "" {
+		full := *region.Snippet.Text
+		artifactLocation.Properties["Code"] = full
+		artifactLocation.Properties["CodeLines"] = strings.Split(full, "\n")
+		return nil
+	}
+
+	// Otherwise read the lines from disk. Requires the source folder to be set.
 	if r.sourceFolder == "" {
 		return fmt.Errorf("source folder is not set")
 	}
-	codeLine, err := r.readLineFromFile(location.PhysicalLocation)
+	lines, err := r.readLinesFromFile(location.PhysicalLocation)
 	if err != nil {
 		return err
 	}
-	// print amount of spaces bnefore code
-	// spacePrefixLength := len(codeLine) - len(strings.TrimLeft(codeLine, " "))
-	// artifactLocation.Properties["Code"] = strings.TrimLeft(codeLine, " ")
-	artifactLocation.Properties["Code"] = codeLine
+	artifactLocation.Properties["Code"] = strings.Join(lines, "\n")
+	artifactLocation.Properties["CodeLines"] = lines
 
 	return nil
 }
 
-// readLineFromFile function reads a line from a file by the given location
-func (r Report) readLineFromFile(loc *sarif.PhysicalLocation) (string, error) {
-	//return error if allToHTMLOptions.SourceFolder is not specified
+// readLinesFromFile reads the [StartLine, EndLine] range from the file referenced by loc.
+// Falls back to just StartLine if EndLine is unset.
+func (r Report) readLinesFromFile(loc *sarif.PhysicalLocation) ([]string, error) {
 	if r.sourceFolder == "" {
-		return "", fmt.Errorf("source folder is not set")
+		return nil, fmt.Errorf("source folder is not set")
+	}
+	if loc.Region == nil || loc.Region.StartLine == nil {
+		return nil, fmt.Errorf("region or StartLine is nil")
 	}
 
-	// Construct the file path
-	// Use *loc.ArtifactLocation.URI value if it's an absolute path, and make a concatenation of r.sourceFolder and *loc.ArtifactLocation.URI otherwise
-	filePath := *loc.ArtifactLocation.URI
-	if !filepath.IsAbs(filePath) {
-		fixedFilePath, err := files.ExpandPath(filepath.Join(r.sourceFolder, *loc.ArtifactLocation.URI))
-		if err != nil {
-			return "", fmt.Errorf("failed to contruct a file path: %w", err)
-		}
-		filePath = fixedFilePath
-	}
-
-	// Open the file
-	file, err := os.Open(filePath)
+	root, err := os.OpenRoot(r.sourceFolder)
 	if err != nil {
-		return "", fmt.Errorf("failed to open file: %w", err)
+		return nil, fmt.Errorf("failed to open source root %q: %w", r.sourceFolder, err)
+	}
+	defer root.Close()
+
+	file, err := root.Open(*loc.ArtifactLocation.URI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file %q within source folder: %w", *loc.ArtifactLocation.URI, err)
 	}
 	defer file.Close()
 
-	// Read the file line by line
+	startLine := *loc.Region.StartLine
+	endLine := startLine
+	if loc.Region.EndLine != nil && *loc.Region.EndLine >= startLine {
+		endLine = *loc.Region.EndLine
+	}
+
 	scanner := bufio.NewScanner(file)
-	currentLine := 0
+	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
+	var out []string
+	current := 0
 	for scanner.Scan() {
-		currentLine++
-		if currentLine == *loc.Region.StartLine {
-			return scanner.Text(), nil
+		current++
+		if current >= startLine && current <= endLine {
+			out = append(out, scanner.Text())
+		}
+		if current >= endLine {
+			break
 		}
 	}
-
 	if err := scanner.Err(); err != nil {
-		return "", fmt.Errorf("error reading file: %w", err)
+		return nil, fmt.Errorf("error reading file: %w", err)
 	}
-
-	return "", fmt.Errorf("line %d not found in file", *loc.Region.StartLine)
+	if len(out) == 0 {
+		return nil, fmt.Errorf("lines %d-%d not found in file", startLine, endLine)
+	}
+	return out, nil
 }
 
 // EnrichResultsCodeFlowProperty function enriches code flow location properties with source code and URI values
@@ -284,8 +440,53 @@ func (r Report) EnrichResultsCodeFlowProperty(locationWebURLCallback func(artifa
 	}
 }
 
-// EnrichResultsLevelProperty enriches result properties with level information taken from either
-// the result itself or the corresponding rule metadata. Supports multi-run SARIF reports.
+// normalizeSeverityString maps a case-insensitive severity string to canonical (level, severity) pair.
+// Returns ok=false when the string is not recognized, so callers can try the next source.
+func normalizeSeverityString(raw string) (level, severity string, ok bool) {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "critical":
+		return "error", "critical", true
+	case "high", "error":
+		return "error", "high", true
+	case "medium", "warning":
+		return "warning", "medium", true
+	case "low", "note":
+		return "note", "low", true
+	case "info", "none":
+		return "none", "info", true
+	default:
+		return "", "", false
+	}
+}
+
+// cvssToBuckets converts a CVSS-style numeric score (0.0-10.0) to (level, severity).
+// Thresholds follow the GitHub Code Scanning SARIF spec.
+func cvssToBuckets(score float64) (level, severity string) {
+	switch {
+	case score >= 9.0:
+		return "error", "critical"
+	case score >= 7.0:
+		return "error", "high"
+	case score >= 4.0:
+		return "warning", "medium"
+	case score > 0.0:
+		return "note", "low"
+	default:
+		return "none", "info"
+	}
+}
+
+// EnrichResultsLevelProperty sets Properties["Level"] (canonical SARIF: error/warning/note/none/unknown)
+// and Properties["Severity"] (display bucket: critical/high/medium/low/info/unknown) on every result.
+//
+// Source precedence (descending granularity):
+//  1. rule.Properties["security-severity"] (CVSS numeric 0.0-10.0)
+//  2. rule.Properties["problem.severity"] (Semgrep/CodeQL string, may carry critical/info)
+//  3. result.Level (SARIF per-finding, only 4-value resolution)
+//  4. rule.DefaultConfiguration.Level
+//  5. fallback: unknown/unknown
+//
+// Both properties are idempotent: if both are already set the result is skipped.
 func (r Report) EnrichResultsLevelProperty() {
 	for _, run := range r.Runs {
 		rulesMap := map[string]*sarif.ReportingDescriptor{}
@@ -307,16 +508,11 @@ func (r Report) EnrichResultsLevelProperty() {
 				result.Properties = make(map[string]interface{})
 			}
 
-			if result.Properties["Level"] != nil {
+			// Idempotence: skip if both already set.
+			_, hasLevel := result.Properties["Level"]
+			_, hasSeverity := result.Properties["Severity"]
+			if hasLevel && hasSeverity {
 				continue
-			}
-
-			// Prefer explicit level on the result when available.
-			if result.Level != nil {
-				if lvl := strings.TrimSpace(*result.Level); lvl != "" {
-					result.Properties["Level"] = lvl
-					continue
-				}
 			}
 
 			var ruleDescriptor *sarif.ReportingDescriptor
@@ -326,84 +522,125 @@ func (r Report) EnrichResultsLevelProperty() {
 				}
 			}
 
-			if ruleDescriptor != nil && ruleDescriptor.Properties != nil {
-				if level, ok := ruleDescriptor.Properties["problem.severity"]; ok {
-					if str, ok := level.(string); ok {
-						if trimmed := strings.TrimSpace(str); trimmed != "" {
-							result.Properties["Level"] = trimmed
-							continue
-						}
-					} else if level != nil {
-						// Preserve non-string values (legacy behaviour) if provided.
-						result.Properties["Level"] = level
-						continue
-					}
-				}
-			}
-
-			if ruleDescriptor != nil && ruleDescriptor.DefaultConfiguration != nil {
-				if lvl := strings.TrimSpace(ruleDescriptor.DefaultConfiguration.Level); lvl != "" {
-					result.Properties["Level"] = lvl
-					continue
-				}
-			}
-
-			// Fallback when no metadata provides a level.
-			result.Properties["Level"] = "unknown"
+			level, severity := resolveResultSeverity(result, ruleDescriptor)
+			result.Properties["Level"] = level
+			result.Properties["Severity"] = severity
 		}
 	}
 }
 
-func (r Report) EnrichResultsLocationURIProperty(locationWebURLCallback func(artifactLocation *sarif.Location) string) {
+// resolveResultSeverity walks the source precedence chain and returns (level, severity).
+func resolveResultSeverity(result *sarif.Result, rule *sarif.ReportingDescriptor) (level, severity string) {
+	// 1. security-severity (CVSS numeric) on the rule.
+	if rule != nil && rule.Properties != nil {
+		if raw, ok := rule.Properties["security-severity"]; ok && raw != nil {
+			if score, ok := toFloat64(raw); ok {
+				return cvssToBuckets(score)
+			}
+		}
+	}
+
+	// 2. problem.severity string on the rule.
+	if rule != nil && rule.Properties != nil {
+		if raw, ok := rule.Properties["problem.severity"]; ok {
+			if str, ok := raw.(string); ok {
+				if lvl, sev, ok := normalizeSeverityString(str); ok {
+					return lvl, sev
+				}
+			}
+		}
+	}
+
+	// 3. result.Level (SARIF per-finding).
+	if result.Level != nil {
+		if lvl, sev, ok := normalizeSeverityString(*result.Level); ok {
+			return lvl, sev
+		}
+	}
+
+	// 4. rule.DefaultConfiguration.Level.
+	if rule != nil && rule.DefaultConfiguration != nil {
+		if lvl, sev, ok := normalizeSeverityString(rule.DefaultConfiguration.Level); ok {
+			return lvl, sev
+		}
+	}
+
+	return "unknown", "unknown"
+}
+
+// toFloat64 coerces interface{} values that may be float64, json.Number, or numeric string to float64.
+func toFloat64(v interface{}) (float64, bool) {
+	switch t := v.(type) {
+	case float64:
+		return t, true
+	case json.Number:
+		f, err := t.Float64()
+		return f, err == nil
+	case string:
+		f, err := strconv.ParseFloat(strings.TrimSpace(t), 64)
+		return f, err == nil
+	}
+	return 0, false
+}
+
+// EnrichResultsLocationURIProperty sets the URI property on the first location of every result
+// and calls the provided callbacks to populate WebURL and (optionally) PRWebURL.
+// prDiffURLCallback may be nil, in which case PRWebURL is not set.
+func (r Report) EnrichResultsLocationURIProperty(
+	locationWebURLCallback func(*sarif.Location) string,
+	prDiffURLCallback func(*sarif.Location) string,
+) {
 	for _, result := range r.Runs[0].Results {
-		// if result location length is at least 1
-		if len(result.Locations) > 0 {
-			// get the first location
-			location := result.Locations[0]
-			// get the artifact location
-			artifactLocation := location.PhysicalLocation.ArtifactLocation
-			// if the artifact location has a URI
-			if artifactLocation.URI != nil {
-				// set the URI to the artifact location properties
-				// set artifactLocation.Properties["URI"] to be *artifactLocation.URI if it's a relative path,
-				// otherwise trim prefix of r.sourceFolder from *artifactLocation.URI
-				if !filepath.IsAbs(*artifactLocation.URI) {
-					artifactLocation.Properties["URI"] = *artifactLocation.URI
-				} else {
-					artifactLocation.Properties["URI"] = (*artifactLocation.URI)[len(r.sourceFolder):]
-					// remove slash if string start with slash
-					if len(artifactLocation.Properties["URI"].(string)) > 0 && artifactLocation.Properties["URI"].(string)[0] == '/' {
-						artifactLocation.Properties["URI"] = artifactLocation.Properties["URI"].(string)[1:]
-					}
-				}
+		if len(result.Locations) == 0 {
+			continue
+		}
+		location := result.Locations[0]
+		artifactLocation := location.PhysicalLocation.ArtifactLocation
+		if artifactLocation.URI == nil {
+			continue
+		}
 
-				if location.Properties == nil {
-					location.Properties = make(map[string]interface{})
-				}
-				location.Properties["WebURL"] = locationWebURLCallback(location)
-			}
+		if !filepath.IsAbs(*artifactLocation.URI) {
+			artifactLocation.Properties["URI"] = *artifactLocation.URI
+		} else {
+			trimmed := strings.TrimPrefix(*artifactLocation.URI, r.sourceFolder)
+			artifactLocation.Properties["URI"] = strings.TrimPrefix(trimmed, "/")
+		}
+
+		if location.Properties == nil {
+			location.Properties = make(map[string]interface{})
+		}
+		location.Properties["WebURL"] = locationWebURLCallback(location)
+		if prDiffURLCallback != nil {
+			location.Properties["PRWebURL"] = prDiffURLCallback(location)
 		}
 	}
 }
 
-// SortResultsByLevel function sorts sarif results by level
-func (r Report) SortResultsByLevel() {
+// SortResultsBySeverity sorts results by Severity bucket: critical < high < medium < low < info < unknown.
+func (r Report) SortResultsBySeverity() {
+	severityOrder := map[string]int{
+		"critical": 0,
+		"high":     1,
+		"medium":   2,
+		"low":      3,
+		"info":     4,
+		"unknown":  5,
+	}
 
 	for _, run := range r.Runs {
-		// sort results by level
-		// order: error, warning, note, none
-		levelOrder := map[string]int{
-			"error":   0,
-			"warning": 1,
-			"note":    2,
-			"none":    3,
-			"unknown": 4,
-		}
-
-		// sort results by level
-		// order: error, warning, note, none, unknown
 		sort.Slice(run.Results, func(i, j int) bool {
-			return levelOrder[run.Results[i].Properties["Level"].(string)] < levelOrder[run.Results[j].Properties["Level"].(string)]
+			si, _ := run.Results[i].Properties["Severity"].(string)
+			sj, _ := run.Results[j].Properties["Severity"].(string)
+			oi, ok := severityOrder[si]
+			if !ok {
+				oi = 5
+			}
+			oj, ok := severityOrder[sj]
+			if !ok {
+				oj = 5
+			}
+			return oi < oj
 		})
 	}
 }
@@ -460,4 +697,113 @@ func calculateMD5Hash(text string) string {
 	hash := md5.New()
 	io.WriteString(hash, text)
 	return hex.EncodeToString(hash.Sum(nil))
+}
+
+// rulesMapForRun0 builds a ruleID→descriptor map for the first run. Shared across the
+// three consecutive Enrich calls (Category, Confidence, Metadata) to avoid rebuilding it
+// three times in sequence.
+func (r Report) rulesMapForRun0() map[string]*sarif.ReportingDescriptor {
+	m := map[string]*sarif.ReportingDescriptor{}
+	for _, rule := range r.Runs[0].Tool.Driver.Rules {
+		m[rule.ID] = rule
+	}
+	return m
+}
+
+// EnrichResultsCategoryProperty writes Properties["Category"] (display label) and
+// Properties["CategorySlug"] (machine value) for each result. Defaults to CategoryOther
+// when no CWE tag or rule-ID keyword matches.
+func (r Report) EnrichResultsCategoryProperty() {
+	scanner := r.Runs[0].Tool.Driver.Name
+	rulesMap := r.rulesMapForRun0()
+
+	for _, result := range r.Runs[0].Results {
+		if result.RuleID == nil {
+			continue
+		}
+		rule := rulesMap[*result.RuleID]
+		cat, ok := resolveCategory(scanner, *result.RuleID, rule)
+		if !ok {
+			cat = CategoryOther
+		}
+		if result.Properties == nil {
+			result.Properties = make(map[string]any)
+		}
+		result.Properties["Category"] = categoryLabels[cat]
+		result.Properties["CategorySlug"] = string(cat)
+	}
+}
+
+// EnrichResultsConfidenceProperty writes Properties["Confidence"] (e.g. "High (85%)")
+// for each result. The key is omitted when no confidence signal is found.
+func (r Report) EnrichResultsConfidenceProperty() {
+	rulesMap := r.rulesMapForRun0()
+
+	for _, result := range r.Runs[0].Results {
+		if result.RuleID == nil {
+			continue
+		}
+		rule := rulesMap[*result.RuleID]
+		conf, ok := resolveConfidence(result, rule)
+		if !ok {
+			continue
+		}
+		if result.Properties == nil {
+			result.Properties = make(map[string]any)
+		}
+		result.Properties["Confidence"] = formatConfidence(conf)
+	}
+}
+
+// EnrichResultsMetadataProperty writes RuleFull, RuleShort, Scanner, CodeSectionLabel,
+// References, and Fix onto each result's Properties map. Fields are omitted when empty.
+// Must run after EnrichResultsCodeFlowProperty and RemoveDataflowDuplicates so that
+// CodeSectionLabel reflects the final thread-flow count.
+func (r Report) EnrichResultsMetadataProperty() {
+	scanner := r.Runs[0].Tool.Driver.Name
+	rulesMap := r.rulesMapForRun0()
+
+	for _, result := range r.Runs[0].Results {
+		if result.Properties == nil {
+			result.Properties = make(map[string]any)
+		}
+
+		ruleID := ""
+		if result.RuleID != nil {
+			ruleID = *result.RuleID
+		}
+
+		// Rule ID chips.
+		if ruleID != "" {
+			result.Properties["RuleFull"] = ruleID
+			short := ruleID
+			if i := strings.LastIndex(ruleID, "."); i >= 0 {
+				short = ruleID[i+1:]
+			}
+			result.Properties["RuleShort"] = short
+		}
+
+		// Scanner name.
+		if scanner != "" {
+			result.Properties["Scanner"] = scanner
+		}
+
+		// Code section label — "Data flow" when a real multi-step thread flow exists.
+		label := "Affected code"
+		if len(result.CodeFlows) > 0 && len(result.CodeFlows[0].ThreadFlows) > 0 {
+			if len(result.CodeFlows[0].ThreadFlows[0].Locations) > 1 {
+				label = "Data flow"
+			}
+		}
+		result.Properties["CodeSectionLabel"] = label
+
+		// References and Fix.
+		rule := rulesMap[ruleID]
+		if refs := extractReferences(result, rule, 10); len(refs) > 0 {
+			result.Properties["References"] = refs
+		}
+		if parts := splitFixParts(extractFix(result, rule)); len(parts) > 0 {
+			result.Properties["FixParts"] = parts
+		}
+	}
 }

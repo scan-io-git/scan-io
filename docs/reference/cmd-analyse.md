@@ -38,7 +38,8 @@ scanio analyse --scanner/-p PLUGIN_NAME [--config/-c PATH] [--format/-f OUTPUT_F
 | `--format`, `-f`  | string         | No              | `raw`                                                        | Specifies the output format (e.g., `json`, `sarif`).                 |
 | `--input-file`, `-i`  | string     | Conditional | `none`                                                        | Path to a file in [Scanio list command](cmd-list.md#command-output-format) format containing repositories to scan.      |
 | `--output`, `-o`  | string     | No | `{scanio_home_folder}/results/<VCS_domain>/<namespace_name>/` | 	Path to save the analysis results.      |
-| `--threads`, `-j`| int     | No          | `1`                                                          | Number of concurrent threads to use for parallel fetching.                   |
+| `--command`       | string  | No          | `none`                                                       | Scanner subcommand override. Interpretation is plugin-specific. Currently only the Semgrep plugin supports this: pass `ci` to run `semgrep ci` instead of `semgrep scan`. Other scanner plugins log a warning and ignore this flag. |
+| `--threads`, `-j`| int     | No          | `1`                                                          | Number of concurrent threads to use for parallel scanning.                   |
 | `--help`, `-h`   | flag    | No          | `false`                                                      | Displays help for the `analyse` command.                                      |
 
 **Using List Command Output as Input**<br>
@@ -91,6 +92,7 @@ Refer to plugin-specific documentation for detailed examples and additional requ
                 "results_path": "<path_to_report_file>",
                 "config_path": "<path_to_config_file/folder>",
                 "report_format": "<report_format>",
+                "command": "<scanner_subcommand>",
                 "additional_args": [
                     "<additional_arg>"
                 ]
@@ -122,8 +124,9 @@ Refer to plugin-specific documentation for detailed examples and additional requ
 | `args`             | Arguments used to execute the scanner.                        |
 | `target_path`      | Path to the codebase scanned.                                 |
 | `config_path`      | Path to the scanner configuration used.                       |
-| `report_path`      | Output format of the report (e.g., JSON, SARIF).              |
-| `additional_args`  | Any extra arguments passed to the scanner.                    |
+| `report_format`    | Output format of the report (e.g., `json`, `sarif`).          |
+| `command`          | Scanner subcommand override. Empty string when not set (scanner uses its default). |
+| `additional_args`  | Any extra arguments passed to the scanner after `--`.         |
 
 ### Fields in the `result` List
 | Field              | Description                                                                 |

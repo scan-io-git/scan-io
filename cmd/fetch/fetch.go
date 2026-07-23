@@ -33,6 +33,7 @@ type RunOptionsFetch struct {
 	Depth         int      `json:"depth,omitempty"`
 	AutoRepair    bool     `json:"auto_repair,omitempty"`
 	CleanWorkdir  bool     `json:"clean_workdir,omitempty"`
+	FetchBase     bool     `json:"fetch_base,omitempty"`
 	RmListExts    []string `json:"rm_list_exts"`
 	Threads       int      `json:"threads"`
 }
@@ -122,6 +123,7 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 		fetchOptions.CleanWorkdir,
 		fetchOptions.Threads,
 		scope,
+		fetchOptions.FetchBase,
 		logger,
 	)
 
@@ -175,15 +177,16 @@ func init() {
 	FetchCmd.Flags().StringVarP(&fetchOptions.Branch, "branch", "b", "", "Specific branch to fetch. Default: current default remote branch. Implies --single-branch.")
 	FetchCmd.Flags().StringVarP(&fetchOptions.OutputPath, "output", "o", "", "Directory where the fetched repository will be saved.")
 	FetchCmd.Flags().StringVarP(&fetchOptions.PrMode, "pr-mode", "", "", "PR fetching mode: 'branch', 'ref', or 'commit'.")
-	FetchCmd.Flags().BoolVar(&fetchOptions.DiffLines, "diff-lines", false, "Emit sparse diff hunks (added/modified lines plus dotfiles) under a temporary diff-lines folder so secrets/SAST scanners can focus on PR changes. This folder is not pruned by --rm-ext.")
-	FetchCmd.Flags().BoolVar(&fetchOptions.DiffFiles, "diff-files", false, "Copy full versions of changed files (plus dotfiles) into a temporary diff-files folder to give scanners complete context. This folder is not pruned by --rm-ext.")
+	FetchCmd.Flags().BoolVar(&fetchOptions.DiffLines, "diff-lines", false, "[PR mode only] Emit sparse diff hunks (added/modified lines plus dotfiles) under a temporary diff-lines folder so secrets/SAST scanners can focus on PR changes. This folder is not pruned by --rm-ext.")
+	FetchCmd.Flags().BoolVar(&fetchOptions.DiffFiles, "diff-files", false, "[PR mode only] Copy full versions of changed files (plus dotfiles) into a temporary diff-files folder to give scanners complete context. This folder is not pruned by --rm-ext.")
 	FetchCmd.Flags().BoolVar(&fetchOptions.SingleBranch, "single-branch", false, "Fetch only the specified branch without history from other branches.")
 	FetchCmd.Flags().IntVar(&fetchOptions.Depth, "depth", -1, "Create a shallow clone with a history truncated to the specified number of commits. Default: 0")
 	FetchCmd.Flags().BoolVar(&fetchOptions.Tags, "tags", false, "Fetch all tags from the repository.")
 	FetchCmd.Flags().BoolVar(&fetchOptions.NoTags, "no-tags", false, "Do not fetch any tags from the repository.")
 	FetchCmd.Flags().BoolVar(&fetchOptions.AutoRepair, "auto-repair", false, "Automatically repair corrupted repositories by forcing a refetch and recloning if needed.")
 	FetchCmd.Flags().BoolVar(&fetchOptions.CleanWorkdir, "clean-workdir", false, "Reset the working tree to HEAD and remove untracked files (like 'git reset --hard' + 'git clean -fdx').")
-	FetchCmd.Flags().StringSliceVar(&fetchOptions.RmListExts, "rm-ext", []string{"csv", "png", "ipynb", "txt", "md", "mp4", "zip", "gif", "gz", "jpg", "jpeg", "cache", "tar", "svg", "bin", "lock", "exe"}, "Comma-separated list of file extensions to remove automatically after fetching.")
+	FetchCmd.Flags().BoolVar(&fetchOptions.FetchBase, "fetch-base", false, "[PR mode only] Fetch the PR base commit into the local git store, making it available for diff-aware scanning.")
+	FetchCmd.Flags().StringSliceVar(&fetchOptions.RmListExts, "rm-ext", []string{"csv", "png", "ipynb", "txt", "md", "mp4", "zip", "gif", "gz", "jpg", "jpeg", "cache", "tar", "svg", "bin", "lock", "exe"}, "Comma-separated list of file extensions to remove automatically after fetching. Provide a plain comma-separated list with no spaces or quotes (for example: --rm-ext png,mp4,zip).")
 	FetchCmd.Flags().IntVarP(&fetchOptions.Threads, "threads", "j", 1, "Number of concurrent threads to use.")
 	FetchCmd.Flags().BoolP("help", "h", false, "Show help for the fetch command.")
 }

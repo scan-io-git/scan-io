@@ -84,6 +84,7 @@ type VCSFetchRequest struct {
 	TagMode      git.TagMode        `json:"tag_mode"`
 	AutoRepair   bool               `json:"auto_repair,omitempty"`
 	CleanWorkdir bool               `json:"clean_workdir,omitempty"`
+	FetchBase    bool               `json:"fetch_base,omitempty"`
 }
 
 // VCSRequestBase is the base structure for VCS requests.
