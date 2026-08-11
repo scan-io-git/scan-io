@@ -146,7 +146,7 @@ RUN echo -e "\n\nscanio:" >> /$APP_NAME/config.yml && \
 ENV SCANIO_CONFIG_PATH=/$APP_NAME/config.yml
 
 RUN addgroup -S $APP_NAME && adduser -S -G $APP_NAME -h /home/$APP_NAME $APP_NAME && \
-    mkdir -p /home/$APP_NAME && \
+    mkdir -p /home/$APP_NAME/.cache && \
     chown -R $APP_NAME:$APP_NAME /$APP_NAME /data /home/$APP_NAME
 
 # The non-root runtime user needs HOME set so tools that write to ~ (config,
