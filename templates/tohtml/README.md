@@ -54,6 +54,19 @@ make example-report
 
 Then commit the updated HTML files alongside the template change. See `AGENTS.md` for the full verification checklist.
 
+## TOC chip strips
+
+When two or more findings share a rule and a file, the TOC collapses them into one row plus a strip of `#N` chips. Both trees render the strip through `renderChipStrip` in `report.html`, marker-wrapped so `cmd/to-html/toc_chips_test.go` runs the shipped code under node.
+
+The strip renders at most `CHIP_CAP` (48) chips. The rest are emitted with `tv-chip--overflow` (hidden by CSS) behind a `+N more` button that adds `is-expanded` to the strip, revealing them in a 300px scroll pane. Expansion state resets whenever a filter or search rebuilds the trees.
+
+The cap exists because the strip has a bounded `max-height` to drive the collapse animation: a rule with hundreds of findings in one file (a secret scanner over a lockfile, say) rendered a strip several thousand pixels tall, of which everything past ~240px was clipped, invisible, and unclickable. Two rules keep that from recurring:
+
+- `max-height: 480px` on the strip clears a full 48-chip strip in the worst case measured (240px drawer, 4-digit finding numbers, ~410px).
+- `overflow-y: auto` on any strip that is not collapsed, as a backstop: if a strip ever exceeds the bound anyway, it scrolls instead of stranding chips.
+
+Raising `CHIP_CAP` means re-checking both, since a taller strip has to keep fitting under `max-height`.
+
 ## Required / Recommended classification
 
 When `--required` is passed to `scanio to-html`, findings are classified as Required to fix or Recommended.

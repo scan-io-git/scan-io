@@ -1327,6 +1327,29 @@
     .tv-chips a.tv-chip--required:hover    { border-color: var(--req-fg); }
     .tv-chips a.tv-chip--recommended:hover { border-color: var(--rec-fg); }
 
+    /* Chips past CHIP_CAP stay hidden until the "+N more" button expands the strip */
+    .tv-chips a.tv-chip--overflow { display: none; }
+    .tv-chips.is-expanded a.tv-chip--overflow { display: inline-flex; }
+    .tv-chips__more {
+      min-width: 24px;
+      height: 18px;
+      padding: 0 7px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-subtle);
+      border: 1px dashed var(--border-default);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: var(--text-xs);
+      line-height: 1;
+      color: var(--fg-muted);
+      cursor: pointer;
+      transition: border-color var(--motion-fast), color var(--motion-fast);
+    }
+    .tv-chips__more:hover { border-color: var(--accent-brand); color: var(--fg-default); }
+    .tv-chips__more:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
     /* Collapsible group headers */
     .tv-tr.tv-d0, .tv-tr.tv-d1[data-grp-id] { cursor: pointer; user-select: none; }
     .tv-tr.tv-d0:hover, .tv-tr.tv-d1[data-grp-id]:hover { background: var(--bg-subtle); }
@@ -1342,8 +1365,32 @@
                   opacity 120ms var(--motion-ease),
                   padding 180ms var(--motion-ease);
     }
+    /* This bound only drives the collapse animation; it must never hide a chip.
+       A full CHIP_CAP strip measures ~410px worst case (narrowest drawer, 4-digit
+       finding numbers), so 480px clears it. The overflow rule below is the
+       backstop: should a strip ever exceed the bound, it scrolls rather than
+       silently stranding chips out of reach. */
     .toc-tree .tv-chips[data-grp-parent] {
-      max-height: 240px;
+      max-height: 480px;
+    }
+    .toc-tree .tv-chips[data-grp-parent]:not(.is-collapsed) {
+      overflow-y: auto;
+    }
+    /* Expanded strip scrolls in place: overlay scrollbars give no hint on their own,
+       so the inset ring marks it as a scroll pane rather than a clipped list. */
+    .toc-tree .tv-chips.is-expanded[data-grp-parent] {
+      max-height: 300px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      box-shadow: inset 0 0 0 1px var(--border-muted);
+      border-radius: var(--radius-sm);
+      margin: 0 var(--space-2) 4px;
+    }
+    .toc-tree .tv-chips.is-expanded[data-grp-parent]::-webkit-scrollbar { width: 8px; }
+    .toc-tree .tv-chips.is-expanded[data-grp-parent]::-webkit-scrollbar-thumb {
+      background: var(--border-default);
+      border-radius: 4px;
     }
     .toc-tree [data-grp-parent].is-collapsed {
       max-height: 0;
@@ -3097,6 +3144,37 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         }
         // === buildFileLabels:end ===
 
+        // === renderChipStrip:start (extracted verbatim by cmd/to-html/toc_chips_test.go) ===
+        // renderChipStrip renders the "#N" chips for findings sharing a (file,rule),
+        // sorted by finding number. Chips past CHIP_CAP are emitted as
+        // tv-chip--overflow (hidden by CSS) behind a "+N more" button: the strip has a
+        // bounded max-height, so an uncapped cluster of hundreds would render chips
+        // that are clipped out of view and unreachable.
+        // Depends on esc(); opts.titleFor and opts.classFor are per-tree callbacks.
+        const CHIP_CAP = 48;
+        function renderChipStrip(items, opts) {
+          const parentAttr = opts.parents ? ' data-grp-parent="' + opts.parents + '"' : '';
+          const sorted = items.slice().sort((a, b) => {
+            const an = parseInt(a.num, 10), bn = parseInt(b.num, 10);
+            if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
+            return String(a.num).localeCompare(String(b.num));
+          });
+          let html = '<div class="tv-chips' + (opts.chipClass ? ' ' + opts.chipClass : '') + '"' + parentAttr + '>';
+          sorted.forEach((d, i) => {
+            const cls = ((opts.classFor ? opts.classFor(d) : '') + (i >= CHIP_CAP ? ' tv-chip--overflow' : '')).trim();
+            html += '<a href="#' + d.id + '" target="_self" title="' + opts.titleFor(d) + '"' +
+              (cls ? ' class="' + cls + '"' : '') + '>#' + esc(d.num) + '</a>';
+          });
+          if (sorted.length > CHIP_CAP) {
+            const hidden = sorted.length - CHIP_CAP;
+            html += '<button type="button" class="tv-chips__more" aria-expanded="false" data-more="' + hidden + '">' +
+              '+ ' + hidden + ' more</button>';
+          }
+          html += '</div>';
+          return html;
+        }
+        // === renderChipStrip:end ===
+
         // Render a list of findings sharing a (file,rule). N>=2: one row + chip strip.
         // N==1: single leaf row. Returns HTML.
         function renderRuleCluster(items, opts) {
@@ -3118,17 +3196,11 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             chevLeaf + dot(sev) +
             '<span class="tv-tl">' + esc(cap60(label)) + '</span>' +
             '<span class="tv-tc">' + items.length + '</span></a>';
-          // Sort chips by finding number (ASC)
-          const sorted = items.slice().sort((a, b) => {
-            const an = parseInt(a.num, 10), bn = parseInt(b.num, 10);
-            if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
-            return String(a.num).localeCompare(String(b.num));
+          html += renderChipStrip(items, {
+            parents: opts.parents,
+            chipClass: opts.chipClass,
+            titleFor: d => titleAttr + ' (' + esc(d.file || d.id) + ':' + esc(d.line) + ')'
           });
-          html += '<div class="tv-chips ' + (opts.chipClass || '') + '"' + parentAttr + '>';
-          for (const d of sorted) {
-            html += '<a href="#' + d.id + '" target="_self" title="' + titleAttr + ' (' + esc(d.file || d.id) + ':' + esc(d.line) + ')">#' + esc(d.num) + '</a>';
-          }
-          html += '</div>';
           return html;
         }
 
@@ -3264,17 +3336,12 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
                     chev + fileIcon +
                     '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
                     '<span class="tv-tc">' + fileItems.length + '</span></div>';
-                  const sorted = fileItems.slice().sort((a, b) => {
-                    const an = parseInt(a.num, 10), bn = parseInt(b.num, 10);
-                    if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
-                    return String(a.num).localeCompare(String(b.num));
+                  html += renderChipStrip(fileItems, {
+                    parents: fileNodeId + ' ' + ruleNodeId + chain,
+                    chipClass: dimmed ? 'tv-grp--suppressed' : '',
+                    titleFor: d => esc(file) + ':' + esc(d.line),
+                    classFor: d => d.classification === 'required' ? 'tv-chip--required' : d.classification === 'recommended' ? 'tv-chip--recommended' : ''
                   });
-                  html += '<div class="tv-chips' + (dimmed ? ' tv-grp--suppressed' : '') + '" data-grp-parent="' + fileNodeId + ' ' + ruleNodeId + chain + '">';
-                  for (const d of sorted) {
-                    const chipCls = d.classification === 'required' ? ' tv-chip--required' : d.classification === 'recommended' ? ' tv-chip--recommended' : '';
-                    html += '<a href="#' + d.id + '" target="_self" title="' + esc(file) + ':' + esc(d.line) + '" class="' + chipCls.trim() + '">#' + esc(d.num) + '</a>';
-                  }
-                  html += '</div>';
                 }
               }
             });
@@ -3431,8 +3498,20 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           });
         }
 
+        // Reveal the chips held back by CHIP_CAP. State resets on the next
+        // refreshToc(), which rebuilds both trees from scratch.
+        function toggleChipStrip(btn) {
+          const strip = btn.closest('.tv-chips');
+          if (!strip) return;
+          const expanded = strip.classList.toggle('is-expanded');
+          btn.setAttribute('aria-expanded', String(expanded));
+          btn.textContent = expanded ? 'Show less' : '+ ' + btn.dataset.more + ' more';
+        }
+
         [treeSev, treeRule].forEach(tree => {
           tree.addEventListener('click', e => {
+            const more = e.target.closest('.tv-chips__more');
+            if (more) { toggleChipStrip(more); return; }
             const hdr = e.target.closest('[data-grp-id]');
             if (!hdr || e.target.closest('a')) return;
             toggleGroup(hdr);
