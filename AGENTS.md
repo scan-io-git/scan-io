@@ -36,6 +36,7 @@ Confirm each of the following:
   - `Suppressed` (green banner, inSource) on #16 and #17.
   - `Suppression under review` (amber banner, external) on #18 and #19.
   - `Suppression rejected` (red banner, inSource) on #20.
+- Widen the window past 1440px: the header brand, the `All` filter pill and the TOC drawer keep the same left edge, the cards sit ~16px right of the TOC with no void between them, and past 1920px the whole shell centers with symmetric margins.
 - Search: type `injection` → title and Rule field highlight, TOC filters, Suppressed section hides when 0 match and updates count when some match.
 - Re-run `make example-report` a second time and diff: only the CSP nonce and the "Generated ..." timestamp may differ. Both are non-deterministic by design (`crypto/rand` per render, render clock), so the raw diff is never empty. Normalize before comparing:
 

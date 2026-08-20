@@ -29,6 +29,7 @@ All tokens live in the `:root` block in `report.html`. The design kit mirrors th
 | Shadow | `--shadow-xs` .. `--shadow-lg` | |
 | Z-index | `--z-sticky` .. `--z-dialog` | 20 .. 1000 |
 | Spacing | `--space-1` .. `--space-6` | 4px .. 32px |
+| Shell | `--shell-max` | 1920px page-shell cap |
 | Syntax | `--syntax-keyword` etc. | Prism token colors |
 | Semantic | `--search-mark-bg`, `--on-accent` | per theme |
 
@@ -53,6 +54,16 @@ make example-report
 ```
 
 Then commit the updated HTML files alongside the template change. See `AGENTS.md` for the full verification checklist.
+
+## Page shell
+
+Four bands share one horizontal axis: `.report-header__inner`, `.summary-bar__inner`, `.outline-layout` (the TOC + findings row) and `.report-footer__inner`. Each is capped at `--shell-max` (1920px), centered with `margin: 0 auto`, and — importantly — set to `box-sizing: border-box` so their 16px padding counts *inside* the cap. Without `border-box` the padding sits outside it and the bands land 16px apart.
+
+`.main-body` deliberately has no cap of its own: it fills the column left over beside the TOC. Capping it there was the original defect — it centered the findings inside `.main-container`, which starts after the sidebar, so the cards were centered on a different axis than the header. At 2560px that left a 453px void between the TOC and the cards and another 453px to their right, and the header aligned with neither. The drift began at 1440px, not just on ultrawide displays.
+
+Invariant to preserve when editing any of these rules: above 900px the header brand, the first filter pill and the TOC drawer must all share the same left edge, at every viewport width.
+
+Findings below 900px switch to the overlay TOC and are unaffected by the cap.
 
 ## TOC chip strips
 

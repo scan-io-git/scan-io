@@ -74,6 +74,11 @@
       --space-1: 4px; --space-2: 8px; --space-3: 12px;
       --space-4: 16px; --space-5: 24px; --space-6: 32px;
 
+      /* Page shell: every band (header, summary bar, outline layout, footer) is
+         capped by this one value so their left/right edges land on the same axis.
+         Applied with box-sizing: border-box, so padding counts inside the cap. */
+      --shell-max: 1920px;
+
       /* Border-radius scale */
       --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-pill: 999px;
 
@@ -211,9 +216,7 @@
     }
 
     .main-body {
-      margin: 0 auto;
       padding: 8px 16px 16px;
-      max-width: 1280px;
       position: relative;
     }
 
@@ -813,7 +816,8 @@
     }
 
     .summary-bar__inner {
-      max-width: 1280px;
+      box-sizing: border-box;
+      max-width: var(--shell-max);
       margin: 0 auto;
       padding: var(--space-3) var(--space-4);
       display: flex;
@@ -1108,6 +1112,9 @@
       display: flex;
       align-items: flex-start;
       width: 100%;
+      box-sizing: border-box;
+      max-width: var(--shell-max);
+      margin: 0 auto;
     }
     .main-container {
       flex: 1 1 0;
@@ -1439,7 +1446,8 @@
     }
 
     .report-header__inner {
-      max-width: 1280px;
+      box-sizing: border-box;
+      max-width: var(--shell-max);
       margin: 0 auto;
       padding: 12px 16px;
       display: flex;
@@ -1734,7 +1742,8 @@
     }
 
     .report-footer__inner {
-      max-width: 1280px;
+      box-sizing: border-box;
+      max-width: var(--shell-max);
       margin: 0 auto;
       padding: var(--space-3) var(--space-4);
       display: flex;
