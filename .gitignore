@@ -56,6 +56,7 @@ terraform.rc
 *results.html
 # Keep the committed example fixture and its rendered output
 !templates/tohtml/example/example.sarif
+!templates/tohtml/example/example-ai-scan.sarif
 !templates/tohtml/example/example.html
 data/
 
