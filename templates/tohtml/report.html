@@ -2283,7 +2283,7 @@
           <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-pull-request"/></svg>
           <code>#{{ $vcs.PullRequestId }}</code>
         </a>{{end}}
-        {{if .Metadata.ToolMetadata.Name}}<span class="report-header__tool-label">{{ .Metadata.ToolMetadata.Name }}{{if .Metadata.ToolMetadata.Version}} {{ .Metadata.ToolMetadata.Version }}{{end}}</span>{{end}}
+        {{if .Metadata.Tools}}<span class="report-header__tool-label">{{range $i, $t := .Metadata.Tools}}{{if $i}}, {{end}}{{ $t.Name }}{{if $t.Version}} {{ $t.Version }}{{end}}{{end}}</span>{{end}}
         <span class="report-header__inline-divider" aria-hidden="true"></span>
         <button class="report-header__icon-btn report-header__help-btn" type="button" aria-label="Keyboard shortcuts" id="help-btn-inline">
           <svg class="icon" aria-hidden="true" width="16" height="16"><use href="#tb-help"/></svg>
@@ -2318,8 +2318,8 @@
             <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-pull-request"/></svg>
             <a href="{{ if eq $vcs.VCSType "bitbucket" }}{{ $vcs.HTTPRepoLink }}/pull-requests/{{ $vcs.PullRequestId }}{{ else if eq $vcs.VCSType "gitlab" }}{{ $vcs.HTTPRepoLink }}/-/merge_requests/{{ $vcs.PullRequestId }}{{ else }}{{ $vcs.HTTPRepoLink }}/pull/{{ $vcs.PullRequestId }}{{ end }}" target="_blank" rel="noopener">PR #{{ $vcs.PullRequestId }}</a>
           </div>{{end}}
-          {{if .Metadata.ToolMetadata.Name}}<div class="header-kebab__meta-item header-kebab__meta-item--tool" role="menuitem">
-            {{ .Metadata.ToolMetadata.Name }}{{if .Metadata.ToolMetadata.Version}} {{ .Metadata.ToolMetadata.Version }}{{end}}
+          {{if .Metadata.Tools}}<div class="header-kebab__meta-item header-kebab__meta-item--tool" role="menuitem">
+            {{range $i, $t := .Metadata.Tools}}{{if $i}}, {{end}}{{ $t.Name }}{{if $t.Version}} {{ $t.Version }}{{end}}{{end}}
           </div>{{end}}
           <div class="header-kebab__divider"></div>
           <button class="header-kebab__theme-btn" id="kebab-theme-btn" role="menuitem" aria-label="Toggle theme">
