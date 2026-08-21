@@ -258,7 +258,9 @@ var ToHtmlCmd = &cobra.Command{
 			report.EnrichResultsLevelProperty()
 			report.EnrichResultsCategoryProperty()
 			report.EnrichResultsConfidenceProperty()
+			report.EnrichResultsPreFPConfidenceProperty()
 			report.EnrichResultsMetadataProperty()
+			report.EnrichResultsFPProperty()
 			report.EnrichResultsLocationURIProperty(locationURLCallback, prDiffURLCallback)
 			report.EnrichResultsSuppressionProperty()
 			if requiredEnabled {

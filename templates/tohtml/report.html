@@ -121,6 +121,10 @@
       --rec-fg: #0550ae; --rec-bg: #ddf4ff; --rec-border: #0969da;
       --sup-fg: #3b4450; --sup-bg: #f0f3f6; --sup-border: #b0b9c3;
 
+      /* False-positive review panel palette — light. Fixed, independent of the
+         verdict; must not borrow the Required/Recommended tokens above. */
+      --fp-fg: #475569; --fp-bg: #e9eef5; --fp-border: #94a3b8;
+
       /* Primer tokens — light mode defaults */
       --bg-canvas: var(--bg-canvas-light);
       --bg-subtle: var(--bg-subtle-light);
@@ -205,6 +209,10 @@
       --req-fg: #ff7b72; --req-bg: #490202; --req-border: #f85149;
       --rec-fg: #79c0ff; --rec-bg: #051d4d; --rec-border: #1f6feb;
       --sup-fg: #9198a1; --sup-bg: #1c2128; --sup-border: #444c56;
+
+      /* False-positive review panel palette — dark. Fixed, independent of the
+         verdict; must not borrow the Required/Recommended tokens above. */
+      --fp-fg: #cbd5e1; --fp-bg: #1a2432; --fp-border: #475569;
 
       --search-mark-bg: #5c4000;
       --on-accent: var(--bg-canvas);
@@ -369,6 +377,60 @@
     .req-notice--required    { background: var(--req-bg); color: var(--req-fg); border-color: var(--req-border); }
     .req-notice--recommended { background: var(--rec-bg); color: var(--rec-fg); border-color: var(--rec-border); }
     .req-notice__text strong { font-weight: 700; }
+
+    /* False-positive review panel. Colour is fixed and independent of the
+       verdict — it must never tint by verdict or reuse the Required/Recommended
+       tokens, so a Recommended-blue panel never sits under a Required-red
+       banner and contradicts it. */
+    .finding__fp {
+      border: 1px solid var(--fp-border);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-3);
+      overflow: hidden;
+    }
+    .finding__fp-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-3);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: var(--fp-bg);
+      color: var(--fp-fg);
+    }
+    .finding__fp-body {
+      padding: var(--space-2) var(--space-3) var(--space-3);
+      font-size: var(--text-sm);
+    }
+    .finding__fp-dl {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      align-items: baseline;
+      column-gap: 12px;
+      row-gap: 4px;
+      margin: 0;
+    }
+    .finding__fp-key {
+      color: var(--fg-muted);
+      font-weight: 400;
+      white-space: nowrap;
+    }
+    .finding__fp-dl dd { margin: 0; }
+    .finding__fp-dl dd strong { font-weight: 700; }
+    .finding__fp-needs-verification {
+      text-decoration: underline dotted;
+      text-decoration-color: currentColor;
+      cursor: help;
+    }
+
+    /* Confidence arrow — earlier value muted, current value plain (no
+       strikethrough on the earlier value, no bold on the current one). */
+    .finding__meta-confidence-prior,
+    .finding__meta-confidence-arrow {
+      color: var(--fg-muted);
+    }
 
     /* Section headers in the findings list */
     .findings-section { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); margin: var(--space-3) 0 var(--space-2); border-radius: var(--radius-sm); font-size: var(--text-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; user-select: none; }
@@ -2345,6 +2407,10 @@
       <path d="M11 6h5a2 2 0 0 1 2 2v8"/>
       <polyline points="14 9 11 6 14 3"/>
     </symbol>
+    <symbol id="tb-scale" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M7 20h10"/><path d="M6 6l6 -1l6 1"/><path d="M12 3v17"/>
+      <path d="M9 12l-3 -6l-3 6a3 3 0 0 0 6 0"/><path d="M21 12l-3 -6l-3 6a3 3 0 0 0 6 0"/>
+    </symbol>
   </svg>
   <header class="report-header">
     <div class="report-header__inner">
@@ -2543,6 +2609,22 @@
               <span class="req-notice__text">{{if $req}}<svg aria-hidden="true" width="12" height="12"><use href="#tb-alert-triangle"/></svg> <strong>Required</strong>{{else}}<svg aria-hidden="true" width="12" height="12"><use href="#tb-info"/></svg> <strong>Recommended</strong>{{end}}{{with index .Properties "RequiredReason"}} &mdash; {{.}}{{end}}</span>
             </div>
             {{- end}}
+            {{- $fpVerdict := index .Properties "FPVerdict" -}}
+            {{- if $fpVerdict}}
+            <div class="finding__fp">
+              <div class="finding__fp-header"><svg width="13" height="13" aria-hidden="true"><use href="#tb-scale"/></svg>False-positive review</div>
+              <div class="finding__fp-body">
+                <dl class="finding__fp-dl">
+                  <dt class="finding__fp-key">Verdict:</dt>
+                  <dd>{{if eq $fpVerdict "NEEDS_VERIFICATION"}}<strong class="finding__fp-needs-verification" title="{{index .Properties "FPHover"}}">{{index .Properties "FPLabel"}}</strong>{{else}}<strong>{{index .Properties "FPLabel"}}</strong>{{end}}</dd>
+                  {{with index .Properties "FPReasoning"}}
+                  <dt class="finding__fp-key">Reasoning:</dt>
+                  <dd>{{.}}</dd>
+                  {{end}}
+                </dl>
+              </div>
+            </div>
+            {{- end}}
             {{- $supStatus := index .Properties "SuppressionStatus" -}}
             {{- if $supStatus}}
             <div class="finding__suppression finding__suppression--{{$supStatus}}">
@@ -2553,12 +2635,13 @@
             {{- end}}
             {{- $metaCat  := index .Properties "Category" -}}
             {{- $metaConf := index .Properties "Confidence" -}}
+            {{- $metaPreConf := index .Properties "PreFPConfidence" -}}
             {{- $metaRule := index .Properties "RuleFull" -}}
             {{- $metaScan := index .Properties "Scanner" -}}
             {{- if or $metaCat $metaConf $metaRule $metaScan }}
             <dl class="finding__meta-dl">
               {{if $metaCat}}<dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">{{$metaCat}}</dd>{{end}}
-              {{if $metaConf}}<dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">{{$metaConf}}</dd>{{end}}
+              {{if $metaConf}}<dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">{{if $metaPreConf}}<span class="finding__meta-confidence-prior">{{$metaPreConf}}</span> <span class="finding__meta-confidence-arrow" aria-hidden="true">&rarr;</span> {{end}}{{$metaConf}}</dd>{{end}}
               {{if $metaRule}}<dt class="finding__meta-key">Rule:</dt><dd>{{$metaRule}}</dd>{{end}}
               {{if $metaScan}}<dt class="finding__meta-key">Scanner:</dt><dd>{{$metaScan}}</dd>{{end}}
             </dl>
@@ -2691,14 +2774,31 @@
                 {{with index .Properties "SuppressionJustification"}}<span class="sup-justification" title="{{.}}">{{.}}</span>{{end}}
                 <span class="sup-kind">{{index .Properties "SuppressionKind"}}</span>
               </div>
+              {{- $fpVerdict := index .Properties "FPVerdict" -}}
+              {{- if $fpVerdict}}
+              <div class="finding__fp">
+                <div class="finding__fp-header"><svg width="13" height="13" aria-hidden="true"><use href="#tb-scale"/></svg>False-positive review</div>
+                <div class="finding__fp-body">
+                  <dl class="finding__fp-dl">
+                    <dt class="finding__fp-key">Verdict:</dt>
+                    <dd>{{if eq $fpVerdict "NEEDS_VERIFICATION"}}<strong class="finding__fp-needs-verification" title="{{index .Properties "FPHover"}}">{{index .Properties "FPLabel"}}</strong>{{else}}<strong>{{index .Properties "FPLabel"}}</strong>{{end}}</dd>
+                    {{with index .Properties "FPReasoning"}}
+                    <dt class="finding__fp-key">Reasoning:</dt>
+                    <dd>{{.}}</dd>
+                    {{end}}
+                  </dl>
+                </div>
+              </div>
+              {{- end}}
               {{- $metaCat  := index .Properties "Category" -}}
               {{- $metaConf := index .Properties "Confidence" -}}
+              {{- $metaPreConf := index .Properties "PreFPConfidence" -}}
               {{- $metaRule := index .Properties "RuleFull" -}}
               {{- $metaScan := index .Properties "Scanner" -}}
               {{- if or $metaCat $metaConf $metaRule $metaScan }}
               <dl class="finding__meta-dl">
                 {{if $metaCat}}<dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">{{$metaCat}}</dd>{{end}}
-                {{if $metaConf}}<dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">{{$metaConf}}</dd>{{end}}
+                {{if $metaConf}}<dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">{{if $metaPreConf}}<span class="finding__meta-confidence-prior">{{$metaPreConf}}</span> <span class="finding__meta-confidence-arrow" aria-hidden="true">&rarr;</span> {{end}}{{$metaConf}}</dd>{{end}}
                 {{if $metaRule}}<dt class="finding__meta-key">Rule:</dt><dd>{{$metaRule}}</dd>{{end}}
                 {{if $metaScan}}<dt class="finding__meta-key">Scanner:</dt><dd>{{$metaScan}}</dd>{{end}}
               </dl>
