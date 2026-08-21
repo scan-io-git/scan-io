@@ -40,12 +40,17 @@ func DefaultConfidenceThresholds() map[string]float64 {
 // ("true"/"false") and Properties["RequiredReason"] (human-readable rationale).
 // Suppressed results are left untouched. In-memory only; never written to disk.
 //
-// Classification per result:
-//   - Severity not in BlockerSeverities → Recommended.
-//   - Severity in BlockerSeverities, no threshold configured for it → Required (confidence ignored).
-//   - Severity in BlockerSeverities, threshold configured, no confidence signal → Required (treated as fully confident).
-//   - Severity in BlockerSeverities, threshold configured, confidence >= threshold → Required.
-//   - Severity in BlockerSeverities, threshold configured, confidence < threshold → Recommended.
+// Gate order:
+//  1. Severity not in BlockerSeverities → Recommended.
+//  2. Severity is critical → Required, never demoted — evaluated before any FP
+//     verdict or confidence threshold is even consulted.
+//  3. A recognized FP verdict takes precedence over Thresholds: FALSE_POSITIVE →
+//     Recommended; TRUE_POSITIVE and NEEDS_VERIFICATION → Required.
+//  4. No fp bag, or an unrecognized verdict: falls back to the
+//     confidence-threshold path unchanged, so callers that pass Thresholds see
+//     the same behavior as before verdicts were read at all. With no
+//     threshold configured for the severity, that path fails closed to
+//     Required.
 func (r Report) EnrichResultsRequiredProperty(policy RequiredPolicy) {
 	rulesMap := map[string]*sarif.ReportingDescriptor{}
 	for _, rule := range r.Runs[0].Tool.Driver.Rules {
@@ -71,9 +76,18 @@ func (r Report) EnrichResultsRequiredProperty(policy RequiredPolicy) {
 		required := false
 		reason := ""
 
-		if !policy.BlockerSeverities[sev] {
+		verdict, hasVerdict := fpVerdict(result)
+
+		switch {
+		case !policy.BlockerSeverities[sev]:
 			reason = fmt.Sprintf("%s severity is not required", capSev)
-		} else {
+		case sev == "critical":
+			required = true
+			reason = fpReasonPhrase(capSev, verdict, hasVerdict)
+		case hasVerdict:
+			required = verdict != FPVerdictFalsePositive
+			reason = fpReasonPhrase(capSev, verdict, hasVerdict)
+		default:
 			var rule *sarif.ReportingDescriptor
 			if result.RuleID != nil {
 				rule = rulesMap[*result.RuleID]
@@ -83,7 +97,7 @@ func (r Report) EnrichResultsRequiredProperty(policy RequiredPolicy) {
 			switch {
 			case !hasThr:
 				required = true
-				reason = fmt.Sprintf("%s severity (blocker, no confidence threshold configured)", capSev)
+				reason = fpReasonPhrase(capSev, verdict, hasVerdict)
 			case !ok:
 				required = true
 				reason = fmt.Sprintf("%s severity, no confidence score (treated as fully confident)", capSev)
@@ -99,6 +113,23 @@ func (r Report) EnrichResultsRequiredProperty(policy RequiredPolicy) {
 		result.Properties["Required"] = strconv.FormatBool(required)
 		result.Properties["RequiredReason"] = reason
 	}
+}
+
+// fpReasonPhrase renders the FP-review clause of RequiredReason for a blocker
+// severity: the verdict when recognized, "not FP-assessed" otherwise (no fp
+// bag, or an unrecognized/legacy verdict).
+func fpReasonPhrase(capSev, verdict string, hasVerdict bool) string {
+	if hasVerdict {
+		switch verdict {
+		case FPVerdictFalsePositive:
+			return fmt.Sprintf("%s severity, false positive per FP review", capSev)
+		case FPVerdictTruePositive:
+			return fmt.Sprintf("%s severity, confirmed by FP review", capSev)
+		case FPVerdictNeedsVerification:
+			return fmt.Sprintf("%s severity, needs verification", capSev)
+		}
+	}
+	return fmt.Sprintf("%s severity, not FP-assessed", capSev)
 }
 
 func pct(f float64) int { return int(math.Round(f * 100)) }
