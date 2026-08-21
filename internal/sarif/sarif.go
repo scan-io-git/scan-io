@@ -38,8 +38,13 @@ func readSarifReport(inputPath string) (*sarif.Report, error) {
 	defer jsonFile.Close()
 
 	var sarifReport sarif.Report
-	byteValue, _ := io.ReadAll(jsonFile)
-	json.Unmarshal([]byte(byteValue), &sarifReport)
+	byteValue, err := io.ReadAll(jsonFile)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(byteValue, &sarifReport); err != nil {
+		return nil, fmt.Errorf("failed to parse sarif report %q: %w", inputPath, err)
+	}
 
 	return &sarifReport, nil
 }
