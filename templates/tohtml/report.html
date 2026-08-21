@@ -460,6 +460,7 @@
     .finding__meta-dl {
       display: grid;
       grid-template-columns: max-content 1fr;
+      align-items: baseline;
       column-gap: 12px;
       row-gap: 4px;
       margin: 0 0 12px;
@@ -470,14 +471,13 @@
       font-size: var(--text-base);
       font-weight: 400;
       white-space: nowrap;
-      align-self: center;
     }
 
     .finding__meta-dl dd {
       margin: 0;
       color: var(--fg-default);
-      font-size: var(--text-lg);
-      align-self: center;
+      font-size: var(--text-base);
+      font-variant-numeric: tabular-nums;
       overflow-wrap: anywhere;
       word-break: normal;
       hyphens: none;
