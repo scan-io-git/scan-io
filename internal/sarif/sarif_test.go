@@ -394,6 +394,70 @@ func TestCollectSeverityInfoMissingSeverityCountsAsUnknown(t *testing.T) {
 
 // --- SortResultsBySeverity ---
 
+// --- CollectScanners ---
+
+func TestCollectScanners_DistinctOrderPreserved(t *testing.T) {
+	mkResult := func(scanner string) *gosarif.Result {
+		r := &gosarif.Result{}
+		r.Properties = gosarif.Properties{"Scanner": scanner}
+		return r
+	}
+
+	report := Report{
+		Report: &gosarif.Report{
+			Version: string(gosarif.Version210),
+			Runs: []*gosarif.Run{
+				{
+					Results: []*gosarif.Result{
+						mkResult("Semgrep OSS"),
+						mkResult("Semgrep OSS"),
+						mkResult("AI Security Scanner"),
+						mkResult("Semgrep OSS"),
+					},
+				},
+			},
+		},
+	}
+
+	got := report.CollectScanners()
+	want := []string{"Semgrep OSS", "AI Security Scanner"}
+	if len(got) != len(want) {
+		t.Fatalf("want %v, got %v", want, got)
+	}
+	for i, w := range want {
+		if got[i] != w {
+			t.Errorf("index %d: want %q, got %q", i, w, got[i])
+		}
+	}
+}
+
+func TestCollectScanners_SingleScanner(t *testing.T) {
+	result := resultFor("r1")
+	result.Properties = gosarif.Properties{"Scanner": "Semgrep OSS"}
+	report := makeSimpleReport("", ruleWithTags("r1"), result)
+
+	got := report.CollectScanners()
+	if len(got) != 1 || got[0] != "Semgrep OSS" {
+		t.Errorf("want [Semgrep OSS], got %v", got)
+	}
+}
+
+func TestCollectScanners_MissingPropertySkipped(t *testing.T) {
+	report := Report{
+		Report: &gosarif.Report{
+			Version: string(gosarif.Version210),
+			Runs: []*gosarif.Run{
+				{Results: []*gosarif.Result{{}}},
+			},
+		},
+	}
+
+	got := report.CollectScanners()
+	if len(got) != 0 {
+		t.Errorf("want no scanners, got %v", got)
+	}
+}
+
 func TestEnrichResultsLocationURIPropertyPRWebURL(t *testing.T) {
 	uri := "src/main.go"
 	makeReport := func() Report {

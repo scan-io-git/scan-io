@@ -2065,6 +2065,7 @@
 
     @media print {
       .summary-bar,
+      .scanner-tabs,
       .toc-drawer,
       .header-kebab,
       .scroll-up-button,
@@ -2130,6 +2131,97 @@
     .u-sentinel{height:0;overflow:hidden}
     .u-flex-ic{display:flex;align-items:center;gap:4px}
     .report-header__logo-img{shape-rendering:geometricPrecision;text-rendering:geometricPrecision;image-rendering:optimizeQuality;fill-rule:evenodd;clip-rule:evenodd}
+
+    /* ── Scanner tab strip ───────────────────────────────────── */
+    .scanner-tabs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: var(--space-3);
+      padding-bottom: var(--space-2);
+      border-bottom: 1px solid var(--border-default);
+    }
+    .scanner-tabs__list {
+      display: flex;
+      gap: 6px;
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .scanner-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 12px;
+      height: var(--control-h);
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-default);
+      background: var(--bg-canvas);
+      color: var(--fg-default);
+      font-size: var(--text-sm);
+      font-family: inherit;
+      line-height: 1;
+      white-space: nowrap;
+      cursor: pointer;
+      flex: 0 0 auto;
+      transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+    }
+    .scanner-tab:hover {
+      background: var(--bg-subtle);
+      box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent-brand) 22%, transparent);
+    }
+    .scanner-tab:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+    .scanner-tab[aria-selected="true"] {
+      background: color-mix(in oklch, var(--accent-brand) 12%, transparent);
+      border-color: var(--accent-brand);
+      color: var(--accent-brand);
+    }
+    .scanner-tab[aria-selected="true"] .scanner-tab__n { color: currentColor; opacity: 0.7; }
+    .scanner-tab__n {
+      color: var(--fg-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .scanner-tab__n:empty { display: none; }
+    .scanner-tabs__overflow {
+      position: relative;
+      flex: 0 0 auto;
+    }
+    .scanner-tab--more[hidden] { display: none; }
+    .scanner-tab--more.is-active {
+      border-color: var(--accent-brand);
+      color: var(--accent-brand);
+    }
+    .scanner-tabs__menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + var(--space-1));
+      min-width: 200px;
+      max-height: 280px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      z-index: var(--z-drawer);
+      padding: var(--space-1) 0;
+    }
+    .scanner-tabs__menu[hidden] { display: none; }
+    /* Overflowed tabs are the same real buttons, reparented into the menu —
+       restyled here from pill to full-width row. */
+    .scanner-tabs__menu .scanner-tab {
+      width: 100%;
+      justify-content: space-between;
+      border: none;
+      border-radius: 0;
+      padding: var(--space-2) var(--space-3);
+    }
+    .scanner-tabs__menu .scanner-tab:hover { box-shadow: none; }
+    .scanner-tabs__menu .scanner-tab[aria-selected="true"] { background: color-mix(in oklch, var(--accent-brand) 12%, transparent); }
   </style>
 
 </head>
@@ -2141,6 +2233,7 @@
 {{ $commitURL := .Metadata.CommitURL }}
 {{ $webURL := .Metadata.WebURL }}
 {{ $vcs := .Metadata.VCSURL }}
+{{- $multiScanner := gt (len .Metadata.Scanners) 1 }}
 
 <body>
   <svg xmlns="http://www.w3.org/2000/svg" class="u-hidden">
@@ -2381,9 +2474,11 @@
     <div class="toc-grouping" role="group" aria-label="Group findings by">
       <button class="toc-grp-btn" data-grp="sev-file" aria-pressed="true"  type="button">By severity</button>
       <button class="toc-grp-btn" data-grp="rule"     aria-pressed="false" type="button">By finding</button>
+      {{- if $multiScanner}}<button class="toc-grp-btn" data-grp="scanner" aria-pressed="false" type="button">By scanner</button>{{end}}
     </div>
     <div class="toc-tree" id="toc-by-sev"  aria-label="Findings by severity and file"></div>
     <div class="toc-tree" id="toc-by-rule" aria-label="Findings by finding" hidden></div>
+    {{- if $multiScanner}}<div class="toc-tree" id="toc-by-scanner" aria-label="Findings by scanner" hidden></div>{{end}}
     <div class="toc-resize" id="toc-resize" role="separator" aria-orientation="vertical" aria-label="Resize findings panel" tabindex="0"></div>
   </aside>
 
@@ -2393,6 +2488,21 @@
 
       <!-- <div class="main-body-summary">
       </div> -->
+
+      {{- if $multiScanner}}
+      <div id="scanner-tabs" class="scanner-tabs" role="tablist" aria-label="Filter by scanner">
+        <div class="scanner-tabs__list">
+          <button class="scanner-tab" data-scanner-tab="" role="tab" aria-selected="true" type="button">All scanners<span class="scanner-tab__n"></span></button>
+          {{range $.Metadata.Scanners}}
+          <button class="scanner-tab" data-scanner-tab="{{.}}" role="tab" aria-selected="false" type="button" title="{{.}}">{{.}}<span class="scanner-tab__n"></span></button>
+          {{end}}
+        </div>
+        <div class="scanner-tabs__overflow">
+          <button class="scanner-tab scanner-tab--more" id="scanner-tabs-more" type="button" aria-haspopup="true" aria-expanded="false" hidden>+<span id="scanner-tabs-more-n"></span> more</button>
+          <div class="scanner-tabs__menu" id="scanner-tabs-menu" role="menu" hidden></div>
+        </div>
+      </div>
+      {{- end}}
 
       {{$n := 0}}
       {{$lastSection := ""}}
@@ -2418,7 +2528,7 @@
         {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
         {{ $locationWebURL := index $location.Properties "WebURL"}}
         {{ $locationPRWebURL := index $location.Properties "PRWebURL"}}
-        <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-classification="{{if $.Metadata.RequiredEnabled}}{{if eq (index .Properties "Required") "true"}}required{{else}}recommended{{end}}{{end}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}">
+        <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-classification="{{if $.Metadata.RequiredEnabled}}{{if eq (index .Properties "Required") "true"}}required{{else}}recommended{{end}}{{end}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}"{{if $multiScanner}} data-scanner="{{index .Properties "Scanner"}}"{{end}}>
           <summary class="finding__head">
             <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
             <span class="finding__num">#{{add $n 1}}</span><span class="finding__title" role="heading" aria-level="2" title="{{index .Properties "Title"}}">{{index .Properties "Title"}}</span>
@@ -2566,7 +2676,7 @@
           {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
           {{ $locationWebURL := index $location.Properties "WebURL"}}
           {{ $locationPRWebURL := index $location.Properties "PRWebURL"}}
-          <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}} finding--suppressed" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}" data-suppressed="true">
+          <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}} finding--suppressed" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}" data-suppressed="true"{{if $multiScanner}} data-scanner="{{index .Properties "Scanner"}}"{{end}}>
             <summary class="finding__head">
               <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
               <span class="finding__num">#{{add $n 1}}</span><span class="finding__title" role="heading" aria-level="2" title="{{index .Properties "Title"}}">{{index .Properties "Title"}}</span>
@@ -2724,13 +2834,14 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
 
       // Shared state exposed to cross-cutting handlers
       let syncToggleLabel, setTocOpen, searchInput, helpDialog;
-      let openHelp, closeHelp, refreshToc, syncPillState;
+      let openHelp, closeHelp, refreshToc, syncPillState, resetScannerTab;
 
       // Unified filter state
       let activeSeverities = new Set();  // empty = "all"
       let activeSearch = '';
       let requiredOnly    = false;
       let recommendedOnly = false;
+      let activeScanner   = '';  // '' = all scanners; set by initScannerTabs()
 
       function isVisible(f) {
         if (activeSeverities.size > 0) {
@@ -2738,6 +2849,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         }
         if (requiredOnly    && f.dataset.classification !== 'required')    return false;
         if (recommendedOnly && f.dataset.classification !== 'recommended') return false;
+        if (activeScanner && f.dataset.scanner !== activeScanner) return false;
         if (activeSearch) {
           const tokens = activeSearch.toLowerCase().split(/\s+/).filter(Boolean);
           const hay = f.dataset.searchText || '';
@@ -2977,11 +3089,13 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         const noResults = document.getElementById('no-results');
         const countEl   = document.getElementById('search-count');
         if (!noResults) return;
+        const inScope = f => !activeScanner || f.dataset.scanner === activeScanner;
         const visible = findings.filter(f => !f.hidden && f.dataset.suppressed !== 'true').length;
         noResults.hidden = visible > 0;
         if (countEl) {
           const isFiltered = activeSeverities.size > 0 || activeSearch !== '' || requiredOnly || recommendedOnly;
-          countEl.textContent = isFiltered ? `${visible} of {{index .Metadata.SuppressionInfo "active"}} shown` : '';
+          const scopeTotal = findings.filter(f => f.dataset.suppressed !== 'true' && inScope(f)).length;
+          countEl.textContent = isFiltered ? `${visible} of ${scopeTotal} shown` : '';
         }
       }
 
@@ -2999,6 +3113,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           activeSearch = '';
           if (searchInput) searchInput.value = '';
           if (syncPillState) syncPillState();
+          if (resetScannerTab) resetScannerTab();
           persistSeverities();
           applyVisibility();
           if (searchInput) searchInput.focus();
@@ -3044,10 +3159,16 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         const drawer     = document.getElementById('toc-drawer');
         const toggleBtn  = document.getElementById('toc-toggle');
         const closeBtn   = document.getElementById('toc-close');
-        const treeSev    = document.getElementById('toc-by-sev');
-        const treeRule   = document.getElementById('toc-by-rule');
+        const treeSev     = document.getElementById('toc-by-sev');
+        const treeRule    = document.getElementById('toc-by-rule');
+        const treeScanner = document.getElementById('toc-by-scanner');
         const resizeHandle = document.getElementById('toc-resize');
         const grpBtns    = Array.from(drawer.querySelectorAll('.toc-grp-btn'));
+        const trees      = [treeSev, treeRule, treeScanner].filter(Boolean);
+        // Scanner group order for "By scanner": mirrors the tab strip's --input order.
+        const scannerOrder = Array.from(document.querySelectorAll('#scanner-tabs .scanner-tab[data-scanner-tab]'))
+          .map(b => b.dataset.scannerTab)
+          .filter(Boolean);
 
         const data = findings.map((f, i) => {
           const ruleId = f.dataset.ruleId || '';
@@ -3061,6 +3182,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             file: f.querySelector('.finding__path')?.textContent.trim() || '',
             line: (f.querySelector('.finding__line')?.textContent || '').replace(/^:/, ''),
             classification: f.dataset.classification || '',
+            scanner: f.dataset.scanner || '',
             suppressed: f.dataset.suppressed === 'true'
           };
         });
@@ -3213,46 +3335,75 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           return html;
         }
 
+        // Renders SEV_ORDER groups (each with its file/rule breakdown) for one bucket
+        // of items. Shared by buildSevTree (per required/recommended bucket) and
+        // buildScannerTree (per scanner bucket) — both nest "then severity" the same way.
+        function renderSevGroups(items, idSuffix, parentId) {
+          let html = '', rendered = 0;
+          const pSuffix = parentId ? ' ' + parentId : '';
+          const sevParent = parentId ? ' data-grp-parent="' + parentId + '"' : '';
+          SEV_ORDER.forEach(sev => {
+            const sevItems = items.filter(d => d.sev === sev);
+            if (!sevItems.length) return;
+            const capSev = sev.charAt(0).toUpperCase() + sev.slice(1);
+            const sevId = 'sg-' + sev + (idSuffix ? '-' + idSuffix : '');
+            if (rendered > 0) html += '<div class="tv-sep"></div>';
+            rendered++;
+            html += '<div class="tv-tr tv-d0" data-grp-id="' + sevId + '"' + sevParent + '>' +
+              chev + dot(sev) +
+              '<span class="tv-tl">' + capSev + '</span>' +
+              '<span class="tv-tc">' + sevItems.length + '</span></div>';
+            const byFile = groupBy(sevItems, d => d.file);
+            let fi = 0;
+            for (const [file, fileItems] of byFile) {
+              const basename = fileLabels.get(file) || '(unknown)';
+              const fileId = sevId + '-f' + fi++;
+              html += '<div class="tv-tr tv-d1" data-grp-parent="' + sevId + pSuffix + '" data-grp-id="' + fileId + '">' +
+                chev + fileIcon +
+                '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
+                '<span class="tv-tc">' + fileItems.length + '</span></div>';
+              const byRule = groupBy(fileItems, ruleKey);
+              for (const ruleItems of byRule.values()) {
+                html += renderRuleCluster(ruleItems, {
+                  leafDepth: 'tv-d2',
+                  parents: fileId + ' ' + sevId + pSuffix,
+                  chipClass: ''
+                });
+              }
+            }
+          });
+          return html;
+        }
+
+        // Renders the "Suppressed" prio-header plus its file/rule breakdown for one
+        // bucket of suppressed items. Shared by buildSevTree and buildScannerTree.
+        function renderSuppressedByFile(suppItems, grpId) {
+          let html = '<div class="tv-prio-hdr tv-prio-hdr--suppressed" data-grp-id="' + grpId + '">' +
+            '&#8856; <span>Suppressed</span><span class="tv-tc">' + suppItems.length + '</span></div>';
+          const byFile = groupBy(suppItems, d => d.file);
+          let fi = 0;
+          for (const [file, fileItems] of byFile) {
+            const basename = fileLabels.get(file) || '(unknown)';
+            const fileId = grpId + '-f' + fi++;
+            html += '<div class="tv-tr tv-d1 tv-grp--suppressed" data-grp-parent="' + grpId + '" data-grp-id="' + fileId + '">' +
+              chev + fileIcon +
+              '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
+              '<span class="tv-tc">' + fileItems.length + '</span></div>';
+            const byRule = groupBy(fileItems, ruleKey);
+            for (const ruleItems of byRule.values()) {
+              html += renderRuleCluster(ruleItems, {
+                leafDepth: 'tv-d2 tv-grp--suppressed',
+                parents: fileId + ' ' + grpId,
+                chipClass: 'tv-grp--suppressed'
+              });
+            }
+          }
+          return html;
+        }
+
         function buildSevTree(dataset, fileLabels) {
           const activeItems = dataset.filter(d => !d.suppressed);
           const suppItems   = dataset.filter(d => d.suppressed);
-
-          function renderSevGroups(items, idSuffix, parentId) {
-            let html = '', rendered = 0;
-            const pSuffix = parentId ? ' ' + parentId : '';
-            const sevParent = parentId ? ' data-grp-parent="' + parentId + '"' : '';
-            SEV_ORDER.forEach(sev => {
-              const sevItems = items.filter(d => d.sev === sev);
-              if (!sevItems.length) return;
-              const capSev = sev.charAt(0).toUpperCase() + sev.slice(1);
-              const sevId = 'sg-' + sev + (idSuffix ? '-' + idSuffix : '');
-              if (rendered > 0) html += '<div class="tv-sep"></div>';
-              rendered++;
-              html += '<div class="tv-tr tv-d0" data-grp-id="' + sevId + '"' + sevParent + '>' +
-                chev + dot(sev) +
-                '<span class="tv-tl">' + capSev + '</span>' +
-                '<span class="tv-tc">' + sevItems.length + '</span></div>';
-              const byFile = groupBy(sevItems, d => d.file);
-              let fi = 0;
-              for (const [file, fileItems] of byFile) {
-                const basename = fileLabels.get(file) || '(unknown)';
-                const fileId = sevId + '-f' + fi++;
-                html += '<div class="tv-tr tv-d1" data-grp-parent="' + sevId + pSuffix + '" data-grp-id="' + fileId + '">' +
-                  chev + fileIcon +
-                  '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
-                  '<span class="tv-tc">' + fileItems.length + '</span></div>';
-                const byRule = groupBy(fileItems, ruleKey);
-                for (const ruleItems of byRule.values()) {
-                  html += renderRuleCluster(ruleItems, {
-                    leafDepth: 'tv-d2',
-                    parents: fileId + ' ' + sevId + pSuffix,
-                    chipClass: ''
-                  });
-                }
-              }
-            });
-            return html;
-          }
 
           let html = '';
           if (requiredEnabled) {
@@ -3275,28 +3426,33 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           }
 
           if (suppItems.length) {
-            const supGrpId = 'sg-suppressed';
             html += '<div class="tv-sep"></div>';
-            html += '<div class="tv-prio-hdr tv-prio-hdr--suppressed" data-grp-id="' + supGrpId + '">' +
-              '&#8856; <span>Suppressed</span><span class="tv-tc">' + suppItems.length + '</span></div>';
-            const byFile = groupBy(suppItems, d => d.file);
-            let fi = 0;
-            for (const [file, fileItems] of byFile) {
-              const basename = fileLabels.get(file) || '(unknown)';
-              const fileId = supGrpId + '-f' + fi++;
-              html += '<div class="tv-tr tv-d1 tv-grp--suppressed" data-grp-parent="' + supGrpId + '" data-grp-id="' + fileId + '">' +
-                chev + fileIcon +
-                '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
-                '<span class="tv-tc">' + fileItems.length + '</span></div>';
-              const byRule = groupBy(fileItems, ruleKey);
-              for (const ruleItems of byRule.values()) {
-                html += renderRuleCluster(ruleItems, {
-                  leafDepth: 'tv-d2 tv-grp--suppressed',
-                  parents: fileId + ' ' + supGrpId,
-                  chipClass: 'tv-grp--suppressed'
-                });
-              }
-            }
+            html += renderSuppressedByFile(suppItems, 'sg-suppressed');
+          }
+          return html;
+        }
+
+        function buildScannerTree(dataset, fileLabels, scannerOrder) {
+          const activeItems = dataset.filter(d => !d.suppressed);
+          const suppItems   = dataset.filter(d => d.suppressed);
+          const byScanner = groupBy(activeItems, d => d.scanner);
+
+          let html = '', rendered = 0;
+          scannerOrder.forEach(scanner => {
+            const items = byScanner.get(scanner);
+            if (!items || !items.length) return;
+            const grpId = 'scg-' + rendered;
+            if (rendered > 0) html += '<div class="tv-sep"></div>';
+            rendered++;
+            html += '<div class="tv-tr tv-d0" data-grp-id="' + grpId + '">' +
+              chev + '<span class="tv-tl">' + esc(scanner) + '</span>' +
+              '<span class="tv-tc">' + items.length + '</span></div>';
+            html += renderSevGroups(items, grpId, grpId);
+          });
+
+          if (suppItems.length) {
+            html += '<div class="tv-sep"></div>';
+            html += renderSuppressedByFile(suppItems, 'scg-suppressed');
           }
           return html;
         }
@@ -3479,6 +3635,9 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           const empty = '<div class="tv-empty">No findings match the current filter.</div>';
           treeSev.innerHTML  = filtered.length ? buildSevTree(filtered, fileLabels)  : empty;
           treeRule.innerHTML = filtered.length ? buildRuleTree(filtered, fileLabels) : empty;
+          if (treeScanner) {
+            treeScanner.innerHTML = filtered.length ? buildScannerTree(filtered, fileLabels, scannerOrder) : empty;
+          }
           if (tocCountEl) tocCountEl.textContent = String(filtered.length);
           collapseSupGroupIfAll();
           initTocScrollSpy();
@@ -3500,8 +3659,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         }
 
         function collapseSupGroupIfAll() {
-          [treeSev, treeRule].forEach(tree => {
-            tree.querySelectorAll('[data-grp-id="sg-suppressed"], [data-grp-id="rg-suppressed"]').forEach(hdr => {
+          trees.forEach(tree => {
+            tree.querySelectorAll('[data-grp-id="sg-suppressed"], [data-grp-id="rg-suppressed"], [data-grp-id="scg-suppressed"]').forEach(hdr => {
               if (hdr.dataset.collapsed !== 'true') toggleGroup(hdr);
             });
           });
@@ -3517,7 +3676,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           btn.textContent = expanded ? 'Show less' : '+ ' + btn.dataset.more + ' more';
         }
 
-        [treeSev, treeRule].forEach(tree => {
+        trees.forEach(tree => {
           tree.addEventListener('click', e => {
             const more = e.target.closest('.tv-chips__more');
             if (more) { toggleChipStrip(more); return; }
@@ -3528,9 +3687,11 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         });
 
         function setGrouping(grp) {
+          if (grp === 'scanner' && !treeScanner) grp = 'sev-file';
           grpBtns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.grp === grp)));
           treeSev.hidden  = grp !== 'sev-file';
           treeRule.hidden = grp !== 'rule';
+          if (treeScanner) treeScanner.hidden = grp !== 'scanner';
           try { localStorage.setItem('report.toc.grouping', grp); } catch(_) {}
         }
         grpBtns.forEach(b => b.addEventListener('click', () => setGrouping(b.dataset.grp)));
@@ -3570,6 +3731,145 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         // Open on load if persisted
         const savedOpen = localStorage.getItem('report.toc');
         setTocOpen(savedOpen === null ? true : savedOpen === 'true');
+      }
+
+      // Scanner tab strip: absent from the DOM entirely for a single-scanner report
+      // (the template only renders #scanner-tabs for 2+ distinct scanners), so this
+      // is a no-op there.
+      function initScannerTabs() {
+        const container = document.getElementById('scanner-tabs');
+        if (!container) return;
+        const list    = container.querySelector('.scanner-tabs__list');
+        const moreBtn = document.getElementById('scanner-tabs-more');
+        const moreNEl = document.getElementById('scanner-tabs-more-n');
+        const menu    = document.getElementById('scanner-tabs-menu');
+        const allTabs = Array.from(list.querySelectorAll('.scanner-tab[data-scanner-tab]'));
+        const GAP = 6;
+
+        function countFor(scanner) {
+          return findings.filter(f => f.dataset.suppressed !== 'true' &&
+            (scanner === '' || f.dataset.scanner === scanner)).length;
+        }
+
+        function updateTabCounts() {
+          allTabs.forEach(btn => {
+            const n = btn.querySelector('.scanner-tab__n');
+            if (n) n.textContent = String(countFor(btn.dataset.scannerTab));
+          });
+        }
+
+        function setPillCount(filterName, n) {
+          const pill = document.querySelector('.summary-bar__pills .pill[data-filter="' + filterName + '"]');
+          if (!pill) return;
+          const el = pill.querySelector('.pill__n');
+          if (el) el.textContent = String(n);
+          if (n === 0) pill.setAttribute('aria-disabled', 'true');
+          else pill.removeAttribute('aria-disabled');
+        }
+
+        // Recomputes the severity and Required/Recommended pill counts against the
+        // active tab, so numbers next to a filter always describe what's on screen.
+        function updateSummaryPillCounts() {
+          const scoped = findings.filter(f => f.dataset.suppressed !== 'true' &&
+            (!activeScanner || f.dataset.scanner === activeScanner));
+          const sev = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+          let required = 0, recommended = 0;
+          scoped.forEach(f => {
+            const s = f.dataset.severity;
+            if (s && s in sev) sev[s]++;
+            if (f.dataset.classification === 'required') required++;
+            else if (f.dataset.classification === 'recommended') recommended++;
+          });
+          setPillCount('all', scoped.length);
+          Object.keys(sev).forEach(s => setPillCount(s, sev[s]));
+          setPillCount('required', required);
+          setPillCount('recommended', recommended);
+        }
+
+        function closeMenu() {
+          menu.hidden = true;
+          moreBtn.setAttribute('aria-expanded', 'false');
+        }
+
+        // True when the active tab's button currently lives in the overflow menu,
+        // i.e. it didn't fit in the visible strip at the current width.
+        function updateMoreActiveState() {
+          const activeBtn = activeScanner && allTabs.find(btn => btn.dataset.scannerTab === activeScanner);
+          moreBtn.classList.toggle('is-active', !!activeBtn && menu.contains(activeBtn));
+        }
+
+        function setActive(scanner) {
+          activeScanner = scanner;
+          allTabs.forEach(btn => btn.setAttribute('aria-selected', String(btn.dataset.scannerTab === scanner)));
+          updateMoreActiveState();
+          closeMenu();
+          try { localStorage.setItem('report.scanner', scanner); } catch (_) {}
+          applyVisibility();
+          updateSummaryPillCounts();
+        }
+        resetScannerTab = () => setActive('');
+
+        allTabs.forEach(btn => btn.addEventListener('click', () => setActive(btn.dataset.scannerTab)));
+
+        moreBtn.addEventListener('click', () => {
+          const open = menu.hidden;
+          menu.hidden = !open;
+          moreBtn.setAttribute('aria-expanded', String(open));
+        });
+        document.addEventListener('click', e => {
+          if (menu.hidden) return;
+          if (e.target.closest('#scanner-tabs-menu') || e.target.closest('#scanner-tabs-more')) return;
+          closeMenu();
+        });
+
+        // Keeps as many tabs on one line as fit, moving the rest (in original order)
+        // into the "+N more" menu. Tabs are real, already-wired buttons that get
+        // reparented between the visible list and the menu — no re-binding needed.
+        function measureOverflow() {
+          allTabs.forEach(btn => list.appendChild(btn));
+          closeMenu();
+          moreBtn.hidden = true;
+
+          const available = container.clientWidth;
+          let used = 0, fitsAll = true;
+          for (let i = 0; i < allTabs.length; i++) {
+            used += allTabs[i].offsetWidth + (i > 0 ? GAP : 0);
+            if (used > available) { fitsAll = false; break; }
+          }
+          if (fitsAll) return;
+
+          moreBtn.hidden = false;
+          const moreWidth = moreBtn.offsetWidth + GAP;
+          used = 0;
+          let cut = 0;
+          for (let i = 0; i < allTabs.length; i++) {
+            const w = allTabs[i].offsetWidth + (i > 0 ? GAP : 0);
+            if (used + w + moreWidth > available) break;
+            used += w;
+            cut = i + 1;
+          }
+          if (cut < 1) cut = 1; // "All scanners" always stays visible
+
+          const overflow = allTabs.slice(cut);
+          overflow.forEach(btn => menu.appendChild(btn));
+          moreNEl.textContent = String(overflow.length);
+          updateMoreActiveState();
+        }
+
+        updateTabCounts();
+
+        let restored = '';
+        try { restored = localStorage.getItem('report.scanner') || ''; } catch (_) {}
+        if (restored && allTabs.some(btn => btn.dataset.scannerTab === restored)) {
+          setActive(restored);
+        }
+
+        measureOverflow();
+        let resizeDebounce;
+        window.addEventListener('resize', () => {
+          clearTimeout(resizeDebounce);
+          resizeDebounce = setTimeout(measureOverflow, 120);
+        });
       }
 
       function initCopy() {
@@ -3707,6 +4007,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             activeSearch = '';
             if (searchInput) searchInput.value = '';
             if (syncPillState) syncPillState();
+            if (resetScannerTab) resetScannerTab();
             persistSeverities();
             applyVisibility();
             e.preventDefault();
@@ -3864,6 +4165,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       initSmartDefaults();
       initToggleAll();
       initToc();
+      initScannerTabs();
       initCopy();
       initCopyAll();
       initFixCopy();

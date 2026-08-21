@@ -59,6 +59,7 @@ type cspData struct {
 type ReportMetadata struct {
 	git.RepositoryMetadata
 	Tools           []scaniosarif.ToolMetadata
+	Scanners        []string
 	Title           string
 	Time            time.Time
 	SourceFolder    string
@@ -276,6 +277,10 @@ var ToHtmlCmd = &cobra.Command{
 			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
 
+		// Distinct scanners, in merge order — captured before the severity sort
+		// reorders results, so the tab strip lists scanners in --input order.
+		scanners := sarifReport.CollectScanners()
+
 		if requiredEnabled {
 			sarifReport.SortResultsByRequiredThenSeverity()
 		} else {
@@ -297,6 +302,7 @@ var ToHtmlCmd = &cobra.Command{
 		metadata := &ReportMetadata{
 			RepositoryMetadata: *repositoryMetadata,
 			Tools:              toolsMetadata,
+			Scanners:           scanners,
 			Title:              allToHTMLOptions.Title,
 			Time:               time.Now().UTC(),
 			SourceFolder:       metadataSourceFolder,
