@@ -1045,8 +1045,15 @@
     .findings-empty__clear:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 
     /* ── Suppressed findings section ─────────────────────────── */
+    .findings-section[aria-expanded="false"] { margin-bottom: 0; }
+
+    /* Active and suppressed findings are different categories, so the break
+       between them is double the gap between sibling sections, with the rule
+       centred in it: space-3 above from this margin, space-3 below from the
+       next header's own top margin. */
     .findings--suppressed {
       border-top: 2px solid var(--border-muted);
+      margin-top: var(--space-3);
     }
 
 
