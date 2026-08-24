@@ -3422,7 +3422,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             const d = items[0];
             return '<a class="tv-tr ' + opts.leafDepth + '" href="#' + d.id + '" target="_self" title="' + titleAttr + ' (' + esc(d.file || d.id) + ':' + esc(d.line) + ')"' + parentAttr + '>' +
               chevLeaf + dot(d.sev) +
-              '<span class="tv-tl">' + esc(cap60(label)) + '</span><span class="tv-ls">#' + esc(d.num) + '</span></a>';
+              '<span class="tv-tl">' + esc(cap60(label)) + '</span>' +
+              '<span class="tv-ls' + (opts.lsClassFor ? opts.lsClassFor(d) : '') + '">#' + esc(d.num) + '</span></a>';
           }
           // Collapsed row + chip strip. The row anchors to the first finding so a row-click still jumps somewhere sensible.
           const firstId = items[0].id;
@@ -3433,6 +3434,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           html += renderChipStrip(items, {
             parents: opts.parents,
             chipClass: opts.chipClass,
+            classFor: opts.classFor,
             titleFor: d => titleAttr + ' (' + esc(d.file || d.id) + ':' + esc(d.line) + ')'
           });
           return html;
@@ -3441,7 +3443,14 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         // Renders SEV_ORDER groups (each with its file/rule breakdown) for one bucket
         // of items. Shared by buildSevTree (per required/recommended bucket) and
         // buildScannerTree (per scanner bucket) — both nest "then severity" the same way.
-        function renderSevGroups(items, idSuffix, parentId) {
+        // showClassification: colour each finding's #N by Required/Recommended, the way
+        // buildRuleTree does. buildSevTree leaves it off because it already groups under
+        // Required/Recommended headers; buildScannerTree turns it on because it does not.
+        function renderSevGroups(items, idSuffix, parentId, showClassification) {
+          const lsClassFor = d => d.classification === 'required' ? ' tv-ls--required'
+            : d.classification === 'recommended' ? ' tv-ls--recommended' : '';
+          const chipClassFor = d => d.classification === 'required' ? 'tv-chip--required'
+            : d.classification === 'recommended' ? 'tv-chip--recommended' : '';
           let html = '', rendered = 0;
           const pSuffix = parentId ? ' ' + parentId : '';
           const sevParent = parentId ? ' data-grp-parent="' + parentId + '"' : '';
@@ -3450,7 +3459,9 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             if (!sevItems.length) return;
             const capSev = sev.charAt(0).toUpperCase() + sev.slice(1);
             const sevId = 'sg-' + sev + (idSuffix ? '-' + idSuffix : '');
-            if (rendered > 0) html += '<div class="tv-sep"></div>';
+            // The separator is a child of the same group as the rows it divides, so it
+            // must carry the parent chain or it survives collapse as a blank line.
+            if (rendered > 0) html += '<div class="tv-sep"' + sevParent + '></div>';
             rendered++;
             html += '<div class="tv-tr tv-d0" data-grp-id="' + sevId + '"' + sevParent + '>' +
               chev + dot(sev) +
@@ -3470,7 +3481,9 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
                 html += renderRuleCluster(ruleItems, {
                   leafDepth: 'tv-d2',
                   parents: fileId + ' ' + sevId + pSuffix,
-                  chipClass: ''
+                  chipClass: '',
+                  lsClassFor: showClassification ? lsClassFor : null,
+                  classFor: showClassification ? chipClassFor : null
                 });
               }
             }
@@ -3550,7 +3563,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             html += '<div class="tv-tr tv-d0" data-grp-id="' + grpId + '">' +
               chev + '<span class="tv-tl">' + esc(scanner) + '</span>' +
               '<span class="tv-tc">' + items.length + '</span></div>';
-            html += renderSevGroups(items, grpId, grpId);
+            html += renderSevGroups(items, grpId, grpId, requiredEnabled);
           });
 
           if (suppItems.length) {
