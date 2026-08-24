@@ -48,7 +48,7 @@ Confirm each of the following on `example.html` (single scanner):
 
 - The header tool chip shows both driver name/version pairs: `Semgrep OSS 1.95.0, AI Security Scanner 1.4.0`.
 - A scanner tab strip renders above the findings list: `All scanners` 22, `Semgrep OSS` 17, `AI Security Scanner` 5; the two scanner counts sum to the `All scanners` count.
-- Clicking the `AI Security Scanner` tab narrows the card list to its 5 findings and recomputes both the severity pills (Critical 1, High 2, Medium 2, Low 0, Info 0) and the Required/Recommended pills (Required 4, Recommended 1) against just that tab. Clicking back to `All scanners` restores the full counts (Required 20, Recommended 2).
+- Clicking the `AI Security Scanner` tab narrows the card list to its 5 findings and recomputes both the severity pills (Critical 1, High 2, Medium 2, Low 0, Info 0) and the Required/Recommended pills (Required 3, Recommended 2) against just that tab. Clicking back to `All scanners` restores the full counts (Required 19, Recommended 3).
 - At a narrow viewport (around 320px) the tab strip collapses `Semgrep OSS` and `AI Security Scanner` into a `+2 more` button; opening it and picking a scanner from the menu filters exactly as clicking its tab would.
 - The `By scanner` TOC mode groups findings by scanner, then severity, then file, one level deeper than `By severity`.
 - Typing in the search box narrows within the active scanner tab rather than resetting it back to `All scanners`.
@@ -56,7 +56,7 @@ Confirm each of the following on `example.html` (single scanner):
 - The false-positive review panel renders for every result carrying a `properties.fp` verdict, with the exact labels `Confirmed as a real issue` (TRUE_POSITIVE), `Likely false positive` (FALSE_POSITIVE), and `Needs verification` (NEEDS_VERIFICATION).
 - `Needs verification` carries a dotted underline and shows a tooltip on hover.
 - `Mass assignment via unvalidated model binding` (Medium, AI Security Scanner) has no `properties.fp` bag at all: it shows no false-positive panel, and its Required banner reads "... not FP-assessed".
-- `Privilege escalation via missing authorization check` (Critical, AI Security Scanner, `FALSE_POSITIVE`) shows a red `Required` banner directly above the neutral slate false-positive panel; the two never borrow each other's color, so a Critical finding the agent thinks is bogus never renders behind a "safe"-colored panel.
+- `Privilege escalation via missing authorization check` (Critical, AI Security Scanner, `FALSE_POSITIVE`) reads `Recommended — Critical severity, false positive per FP review`: no severity is special-cased, so a false-positive verdict demotes a Critical finding exactly as it demotes any other. The slate panel below it keeps the same fixed color it has for every verdict.
 - The confidence arrow (e.g. `High (88%) → Low (5%)`) renders only on findings that also carry `properties.pre_fp_confidence`; findings with only `properties.confidence` show a single value with no arrow and no fabricated "before" number. The arrow carries no strikethrough and no bold weight.
 - Check both light and dark themes for the tab strip and the false-positive panel; the panel header background (`#e9eef5` light / `#1a2432` dark) is fixed regardless of verdict, independent of the Required/Recommended banner color above it.
 

@@ -914,7 +914,11 @@
     .summary-bar__pills::-webkit-scrollbar { display: none; }
     /* Two-row: pills get their own row with a divider below */
     .summary-bar__inner--policy .summary-bar__pills {
-      padding: var(--space-2) 0;
+      /* The 3px left padding gives the first pill's hover/focus ring room to
+         paint inside this scrolling box; the matching negative margin keeps the
+         row's left edge aligned with the header brand and the TOC drawer. */
+      padding: var(--space-2) 0 var(--space-2) 3px;
+      margin-left: -3px;
       border-bottom: 1px solid var(--border-muted);
       flex-shrink: 0;
     }
@@ -1363,6 +1367,8 @@
     .tv-dot--medium   { background: var(--sev-medium-dot); }
     .tv-dot--low      { background: var(--sev-low-dot); }
     .tv-dot--info     { background: var(--sev-info-dot); }
+    /* unknown aliases to the low palette, matching .finding__badge--unknown */
+    .tv-dot--unknown  { background: var(--sev-low-dot); }
 
     /* Separator between rule groups */
     .tv-sep { height: 1px; background: var(--border-muted); margin: 4px 0; }
@@ -3538,7 +3544,9 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           scannerOrder.forEach(scanner => {
             const items = byScanner.get(scanner);
             if (!items || !items.length) return;
-            const scanId = grpId + '-s' + si++;
+            const scanId = grpId + '-s' + si;
+            if (si > 0) html += '<div class="tv-sep" data-grp-parent="' + grpId + '"></div>';
+            si++;
             html += '<div class="tv-tr tv-d1 tv-grp--suppressed" data-grp-parent="' + grpId + '" data-grp-id="' + scanId + '">' +
               chev + '<span class="tv-tl">' + esc(scanner) + '</span>' +
               '<span class="tv-tc">' + items.length + '</span></div>';
