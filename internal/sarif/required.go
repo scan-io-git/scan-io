@@ -20,21 +20,6 @@ type RequiredPolicy struct {
 	Thresholds        map[string]float64
 }
 
-// DefaultConfidenceThresholds returns the per-severity demotion thresholds.
-// Callers that want confidence-based filtering can pass this map (or a subset)
-// as RequiredPolicy.Thresholds. An empty Thresholds map disables confidence
-// filtering entirely — all blocker-severity findings become Required regardless
-// of their confidence score.
-func DefaultConfidenceThresholds() map[string]float64 {
-	return map[string]float64{
-		"critical": 0.5,
-		"high":     0.6,
-		"medium":   0.7,
-		"low":      0.8,
-		"info":     1.1,
-	}
-}
-
 // EnrichResultsRequiredProperty classifies every non-suppressed result as
 // Required or Recommended per the policy, writing Properties["Required"]
 // ("true"/"false") and Properties["RequiredReason"] (human-readable rationale).

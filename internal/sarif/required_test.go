@@ -6,13 +6,16 @@ import (
 	gosarif "github.com/owenrumney/go-sarif/v2/sarif"
 )
 
-func TestDefaultConfidenceThresholds(t *testing.T) {
-	d := DefaultConfidenceThresholds()
-	want := map[string]float64{"critical": 0.5, "high": 0.6, "medium": 0.7, "low": 0.8, "info": 1.1}
-	for k, v := range want {
-		if d[k] != v {
-			t.Errorf("threshold[%q] = %v, want %v", k, d[k], v)
-		}
+// thresholdFixture is a per-severity confidence threshold set used only by these
+// tests to exercise the threshold path. These are not recommended defaults: the
+// production path injects no thresholds unless a caller asks for them.
+func thresholdFixture() map[string]float64 {
+	return map[string]float64{
+		"critical": 0.5,
+		"high":     0.6,
+		"medium":   0.7,
+		"low":      0.8,
+		"info":     1.1,
 	}
 }
 
@@ -25,7 +28,7 @@ func TestEnrichRequired_BlockerHighConfidence(t *testing.T) {
 
 	report.EnrichResultsRequiredProperty(RequiredPolicy{
 		BlockerSeverities: map[string]bool{"high": true},
-		Thresholds:        DefaultConfidenceThresholds(),
+		Thresholds:        thresholdFixture(),
 	})
 
 	if got, _ := result.Properties["Required"].(string); got != "true" {
@@ -42,7 +45,7 @@ func TestEnrichRequired_DemotedBelowThreshold(t *testing.T) {
 
 	report.EnrichResultsRequiredProperty(RequiredPolicy{
 		BlockerSeverities: map[string]bool{"high": true},
-		Thresholds:        DefaultConfidenceThresholds(),
+		Thresholds:        thresholdFixture(),
 	})
 
 	if got, _ := result.Properties["Required"].(string); got != "false" {
@@ -59,7 +62,7 @@ func TestEnrichRequired_NoConfidenceTreatedAsConfident(t *testing.T) {
 
 	report.EnrichResultsRequiredProperty(RequiredPolicy{
 		BlockerSeverities: map[string]bool{"critical": true},
-		Thresholds:        DefaultConfidenceThresholds(),
+		Thresholds:        thresholdFixture(),
 	})
 
 	if got, _ := result.Properties["Required"].(string); got != "true" {
@@ -93,7 +96,7 @@ func TestEnrichRequired_SeverityNotBlocker(t *testing.T) {
 
 	report.EnrichResultsRequiredProperty(RequiredPolicy{
 		BlockerSeverities: map[string]bool{"critical": true, "high": true},
-		Thresholds:        DefaultConfidenceThresholds(),
+		Thresholds:        thresholdFixture(),
 	})
 
 	if got, _ := result.Properties["Required"].(string); got != "false" {
@@ -110,7 +113,7 @@ func TestEnrichRequired_SuppressedSkipped(t *testing.T) {
 
 	report.EnrichResultsRequiredProperty(RequiredPolicy{
 		BlockerSeverities: map[string]bool{"high": true},
-		Thresholds:        DefaultConfidenceThresholds(),
+		Thresholds:        thresholdFixture(),
 	})
 
 	if _, ok := result.Properties["Required"]; ok {
@@ -310,7 +313,7 @@ func TestEnrichRequired_VerdictOverridesThreshold(t *testing.T) {
 
 	report.EnrichResultsRequiredProperty(RequiredPolicy{
 		BlockerSeverities: map[string]bool{"high": true},
-		Thresholds:        DefaultConfidenceThresholds(),
+		Thresholds:        thresholdFixture(),
 	})
 
 	if got, _ := result.Properties["Required"].(string); got != "true" {
@@ -329,7 +332,7 @@ func TestEnrichRequired_NoVerdict_ThresholdPathReasonUnchanged(t *testing.T) {
 
 	report.EnrichResultsRequiredProperty(RequiredPolicy{
 		BlockerSeverities: map[string]bool{"high": true},
-		Thresholds:        DefaultConfidenceThresholds(),
+		Thresholds:        thresholdFixture(),
 	})
 
 	want := "High severity, confidence 40% < 60% threshold"
