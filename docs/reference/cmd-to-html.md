@@ -29,7 +29,7 @@ scanio to-html --input/-i PATH [--input/-i PATH ...] --output/-o PATH [--source/
 | `--pull-request` | string | No | `none` | Pull request ID. Enables PR-aware links: the header pill links to the PR and each finding's "Location in PR" links to the PR diff at the exact line, with a secondary commit-permalink link. When omitted, auto-detected from CI env vars: GITHUB_REF (refs/pull/N/merge), CI_MERGE_REQUEST_IID, BITBUCKET_PR_ID |
 | `--no-supressions` | bool | No | `false` | Enable removing results with suppressions properties |
 | `--no-csp` | bool | No | `false` | Disable the Content-Security-Policy meta tag in the generated report |
-| `--required` | string | No | `none` | Comma-separated blocker severities, with optional per-severity confidence threshold. A severity listed without a threshold (e.g. `critical,high`) marks all matching findings as Required. A `sev:N` threshold (e.g. `critical:0.50,high:0.90`) demotes findings whose confidence is below N to Recommended. A false-positive verdict on the finding, when present, takes precedence over the threshold -- see [Required and Recommended](#required-and-recommended). When set, findings are split into Required and Recommended sections. Env var fallback: `SCANIO_BLOCKER_SEVERITIES` (comma list); per-severity threshold via `SCANIO_CONFIDENCE_THRESHOLD_<SEV>` (e.g. `SCANIO_CONFIDENCE_THRESHOLD_HIGH=0.90`). The flag wins over env vars. |
+| `--required` | string | No | `none` | Comma-separated blocker severities, with optional per-severity confidence threshold. A severity listed without a threshold (e.g. `critical,high`) marks all matching findings as Required. A `sev:N` threshold (e.g. `critical:0.50,high:0.90`) demotes findings whose confidence is below N to Recommended. A false-positive verdict on the finding, when present, takes precedence over the threshold -- see [Required and Recommended](#required-and-recommended). When set, findings are split into Required and Recommended sections. Env var fallback: `SCANIO_BLOCKER_SEVERITIES` (comma list); per-severity threshold via `SCANIO_CONFIDENCE_THRESHOLD_<SEV>` (e.g. `SCANIO_CONFIDENCE_THRESHOLD_HIGH=0.90`). The flag wins over env vars. Each severity must be one of critical, high, medium, low, info, and each threshold must parse as a number between 0.0 and 1.0; an invalid severity or threshold fails the command with an error rather than being silently dropped. |
 
 ## Usage Examples
 The following examples demonstrate how to use the `to-html` command.
@@ -170,6 +170,14 @@ explaining its classification.
 
 Suppressed findings are never classified. They are skipped entirely and keep their own
 section.
+
+Each severity in `--required` (or `SCANIO_BLOCKER_SEVERITIES`) must be one of critical,
+high, medium, low, info, and each `sev:N` threshold must parse as a number between 0.0
+and 1.0. An unrecognized severity or an invalid threshold -- from either the flag or the
+env vars -- fails the command with an error rather than being silently dropped. This is
+different from a severity listed with no threshold at all, which is a deliberate
+no-threshold policy: every matching finding is Required regardless of confidence, not an
+error.
 
 Each finding is decided by three checks, in order. The first one that applies wins.
 

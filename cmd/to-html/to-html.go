@@ -246,7 +246,10 @@ var ToHtmlCmd = &cobra.Command{
 			return parsedURL.PRDiffLink(uri, startLine)
 		}
 
-		requiredPolicy, requiredEnabled := parseRequiredPolicy(allToHTMLOptions.Required)
+		requiredPolicy, requiredEnabled, err := parseRequiredPolicy(allToHTMLOptions.Required)
+		if err != nil {
+			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
+		}
 
 		// Per-input enrichment: each of these is Runs[0]-bound by design (rule map,
 		// scanner name, category resolution), so it must run against a single-tool
