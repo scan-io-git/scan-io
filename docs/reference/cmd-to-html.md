@@ -226,7 +226,9 @@ continuous finding numbering, ordered by severity (or by Required then severity 
 
 - A **tab strip** above the findings offers `All scanners` plus one tab per scanner, each
   with its count. Selecting a tab narrows the findings and recomputes the severity and
-  Required/Recommended pill counts so every number on screen describes what is visible.
+  Required/Recommended pill counts against that tab. Those counts describe the tab, not any
+  search term or severity filter applied on top of it -- the search box reports that
+  narrowing separately as "N of M shown".
 - Tabs that do not fit collapse into a `+N more` menu, remeasured on resize.
 - The findings panel gains a **By scanner** grouping mode alongside By severity and By
   finding.
