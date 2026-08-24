@@ -1298,6 +1298,7 @@
     .tv-d0 { padding-left: 8px;  padding-right: 8px; }
     .tv-d1 { padding-left: 20px; padding-right: 8px; }
     .tv-d2 { padding-left: 32px; padding-right: 8px; }
+    .tv-d3 { padding-left: 44px; padding-right: 8px; }
 
     /* Chevron */
     .tv-ch {
@@ -3491,29 +3492,51 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           return html;
         }
 
-        // Renders the "Suppressed" prio-header plus its file/rule breakdown for one
-        // bucket of suppressed items. Shared by buildSevTree and buildScannerTree.
-        function renderSuppressedByFile(suppItems, grpId) {
-          let html = '<div class="tv-prio-hdr tv-prio-hdr--suppressed" data-grp-id="' + grpId + '">' +
-            '&#8856; <span>Suppressed</span><span class="tv-tc">' + suppItems.length + '</span></div>';
-          const byFile = groupBy(suppItems, d => d.file);
-          let fi = 0;
-          for (const [file, fileItems] of byFile) {
+        // File/rule breakdown for a bucket of suppressed items. idPrefix keeps the
+        // generated group ids unique; parentChain is the ancestor chain those rows
+        // collapse with. depth shifts the rows when nested under a scanner row.
+        function renderSuppressedFileRows(suppItems, idPrefix, parentChain, depth) {
+          let html = '', fi = 0;
+          const fileDepth = depth === 2 ? 'tv-d2' : 'tv-d1';
+          const leafDepth = depth === 2 ? 'tv-d3' : 'tv-d2';
+          for (const [file, fileItems] of groupBy(suppItems, d => d.file)) {
             const basename = fileLabels.get(file) || '(unknown)';
-            const fileId = grpId + '-f' + fi++;
-            html += '<div class="tv-tr tv-d1 tv-grp--suppressed" data-grp-parent="' + grpId + '" data-grp-id="' + fileId + '">' +
+            const fileId = idPrefix + '-f' + fi++;
+            html += '<div class="tv-tr ' + fileDepth + ' tv-grp--suppressed" data-grp-parent="' + parentChain + '" data-grp-id="' + fileId + '">' +
               chev + fileIcon +
               '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
               '<span class="tv-tc">' + fileItems.length + '</span></div>';
-            const byRule = groupBy(fileItems, ruleKey);
-            for (const ruleItems of byRule.values()) {
+            for (const ruleItems of groupBy(fileItems, ruleKey).values()) {
               html += renderRuleCluster(ruleItems, {
-                leafDepth: 'tv-d2 tv-grp--suppressed',
-                parents: fileId + ' ' + grpId,
+                leafDepth: leafDepth + ' tv-grp--suppressed',
+                parents: fileId + ' ' + parentChain,
                 chipClass: 'tv-grp--suppressed'
               });
             }
           }
+          return html;
+        }
+
+        // Renders the "Suppressed" prio-header plus its breakdown. scannerOrder, when
+        // supplied, inserts a scanner level so the suppressed section is grouped on the
+        // same axis as the active findings above it.
+        function renderSuppressedGroup(suppItems, grpId, scannerOrder) {
+          let html = '<div class="tv-prio-hdr tv-prio-hdr--suppressed" data-grp-id="' + grpId + '">' +
+            '&#8856; <span>Suppressed</span><span class="tv-tc">' + suppItems.length + '</span></div>';
+          if (!scannerOrder) {
+            return html + renderSuppressedFileRows(suppItems, grpId, grpId, 1);
+          }
+          const byScanner = groupBy(suppItems, d => d.scanner);
+          let si = 0;
+          scannerOrder.forEach(scanner => {
+            const items = byScanner.get(scanner);
+            if (!items || !items.length) return;
+            const scanId = grpId + '-s' + si++;
+            html += '<div class="tv-tr tv-d1 tv-grp--suppressed" data-grp-parent="' + grpId + '" data-grp-id="' + scanId + '">' +
+              chev + '<span class="tv-tl">' + esc(scanner) + '</span>' +
+              '<span class="tv-tc">' + items.length + '</span></div>';
+            html += renderSuppressedFileRows(items, scanId, scanId + ' ' + grpId, 2);
+          });
           return html;
         }
 
@@ -3543,7 +3566,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
 
           if (suppItems.length) {
             html += '<div class="tv-sep"></div>';
-            html += renderSuppressedByFile(suppItems, 'sg-suppressed');
+            html += renderSuppressedGroup(suppItems, 'sg-suppressed');
           }
           return html;
         }
@@ -3568,7 +3591,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
 
           if (suppItems.length) {
             html += '<div class="tv-sep"></div>';
-            html += renderSuppressedByFile(suppItems, 'scg-suppressed');
+            html += renderSuppressedGroup(suppItems, 'scg-suppressed', scannerOrder);
           }
           return html;
         }
