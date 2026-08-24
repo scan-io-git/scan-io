@@ -207,7 +207,9 @@ func TestEnrichRequired_FPVerdict_NeedsVerificationRequired(t *testing.T) {
 	}
 }
 
-func TestEnrichRequired_FPVerdict_CriticalNeverDemoted(t *testing.T) {
+// Critical is not special-cased: a FALSE_POSITIVE verdict demotes it exactly as
+// it demotes any other blocker severity.
+func TestEnrichRequired_FPVerdict_CriticalHonoursVerdict(t *testing.T) {
 	id := "rule.test"
 	rule := &gosarif.ReportingDescriptor{ID: id}
 	result := resultFor(id)
@@ -221,8 +223,8 @@ func TestEnrichRequired_FPVerdict_CriticalNeverDemoted(t *testing.T) {
 		BlockerSeverities: map[string]bool{"critical": true},
 	})
 
-	if got, _ := result.Properties["Required"].(string); got != "true" {
-		t.Errorf("Required = %q, want \"true\" (critical is never demoted, even by FALSE_POSITIVE)", got)
+	if got, _ := result.Properties["Required"].(string); got != "false" {
+		t.Errorf("Required = %q, want \"false\" (critical honours FALSE_POSITIVE like any other severity)", got)
 	}
 	want := "Critical severity, false positive per FP review"
 	if got, _ := result.Properties["RequiredReason"].(string); got != want {

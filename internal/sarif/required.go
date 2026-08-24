@@ -40,17 +40,15 @@ func DefaultConfidenceThresholds() map[string]float64 {
 // ("true"/"false") and Properties["RequiredReason"] (human-readable rationale).
 // Suppressed results are left untouched. In-memory only; never written to disk.
 //
-// Gate order:
+// Gate order. Every severity is treated the same way: what you list in
+// BlockerSeverities is what can block, and nothing is special-cased.
 //  1. Severity not in BlockerSeverities → Recommended.
-//  2. Severity is critical → Required, never demoted — evaluated before any FP
-//     verdict or confidence threshold is even consulted.
-//  3. A recognized FP verdict takes precedence over Thresholds: FALSE_POSITIVE →
+//  2. A recognized FP verdict takes precedence over Thresholds: FALSE_POSITIVE →
 //     Recommended; TRUE_POSITIVE and NEEDS_VERIFICATION → Required.
-//  4. No fp bag, or an unrecognized verdict: falls back to the
-//     confidence-threshold path unchanged, so callers that pass Thresholds see
-//     the same behavior as before verdicts were read at all. With no
-//     threshold configured for the severity, that path fails closed to
-//     Required.
+//  3. No fp bag, or an unrecognized verdict: falls back to the
+//     confidence-threshold path, so callers that pass Thresholds see the same
+//     behavior as before verdicts were read at all. With no threshold
+//     configured for the severity, that path fails closed to Required.
 func (r Report) EnrichResultsRequiredProperty(policy RequiredPolicy) {
 	rulesMap := map[string]*sarif.ReportingDescriptor{}
 	for _, rule := range r.Runs[0].Tool.Driver.Rules {
@@ -81,9 +79,6 @@ func (r Report) EnrichResultsRequiredProperty(policy RequiredPolicy) {
 		switch {
 		case !policy.BlockerSeverities[sev]:
 			reason = fmt.Sprintf("%s severity is not required", capSev)
-		case sev == "critical":
-			required = true
-			reason = fpReasonPhrase(capSev, verdict, hasVerdict)
 		case hasVerdict:
 			required = verdict != FPVerdictFalsePositive
 			reason = fpReasonPhrase(capSev, verdict, hasVerdict)
