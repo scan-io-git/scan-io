@@ -78,6 +78,27 @@ The cap exists because the strip has a bounded `max-height` to drive the collaps
 
 Raising `CHIP_CAP` means re-checking both, since a taller strip has to keep fitting under `max-height`.
 
+## Scanner tab strip
+
+Rendered when the report merges more than one input (`Metadata.Scanners` has 2+ entries). `initScannerTabs` in `report.html` owns it. `activeScanner` (`''` = all) scopes `applyVisibility`, and every count on screen is recomputed against it: the tab's own `.scanner-tab__n`, the severity pills, and the Required/Recommended pills. A number next to a filter always describes what the active tab shows, never the whole report.
+
+Overflow is measured, not guessed. `measureOverflow` reflows every tab back into the list, then walks them summing `offsetWidth + GAP` against `container.clientWidth`; the first tab that would not fit becomes the cut, and the remainder move into the `+N more` menu. It re-runs on resize. Two invariants in that function:
+
+- `if (cut < 1) cut = 1` — "All scanners" always stays visible, even in a container too narrow for it. Losing the way back to the unfiltered view would be worse than one clipped tab.
+- Measurement requires the tabs to be in the DOM and unhidden, which is why it appends them all and un-hides `+N more` before reading widths. Measuring a hidden or clamped element reports the wrong size — the same class of bug as measuring a collapsed element's `scrollHeight`.
+
+Driver names come from the SARIF, so the strip cannot assume a fixed set or short names. It was checked at 12 scanners. Deliberately rejected: per-scanner colours and initials. `AI Security Scanner` is 19 characters and word-initials give "ASS", and neither scales to arbitrary names, so the row carries no scanner marker at all — the tab is the only affordance.
+
+## False-positive review panel
+
+`.finding__fp`, emitted inside `.finding__body` when a result carries `properties.fp` with a recognized verdict. Structure is a titled panel over a `.finding__fp-dl` key/value list: verdict, then reasoning. Evidence is deliberately not rendered.
+
+The panel's colour is independent of the verdict — a fixed slate (`--fp-border`, `--fp-bg`, `--fp-fg`), not the Required/Recommended palette. That was a decision, not an oversight: tinting the panel by outcome makes the panel itself look like a verdict badge and collides with the `.req-notice` banner directly above it, which is already colour-coded. Slate was picked against the Low-severity grey so the two do not read as the same signal.
+
+Verdict wording is owned by `fpVerdictLabels` in `internal/sarif/fp.go`, not the template: `Confirmed as a real issue`, `Likely false positive`, `Needs verification`. `NEEDS_VERIFICATION` also carries a hover hint (`fpVerdictHover`) rather than printing its full explanation inline, which otherwise dominated the panel.
+
+Confidence is not shown here. It stays in the finding's meta list, rendered as a pre-FP to post-FP arrow, because the FP agent overwrites `properties.confidence` with `p_real` and the reader needs both numbers to make sense of the change.
+
 ## Required / Recommended classification
 
 When `--required` is passed to `scanio to-html`, findings are classified as Required to fix or Recommended.
