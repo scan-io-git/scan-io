@@ -1156,6 +1156,15 @@
       color: var(--fg-subtle);
     }
 
+    /* Chrome draws its own cancel button for input[type=search] once the field
+       has focus and a value, and paints it in the system accent color, so in
+       dark mode a blue X landed on top of the report's own clear button. */
+    .search input::-webkit-search-cancel-button,
+    .search input::-webkit-search-decoration {
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
     .search__clear {
       position: absolute;
       right: var(--space-2);
