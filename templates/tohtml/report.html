@@ -1143,6 +1143,9 @@
       font-size: var(--text-base);
       font-family: inherit;
       min-width: 180px;
+      /* Clear the space the absolutely positioned clear button occupies, so a
+         long query's trailing text and caret don't slide under the icon. */
+      padding-right: 22px;
     }
 
     /* Restore 16px on touch devices to prevent iOS Safari auto-zoom on focus */
