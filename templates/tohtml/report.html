@@ -3873,9 +3873,27 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           // clears the inline override once settled, handing max-height back to
           // the stylesheet (none for a plain row, the chip strip's own cap).
           if (expanding) {
+            // The target height must be measured with the collapse clamp lifted,
+            // never while it's still applied: scrollHeight under an active
+            // max-height/overflow:hidden clamp reports the *content's* auto
+            // height, not the row's real size. That under-measures a
+            // fixed-height row like .tv-tr (content is shorter than its
+            // declared height) and, worse, measures exactly 0 for a childless
+            // one like .tv-sep -- which then "animates" to the value it's
+            // already at, so no transition ever starts and transitionend never
+            // fires, leaving the inline override stuck forever.
+            const heights = targets.map(el => {
+              const wasCollapsed = el.classList.contains('is-collapsed');
+              el.classList.remove('is-collapsed');
+              const prevInline = el.style.maxHeight;
+              el.style.maxHeight = 'none';
+              const h = el.scrollHeight;
+              el.style.maxHeight = prevInline;
+              if (wasCollapsed) el.classList.add('is-collapsed');
+              return h;
+            });
             targets.forEach(el => { el.style.maxHeight = '0px'; });
             targets.forEach(el => void el.offsetHeight);
-            const heights = targets.map(el => el.scrollHeight);
             requestAnimationFrame(() => {
               targets.forEach((el, i) => {
                 el.classList.remove('is-collapsed');
@@ -3892,15 +3910,30 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
               });
             });
           }
+          // A transitionend listener alone can't guarantee cleanup: if a
+          // target's measured height ever equals its current clamped value,
+          // no transition starts and transitionend never fires. A timeout
+          // matched to the transition duration (180ms, see the .toc-tree
+          // [data-grp-parent] rule above) is a backstop that always clears the
+          // inline override, whichever fires first.
           targets.forEach(el => {
-            if (el._tocCollapseEnd) el.removeEventListener('transitionend', el._tocCollapseEnd);
-            const onEnd = ev => {
-              if (ev.target !== el || ev.propertyName !== 'max-height') return;
+            if (el._tocCollapseEnd) {
+              el.removeEventListener('transitionend', el._tocCollapseEnd);
+              clearTimeout(el._tocCollapseTimer);
+              el._tocCollapseEnd = null;
+            }
+            const done = () => {
               el.removeEventListener('transitionend', onEnd);
+              clearTimeout(el._tocCollapseTimer);
               el._tocCollapseEnd = null;
               el.style.maxHeight = '';
             };
+            const onEnd = ev => {
+              if (ev.target !== el || ev.propertyName !== 'max-height') return;
+              done();
+            };
             el._tocCollapseEnd = onEnd;
+            el._tocCollapseTimer = setTimeout(done, 250);
             el.addEventListener('transitionend', onEnd);
           });
         }
@@ -4361,6 +4394,11 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             const body = details.querySelector('.finding__body');
             if (!body) return;
 
+            // Drop any transitionend listener still pending from an interrupted
+            // prior toggle, matching the same guard used for the TOC and section
+            // collapse animations, so rapid re-clicks don't accumulate listeners.
+            if (body._findingAnimEnd) body.removeEventListener('transitionend', body._findingAnimEnd);
+
             // .finding__body is box-sizing: border-box, so a getBoundingClientRect()
             // read (border-box height) is what `style.height` needs to match — using
             // scrollHeight (which also includes padding) against a border-box target
@@ -4385,12 +4423,14 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
               const onCloseEnd = (ev) => {
                 if (ev.target !== body || ev.propertyName !== 'height') return;
                 body.removeEventListener('transitionend', onCloseEnd);
+                body._findingAnimEnd = null;
                 details.open = false;
                 body.style.height = '';
                 body.style.paddingTop = '';
                 body.style.paddingBottom = '';
                 body.style.opacity = '';
               };
+              body._findingAnimEnd = onCloseEnd;
               body.addEventListener('transitionend', onCloseEnd);
             } else {
               details.open = true;
@@ -4411,11 +4451,13 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
               const onOpenEnd = (ev) => {
                 if (ev.target !== body || ev.propertyName !== 'height') return;
                 body.removeEventListener('transitionend', onOpenEnd);
+                body._findingAnimEnd = null;
                 body.style.height = '';
                 body.style.paddingTop = '';
                 body.style.paddingBottom = '';
                 body.style.opacity = '';
               };
+              body._findingAnimEnd = onOpenEnd;
               body.addEventListener('transitionend', onOpenEnd);
             }
           });
