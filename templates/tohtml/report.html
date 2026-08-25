@@ -3253,6 +3253,18 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         document.querySelectorAll('.findings-section[aria-controls]').forEach(hdr => {
           const content = document.getElementById(hdr.getAttribute('aria-controls'));
           if (!content) return;
+          // A section is normally far taller than the viewport, and the edge
+          // that clips it sits at (top + height). Animating the full content
+          // height therefore spends most of the duration dragging that edge
+          // around below the fold: a 4000px section in a 650px viewport shows
+          // nothing moving for the first ~115ms of a 200ms transition, then
+          // sweeps shut in the remaining ~85ms. Travelling only as far as the
+          // bottom of the viewport gives the visible part the whole duration;
+          // the off-screen remainder is added or dropped in one step that
+          // nobody can see.
+          function visibleTravel(full) {
+            return Math.max(0, Math.min(full, window.innerHeight - content.getBoundingClientRect().top));
+          }
           function toggle() {
             const open = hdr.getAttribute('aria-expanded') === 'true';
             hdr.setAttribute('aria-expanded', String(!open));
@@ -3262,10 +3274,13 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
               return;
             }
 
-            if (content._sectionCollapseEnd) content.removeEventListener('transitionend', content._sectionCollapseEnd);
+            if (content._sectionCollapseEnd) {
+              content.removeEventListener('transitionend', content._sectionCollapseEnd);
+              clearTimeout(content._sectionCollapseTimer);
+              content._sectionCollapseEnd = null;
+            }
             if (open) {
-              const h = content.getBoundingClientRect().height;
-              content.style.height = h + 'px';
+              content.style.height = visibleTravel(content.getBoundingClientRect().height) + 'px';
               void content.offsetHeight;
               requestAnimationFrame(() => {
                 content.classList.add('section-collapsed');
@@ -3275,16 +3290,24 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
               content.classList.remove('section-collapsed');
               content.style.height = '0px';
               void content.offsetHeight;
-              const h = content.scrollHeight;
+              const h = visibleTravel(content.scrollHeight);
               requestAnimationFrame(() => { content.style.height = h + 'px'; });
             }
-            const onEnd = ev => {
-              if (ev.target !== content || ev.propertyName !== 'height') return;
+            // Backstop: a section scrolled out of view has no travel to animate,
+            // so no transition starts and transitionend never fires. Without
+            // this the inline height would stay pinned at its start value.
+            const done = () => {
               content.removeEventListener('transitionend', onEnd);
+              clearTimeout(content._sectionCollapseTimer);
               content._sectionCollapseEnd = null;
               content.style.height = '';
             };
+            const onEnd = ev => {
+              if (ev.target !== content || ev.propertyName !== 'height') return;
+              done();
+            };
             content._sectionCollapseEnd = onEnd;
+            content._sectionCollapseTimer = setTimeout(done, 250);
             content.addEventListener('transitionend', onEnd);
           }
           hdr.addEventListener('click', toggle);
