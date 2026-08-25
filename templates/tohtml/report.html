@@ -684,8 +684,33 @@
     .finding__refs ul {
       margin: 4px 0 0;
       padding-left: 18px;
-      max-height: 160px;
-      overflow-y: auto;
+    }
+
+    /* References past the first few are held back behind a toggle rather than a
+       scroll box. A scroll box here became a nested scroll container that
+       swallowed the page wheel whenever the pointer was over it, and it only
+       ever engaged on the rare finding carrying more than a handful of links. */
+    .finding__refs-more { display: none; }
+    .finding__refs.is-expanded .finding__refs-more { display: list-item; }
+
+    .finding__refs-toggle {
+      appearance: none;
+      background: none;
+      border: 0;
+      padding: 2px 0;
+      margin-top: 2px;
+      font: inherit;
+      font-size: var(--text-base);
+      color: var(--accent-fg);
+      cursor: pointer;
+    }
+
+    .finding__refs-toggle:hover { text-decoration: underline; }
+
+    .finding__refs-toggle:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+      border-radius: var(--radius-sm);
     }
 
     .finding__refs li {
@@ -2158,7 +2183,9 @@
       .copy-btn,
       .copy-all-btn,
       #help-dialog,
+      .finding__refs-toggle,
       .finding__head::after { display: none !important; }
+      .finding__refs-more { display: list-item !important; }
       body { background: #fff !important; color: #000 !important; }
       .finding {
         break-inside: avoid;
@@ -2753,7 +2780,10 @@
             {{- with index .Properties "References"}}
             <section class="finding__refs">
               <h3 class="finding__section-h">References</h3>
-              <ul>{{range .}}<li><a href="{{.}}" target="_blank" rel="noopener noreferrer">{{.}}</a></li>{{end}}</ul>
+              <ul>{{range $i, $ref := .}}<li{{if ge $i 3}} class="finding__refs-more"{{end}}><a href="{{$ref}}" target="_blank" rel="noopener noreferrer">{{$ref}}</a></li>{{end}}</ul>
+              {{- if gt (len .) 3}}
+              <button class="finding__refs-toggle" type="button" aria-expanded="false" data-show-all="Show all {{len .}} references">Show all {{len .}} references</button>
+              {{- end}}
             </section>
             {{- end}}
           </div>
@@ -2910,7 +2940,10 @@
               {{- with index .Properties "References"}}
               <section class="finding__refs">
                 <h3 class="finding__section-h">References</h3>
-                <ul>{{range .}}<li><a href="{{.}}" target="_blank" rel="noopener noreferrer">{{.}}</a></li>{{end}}</ul>
+                <ul>{{range $i, $ref := .}}<li{{if ge $i 3}} class="finding__refs-more"{{end}}><a href="{{$ref}}" target="_blank" rel="noopener noreferrer">{{$ref}}</a></li>{{end}}</ul>
+                {{- if gt (len .) 3}}
+                <button class="finding__refs-toggle" type="button" aria-expanded="false" data-show-all="Show all {{len .}} references">Show all {{len .}} references</button>
+                {{- end}}
               </section>
               {{- end}}
             </div>
@@ -4405,6 +4438,18 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         }
       }
 
+      function initRefsToggles() {
+        document.querySelectorAll('.finding__refs-toggle').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const section = btn.closest('.finding__refs');
+            if (!section) return;
+            const expanded = section.classList.toggle('is-expanded');
+            btn.setAttribute('aria-expanded', String(expanded));
+            btn.textContent = expanded ? 'Show fewer' : btn.dataset.showAll;
+          });
+        });
+      }
+
       function initFindingAnimations() {
         const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (prefersReduced) return;
@@ -4545,6 +4590,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       initHelp();
       initShortcuts();
       initSyntaxHighlight();
+      initRefsToggles();
       initFindingAnimations();
 
       // Restore persisted state
