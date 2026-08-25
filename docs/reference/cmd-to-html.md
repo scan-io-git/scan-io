@@ -11,6 +11,7 @@ The `to-html` command converts sarif, standard sast output format, to a human-fr
   - [Required and Recommended](#required-and-recommended)
   - [Multiple scanners](#multiple-scanners)
   - [False-positive review](#false-positive-review)
+  - [References](#references)
   - [Filtering](#filtering)
   - [Suppressed findings](#suppressed-findings)
 
@@ -277,6 +278,16 @@ value is invented.
 
 A `Likely false positive` verdict always results in Recommended when classification is
 enabled, for every severity. The panel and the classification notice never disagree.
+
+### References
+
+A finding's References list shows the first three links, with a `Show all N references`
+button when there are more. Most findings carry a single reference, so the control only
+appears where it earns its place.
+
+Nothing is hidden permanently: the remaining links stay in the page, so browser
+find-in-page and the report's own search still match text inside a collapsed list, and
+printing reveals every reference and drops the button.
 
 ### Filtering
 

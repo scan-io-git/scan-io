@@ -96,6 +96,14 @@ scanio to-html --required "critical,high:0.60,medium:0.70"
 
 Severities listed without a threshold (`critical` above) are always Required. Confidence filtering is only applied for severities that have an explicit `sev:N` threshold in the flag or a `SCANIO_CONFIDENCE_THRESHOLD_<SEV>` env var.
 
+**Pinning a severity** — `--never-demote critical` keeps a severity Required whatever the FP verdict or threshold says:
+
+```
+scanio to-html --required "critical,high" --never-demote "critical"
+```
+
+It is checked before both, so a pinned severity never reaches the verdict or threshold branch. It does not promote: a severity absent from `--required` stays Recommended. `RequiredReason` then reads `"Critical severity, always required"`, or `"Critical severity, always required despite false-positive review"` when the verdict disagreed — the FP panel still renders that verdict, so the banner has to acknowledge it or the card reads as self-contradictory.
+
 **Template data:** `Metadata.RequiredEnabled` (bool) gates all classification output. When `false` the report is byte-identical to the baseline. `Metadata.RequiredInfo` carries `"required"` and `"recommended"` counts.
 
 **Per-finding data:** `Properties["Required"]` (`"true"`/`"false"`) and `Properties["RequiredReason"]` (human-readable rationale, e.g. `"High severity, confidence 85% >= 60% threshold"` or `"High severity (blocker, no confidence threshold configured)"`). Set by `EnrichResultsRequiredProperty` in `internal/sarif/required.go`; absent when classification is off.
@@ -109,6 +117,17 @@ Severities listed without a threshold (`critical` above) are always Required. Co
 - TOC `buildSevTree` splits active items into Required/Recommended bands under `.tv-prio-hdr` banner headers when `requiredEnabled` is derived from the dataset.
 
 **Design tokens:** `--req-fg/bg/border` (amber) and `--rec-fg/bg/border` (green), both themes.
+
+## References
+
+`.finding__refs` renders `Properties["References"]` as a plain `<ul>` of full URLs. Past the third item, entries carry `.finding__refs-more` (hidden by CSS) and a `.finding__refs-toggle` button reveals them by adding `is-expanded` to the section. The button is emitted only when there are more than three, so the common case — one reference — has no control at all.
+
+This replaced a `max-height: 160px; overflow-y: auto` scroll box. That box turned the list into a nested scroll container, so the wheel drove the list instead of the page whenever the pointer was over it, and it only ever engaged on the rare finding carrying many links: across the 22 findings in the consolidated example exactly one overflowed, by 19px. The toggle is bounded the same way but without capturing scroll — 8 references render at 118px instead of 184px, and that height no longer grows with the reference count.
+
+Two rules to preserve when editing:
+
+- The print block must reveal every reference (`.finding__refs-more { display: list-item !important; }`) and hide the toggle. Printing is the one context where a control cannot be operated, so hidden content would be lost outright.
+- Keep the hidden items in the DOM rather than dropping them. Browser find-in-page and the report's own search both read `textContent`, which includes `display: none` items, so a search hit still resolves inside a collapsed list.
 
 ## Suggested fix
 
