@@ -38,6 +38,7 @@ type ToHTMLOptions struct {
 	NoSuppressions bool     `json:"nosuppressions,omitempty"`
 	NoCSP          bool     `json:"no_csp,omitempty"`
 	Required       string   `json:"required,omitempty"`
+	NeverDemote    string   `json:"neverDemote,omitempty"`
 }
 
 type VCSURLInfo struct {
@@ -246,7 +247,7 @@ var ToHtmlCmd = &cobra.Command{
 			return parsedURL.PRDiffLink(uri, startLine)
 		}
 
-		requiredPolicy, requiredEnabled, err := parseRequiredPolicy(allToHTMLOptions.Required)
+		requiredPolicy, requiredEnabled, err := parseRequiredPolicy(allToHTMLOptions.Required, allToHTMLOptions.NeverDemote)
 		if err != nil {
 			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
@@ -403,4 +404,5 @@ func init() {
 	ToHtmlCmd.Flags().BoolVarP(&allToHTMLOptions.NoSuppressions, "no-supressions", "", false, "Enable removing results with suppressions properties")
 	ToHtmlCmd.Flags().BoolVar(&allToHTMLOptions.NoCSP, "no-csp", false, "Disable Content-Security-Policy meta tag in generated report")
 	ToHtmlCmd.Flags().StringVar(&allToHTMLOptions.Required, "required", "", "Enable Required/Recommended classification. Comma list of blocker severities; severities without a threshold are always Required regardless of confidence. Use \"sev:N\" to demote findings below a confidence threshold, e.g. \"critical,high:0.60\". Falls back to SCANIO_BLOCKER_SEVERITIES and SCANIO_CONFIDENCE_THRESHOLD_<SEV> env vars when omitted.")
+	ToHtmlCmd.Flags().StringVar(&allToHTMLOptions.NeverDemote, "never-demote", "", "Comma list of severities that stay Required regardless of any FP verdict or confidence threshold, e.g. \"critical\". Only meaningful alongside --required, and never promotes a severity that --required did not list. Falls back to SCANIO_NEVER_DEMOTE when omitted.")
 }

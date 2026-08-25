@@ -49,11 +49,46 @@ func parseThreshold(raw string) (float64, error) {
 // threshold is only applied when explicitly supplied via the "sev:N" syntax or the
 // SCANIO_CONFIDENCE_THRESHOLD_<SEV> env var; no defaults are injected.
 //
+// neverDemoteValue pins severities to Required regardless of verdict or threshold;
+// it is only consulted when the feature is otherwise enabled.
+//
 // Flag format: "sev[:threshold],..." e.g. "critical,high" or "critical:0.50,high:0.90".
 // Env: SCANIO_BLOCKER_SEVERITIES="critical,high",
 //
 //	SCANIO_CONFIDENCE_THRESHOLD_<SEV>="0.95".
-func parseRequiredPolicy(flagValue string) (scaniosarif.RequiredPolicy, bool, error) {
+// parseSeverityList parses a comma-separated severity list, rejecting any name
+// that is not a known bucket. source names the flag or env var in the error, so a
+// typo says where it came from.
+func parseSeverityList(raw, source string) (map[string]bool, error) {
+	out := map[string]bool{}
+	for _, sev := range strings.Split(raw, ",") {
+		sev = strings.ToLower(strings.TrimSpace(sev))
+		if sev == "" {
+			continue
+		}
+		if !validSeverities[sev] {
+			return nil, fmt.Errorf("invalid severity %q in %s: must be one of critical, high, medium, low, info", sev, source)
+		}
+		out[sev] = true
+	}
+	return out, nil
+}
+
+// neverDemotePolicy resolves the never-demote severity set, flag over env. It
+// cannot enable classification on its own: pinning a severity is meaningless
+// without a blocker list to pin it within, so the caller only consults this once
+// --required (or its env fallback) has already turned the feature on.
+func neverDemotePolicy(flagValue string) (map[string]bool, error) {
+	if flag := strings.TrimSpace(flagValue); flag != "" {
+		return parseSeverityList(flag, "--never-demote")
+	}
+	if env := strings.TrimSpace(os.Getenv("SCANIO_NEVER_DEMOTE")); env != "" {
+		return parseSeverityList(env, "SCANIO_NEVER_DEMOTE")
+	}
+	return nil, nil
+}
+
+func parseRequiredPolicy(flagValue, neverDemoteValue string) (scaniosarif.RequiredPolicy, bool, error) {
 	thresholds := map[string]float64{}
 	blockers := map[string]bool{}
 
@@ -84,7 +119,15 @@ func parseRequiredPolicy(flagValue string) (scaniosarif.RequiredPolicy, bool, er
 		if len(blockers) == 0 {
 			return scaniosarif.RequiredPolicy{}, false, nil
 		}
-		return scaniosarif.RequiredPolicy{BlockerSeverities: blockers, Thresholds: thresholds}, true, nil
+		neverDemote, err := neverDemotePolicy(neverDemoteValue)
+		if err != nil {
+			return scaniosarif.RequiredPolicy{}, false, err
+		}
+		return scaniosarif.RequiredPolicy{
+			BlockerSeverities:     blockers,
+			Thresholds:            thresholds,
+			NeverDemoteSeverities: neverDemote,
+		}, true, nil
 	}
 
 	// Env fallback.
@@ -115,5 +158,13 @@ func parseRequiredPolicy(flagValue string) (scaniosarif.RequiredPolicy, bool, er
 			thresholds[sev] = f
 		}
 	}
-	return scaniosarif.RequiredPolicy{BlockerSeverities: blockers, Thresholds: thresholds}, true, nil
+	neverDemote, err := neverDemotePolicy(neverDemoteValue)
+	if err != nil {
+		return scaniosarif.RequiredPolicy{}, false, err
+	}
+	return scaniosarif.RequiredPolicy{
+		BlockerSeverities:     blockers,
+		Thresholds:            thresholds,
+		NeverDemoteSeverities: neverDemote,
+	}, true, nil
 }

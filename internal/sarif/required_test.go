@@ -358,3 +358,122 @@ func TestSortByRequiredThenSeverity(t *testing.T) {
 		t.Errorf("required-first sort failed: first Required = %q, want \"true\"", first)
 	}
 }
+
+// NeverDemoteSeverities pins a severity to Required. The verdict is still read and
+// still rendered by the report; it just no longer decides the classification.
+func TestEnrichRequired_NeverDemote_PinsDespiteFalsePositive(t *testing.T) {
+	id := "rule.test"
+	rule := &gosarif.ReportingDescriptor{ID: id}
+	result := resultFor(id)
+	result.Properties = map[string]any{
+		"Severity": "critical",
+		"fp":       map[string]any{"verdict": "FALSE_POSITIVE", "p_real": 0.02},
+	}
+	report := makeSimpleReport(id, rule, result)
+
+	report.EnrichResultsRequiredProperty(RequiredPolicy{
+		BlockerSeverities:     map[string]bool{"critical": true},
+		NeverDemoteSeverities: map[string]bool{"critical": true},
+	})
+
+	if got, _ := result.Properties["Required"].(string); got != "true" {
+		t.Errorf("Required = %q, want \"true\" (pinned severity ignores FALSE_POSITIVE)", got)
+	}
+	want := "Critical severity, always required despite false-positive review"
+	if got, _ := result.Properties["RequiredReason"].(string); got != want {
+		t.Errorf("RequiredReason = %q, want %q", got, want)
+	}
+	// The verdict must survive on the result: the FP panel still renders it.
+	if _, ok := result.Properties["fp"]; !ok {
+		t.Error("fp bag was removed; the report needs it to render the review panel")
+	}
+}
+
+// A pinned severity states policy as its reason even when no review ran, because
+// policy is what decided it -- the outcome would be the same either way.
+func TestEnrichRequired_NeverDemote_ReasonWithoutVerdict(t *testing.T) {
+	id := "rule.test"
+	rule := &gosarif.ReportingDescriptor{ID: id}
+	result := resultFor(id)
+	result.Properties = map[string]any{"Severity": "critical"}
+	report := makeSimpleReport(id, rule, result)
+
+	report.EnrichResultsRequiredProperty(RequiredPolicy{
+		BlockerSeverities:     map[string]bool{"critical": true},
+		NeverDemoteSeverities: map[string]bool{"critical": true},
+	})
+
+	if got, _ := result.Properties["Required"].(string); got != "true" {
+		t.Errorf("Required = %q, want \"true\"", got)
+	}
+	want := "Critical severity, always required"
+	if got, _ := result.Properties["RequiredReason"].(string); got != want {
+		t.Errorf("RequiredReason = %q, want %q", got, want)
+	}
+}
+
+// Pinning outranks a confidence threshold too, not just the verdict.
+func TestEnrichRequired_NeverDemote_OutranksThreshold(t *testing.T) {
+	id := "rule.test"
+	rule := &gosarif.ReportingDescriptor{ID: id}
+	result := resultFor(id)
+	result.Properties = map[string]any{"Severity": "high", "confidence": 0.10}
+	report := makeSimpleReport(id, rule, result)
+
+	report.EnrichResultsRequiredProperty(RequiredPolicy{
+		BlockerSeverities:     map[string]bool{"high": true},
+		Thresholds:            map[string]float64{"high": 0.90},
+		NeverDemoteSeverities: map[string]bool{"high": true},
+	})
+
+	if got, _ := result.Properties["Required"].(string); got != "true" {
+		t.Errorf("Required = %q, want \"true\" (pin beats the threshold)", got)
+	}
+	if got, _ := result.Properties["RequiredReason"].(string); got != "High severity, always required" {
+		t.Errorf("RequiredReason = %q, want the policy reason, not a confidence comparison", got)
+	}
+}
+
+// Pinning must not promote: a severity absent from BlockerSeverities stays
+// Recommended even when it is listed as never-demote.
+func TestEnrichRequired_NeverDemote_DoesNotPromoteNonBlocker(t *testing.T) {
+	id := "rule.test"
+	rule := &gosarif.ReportingDescriptor{ID: id}
+	result := resultFor(id)
+	result.Properties = map[string]any{"Severity": "low"}
+	report := makeSimpleReport(id, rule, result)
+
+	report.EnrichResultsRequiredProperty(RequiredPolicy{
+		BlockerSeverities:     map[string]bool{"critical": true},
+		NeverDemoteSeverities: map[string]bool{"low": true},
+	})
+
+	if got, _ := result.Properties["Required"].(string); got != "false" {
+		t.Errorf("Required = %q, want \"false\" (never-demote must not promote)", got)
+	}
+	want := "Low severity is not required"
+	if got, _ := result.Properties["RequiredReason"].(string); got != want {
+		t.Errorf("RequiredReason = %q, want %q", got, want)
+	}
+}
+
+// An empty pin set leaves every existing gate untouched.
+func TestEnrichRequired_NeverDemote_EmptyChangesNothing(t *testing.T) {
+	id := "rule.test"
+	rule := &gosarif.ReportingDescriptor{ID: id}
+	result := resultFor(id)
+	result.Properties = map[string]any{
+		"Severity": "critical",
+		"fp":       map[string]any{"verdict": "FALSE_POSITIVE", "p_real": 0.02},
+	}
+	report := makeSimpleReport(id, rule, result)
+
+	report.EnrichResultsRequiredProperty(RequiredPolicy{
+		BlockerSeverities:     map[string]bool{"critical": true},
+		NeverDemoteSeverities: map[string]bool{},
+	})
+
+	if got, _ := result.Properties["Required"].(string); got != "false" {
+		t.Errorf("Required = %q, want \"false\" (empty pin set is a no-op)", got)
+	}
+}

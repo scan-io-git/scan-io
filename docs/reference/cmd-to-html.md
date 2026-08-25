@@ -16,7 +16,7 @@ The `to-html` command converts sarif, standard sast output format, to a human-fr
 
 ## Syntax
 ```
-scanio to-html --input/-i PATH [--input/-i PATH ...] --output/-o PATH [--source/-s PATH] [--templates-path/-t PATH] [--pull-request ID] [--required SEVERITIES] [--no-supressions] [--no-csp]
+scanio to-html --input/-i PATH [--input/-i PATH ...] --output/-o PATH [--source/-s PATH] [--templates-path/-t PATH] [--pull-request ID] [--required SEVERITIES] [--never-demote SEVERITIES] [--no-supressions] [--no-csp]
 ```
 
 ### Options
@@ -30,6 +30,7 @@ scanio to-html --input/-i PATH [--input/-i PATH ...] --output/-o PATH [--source/
 | `--no-supressions` | bool | No | `false` | Enable removing results with suppressions properties |
 | `--no-csp` | bool | No | `false` | Disable the Content-Security-Policy meta tag in the generated report |
 | `--required` | string | No | `none` | Comma-separated blocker severities, with optional per-severity confidence threshold. A severity listed without a threshold (e.g. `critical,high`) marks all matching findings as Required. A `sev:N` threshold (e.g. `critical:0.50,high:0.90`) demotes findings whose confidence is below N to Recommended. A false-positive verdict on the finding, when present, takes precedence over the threshold -- see [Required and Recommended](#required-and-recommended). When set, findings are split into Required and Recommended sections. Env var fallback: `SCANIO_BLOCKER_SEVERITIES` (comma list); per-severity threshold via `SCANIO_CONFIDENCE_THRESHOLD_<SEV>` (e.g. `SCANIO_CONFIDENCE_THRESHOLD_HIGH=0.90`). The flag wins over env vars. Each severity must be one of critical, high, medium, low, info, and each threshold must parse as a number between 0.0 and 1.0; an invalid severity or threshold fails the command with an error rather than being silently dropped. |
+| `--never-demote` | string | No | `none` | Comma-separated severities that stay Required regardless of any false-positive verdict or confidence threshold, e.g. `critical`. Only meaningful alongside `--required`: it pins severities within the blocker list and never promotes a severity `--required` did not list. Use it when one severity is non-negotiable regardless of what the false-positive review concluded. Env var fallback: `SCANIO_NEVER_DEMOTE` (comma list); the flag wins. Validated like `--required` -- an unrecognized severity fails the command. |
 
 ## Usage Examples
 The following examples demonstrate how to use the `to-html` command.
@@ -116,6 +117,14 @@ Demote low-confidence findings to Recommended. A finding is Required only if its
 scanio to-html -i results.sarif -o report.html --required "critical,high:0.90,medium:0.70"
 ```
 
+**Required to fix — pin a severity so a false-positive verdict cannot demote it**
+By default a `FALSE_POSITIVE` verdict demotes any severity, critical included. Pin the
+severities that must block regardless of what the false-positive review concluded. The
+review is still shown on the finding; it just no longer decides.
+```bash
+scanio to-html -i results.sarif -o report.html --required "critical,high" --never-demote "critical"
+```
+
 **Required to fix — env var configuration**
 Set `SCANIO_BLOCKER_SEVERITIES` and optional `SCANIO_CONFIDENCE_THRESHOLD_<SEV>` env vars instead of passing the flag. The `--required` flag wins if both are set.
 ```bash
@@ -179,13 +188,21 @@ different from a severity listed with no threshold at all, which is a deliberate
 no-threshold policy: every matching finding is Required regardless of confidence, not an
 error.
 
-Each finding is decided by three checks, in order. The first one that applies wins.
+Each finding is decided by four checks, in order. The first one that applies wins.
 
 **1. Is the severity a blocker?**
 If the severity is not in the list you passed, the finding is Recommended and nothing
-else is consulted. `Info severity is not required`.
+else is consulted. `Info severity is not required`. `--never-demote` does not change
+this: pinning a severity you never listed as a blocker leaves it Recommended.
 
-**2. Is there a false-positive verdict?**
+**2. Is the severity pinned by `--never-demote`?**
+If so the finding is Required, and neither the verdict nor the threshold is consulted.
+The notice reads `Critical severity, always required`, or `Critical severity, always
+required despite false-positive review` when the review disagreed. The verdict is still
+read and the false-positive panel still renders it -- the policy overrides the
+classification, it does not hide the review.
+
+**3. Is there a false-positive verdict?**
 If the finding carries a recognized verdict in `properties.fp.verdict`, that verdict
 decides, overriding any confidence threshold you configured:
 
@@ -195,10 +212,11 @@ decides, overriding any confidence threshold you configured:
 | `TRUE_POSITIVE` | Required |
 | `NEEDS_VERIFICATION` | Required |
 
-No severity is special-cased. A `FALSE_POSITIVE` verdict demotes a critical finding
-exactly as it demotes any other severity you listed.
+No severity is special-cased by default. A `FALSE_POSITIVE` verdict demotes a critical
+finding exactly as it demotes any other severity you listed. Pass
+`--never-demote critical` if that is not what you want.
 
-**3. Otherwise, fall back to confidence.**
+**4. Otherwise, fall back to confidence.**
 With no verdict present, the confidence threshold for that severity applies:
 
 | situation | result |
