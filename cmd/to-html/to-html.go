@@ -28,16 +28,17 @@ const (
 )
 
 type ToHTMLOptions struct {
-	TempatesPath   string `json:"tempates_path,omitempty"`
-	Title          string `json:"title,omitempty"`
-	OutputFile     string `json:"output_file,omitempty"`
-	Input          string `json:"input,omitempty"`
-	SourceFolder   string `json:"source_folder,omitempty"`
-	VCS            string `json:"vcs,omitempty"`
-	PullRequest    string `json:"pull_request,omitempty"`
-	NoSuppressions bool   `json:"nosuppressions,omitempty"`
-	NoCSP          bool   `json:"no_csp,omitempty"`
-	Required       string `json:"required,omitempty"`
+	TempatesPath   string   `json:"tempates_path,omitempty"`
+	Title          string   `json:"title,omitempty"`
+	OutputFile     string   `json:"output_file,omitempty"`
+	Inputs         []string `json:"inputs,omitempty"`
+	SourceFolder   string   `json:"source_folder,omitempty"`
+	VCS            string   `json:"vcs,omitempty"`
+	PullRequest    string   `json:"pull_request,omitempty"`
+	NoSuppressions bool     `json:"nosuppressions,omitempty"`
+	NoCSP          bool     `json:"no_csp,omitempty"`
+	Required       string   `json:"required,omitempty"`
+	NeverDemote    string   `json:"neverDemote,omitempty"`
 }
 
 type VCSURLInfo struct {
@@ -58,19 +59,20 @@ type cspData struct {
 
 type ReportMetadata struct {
 	git.RepositoryMetadata
-	scaniosarif.ToolMetadata
-	Title        string
-	Time         time.Time
-	SourceFolder string
+	Tools           []scaniosarif.ToolMetadata
+	Scanners        []string
+	Title           string
+	Time            time.Time
+	SourceFolder    string
 	SeverityInfo    map[string]int
 	SuppressionInfo map[string]int
 	RequiredEnabled bool
 	RequiredInfo    map[string]int
-	WebURL       string
-	BranchURL    string
-	CommitURL    string
-	PRURL        string
-	VCSURL       *VCSURLInfo
+	WebURL          string
+	BranchURL       string
+	CommitURL       string
+	PRURL           string
+	VCSURL          *VCSURLInfo
 }
 
 // Global variables for configuration and command arguments
@@ -88,7 +90,11 @@ var (
   scanio to-html -i /tmp/juice-shop/semgrep_results.sarif -o /tmp/juice-shop/semgrep_results.html -s /tmp/juice-shop/ -t ./templates/tohtml
 
   # Use no-supressions to skip results with supressions sarif property
-  scanio to-html -i /tmp/juice-shop/semgrep_results.sarif -o /tmp/juice-shop/semgrep_results.html -s /tmp/juice-shop/ -t ./templates/tohtml --no-supressions`
+  scanio to-html -i /tmp/juice-shop/semgrep_results.sarif -o /tmp/juice-shop/semgrep_results.html -s /tmp/juice-shop/ -t ./templates/tohtml --no-supressions
+
+  # Merge several scanners' sarif outputs into one consolidated html report; repeat -i per input,
+  # sorted so the render is reproducible
+  scanio to-html -i /tmp/juice-shop/semgrep.sarif -i /tmp/juice-shop/trufflehog.sarif -o /tmp/juice-shop/report.html -s /tmp/juice-shop`
 )
 
 func vcsTypeToString(t vcsurl.VCSType) string {
@@ -151,9 +157,13 @@ var ToHtmlCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logger.Info("to-html called")
 
-		sarifReport, err := scaniosarif.ReadReport(allToHTMLOptions.Input, logger, allToHTMLOptions.SourceFolder, allToHTMLOptions.NoSuppressions)
-		if err != nil {
-			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
+		var reports []*scaniosarif.Report
+		for _, inputPath := range allToHTMLOptions.Inputs {
+			report, err := scaniosarif.ReadReport(inputPath, logger, allToHTMLOptions.SourceFolder, allToHTMLOptions.NoSuppressions)
+			if err != nil {
+				return errors.NewCommandError(allToHTMLOptions, nil, fmt.Errorf("failed to read sarif input %q: %w", inputPath, err), 1)
+			}
+			reports = append(reports, report)
 		}
 
 		repositoryMetadata, err := git.CollectRepositoryMetadata(allToHTMLOptions.SourceFolder)
@@ -237,29 +247,51 @@ var ToHtmlCmd = &cobra.Command{
 			return parsedURL.PRDiffLink(uri, startLine)
 		}
 
-		sarifReport.EnrichResultsTitleProperty()
-		sarifReport.EnrichResultsCodeFlowProperty(locationURLCallback)
-		sarifReport.RemoveDataflowDuplicates()
-		sarifReport.EnrichResultsLevelProperty()
-		sarifReport.EnrichResultsCategoryProperty()
-		sarifReport.EnrichResultsConfidenceProperty()
-		sarifReport.EnrichResultsMetadataProperty()
-		sarifReport.EnrichResultsLocationURIProperty(locationURLCallback, prDiffURLCallback)
-		sarifReport.EnrichResultsSuppressionProperty()
+		requiredPolicy, requiredEnabled, err := parseRequiredPolicy(allToHTMLOptions.Required, allToHTMLOptions.NeverDemote)
+		if err != nil {
+			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
+		}
 
-		requiredPolicy, requiredEnabled := parseRequiredPolicy(allToHTMLOptions.Required)
+		// Per-input enrichment: each of these is Runs[0]-bound by design (rule map,
+		// scanner name, category resolution), so it must run against a single-tool
+		// report before the inputs are merged.
+		for _, report := range reports {
+			report.EnrichResultsTitleProperty()
+			report.EnrichResultsCodeFlowProperty(locationURLCallback)
+			report.RemoveDataflowDuplicates()
+			report.EnrichResultsLevelProperty()
+			report.EnrichResultsCategoryProperty()
+			report.EnrichResultsConfidenceProperty()
+			report.EnrichResultsPreFPConfidenceProperty()
+			report.EnrichResultsMetadataProperty()
+			report.EnrichResultsFPProperty()
+			report.EnrichResultsLocationURIProperty(locationURLCallback, prDiffURLCallback)
+			report.EnrichResultsSuppressionProperty()
+			if requiredEnabled {
+				report.EnrichResultsRequiredProperty(requiredPolicy)
+			}
+		}
+
+		toolsMetadata, err := scaniosarif.ExtractToolsMetadata(reports)
+		if err != nil {
+			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
+		}
+		logger.Debug("toolsMetadata", "count", len(toolsMetadata))
+
+		sarifReport, err := scaniosarif.MergeReports(reports)
+		if err != nil {
+			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
+		}
+
+		// Distinct scanners, in merge order — captured before the severity sort
+		// reorders results, so the tab strip lists scanners in --input order.
+		scanners := sarifReport.CollectScanners()
+
 		if requiredEnabled {
-			sarifReport.EnrichResultsRequiredProperty(requiredPolicy)
 			sarifReport.SortResultsByRequiredThenSeverity()
 		} else {
 			sarifReport.SortResultsBySeverity()
 		}
-
-		toolMetadata, err := sarifReport.ExtractToolNameAndVersion()
-		if err != nil {
-			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
-		}
-		logger.Debug("toolMetadata", "Name", toolMetadata.Name, "Version", toolMetadata.Version)
 
 		severityInfo := sarifReport.CollectSeverityInfo()
 		suppressionInfo := sarifReport.CollectSuppressionInfo()
@@ -275,7 +307,8 @@ var ToHtmlCmd = &cobra.Command{
 
 		metadata := &ReportMetadata{
 			RepositoryMetadata: *repositoryMetadata,
-			ToolMetadata:       *toolMetadata,
+			Tools:              toolsMetadata,
+			Scanners:           scanners,
 			Title:              allToHTMLOptions.Title,
 			Time:               time.Now().UTC(),
 			SourceFolder:       metadataSourceFolder,
@@ -363,7 +396,7 @@ var ToHtmlCmd = &cobra.Command{
 func init() {
 	ToHtmlCmd.Flags().StringVarP(&allToHTMLOptions.TempatesPath, "templates-path", "t", "", "Path to folder with templates")
 	ToHtmlCmd.Flags().StringVar(&allToHTMLOptions.Title, "title", "Scanio Report", "Title for generated html file")
-	ToHtmlCmd.Flags().StringVarP(&allToHTMLOptions.Input, "input", "i", "", "Input file with sarif report")
+	ToHtmlCmd.Flags().StringArrayVarP(&allToHTMLOptions.Inputs, "input", "i", nil, "Input file with sarif report. Repeatable (-i a -i b) to merge several tools' results into one report. Inputs render in the order given, so callers iterating an unordered tool set must sort it first for a reproducible report.")
 	ToHtmlCmd.Flags().StringVarP(&allToHTMLOptions.OutputFile, "output", "o", "scanio-report.html", "output file")
 	ToHtmlCmd.Flags().StringVarP(&allToHTMLOptions.SourceFolder, "source", "s", "", "Source folder")
 	ToHtmlCmd.Flags().StringVar(&allToHTMLOptions.VCS, "vcs", "", "VCS type override (github, gitlab, bitbucket, generic); leave empty to auto-detect")
@@ -371,4 +404,5 @@ func init() {
 	ToHtmlCmd.Flags().BoolVarP(&allToHTMLOptions.NoSuppressions, "no-supressions", "", false, "Enable removing results with suppressions properties")
 	ToHtmlCmd.Flags().BoolVar(&allToHTMLOptions.NoCSP, "no-csp", false, "Disable Content-Security-Policy meta tag in generated report")
 	ToHtmlCmd.Flags().StringVar(&allToHTMLOptions.Required, "required", "", "Enable Required/Recommended classification. Comma list of blocker severities; severities without a threshold are always Required regardless of confidence. Use \"sev:N\" to demote findings below a confidence threshold, e.g. \"critical,high:0.60\". Falls back to SCANIO_BLOCKER_SEVERITIES and SCANIO_CONFIDENCE_THRESHOLD_<SEV> env vars when omitted.")
+	ToHtmlCmd.Flags().StringVar(&allToHTMLOptions.NeverDemote, "never-demote", "", "Comma list of severities that stay Required regardless of any FP verdict or confidence threshold, e.g. \"critical\". Only meaningful alongside --required, and never promotes a severity that --required did not list. Falls back to SCANIO_NEVER_DEMOTE when omitted.")
 }

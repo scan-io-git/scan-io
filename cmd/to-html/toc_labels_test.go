@@ -2,35 +2,9 @@ package tohtml
 
 import (
 	"encoding/json"
-	"os"
 	"os/exec"
-	"strings"
 	"testing"
 )
-
-// extractJSFunc pulls the source between the buildFileLabels markers in
-// report.html so the test runs the exact code shipped in the report.
-func extractJSFunc(t *testing.T) string {
-	t.Helper()
-	src, err := os.ReadFile("../../templates/tohtml/report.html")
-	if err != nil {
-		t.Fatalf("read template: %v", err)
-	}
-	const startMark = "// === buildFileLabels:start"
-	const endMark = "// === buildFileLabels:end ==="
-	s := string(src)
-	i := strings.Index(s, startMark)
-	j := strings.Index(s, endMark)
-	if i < 0 || j < 0 || j < i {
-		t.Fatalf("could not locate buildFileLabels markers in template")
-	}
-	// start at the line after the start marker, end at the line before end marker
-	body := s[i:j]
-	if nl := strings.IndexByte(body, '\n'); nl >= 0 {
-		body = body[nl+1:]
-	}
-	return body
-}
 
 // runBuildFileLabels feeds inputJSON (a JSON array of path strings) to the
 // extracted function via node and returns the resulting label map.
@@ -61,7 +35,7 @@ process.stdout.write(JSON.stringify(obj));
 }
 
 func TestBuildFileLabels(t *testing.T) {
-	fn := extractJSFunc(t)
+	fn := extractJSRegion(t, "buildFileLabels")
 
 	cases := []struct {
 		name  string

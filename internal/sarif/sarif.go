@@ -38,8 +38,13 @@ func readSarifReport(inputPath string) (*sarif.Report, error) {
 	defer jsonFile.Close()
 
 	var sarifReport sarif.Report
-	byteValue, _ := io.ReadAll(jsonFile)
-	json.Unmarshal([]byte(byteValue), &sarifReport)
+	byteValue, err := io.ReadAll(jsonFile)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(byteValue, &sarifReport); err != nil {
+		return nil, fmt.Errorf("failed to parse sarif report %q: %w", inputPath, err)
+	}
 
 	return &sarifReport, nil
 }
@@ -177,6 +182,27 @@ func (r Report) CollectSuppressionInfo() map[string]int {
 		"active":     total - suppressed,
 		"total":      total,
 	}
+}
+
+// CollectScanners returns the distinct Properties["Scanner"] values across every
+// result (active and suppressed), in first-appearance order. The template uses
+// this list to gate the scanner tab strip: a single distinct value means the
+// report has one scanner, so the strip and its supporting data-scanner
+// attributes must not render, preserving byte-identical single-input output.
+func (r Report) CollectScanners() []string {
+	seen := map[string]bool{}
+	var scanners []string
+	for _, run := range r.Runs {
+		for _, result := range run.Results {
+			s, _ := result.Properties["Scanner"].(string)
+			if s == "" || seen[s] {
+				continue
+			}
+			seen[s] = true
+			scanners = append(scanners, s)
+		}
+	}
+	return scanners
 }
 
 var (

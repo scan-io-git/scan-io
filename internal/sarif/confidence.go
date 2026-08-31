@@ -65,6 +65,50 @@ func resolveConfidence(result *sarif.Result, rule *sarif.ReportingDescriptor) (f
 	return 0, false
 }
 
+// resolvePreFPConfidence returns the scanner's original confidence value that a
+// false-positive review overwrote, read from properties.pre_fp_confidence — a
+// sibling of properties.fp, not one of its keys. Returns (0, false) when
+// absent, which is the common case for scanners with no native confidence
+// (e.g. secrets scanners) and for any result that was never assessed.
+func resolvePreFPConfidence(result *sarif.Result) (float64, bool) {
+	if result.Properties == nil {
+		return 0, false
+	}
+	raw, ok := result.Properties["pre_fp_confidence"]
+	if !ok {
+		return 0, false
+	}
+	if f, ok := toFloat64(raw); ok {
+		return clamp(f), true
+	}
+	if s, ok := raw.(string); ok {
+		if f, ok := precisionToConfidence[strings.ToLower(strings.TrimSpace(s))]; ok {
+			return f, true
+		}
+	}
+	return 0, false
+}
+
+// EnrichResultsPreFPConfidenceProperty writes Properties["PreFPConfidence"]
+// (e.g. "High (85%)") for every result whose properties.pre_fp_confidence
+// resolves to a value, so the meta list can render "High (85%) → Low (12%)"
+// alongside Properties["Confidence"]. The key is omitted when no pre-FP value
+// is present, and no uninformative prior is substituted in its place: a report
+// reads as a record, so showing an invented "before" number would be worse
+// than showing only the value that was actually measured.
+func (r Report) EnrichResultsPreFPConfidenceProperty() {
+	for _, result := range r.Runs[0].Results {
+		conf, ok := resolvePreFPConfidence(result)
+		if !ok {
+			continue
+		}
+		if result.Properties == nil {
+			result.Properties = make(map[string]any)
+		}
+		result.Properties["PreFPConfidence"] = formatConfidence(conf)
+	}
+}
+
 // formatConfidence converts a float confidence value to a display string, e.g. "High (85%)".
 func formatConfidence(c float64) string {
 	pct := int(math.Round(c * 100))

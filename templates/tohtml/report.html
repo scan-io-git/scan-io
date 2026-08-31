@@ -74,6 +74,11 @@
       --space-1: 4px; --space-2: 8px; --space-3: 12px;
       --space-4: 16px; --space-5: 24px; --space-6: 32px;
 
+      /* Page shell: every band (header, summary bar, outline layout, footer) is
+         capped by this one value so their left/right edges land on the same axis.
+         Applied with box-sizing: border-box, so padding counts inside the cap. */
+      --shell-max: 1920px;
+
       /* Border-radius scale */
       --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-pill: 999px;
 
@@ -115,6 +120,10 @@
       --req-fg: #9a1313; --req-bg: #fff0f0; --req-border: #cf222e;
       --rec-fg: #0550ae; --rec-bg: #ddf4ff; --rec-border: #0969da;
       --sup-fg: #3b4450; --sup-bg: #f0f3f6; --sup-border: #b0b9c3;
+
+      /* False-positive review panel palette — light. Fixed, independent of the
+         verdict; must not borrow the Required/Recommended tokens above. */
+      --fp-fg: #475569; --fp-bg: #e9eef5; --fp-border: #94a3b8;
 
       /* Primer tokens — light mode defaults */
       --bg-canvas: var(--bg-canvas-light);
@@ -201,6 +210,10 @@
       --rec-fg: #79c0ff; --rec-bg: #051d4d; --rec-border: #1f6feb;
       --sup-fg: #9198a1; --sup-bg: #1c2128; --sup-border: #444c56;
 
+      /* False-positive review panel palette — dark. Fixed, independent of the
+         verdict; must not borrow the Required/Recommended tokens above. */
+      --fp-fg: #cbd5e1; --fp-bg: #1a2432; --fp-border: #475569;
+
       --search-mark-bg: #5c4000;
       --on-accent: var(--bg-canvas);
     }
@@ -211,9 +224,7 @@
     }
 
     .main-body {
-      margin: 0 auto;
       padding: 8px 16px 16px;
-      max-width: 1280px;
       position: relative;
     }
 
@@ -367,6 +378,60 @@
     .req-notice--recommended { background: var(--rec-bg); color: var(--rec-fg); border-color: var(--rec-border); }
     .req-notice__text strong { font-weight: 700; }
 
+    /* False-positive review panel. Colour is fixed and independent of the
+       verdict — it must never tint by verdict or reuse the Required/Recommended
+       tokens, so a Recommended-blue panel never sits under a Required-red
+       banner and contradicts it. */
+    .finding__fp {
+      border: 1px solid var(--fp-border);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-3);
+      overflow: hidden;
+    }
+    .finding__fp-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-3);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: var(--fp-bg);
+      color: var(--fp-fg);
+    }
+    .finding__fp-body {
+      padding: var(--space-2) var(--space-3) var(--space-3);
+      font-size: var(--text-sm);
+    }
+    .finding__fp-dl {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      align-items: baseline;
+      column-gap: 12px;
+      row-gap: 4px;
+      margin: 0;
+    }
+    .finding__fp-key {
+      color: var(--fg-muted);
+      font-weight: 400;
+      white-space: nowrap;
+    }
+    .finding__fp-dl dd { margin: 0; }
+    .finding__fp-dl dd strong { font-weight: 700; }
+    .finding__fp-needs-verification {
+      text-decoration: underline dotted;
+      text-decoration-color: currentColor;
+      cursor: help;
+    }
+
+    /* Confidence arrow — earlier value muted, current value plain (no
+       strikethrough on the earlier value, no bold on the current one). */
+    .finding__meta-confidence-prior,
+    .finding__meta-confidence-arrow {
+      color: var(--fg-muted);
+    }
+
     /* Section headers in the findings list */
     .findings-section { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); margin: var(--space-3) 0 var(--space-2); border-radius: var(--radius-sm); font-size: var(--text-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; user-select: none; }
     .findings-section--required    { background: var(--req-bg); color: var(--req-fg); border-left: 3px solid var(--req-border); }
@@ -377,14 +442,16 @@
     .findings-section__chevron svg { width: 13px; height: 13px; transition: transform var(--motion-fast); }
     .findings-section[aria-expanded="true"] .findings-section__chevron svg { transform: rotate(90deg); }
 
-    /* Collapsible content animation */
+    /* Collapsible content animation. height is set inline by
+       initCollapsibleSections() from a measured height right before each toggle —
+       grid-template-rows: 1fr/0fr was used here previously, but 1fr has no
+       resolved size to interpolate from, so the transition reads as uneven; a
+       measured height transitions evenly across the whole duration instead. */
     .findings-section-content {
-      display: grid;
-      grid-template-rows: 1fr;
-      transition: grid-template-rows var(--motion-base) ease;
       overflow: hidden;
+      transition: height var(--motion-base) ease;
     }
-    .findings-section-content.section-collapsed { grid-template-rows: 0fr; }
+    .findings-section-content.section-collapsed { height: 0; }
     .findings-section-content > .section-content-inner { min-height: 0; overflow: hidden; }
     @media (prefers-reduced-motion: reduce) { .findings-section-content { transition: none; } }
 
@@ -398,10 +465,15 @@
     .tv-prio-hdr .tv-tc { margin-left: auto; }
 
     .finding__body {
+      /* border-box so the JS-driven height animation (which measures the
+         border-box via getBoundingClientRect) can set `height` directly without
+         the content-box mismatch that used to overshoot by one padding's worth
+         at the start of the animation. */
+      box-sizing: border-box;
       padding: var(--space-3) var(--space-4);
       border-top: 1px solid var(--border-muted);
       overflow: hidden;
-      transition: height 220ms ease, opacity 220ms ease;
+      transition: height 220ms ease, opacity 220ms ease, padding-bottom 220ms ease;
     }
 
     .finding__description {
@@ -457,6 +529,7 @@
     .finding__meta-dl {
       display: grid;
       grid-template-columns: max-content 1fr;
+      align-items: baseline;
       column-gap: 12px;
       row-gap: 4px;
       margin: 0 0 12px;
@@ -467,14 +540,13 @@
       font-size: var(--text-base);
       font-weight: 400;
       white-space: nowrap;
-      align-self: center;
     }
 
     .finding__meta-dl dd {
       margin: 0;
       color: var(--fg-default);
-      font-size: var(--text-lg);
-      align-self: center;
+      font-size: var(--text-base);
+      font-variant-numeric: tabular-nums;
       overflow-wrap: anywhere;
       word-break: normal;
       hyphens: none;
@@ -612,8 +684,33 @@
     .finding__refs ul {
       margin: 4px 0 0;
       padding-left: 18px;
-      max-height: 160px;
-      overflow-y: auto;
+    }
+
+    /* References past the first few are held back behind a toggle rather than a
+       scroll box. A scroll box here became a nested scroll container that
+       swallowed the page wheel whenever the pointer was over it, and it only
+       ever engaged on the rare finding carrying more than a handful of links. */
+    .finding__refs-more { display: none; }
+    .finding__refs.is-expanded .finding__refs-more { display: list-item; }
+
+    .finding__refs-toggle {
+      appearance: none;
+      background: none;
+      border: 0;
+      padding: 2px 0;
+      margin-top: 2px;
+      font: inherit;
+      font-size: var(--text-base);
+      color: var(--accent-fg);
+      cursor: pointer;
+    }
+
+    .finding__refs-toggle:hover { text-decoration: underline; }
+
+    .finding__refs-toggle:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+      border-radius: var(--radius-sm);
     }
 
     .finding__refs li {
@@ -813,7 +910,8 @@
     }
 
     .summary-bar__inner {
-      max-width: 1280px;
+      box-sizing: border-box;
+      max-width: var(--shell-max);
       margin: 0 auto;
       padding: var(--space-3) var(--space-4);
       display: flex;
@@ -848,7 +946,11 @@
     .summary-bar__pills::-webkit-scrollbar { display: none; }
     /* Two-row: pills get their own row with a divider below */
     .summary-bar__inner--policy .summary-bar__pills {
-      padding: var(--space-2) 0;
+      /* The 3px left padding gives the first pill's hover/focus ring room to
+         paint inside this scrolling box; the matching negative margin keeps the
+         row's left edge aligned with the header brand and the TOC drawer. */
+      padding: var(--space-2) 0 var(--space-2) 3px;
+      margin-left: -3px;
       border-bottom: 1px solid var(--border-muted);
       flex-shrink: 0;
     }
@@ -979,8 +1081,15 @@
     .findings-empty__clear:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 
     /* ── Suppressed findings section ─────────────────────────── */
+    .findings-section[aria-expanded="false"] { margin-bottom: 0; }
+
+    /* Active and suppressed findings are different categories, so the break
+       between them is double the gap between sibling sections, with the rule
+       centred in it: space-3 above from this margin, space-3 below from the
+       next header's own top margin. */
     .findings--suppressed {
       border-top: 2px solid var(--border-muted);
+      margin-top: var(--space-3);
     }
 
 
@@ -1034,6 +1143,9 @@
       font-size: var(--text-base);
       font-family: inherit;
       min-width: 180px;
+      /* Clear the space the absolutely positioned clear button occupies, so a
+         long query's trailing text and caret don't slide under the icon. */
+      padding-right: 22px;
     }
 
     /* Restore 16px on touch devices to prevent iOS Safari auto-zoom on focus */
@@ -1045,6 +1157,15 @@
 
     .search input::placeholder {
       color: var(--fg-subtle);
+    }
+
+    /* Chrome draws its own cancel button for input[type=search] once the field
+       has focus and a value, and paints it in the system accent color, so in
+       dark mode a blue X landed on top of the report's own clear button. */
+    .search input::-webkit-search-cancel-button,
+    .search input::-webkit-search-decoration {
+      -webkit-appearance: none;
+      appearance: none;
     }
 
     .search__clear {
@@ -1108,6 +1229,9 @@
       display: flex;
       align-items: flex-start;
       width: 100%;
+      box-sizing: border-box;
+      max-width: var(--shell-max);
+      margin: 0 auto;
     }
     .main-container {
       flex: 1 1 0;
@@ -1229,6 +1353,7 @@
     .tv-d0 { padding-left: 8px;  padding-right: 8px; }
     .tv-d1 { padding-left: 20px; padding-right: 8px; }
     .tv-d2 { padding-left: 32px; padding-right: 8px; }
+    .tv-d3 { padding-left: 44px; padding-right: 8px; }
 
     /* Chevron */
     .tv-ch {
@@ -1286,6 +1411,8 @@
     .tv-dot--medium   { background: var(--sev-medium-dot); }
     .tv-dot--low      { background: var(--sev-low-dot); }
     .tv-dot--info     { background: var(--sev-info-dot); }
+    /* unknown aliases to the low palette, matching .finding__badge--unknown */
+    .tv-dot--unknown  { background: var(--sev-low-dot); }
 
     /* Separator between rule groups */
     .tv-sep { height: 1px; background: var(--border-muted); margin: 4px 0; }
@@ -1327,23 +1454,73 @@
     .tv-chips a.tv-chip--required:hover    { border-color: var(--req-fg); }
     .tv-chips a.tv-chip--recommended:hover { border-color: var(--rec-fg); }
 
+    /* Chips past CHIP_CAP stay hidden until the "+N more" button expands the strip */
+    .tv-chips a.tv-chip--overflow { display: none; }
+    .tv-chips.is-expanded a.tv-chip--overflow { display: inline-flex; }
+    .tv-chips__more {
+      min-width: 24px;
+      height: 18px;
+      padding: 0 7px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-subtle);
+      border: 1px dashed var(--border-default);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: var(--text-xs);
+      line-height: 1;
+      color: var(--fg-muted);
+      cursor: pointer;
+      transition: border-color var(--motion-fast), color var(--motion-fast);
+    }
+    .tv-chips__more:hover { border-color: var(--accent-brand); color: var(--fg-default); }
+    .tv-chips__more:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
     /* Collapsible group headers */
     .tv-tr.tv-d0, .tv-tr.tv-d1[data-grp-id] { cursor: pointer; user-select: none; }
     .tv-tr.tv-d0:hover, .tv-tr.tv-d1[data-grp-id]:hover { background: var(--bg-subtle); }
     .tv-ch svg { transition: transform var(--motion-fast) var(--motion-ease); }
     .tv-tr[data-collapsed="true"] .tv-ch svg { transform: rotate(0deg); }
 
-    /* Collapsible descendants — animate between visible and collapsed states */
+    /* Collapsible descendants — animate between visible and collapsed states.
+       max-height starts unset (natural size); toggleGroup() sets it inline to
+       the element's own measured height before animating to/from 0, so the
+       transition always travels across the row's real height instead of a
+       guessed constant. */
     .toc-tree [data-grp-parent] {
       overflow: hidden;
-      max-height: 80px;
       opacity: 1;
       transition: max-height 180ms var(--motion-ease),
                   opacity 120ms var(--motion-ease),
                   padding 180ms var(--motion-ease);
     }
+    /* This bound is a backstop unrelated to the collapse animation above; it must
+       never hide a chip. A full CHIP_CAP strip measures ~410px worst case
+       (narrowest drawer, 4-digit finding numbers), so 480px clears it — the
+       overflow rule below then scrolls rather than silently stranding chips out
+       of reach if a strip ever exceeds it. */
     .toc-tree .tv-chips[data-grp-parent] {
-      max-height: 240px;
+      max-height: 480px;
+    }
+    .toc-tree .tv-chips[data-grp-parent]:not(.is-collapsed) {
+      overflow-y: auto;
+    }
+    /* Expanded strip scrolls in place: overlay scrollbars give no hint on their own,
+       so the inset ring marks it as a scroll pane rather than a clipped list. */
+    .toc-tree .tv-chips.is-expanded[data-grp-parent] {
+      max-height: 300px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      box-shadow: inset 0 0 0 1px var(--border-muted);
+      border-radius: var(--radius-sm);
+      margin: 0 var(--space-2) 4px;
+    }
+    .toc-tree .tv-chips.is-expanded[data-grp-parent]::-webkit-scrollbar { width: 8px; }
+    .toc-tree .tv-chips.is-expanded[data-grp-parent]::-webkit-scrollbar-thumb {
+      background: var(--border-default);
+      border-radius: 4px;
     }
     .toc-tree [data-grp-parent].is-collapsed {
       max-height: 0;
@@ -1392,7 +1569,8 @@
     }
 
     .report-header__inner {
-      max-width: 1280px;
+      box-sizing: border-box;
+      max-width: var(--shell-max);
       margin: 0 auto;
       padding: 12px 16px;
       display: flex;
@@ -1687,7 +1865,8 @@
     }
 
     .report-footer__inner {
-      max-width: 1280px;
+      box-sizing: border-box;
+      max-width: var(--shell-max);
       margin: 0 auto;
       padding: var(--space-3) var(--space-4);
       display: flex;
@@ -2009,13 +2188,16 @@
 
     @media print {
       .summary-bar,
+      .scanner-tabs,
       .toc-drawer,
       .header-kebab,
       .scroll-up-button,
       .copy-btn,
       .copy-all-btn,
       #help-dialog,
+      .finding__refs-toggle,
       .finding__head::after { display: none !important; }
+      .finding__refs-more { display: list-item !important; }
       body { background: #fff !important; color: #000 !important; }
       .finding {
         break-inside: avoid;
@@ -2074,6 +2256,100 @@
     .u-sentinel{height:0;overflow:hidden}
     .u-flex-ic{display:flex;align-items:center;gap:4px}
     .report-header__logo-img{shape-rendering:geometricPrecision;text-rendering:geometricPrecision;image-rendering:optimizeQuality;fill-rule:evenodd;clip-rule:evenodd}
+
+    /* ── Scanner tab strip ───────────────────────────────────── */
+    .scanner-tabs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: var(--space-3);
+      padding-bottom: var(--space-2);
+      border-bottom: 1px solid var(--border-default);
+    }
+    .scanner-tabs__list {
+      display: flex;
+      gap: 6px;
+      flex: 1 1 auto;
+      min-width: 0;
+      /* clip overflowing tabs, but let the 3px hover/focus ring escape so it
+         renders identically to .pill, whose container does not clip */
+      overflow: clip;
+      overflow-clip-margin: 4px;
+    }
+    .scanner-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 12px;
+      height: var(--control-h);
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-default);
+      background: var(--bg-canvas);
+      color: var(--fg-default);
+      font-size: var(--text-sm);
+      font-family: inherit;
+      line-height: 1;
+      white-space: nowrap;
+      cursor: pointer;
+      flex: 0 0 auto;
+      transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+    }
+    .scanner-tab:hover {
+      background: var(--bg-subtle);
+      box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent-brand) 22%, transparent);
+    }
+    .scanner-tab:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+    .scanner-tab[aria-selected="true"] {
+      background: color-mix(in oklch, var(--accent-brand) 12%, transparent);
+      border-color: var(--accent-brand);
+      color: var(--accent-brand);
+    }
+    .scanner-tab[aria-selected="true"] .scanner-tab__n { color: currentColor; opacity: 0.7; }
+    .scanner-tab__n {
+      color: var(--fg-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .scanner-tab__n:empty { display: none; }
+    .scanner-tabs__overflow {
+      position: relative;
+      flex: 0 0 auto;
+    }
+    .scanner-tab--more[hidden] { display: none; }
+    .scanner-tab--more.is-active {
+      border-color: var(--accent-brand);
+      color: var(--accent-brand);
+    }
+    .scanner-tabs__menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + var(--space-1));
+      min-width: 200px;
+      max-height: 280px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      z-index: var(--z-drawer);
+      padding: var(--space-1) 0;
+    }
+    .scanner-tabs__menu[hidden] { display: none; }
+    /* Overflowed tabs are the same real buttons, reparented into the menu —
+       restyled here from pill to full-width row. */
+    .scanner-tabs__menu .scanner-tab {
+      width: 100%;
+      justify-content: space-between;
+      border: none;
+      border-radius: 0;
+      padding: var(--space-2) var(--space-3);
+    }
+    .scanner-tabs__menu .scanner-tab:hover { box-shadow: none; }
+    .scanner-tabs__menu .scanner-tab[aria-selected="true"] { background: color-mix(in oklch, var(--accent-brand) 12%, transparent); }
   </style>
 
 </head>
@@ -2085,6 +2361,7 @@
 {{ $commitURL := .Metadata.CommitURL }}
 {{ $webURL := .Metadata.WebURL }}
 {{ $vcs := .Metadata.VCSURL }}
+{{- $multiScanner := gt (len .Metadata.Scanners) 1 }}
 
 <body>
   <svg xmlns="http://www.w3.org/2000/svg" class="u-hidden">
@@ -2196,6 +2473,10 @@
       <path d="M11 6h5a2 2 0 0 1 2 2v8"/>
       <polyline points="14 9 11 6 14 3"/>
     </symbol>
+    <symbol id="tb-scale" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M7 20h10"/><path d="M6 6l6 -1l6 1"/><path d="M12 3v17"/>
+      <path d="M9 12l-3 -6l-3 6a3 3 0 0 0 6 0"/><path d="M21 12l-3 -6l-3 6a3 3 0 0 0 6 0"/>
+    </symbol>
   </svg>
   <header class="report-header">
     <div class="report-header__inner">
@@ -2227,7 +2508,7 @@
           <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-pull-request"/></svg>
           <code>#{{ $vcs.PullRequestId }}</code>
         </a>{{end}}
-        {{if .Metadata.ToolMetadata.Name}}<span class="report-header__tool-label">{{ .Metadata.ToolMetadata.Name }}{{if .Metadata.ToolMetadata.Version}} {{ .Metadata.ToolMetadata.Version }}{{end}}</span>{{end}}
+        {{if and .Metadata.Tools (not $multiScanner)}}<span class="report-header__tool-label">{{range $i, $t := .Metadata.Tools}}{{if $i}}, {{end}}{{ $t.Name }}{{if $t.Version}} {{ $t.Version }}{{end}}{{end}}</span>{{end}}
         <span class="report-header__inline-divider" aria-hidden="true"></span>
         <button class="report-header__icon-btn report-header__help-btn" type="button" aria-label="Keyboard shortcuts" id="help-btn-inline">
           <svg class="icon" aria-hidden="true" width="16" height="16"><use href="#tb-help"/></svg>
@@ -2262,8 +2543,8 @@
             <svg width="14" height="14" aria-hidden="true"><use href="#tb-git-pull-request"/></svg>
             <a href="{{ if eq $vcs.VCSType "bitbucket" }}{{ $vcs.HTTPRepoLink }}/pull-requests/{{ $vcs.PullRequestId }}{{ else if eq $vcs.VCSType "gitlab" }}{{ $vcs.HTTPRepoLink }}/-/merge_requests/{{ $vcs.PullRequestId }}{{ else }}{{ $vcs.HTTPRepoLink }}/pull/{{ $vcs.PullRequestId }}{{ end }}" target="_blank" rel="noopener">PR #{{ $vcs.PullRequestId }}</a>
           </div>{{end}}
-          {{if .Metadata.ToolMetadata.Name}}<div class="header-kebab__meta-item header-kebab__meta-item--tool" role="menuitem">
-            {{ .Metadata.ToolMetadata.Name }}{{if .Metadata.ToolMetadata.Version}} {{ .Metadata.ToolMetadata.Version }}{{end}}
+          {{if .Metadata.Tools}}<div class="header-kebab__meta-item header-kebab__meta-item--tool" role="menuitem">
+            {{range $i, $t := .Metadata.Tools}}{{if $i}}, {{end}}{{ $t.Name }}{{if $t.Version}} {{ $t.Version }}{{end}}{{end}}
           </div>{{end}}
           <div class="header-kebab__divider"></div>
           <button class="header-kebab__theme-btn" id="kebab-theme-btn" role="menuitem" aria-label="Toggle theme">
@@ -2325,9 +2606,11 @@
     <div class="toc-grouping" role="group" aria-label="Group findings by">
       <button class="toc-grp-btn" data-grp="sev-file" aria-pressed="true"  type="button">By severity</button>
       <button class="toc-grp-btn" data-grp="rule"     aria-pressed="false" type="button">By finding</button>
+      {{- if $multiScanner}}<button class="toc-grp-btn" data-grp="scanner" aria-pressed="false" type="button">By scanner</button>{{end}}
     </div>
     <div class="toc-tree" id="toc-by-sev"  aria-label="Findings by severity and file"></div>
     <div class="toc-tree" id="toc-by-rule" aria-label="Findings by finding" hidden></div>
+    {{- if $multiScanner}}<div class="toc-tree" id="toc-by-scanner" aria-label="Findings by scanner" hidden></div>{{end}}
     <div class="toc-resize" id="toc-resize" role="separator" aria-orientation="vertical" aria-label="Resize findings panel" tabindex="0"></div>
   </aside>
 
@@ -2337,6 +2620,21 @@
 
       <!-- <div class="main-body-summary">
       </div> -->
+
+      {{- if $multiScanner}}
+      <div id="scanner-tabs" class="scanner-tabs" role="tablist" aria-label="Filter by scanner">
+        <div class="scanner-tabs__list">
+          <button class="scanner-tab" data-scanner-tab="" role="tab" aria-selected="true" type="button">All scanners<span class="scanner-tab__n"></span></button>
+          {{range $.Metadata.Scanners}}
+          <button class="scanner-tab" data-scanner-tab="{{.}}" role="tab" aria-selected="false" type="button" title="{{.}}">{{.}}<span class="scanner-tab__n"></span></button>
+          {{end}}
+        </div>
+        <div class="scanner-tabs__overflow">
+          <button class="scanner-tab scanner-tab--more" id="scanner-tabs-more" type="button" aria-haspopup="true" aria-expanded="false" hidden>+<span id="scanner-tabs-more-n"></span> more</button>
+          <div class="scanner-tabs__menu" id="scanner-tabs-menu" role="menu" hidden></div>
+        </div>
+      </div>
+      {{- end}}
 
       {{$n := 0}}
       {{$lastSection := ""}}
@@ -2362,7 +2660,7 @@
         {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
         {{ $locationWebURL := index $location.Properties "WebURL"}}
         {{ $locationPRWebURL := index $location.Properties "PRWebURL"}}
-        <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-classification="{{if $.Metadata.RequiredEnabled}}{{if eq (index .Properties "Required") "true"}}required{{else}}recommended{{end}}{{end}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}">
+        <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-classification="{{if $.Metadata.RequiredEnabled}}{{if eq (index .Properties "Required") "true"}}required{{else}}recommended{{end}}{{end}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}"{{if $multiScanner}} data-scanner="{{index .Properties "Scanner"}}"{{end}}>
           <summary class="finding__head">
             <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
             <span class="finding__num">#{{add $n 1}}</span><span class="finding__title" role="heading" aria-level="2" title="{{index .Properties "Title"}}">{{index .Properties "Title"}}</span>
@@ -2377,6 +2675,22 @@
               <span class="req-notice__text">{{if $req}}<svg aria-hidden="true" width="12" height="12"><use href="#tb-alert-triangle"/></svg> <strong>Required</strong>{{else}}<svg aria-hidden="true" width="12" height="12"><use href="#tb-info"/></svg> <strong>Recommended</strong>{{end}}{{with index .Properties "RequiredReason"}} &mdash; {{.}}{{end}}</span>
             </div>
             {{- end}}
+            {{- $fpVerdict := index .Properties "FPVerdict" -}}
+            {{- if $fpVerdict}}
+            <div class="finding__fp">
+              <div class="finding__fp-header"><svg width="13" height="13" aria-hidden="true"><use href="#tb-scale"/></svg>False-positive review</div>
+              <div class="finding__fp-body">
+                <dl class="finding__fp-dl">
+                  <dt class="finding__fp-key">Verdict:</dt>
+                  <dd>{{if eq $fpVerdict "NEEDS_VERIFICATION"}}<strong class="finding__fp-needs-verification" title="{{index .Properties "FPHover"}}">{{index .Properties "FPLabel"}}</strong>{{else}}<strong>{{index .Properties "FPLabel"}}</strong>{{end}}</dd>
+                  {{with index .Properties "FPReasoning"}}
+                  <dt class="finding__fp-key">Reasoning:</dt>
+                  <dd>{{.}}</dd>
+                  {{end}}
+                </dl>
+              </div>
+            </div>
+            {{- end}}
             {{- $supStatus := index .Properties "SuppressionStatus" -}}
             {{- if $supStatus}}
             <div class="finding__suppression finding__suppression--{{$supStatus}}">
@@ -2387,12 +2701,13 @@
             {{- end}}
             {{- $metaCat  := index .Properties "Category" -}}
             {{- $metaConf := index .Properties "Confidence" -}}
+            {{- $metaPreConf := index .Properties "PreFPConfidence" -}}
             {{- $metaRule := index .Properties "RuleFull" -}}
             {{- $metaScan := index .Properties "Scanner" -}}
             {{- if or $metaCat $metaConf $metaRule $metaScan }}
             <dl class="finding__meta-dl">
               {{if $metaCat}}<dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">{{$metaCat}}</dd>{{end}}
-              {{if $metaConf}}<dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">{{$metaConf}}</dd>{{end}}
+              {{if $metaConf}}<dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">{{if $metaPreConf}}<span class="finding__meta-confidence-prior">{{$metaPreConf}}</span> <span class="finding__meta-confidence-arrow" aria-hidden="true">&rarr;</span> {{end}}{{$metaConf}}</dd>{{end}}
               {{if $metaRule}}<dt class="finding__meta-key">Rule:</dt><dd>{{$metaRule}}</dd>{{end}}
               {{if $metaScan}}<dt class="finding__meta-key">Scanner:</dt><dd>{{$metaScan}}</dd>{{end}}
             </dl>
@@ -2477,7 +2792,10 @@
             {{- with index .Properties "References"}}
             <section class="finding__refs">
               <h3 class="finding__section-h">References</h3>
-              <ul>{{range .}}<li><a href="{{.}}" target="_blank" rel="noopener noreferrer">{{.}}</a></li>{{end}}</ul>
+              <ul>{{range $i, $ref := .}}<li{{if ge $i 3}} class="finding__refs-more"{{end}}><a href="{{$ref}}" target="_blank" rel="noopener noreferrer">{{$ref}}</a></li>{{end}}</ul>
+              {{- if gt (len .) 3}}
+              <button class="finding__refs-toggle" type="button" aria-expanded="false" data-show-all="Show all {{len .}} references">Show all {{len .}} references</button>
+              {{- end}}
             </section>
             {{- end}}
           </div>
@@ -2510,7 +2828,7 @@
           {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
           {{ $locationWebURL := index $location.Properties "WebURL"}}
           {{ $locationPRWebURL := index $location.Properties "PRWebURL"}}
-          <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}} finding--suppressed" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}" data-suppressed="true">
+          <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}} finding--suppressed" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}" data-suppressed="true"{{if $multiScanner}} data-scanner="{{index .Properties "Scanner"}}"{{end}}>
             <summary class="finding__head">
               <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
               <span class="finding__num">#{{add $n 1}}</span><span class="finding__title" role="heading" aria-level="2" title="{{index .Properties "Title"}}">{{index .Properties "Title"}}</span>
@@ -2525,14 +2843,31 @@
                 {{with index .Properties "SuppressionJustification"}}<span class="sup-justification" title="{{.}}">{{.}}</span>{{end}}
                 <span class="sup-kind">{{index .Properties "SuppressionKind"}}</span>
               </div>
+              {{- $fpVerdict := index .Properties "FPVerdict" -}}
+              {{- if $fpVerdict}}
+              <div class="finding__fp">
+                <div class="finding__fp-header"><svg width="13" height="13" aria-hidden="true"><use href="#tb-scale"/></svg>False-positive review</div>
+                <div class="finding__fp-body">
+                  <dl class="finding__fp-dl">
+                    <dt class="finding__fp-key">Verdict:</dt>
+                    <dd>{{if eq $fpVerdict "NEEDS_VERIFICATION"}}<strong class="finding__fp-needs-verification" title="{{index .Properties "FPHover"}}">{{index .Properties "FPLabel"}}</strong>{{else}}<strong>{{index .Properties "FPLabel"}}</strong>{{end}}</dd>
+                    {{with index .Properties "FPReasoning"}}
+                    <dt class="finding__fp-key">Reasoning:</dt>
+                    <dd>{{.}}</dd>
+                    {{end}}
+                  </dl>
+                </div>
+              </div>
+              {{- end}}
               {{- $metaCat  := index .Properties "Category" -}}
               {{- $metaConf := index .Properties "Confidence" -}}
+              {{- $metaPreConf := index .Properties "PreFPConfidence" -}}
               {{- $metaRule := index .Properties "RuleFull" -}}
               {{- $metaScan := index .Properties "Scanner" -}}
               {{- if or $metaCat $metaConf $metaRule $metaScan }}
               <dl class="finding__meta-dl">
                 {{if $metaCat}}<dt class="finding__meta-key" data-meta-key="category">Category:</dt><dd data-meta-key="category">{{$metaCat}}</dd>{{end}}
-                {{if $metaConf}}<dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">{{$metaConf}}</dd>{{end}}
+                {{if $metaConf}}<dt class="finding__meta-key" data-meta-key="confidence">Confidence:</dt><dd data-meta-key="confidence">{{if $metaPreConf}}<span class="finding__meta-confidence-prior">{{$metaPreConf}}</span> <span class="finding__meta-confidence-arrow" aria-hidden="true">&rarr;</span> {{end}}{{$metaConf}}</dd>{{end}}
                 {{if $metaRule}}<dt class="finding__meta-key">Rule:</dt><dd>{{$metaRule}}</dd>{{end}}
                 {{if $metaScan}}<dt class="finding__meta-key">Scanner:</dt><dd>{{$metaScan}}</dd>{{end}}
               </dl>
@@ -2617,7 +2952,10 @@
               {{- with index .Properties "References"}}
               <section class="finding__refs">
                 <h3 class="finding__section-h">References</h3>
-                <ul>{{range .}}<li><a href="{{.}}" target="_blank" rel="noopener noreferrer">{{.}}</a></li>{{end}}</ul>
+                <ul>{{range $i, $ref := .}}<li{{if ge $i 3}} class="finding__refs-more"{{end}}><a href="{{$ref}}" target="_blank" rel="noopener noreferrer">{{$ref}}</a></li>{{end}}</ul>
+                {{- if gt (len .) 3}}
+                <button class="finding__refs-toggle" type="button" aria-expanded="false" data-show-all="Show all {{len .}} references">Show all {{len .}} references</button>
+                {{- end}}
               </section>
               {{- end}}
             </div>
@@ -2668,13 +3006,14 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
 
       // Shared state exposed to cross-cutting handlers
       let syncToggleLabel, setTocOpen, searchInput, helpDialog;
-      let openHelp, closeHelp, refreshToc, syncPillState;
+      let openHelp, closeHelp, refreshToc, syncPillState, resetScannerTab;
 
       // Unified filter state
       let activeSeverities = new Set();  // empty = "all"
       let activeSearch = '';
       let requiredOnly    = false;
       let recommendedOnly = false;
+      let activeScanner   = '';  // '' = all scanners; set by initScannerTabs()
 
       function isVisible(f) {
         if (activeSeverities.size > 0) {
@@ -2682,6 +3021,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         }
         if (requiredOnly    && f.dataset.classification !== 'required')    return false;
         if (recommendedOnly && f.dataset.classification !== 'recommended') return false;
+        if (activeScanner && f.dataset.scanner !== activeScanner) return false;
         if (activeSearch) {
           const tokens = activeSearch.toLowerCase().split(/\s+/).filter(Boolean);
           const hay = f.dataset.searchText || '';
@@ -2921,11 +3261,13 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         const noResults = document.getElementById('no-results');
         const countEl   = document.getElementById('search-count');
         if (!noResults) return;
+        const inScope = f => !activeScanner || f.dataset.scanner === activeScanner;
         const visible = findings.filter(f => !f.hidden && f.dataset.suppressed !== 'true').length;
         noResults.hidden = visible > 0;
         if (countEl) {
           const isFiltered = activeSeverities.size > 0 || activeSearch !== '' || requiredOnly || recommendedOnly;
-          countEl.textContent = isFiltered ? `${visible} of {{index .Metadata.SuppressionInfo "active"}} shown` : '';
+          const scopeTotal = findings.filter(f => f.dataset.suppressed !== 'true' && inScope(f)).length;
+          countEl.textContent = isFiltered ? `${visible} of ${scopeTotal} shown` : '';
         }
       }
 
@@ -2943,6 +3285,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           activeSearch = '';
           if (searchInput) searchInput.value = '';
           if (syncPillState) syncPillState();
+          if (resetScannerTab) resetScannerTab();
           persistSeverities();
           applyVisibility();
           if (searchInput) searchInput.focus();
@@ -2950,13 +3293,66 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       }
 
       function initCollapsibleSections() {
+        const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         document.querySelectorAll('.findings-section[aria-controls]').forEach(hdr => {
           const content = document.getElementById(hdr.getAttribute('aria-controls'));
           if (!content) return;
+          // A section is normally far taller than the viewport, and the edge
+          // that clips it sits at (top + height). Animating the full content
+          // height therefore spends most of the duration dragging that edge
+          // around below the fold: a 4000px section in a 650px viewport shows
+          // nothing moving for the first ~115ms of a 200ms transition, then
+          // sweeps shut in the remaining ~85ms. Travelling only as far as the
+          // bottom of the viewport gives the visible part the whole duration;
+          // the off-screen remainder is added or dropped in one step that
+          // nobody can see.
+          function visibleTravel(full) {
+            return Math.max(0, Math.min(full, window.innerHeight - content.getBoundingClientRect().top));
+          }
           function toggle() {
             const open = hdr.getAttribute('aria-expanded') === 'true';
             hdr.setAttribute('aria-expanded', String(!open));
-            content.classList.toggle('section-collapsed', open);
+
+            if (prefersReduced) {
+              content.classList.toggle('section-collapsed', open);
+              return;
+            }
+
+            if (content._sectionCollapseEnd) {
+              content.removeEventListener('transitionend', content._sectionCollapseEnd);
+              clearTimeout(content._sectionCollapseTimer);
+              content._sectionCollapseEnd = null;
+            }
+            if (open) {
+              content.style.height = visibleTravel(content.getBoundingClientRect().height) + 'px';
+              void content.offsetHeight;
+              requestAnimationFrame(() => {
+                content.classList.add('section-collapsed');
+                content.style.height = '0px';
+              });
+            } else {
+              content.classList.remove('section-collapsed');
+              content.style.height = '0px';
+              void content.offsetHeight;
+              const h = visibleTravel(content.scrollHeight);
+              requestAnimationFrame(() => { content.style.height = h + 'px'; });
+            }
+            // Backstop: a section scrolled out of view has no travel to animate,
+            // so no transition starts and transitionend never fires. Without
+            // this the inline height would stay pinned at its start value.
+            const done = () => {
+              content.removeEventListener('transitionend', onEnd);
+              clearTimeout(content._sectionCollapseTimer);
+              content._sectionCollapseEnd = null;
+              content.style.height = '';
+            };
+            const onEnd = ev => {
+              if (ev.target !== content || ev.propertyName !== 'height') return;
+              done();
+            };
+            content._sectionCollapseEnd = onEnd;
+            content._sectionCollapseTimer = setTimeout(done, 250);
+            content.addEventListener('transitionend', onEnd);
           }
           hdr.addEventListener('click', toggle);
           hdr.addEventListener('keydown', e => {
@@ -2988,10 +3384,16 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         const drawer     = document.getElementById('toc-drawer');
         const toggleBtn  = document.getElementById('toc-toggle');
         const closeBtn   = document.getElementById('toc-close');
-        const treeSev    = document.getElementById('toc-by-sev');
-        const treeRule   = document.getElementById('toc-by-rule');
+        const treeSev     = document.getElementById('toc-by-sev');
+        const treeRule    = document.getElementById('toc-by-rule');
+        const treeScanner = document.getElementById('toc-by-scanner');
         const resizeHandle = document.getElementById('toc-resize');
         const grpBtns    = Array.from(drawer.querySelectorAll('.toc-grp-btn'));
+        const trees      = [treeSev, treeRule, treeScanner].filter(Boolean);
+        // Scanner group order for "By scanner": mirrors the tab strip's --input order.
+        const scannerOrder = Array.from(document.querySelectorAll('#scanner-tabs .scanner-tab[data-scanner-tab]'))
+          .map(b => b.dataset.scannerTab)
+          .filter(Boolean);
 
         const data = findings.map((f, i) => {
           const ruleId = f.dataset.ruleId || '';
@@ -3005,6 +3407,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             file: f.querySelector('.finding__path')?.textContent.trim() || '',
             line: (f.querySelector('.finding__line')?.textContent || '').replace(/^:/, ''),
             classification: f.dataset.classification || '',
+            scanner: f.dataset.scanner || '',
             suppressed: f.dataset.suppressed === 'true'
           };
         });
@@ -3097,6 +3500,37 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         }
         // === buildFileLabels:end ===
 
+        // === renderChipStrip:start (extracted verbatim by cmd/to-html/toc_chips_test.go) ===
+        // renderChipStrip renders the "#N" chips for findings sharing a (file,rule),
+        // sorted by finding number. Chips past CHIP_CAP are emitted as
+        // tv-chip--overflow (hidden by CSS) behind a "+N more" button: the strip has a
+        // bounded max-height, so an uncapped cluster of hundreds would render chips
+        // that are clipped out of view and unreachable.
+        // Depends on esc(); opts.titleFor and opts.classFor are per-tree callbacks.
+        const CHIP_CAP = 48;
+        function renderChipStrip(items, opts) {
+          const parentAttr = opts.parents ? ' data-grp-parent="' + opts.parents + '"' : '';
+          const sorted = items.slice().sort((a, b) => {
+            const an = parseInt(a.num, 10), bn = parseInt(b.num, 10);
+            if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
+            return String(a.num).localeCompare(String(b.num));
+          });
+          let html = '<div class="tv-chips' + (opts.chipClass ? ' ' + opts.chipClass : '') + '"' + parentAttr + '>';
+          sorted.forEach((d, i) => {
+            const cls = ((opts.classFor ? opts.classFor(d) : '') + (i >= CHIP_CAP ? ' tv-chip--overflow' : '')).trim();
+            html += '<a href="#' + d.id + '" target="_self" title="' + opts.titleFor(d) + '"' +
+              (cls ? ' class="' + cls + '"' : '') + '>#' + esc(d.num) + '</a>';
+          });
+          if (sorted.length > CHIP_CAP) {
+            const hidden = sorted.length - CHIP_CAP;
+            html += '<button type="button" class="tv-chips__more" aria-expanded="false" data-more="' + hidden + '">' +
+              '+ ' + hidden + ' more</button>';
+          }
+          html += '</div>';
+          return html;
+        }
+        // === renderChipStrip:end ===
+
         // Render a list of findings sharing a (file,rule). N>=2: one row + chip strip.
         // N==1: single leaf row. Returns HTML.
         function renderRuleCluster(items, opts) {
@@ -3110,7 +3544,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             const d = items[0];
             return '<a class="tv-tr ' + opts.leafDepth + '" href="#' + d.id + '" target="_self" title="' + titleAttr + ' (' + esc(d.file || d.id) + ':' + esc(d.line) + ')"' + parentAttr + '>' +
               chevLeaf + dot(d.sev) +
-              '<span class="tv-tl">' + esc(cap60(label)) + '</span><span class="tv-ls">#' + esc(d.num) + '</span></a>';
+              '<span class="tv-tl">' + esc(cap60(label)) + '</span>' +
+              '<span class="tv-ls' + (opts.lsClassFor ? opts.lsClassFor(d) : '') + '">#' + esc(d.num) + '</span></a>';
           }
           // Collapsed row + chip strip. The row anchors to the first finding so a row-click still jumps somewhere sensible.
           const firstId = items[0].id;
@@ -3118,60 +3553,119 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             chevLeaf + dot(sev) +
             '<span class="tv-tl">' + esc(cap60(label)) + '</span>' +
             '<span class="tv-tc">' + items.length + '</span></a>';
-          // Sort chips by finding number (ASC)
-          const sorted = items.slice().sort((a, b) => {
-            const an = parseInt(a.num, 10), bn = parseInt(b.num, 10);
-            if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
-            return String(a.num).localeCompare(String(b.num));
+          html += renderChipStrip(items, {
+            parents: opts.parents,
+            chipClass: opts.chipClass,
+            classFor: opts.classFor,
+            titleFor: d => titleAttr + ' (' + esc(d.file || d.id) + ':' + esc(d.line) + ')'
           });
-          html += '<div class="tv-chips ' + (opts.chipClass || '') + '"' + parentAttr + '>';
-          for (const d of sorted) {
-            html += '<a href="#' + d.id + '" target="_self" title="' + titleAttr + ' (' + esc(d.file || d.id) + ':' + esc(d.line) + ')">#' + esc(d.num) + '</a>';
+          return html;
+        }
+
+        // Renders SEV_ORDER groups (each with its file/rule breakdown) for one bucket
+        // of items. Shared by buildSevTree (per required/recommended bucket) and
+        // buildScannerTree (per scanner bucket) — both nest "then severity" the same way.
+        // showClassification: colour each finding's #N by Required/Recommended, the way
+        // buildRuleTree does. buildSevTree leaves it off because it already groups under
+        // Required/Recommended headers; buildScannerTree turns it on because it does not.
+        function renderSevGroups(items, idSuffix, parentId, showClassification) {
+          const lsClassFor = d => d.classification === 'required' ? ' tv-ls--required'
+            : d.classification === 'recommended' ? ' tv-ls--recommended' : '';
+          const chipClassFor = d => d.classification === 'required' ? 'tv-chip--required'
+            : d.classification === 'recommended' ? 'tv-chip--recommended' : '';
+          let html = '', rendered = 0;
+          const pSuffix = parentId ? ' ' + parentId : '';
+          const sevParent = parentId ? ' data-grp-parent="' + parentId + '"' : '';
+          SEV_ORDER.forEach(sev => {
+            const sevItems = items.filter(d => d.sev === sev);
+            if (!sevItems.length) return;
+            const capSev = sev.charAt(0).toUpperCase() + sev.slice(1);
+            const sevId = 'sg-' + sev + (idSuffix ? '-' + idSuffix : '');
+            // The separator is a child of the same group as the rows it divides, so it
+            // must carry the parent chain or it survives collapse as a blank line.
+            if (rendered > 0) html += '<div class="tv-sep"' + sevParent + '></div>';
+            rendered++;
+            html += '<div class="tv-tr tv-d0" data-grp-id="' + sevId + '"' + sevParent + '>' +
+              chev + dot(sev) +
+              '<span class="tv-tl">' + capSev + '</span>' +
+              '<span class="tv-tc">' + sevItems.length + '</span></div>';
+            const byFile = groupBy(sevItems, d => d.file);
+            let fi = 0;
+            for (const [file, fileItems] of byFile) {
+              const basename = fileLabels.get(file) || '(unknown)';
+              const fileId = sevId + '-f' + fi++;
+              html += '<div class="tv-tr tv-d1" data-grp-parent="' + sevId + pSuffix + '" data-grp-id="' + fileId + '">' +
+                chev + fileIcon +
+                '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
+                '<span class="tv-tc">' + fileItems.length + '</span></div>';
+              const byRule = groupBy(fileItems, ruleKey);
+              for (const ruleItems of byRule.values()) {
+                html += renderRuleCluster(ruleItems, {
+                  leafDepth: 'tv-d2',
+                  parents: fileId + ' ' + sevId + pSuffix,
+                  chipClass: '',
+                  lsClassFor: showClassification ? lsClassFor : null,
+                  classFor: showClassification ? chipClassFor : null
+                });
+              }
+            }
+          });
+          return html;
+        }
+
+        // File/rule breakdown for a bucket of suppressed items. idPrefix keeps the
+        // generated group ids unique; parentChain is the ancestor chain those rows
+        // collapse with. depth shifts the rows when nested under a scanner row.
+        function renderSuppressedFileRows(suppItems, idPrefix, parentChain, depth) {
+          let html = '', fi = 0;
+          const fileDepth = depth === 2 ? 'tv-d2' : 'tv-d1';
+          const leafDepth = depth === 2 ? 'tv-d3' : 'tv-d2';
+          for (const [file, fileItems] of groupBy(suppItems, d => d.file)) {
+            const basename = fileLabels.get(file) || '(unknown)';
+            const fileId = idPrefix + '-f' + fi++;
+            html += '<div class="tv-tr ' + fileDepth + ' tv-grp--suppressed" data-grp-parent="' + parentChain + '" data-grp-id="' + fileId + '">' +
+              chev + fileIcon +
+              '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
+              '<span class="tv-tc">' + fileItems.length + '</span></div>';
+            for (const ruleItems of groupBy(fileItems, ruleKey).values()) {
+              html += renderRuleCluster(ruleItems, {
+                leafDepth: leafDepth + ' tv-grp--suppressed',
+                parents: fileId + ' ' + parentChain,
+                chipClass: 'tv-grp--suppressed'
+              });
+            }
           }
-          html += '</div>';
+          return html;
+        }
+
+        // Renders the "Suppressed" prio-header plus its breakdown. scannerOrder, when
+        // supplied, inserts a scanner level so the suppressed section is grouped on the
+        // same axis as the active findings above it.
+        function renderSuppressedGroup(suppItems, grpId, scannerOrder) {
+          let html = '<div class="tv-prio-hdr tv-prio-hdr--suppressed" data-grp-id="' + grpId + '">' +
+            '&#8856; <span>Suppressed</span><span class="tv-tc">' + suppItems.length + '</span></div>';
+          if (!scannerOrder) {
+            return html + renderSuppressedFileRows(suppItems, grpId, grpId, 1);
+          }
+          const byScanner = groupBy(suppItems, d => d.scanner);
+          let si = 0;
+          scannerOrder.forEach(scanner => {
+            const items = byScanner.get(scanner);
+            if (!items || !items.length) return;
+            const scanId = grpId + '-s' + si;
+            if (si > 0) html += '<div class="tv-sep" data-grp-parent="' + grpId + '"></div>';
+            si++;
+            html += '<div class="tv-tr tv-d1 tv-grp--suppressed" data-grp-parent="' + grpId + '" data-grp-id="' + scanId + '">' +
+              chev + '<span class="tv-tl">' + esc(scanner) + '</span>' +
+              '<span class="tv-tc">' + items.length + '</span></div>';
+            html += renderSuppressedFileRows(items, scanId, scanId + ' ' + grpId, 2);
+          });
           return html;
         }
 
         function buildSevTree(dataset, fileLabels) {
           const activeItems = dataset.filter(d => !d.suppressed);
           const suppItems   = dataset.filter(d => d.suppressed);
-
-          function renderSevGroups(items, idSuffix, parentId) {
-            let html = '', rendered = 0;
-            const pSuffix = parentId ? ' ' + parentId : '';
-            const sevParent = parentId ? ' data-grp-parent="' + parentId + '"' : '';
-            SEV_ORDER.forEach(sev => {
-              const sevItems = items.filter(d => d.sev === sev);
-              if (!sevItems.length) return;
-              const capSev = sev.charAt(0).toUpperCase() + sev.slice(1);
-              const sevId = 'sg-' + sev + (idSuffix ? '-' + idSuffix : '');
-              if (rendered > 0) html += '<div class="tv-sep"></div>';
-              rendered++;
-              html += '<div class="tv-tr tv-d0" data-grp-id="' + sevId + '"' + sevParent + '>' +
-                chev + dot(sev) +
-                '<span class="tv-tl">' + capSev + '</span>' +
-                '<span class="tv-tc">' + sevItems.length + '</span></div>';
-              const byFile = groupBy(sevItems, d => d.file);
-              let fi = 0;
-              for (const [file, fileItems] of byFile) {
-                const basename = fileLabels.get(file) || '(unknown)';
-                const fileId = sevId + '-f' + fi++;
-                html += '<div class="tv-tr tv-d1" data-grp-parent="' + sevId + pSuffix + '" data-grp-id="' + fileId + '">' +
-                  chev + fileIcon +
-                  '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
-                  '<span class="tv-tc">' + fileItems.length + '</span></div>';
-                const byRule = groupBy(fileItems, ruleKey);
-                for (const ruleItems of byRule.values()) {
-                  html += renderRuleCluster(ruleItems, {
-                    leafDepth: 'tv-d2',
-                    parents: fileId + ' ' + sevId + pSuffix,
-                    chipClass: ''
-                  });
-                }
-              }
-            });
-            return html;
-          }
 
           let html = '';
           if (requiredEnabled) {
@@ -3194,28 +3688,33 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           }
 
           if (suppItems.length) {
-            const supGrpId = 'sg-suppressed';
             html += '<div class="tv-sep"></div>';
-            html += '<div class="tv-prio-hdr tv-prio-hdr--suppressed" data-grp-id="' + supGrpId + '">' +
-              '&#8856; <span>Suppressed</span><span class="tv-tc">' + suppItems.length + '</span></div>';
-            const byFile = groupBy(suppItems, d => d.file);
-            let fi = 0;
-            for (const [file, fileItems] of byFile) {
-              const basename = fileLabels.get(file) || '(unknown)';
-              const fileId = supGrpId + '-f' + fi++;
-              html += '<div class="tv-tr tv-d1 tv-grp--suppressed" data-grp-parent="' + supGrpId + '" data-grp-id="' + fileId + '">' +
-                chev + fileIcon +
-                '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
-                '<span class="tv-tc">' + fileItems.length + '</span></div>';
-              const byRule = groupBy(fileItems, ruleKey);
-              for (const ruleItems of byRule.values()) {
-                html += renderRuleCluster(ruleItems, {
-                  leafDepth: 'tv-d2 tv-grp--suppressed',
-                  parents: fileId + ' ' + supGrpId,
-                  chipClass: 'tv-grp--suppressed'
-                });
-              }
-            }
+            html += renderSuppressedGroup(suppItems, 'sg-suppressed');
+          }
+          return html;
+        }
+
+        function buildScannerTree(dataset, fileLabels, scannerOrder) {
+          const activeItems = dataset.filter(d => !d.suppressed);
+          const suppItems   = dataset.filter(d => d.suppressed);
+          const byScanner = groupBy(activeItems, d => d.scanner);
+
+          let html = '', rendered = 0;
+          scannerOrder.forEach(scanner => {
+            const items = byScanner.get(scanner);
+            if (!items || !items.length) return;
+            const grpId = 'scg-' + rendered;
+            if (rendered > 0) html += '<div class="tv-sep"></div>';
+            rendered++;
+            html += '<div class="tv-tr tv-d0" data-grp-id="' + grpId + '">' +
+              chev + '<span class="tv-tl">' + esc(scanner) + '</span>' +
+              '<span class="tv-tc">' + items.length + '</span></div>';
+            html += renderSevGroups(items, grpId, grpId, requiredEnabled);
+          });
+
+          if (suppItems.length) {
+            html += '<div class="tv-sep"></div>';
+            html += renderSuppressedGroup(suppItems, 'scg-suppressed', scannerOrder);
           }
           return html;
         }
@@ -3264,17 +3763,12 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
                     chev + fileIcon +
                     '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
                     '<span class="tv-tc">' + fileItems.length + '</span></div>';
-                  const sorted = fileItems.slice().sort((a, b) => {
-                    const an = parseInt(a.num, 10), bn = parseInt(b.num, 10);
-                    if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
-                    return String(a.num).localeCompare(String(b.num));
+                  html += renderChipStrip(fileItems, {
+                    parents: fileNodeId + ' ' + ruleNodeId + chain,
+                    chipClass: dimmed ? 'tv-grp--suppressed' : '',
+                    titleFor: d => esc(file) + ':' + esc(d.line),
+                    classFor: d => d.classification === 'required' ? 'tv-chip--required' : d.classification === 'recommended' ? 'tv-chip--recommended' : ''
                   });
-                  html += '<div class="tv-chips' + (dimmed ? ' tv-grp--suppressed' : '') + '" data-grp-parent="' + fileNodeId + ' ' + ruleNodeId + chain + '">';
-                  for (const d of sorted) {
-                    const chipCls = d.classification === 'required' ? ' tv-chip--required' : d.classification === 'recommended' ? ' tv-chip--recommended' : '';
-                    html += '<a href="#' + d.id + '" target="_self" title="' + esc(file) + ':' + esc(d.line) + '" class="' + chipCls.trim() + '">#' + esc(d.num) + '</a>';
-                  }
-                  html += '</div>';
                 }
               }
             });
@@ -3403,7 +3897,10 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           const empty = '<div class="tv-empty">No findings match the current filter.</div>';
           treeSev.innerHTML  = filtered.length ? buildSevTree(filtered, fileLabels)  : empty;
           treeRule.innerHTML = filtered.length ? buildRuleTree(filtered, fileLabels) : empty;
-          if (tocCountEl) tocCountEl.textContent = String(filtered.length);
+          if (treeScanner) {
+            treeScanner.innerHTML = filtered.length ? buildScannerTree(filtered, fileLabels, scannerOrder) : empty;
+          }
+          if (tocCountEl) tocCountEl.textContent = String(filtered.filter(d => !d.suppressed).length);
           collapseSupGroupIfAll();
           initTocScrollSpy();
         };
@@ -3411,28 +3908,125 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         initResize();
         refreshToc();
 
-        // Group collapse: click d0 (or d1 with data-grp-id) to toggle children
+        // Group collapse: click d0 (or d1 with data-grp-id) to toggle children.
+        // Expanding a group always expands everything inside it: every descendant
+        // header's own data-collapsed is cleared too, so a chevron can never show
+        // "collapsed" while its row is actually visible. Collapsing is unchanged —
+        // it hides the whole subtree regardless of descendants' own state.
         function toggleGroup(header) {
           const id = header.dataset.grpId;
           const collapsed = header.dataset.collapsed === 'true';
+          const expanding = collapsed;
           header.dataset.collapsed = String(!collapsed);
           const tree = header.closest('.toc-tree');
+          const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          const targets = [];
           tree.querySelectorAll('[data-grp-parent]').forEach(el => {
             const parents = el.dataset.grpParent.split(' ');
-            if (parents.includes(id)) el.classList.toggle('is-collapsed', !collapsed);
+            if (!parents.includes(id)) return;
+            if (expanding && el.dataset.grpId) el.dataset.collapsed = 'false';
+            targets.push(el);
+          });
+
+          if (prefersReduced) {
+            targets.forEach(el => el.classList.toggle('is-collapsed', !collapsed));
+            return;
+          }
+
+          // max-height is measured per element rather than a guessed constant, so
+          // the animation travels the row's actual height instead of mostly
+          // idling above it. Each element gets its own transitionend listener
+          // (replacing any still pending from an interrupted prior toggle) that
+          // clears the inline override once settled, handing max-height back to
+          // the stylesheet (none for a plain row, the chip strip's own cap).
+          if (expanding) {
+            // The target height must be measured with the collapse clamp lifted,
+            // never while it's still applied: scrollHeight under an active
+            // max-height/overflow:hidden clamp reports the *content's* auto
+            // height, not the row's real size. That under-measures a
+            // fixed-height row like .tv-tr (content is shorter than its
+            // declared height) and, worse, measures exactly 0 for a childless
+            // one like .tv-sep -- which then "animates" to the value it's
+            // already at, so no transition ever starts and transitionend never
+            // fires, leaving the inline override stuck forever.
+            const heights = targets.map(el => {
+              const wasCollapsed = el.classList.contains('is-collapsed');
+              el.classList.remove('is-collapsed');
+              const prevInline = el.style.maxHeight;
+              el.style.maxHeight = 'none';
+              const h = el.scrollHeight;
+              el.style.maxHeight = prevInline;
+              if (wasCollapsed) el.classList.add('is-collapsed');
+              return h;
+            });
+            targets.forEach(el => { el.style.maxHeight = '0px'; });
+            targets.forEach(el => void el.offsetHeight);
+            requestAnimationFrame(() => {
+              targets.forEach((el, i) => {
+                el.classList.remove('is-collapsed');
+                el.style.maxHeight = heights[i] + 'px';
+              });
+            });
+          } else {
+            targets.forEach(el => { el.style.maxHeight = el.scrollHeight + 'px'; });
+            targets.forEach(el => void el.offsetHeight);
+            requestAnimationFrame(() => {
+              targets.forEach(el => {
+                el.classList.add('is-collapsed');
+                el.style.maxHeight = '0px';
+              });
+            });
+          }
+          // A transitionend listener alone can't guarantee cleanup: if a
+          // target's measured height ever equals its current clamped value,
+          // no transition starts and transitionend never fires. A timeout
+          // matched to the transition duration (180ms, see the .toc-tree
+          // [data-grp-parent] rule above) is a backstop that always clears the
+          // inline override, whichever fires first.
+          targets.forEach(el => {
+            if (el._tocCollapseEnd) {
+              el.removeEventListener('transitionend', el._tocCollapseEnd);
+              clearTimeout(el._tocCollapseTimer);
+              el._tocCollapseEnd = null;
+            }
+            const done = () => {
+              el.removeEventListener('transitionend', onEnd);
+              clearTimeout(el._tocCollapseTimer);
+              el._tocCollapseEnd = null;
+              el.style.maxHeight = '';
+            };
+            const onEnd = ev => {
+              if (ev.target !== el || ev.propertyName !== 'max-height') return;
+              done();
+            };
+            el._tocCollapseEnd = onEnd;
+            el._tocCollapseTimer = setTimeout(done, 250);
+            el.addEventListener('transitionend', onEnd);
           });
         }
 
         function collapseSupGroupIfAll() {
-          [treeSev, treeRule].forEach(tree => {
-            tree.querySelectorAll('[data-grp-id="sg-suppressed"], [data-grp-id="rg-suppressed"]').forEach(hdr => {
+          trees.forEach(tree => {
+            tree.querySelectorAll('[data-grp-id="sg-suppressed"], [data-grp-id="rg-suppressed"], [data-grp-id="scg-suppressed"]').forEach(hdr => {
               if (hdr.dataset.collapsed !== 'true') toggleGroup(hdr);
             });
           });
         }
 
-        [treeSev, treeRule].forEach(tree => {
+        // Reveal the chips held back by CHIP_CAP. State resets on the next
+        // refreshToc(), which rebuilds both trees from scratch.
+        function toggleChipStrip(btn) {
+          const strip = btn.closest('.tv-chips');
+          if (!strip) return;
+          const expanded = strip.classList.toggle('is-expanded');
+          btn.setAttribute('aria-expanded', String(expanded));
+          btn.textContent = expanded ? 'Show less' : '+ ' + btn.dataset.more + ' more';
+        }
+
+        trees.forEach(tree => {
           tree.addEventListener('click', e => {
+            const more = e.target.closest('.tv-chips__more');
+            if (more) { toggleChipStrip(more); return; }
             const hdr = e.target.closest('[data-grp-id]');
             if (!hdr || e.target.closest('a')) return;
             toggleGroup(hdr);
@@ -3440,9 +4034,11 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         });
 
         function setGrouping(grp) {
+          if (grp === 'scanner' && !treeScanner) grp = 'sev-file';
           grpBtns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.grp === grp)));
           treeSev.hidden  = grp !== 'sev-file';
           treeRule.hidden = grp !== 'rule';
+          if (treeScanner) treeScanner.hidden = grp !== 'scanner';
           try { localStorage.setItem('report.toc.grouping', grp); } catch(_) {}
         }
         grpBtns.forEach(b => b.addEventListener('click', () => setGrouping(b.dataset.grp)));
@@ -3482,6 +4078,145 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         // Open on load if persisted
         const savedOpen = localStorage.getItem('report.toc');
         setTocOpen(savedOpen === null ? true : savedOpen === 'true');
+      }
+
+      // Scanner tab strip: absent from the DOM entirely for a single-scanner report
+      // (the template only renders #scanner-tabs for 2+ distinct scanners), so this
+      // is a no-op there.
+      function initScannerTabs() {
+        const container = document.getElementById('scanner-tabs');
+        if (!container) return;
+        const list    = container.querySelector('.scanner-tabs__list');
+        const moreBtn = document.getElementById('scanner-tabs-more');
+        const moreNEl = document.getElementById('scanner-tabs-more-n');
+        const menu    = document.getElementById('scanner-tabs-menu');
+        const allTabs = Array.from(list.querySelectorAll('.scanner-tab[data-scanner-tab]'));
+        const GAP = 6;
+
+        function countFor(scanner) {
+          return findings.filter(f => f.dataset.suppressed !== 'true' &&
+            (scanner === '' || f.dataset.scanner === scanner)).length;
+        }
+
+        function updateTabCounts() {
+          allTabs.forEach(btn => {
+            const n = btn.querySelector('.scanner-tab__n');
+            if (n) n.textContent = String(countFor(btn.dataset.scannerTab));
+          });
+        }
+
+        function setPillCount(filterName, n) {
+          const pill = document.querySelector('.summary-bar__pills .pill[data-filter="' + filterName + '"]');
+          if (!pill) return;
+          const el = pill.querySelector('.pill__n');
+          if (el) el.textContent = String(n);
+          if (n === 0) pill.setAttribute('aria-disabled', 'true');
+          else pill.removeAttribute('aria-disabled');
+        }
+
+        // Recomputes the severity and Required/Recommended pill counts against the
+        // active tab, so numbers next to a filter always describe what's on screen.
+        function updateSummaryPillCounts() {
+          const scoped = findings.filter(f => f.dataset.suppressed !== 'true' &&
+            (!activeScanner || f.dataset.scanner === activeScanner));
+          const sev = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+          let required = 0, recommended = 0;
+          scoped.forEach(f => {
+            const s = f.dataset.severity;
+            if (s && s in sev) sev[s]++;
+            if (f.dataset.classification === 'required') required++;
+            else if (f.dataset.classification === 'recommended') recommended++;
+          });
+          setPillCount('all', scoped.length);
+          Object.keys(sev).forEach(s => setPillCount(s, sev[s]));
+          setPillCount('required', required);
+          setPillCount('recommended', recommended);
+        }
+
+        function closeMenu() {
+          menu.hidden = true;
+          moreBtn.setAttribute('aria-expanded', 'false');
+        }
+
+        // True when the active tab's button currently lives in the overflow menu,
+        // i.e. it didn't fit in the visible strip at the current width.
+        function updateMoreActiveState() {
+          const activeBtn = activeScanner && allTabs.find(btn => btn.dataset.scannerTab === activeScanner);
+          moreBtn.classList.toggle('is-active', !!activeBtn && menu.contains(activeBtn));
+        }
+
+        function setActive(scanner) {
+          activeScanner = scanner;
+          allTabs.forEach(btn => btn.setAttribute('aria-selected', String(btn.dataset.scannerTab === scanner)));
+          updateMoreActiveState();
+          closeMenu();
+          try { localStorage.setItem('report.scanner', scanner); } catch (_) {}
+          applyVisibility();
+          updateSummaryPillCounts();
+        }
+        resetScannerTab = () => setActive('');
+
+        allTabs.forEach(btn => btn.addEventListener('click', () => setActive(btn.dataset.scannerTab)));
+
+        moreBtn.addEventListener('click', () => {
+          const open = menu.hidden;
+          menu.hidden = !open;
+          moreBtn.setAttribute('aria-expanded', String(open));
+        });
+        document.addEventListener('click', e => {
+          if (menu.hidden) return;
+          if (e.target.closest('#scanner-tabs-menu') || e.target.closest('#scanner-tabs-more')) return;
+          closeMenu();
+        });
+
+        // Keeps as many tabs on one line as fit, moving the rest (in original order)
+        // into the "+N more" menu. Tabs are real, already-wired buttons that get
+        // reparented between the visible list and the menu — no re-binding needed.
+        function measureOverflow() {
+          allTabs.forEach(btn => list.appendChild(btn));
+          closeMenu();
+          moreBtn.hidden = true;
+
+          const available = container.clientWidth;
+          let used = 0, fitsAll = true;
+          for (let i = 0; i < allTabs.length; i++) {
+            used += allTabs[i].offsetWidth + (i > 0 ? GAP : 0);
+            if (used > available) { fitsAll = false; break; }
+          }
+          if (fitsAll) return;
+
+          moreBtn.hidden = false;
+          const moreWidth = moreBtn.offsetWidth + GAP;
+          used = 0;
+          let cut = 0;
+          for (let i = 0; i < allTabs.length; i++) {
+            const w = allTabs[i].offsetWidth + (i > 0 ? GAP : 0);
+            if (used + w + moreWidth > available) break;
+            used += w;
+            cut = i + 1;
+          }
+          if (cut < 1) cut = 1; // "All scanners" always stays visible
+
+          const overflow = allTabs.slice(cut);
+          overflow.forEach(btn => menu.appendChild(btn));
+          moreNEl.textContent = String(overflow.length);
+          updateMoreActiveState();
+        }
+
+        updateTabCounts();
+
+        let restored = '';
+        try { restored = localStorage.getItem('report.scanner') || ''; } catch (_) {}
+        if (restored && allTabs.some(btn => btn.dataset.scannerTab === restored)) {
+          setActive(restored);
+        }
+
+        measureOverflow();
+        let resizeDebounce;
+        window.addEventListener('resize', () => {
+          clearTimeout(resizeDebounce);
+          resizeDebounce = setTimeout(measureOverflow, 120);
+        });
       }
 
       function initCopy() {
@@ -3619,6 +4354,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             activeSearch = '';
             if (searchInput) searchInput.value = '';
             if (syncPillState) syncPillState();
+            if (resetScannerTab) resetScannerTab();
             persistSeverities();
             applyVisibility();
             e.preventDefault();
@@ -3714,6 +4450,18 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         }
       }
 
+      function initRefsToggles() {
+        document.querySelectorAll('.finding__refs-toggle').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const section = btn.closest('.finding__refs');
+            if (!section) return;
+            const expanded = section.classList.toggle('is-expanded');
+            btn.setAttribute('aria-expanded', String(expanded));
+            btn.textContent = expanded ? 'Show fewer' : btn.dataset.showAll;
+          });
+        });
+      }
+
       function initFindingAnimations() {
         const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (prefersReduced) return;
@@ -3725,39 +4473,108 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             const body = details.querySelector('.finding__body');
             if (!body) return;
 
+            // Drop any transitionend listener still pending from an interrupted
+            // prior toggle, matching the same guard used for the TOC and section
+            // collapse animations, so rapid re-clicks don't accumulate listeners.
+            if (body._findingAnimEnd) {
+              body.removeEventListener('transitionend', body._findingAnimEnd);
+              clearTimeout(body._findingAnimTimer);
+              body._findingAnimEnd = null;
+            }
+
+            // .finding__body is box-sizing: border-box, so a getBoundingClientRect()
+            // read (border-box height) is what `style.height` needs to match — using
+            // scrollHeight (which also includes padding) against a border-box target
+            // would overshoot by one padding's worth. padding-bottom animates
+            // alongside height so the box collapses to a hairline rather than
+            // flooring at the whole padding sum. padding-top is deliberately left
+            // alone: animating it drags the first row (the Required/Recommended
+            // banner) down from the summary border while the body opens.
             if (details.open) {
-              const h = body.scrollHeight;
+              body._findingAnimSeq = (body._findingAnimSeq || 0) + 1;
+              const h = body.getBoundingClientRect().height;
+              const padBottom = getComputedStyle(body).paddingBottom;
               body.style.height = h + 'px';
+              body.style.paddingBottom = padBottom;
               body.style.opacity = '1';
               void body.offsetHeight;
               requestAnimationFrame(() => {
-                body.style.height = '0';
+                body.style.height = '0px';
+                body.style.paddingBottom = '0px';
                 body.style.opacity = '0';
               });
-              const onCloseEnd = (ev) => {
-                if (ev.propertyName !== 'height') return;
+              // Backstop, as for the TOC and section collapses: a close that
+              // starts in the same task as an open measures a subtree Chrome has
+              // not laid out yet, so no transition starts and transitionend never
+              // fires. Without this a double-click left the card marked open but
+              // rendered at the collapsed floor.
+              const closeDone = () => {
                 body.removeEventListener('transitionend', onCloseEnd);
+                clearTimeout(body._findingAnimTimer);
+                body._findingAnimEnd = null;
                 details.open = false;
                 body.style.height = '';
+                body.style.paddingBottom = '';
                 body.style.opacity = '';
               };
+              const onCloseEnd = (ev) => {
+                if (ev.target !== body || ev.propertyName !== 'height') return;
+                closeDone();
+              };
+              body._findingAnimEnd = onCloseEnd;
+              body._findingAnimTimer = setTimeout(closeDone, 300);
               body.addEventListener('transitionend', onCloseEnd);
             } else {
-              details.open = true;
-              body.style.height = '0';
+              // Chrome hides the content of a closed <details> with
+              // content-visibility on ::details-content, and a subtree in that
+              // state is not laid out: for one frame after `open = true`,
+              // getComputedStyle reports padding 0 and getBoundingClientRect
+              // under-measures the body by exactly the padding sum, so measuring
+              // there yields a short target and a padding of 0. Open into the
+              // collapsed state, then measure a frame later with the collapse
+              // briefly lifted and transitions suppressed, so the reads are the
+              // resting values and neither read starts a transition of its own.
+              const seq = (body._findingAnimSeq || 0) + 1;
+              body._findingAnimSeq = seq;
+              body.style.height = '0px';
+              body.style.paddingBottom = '0px';
               body.style.opacity = '0';
-              void body.offsetHeight;
-              const h = body.scrollHeight;
+              details.open = true;
               requestAnimationFrame(() => {
-                body.style.height = h + 'px';
-                body.style.opacity = '1';
-              });
-              const onOpenEnd = (ev) => {
-                if (ev.propertyName !== 'height') return;
-                body.removeEventListener('transitionend', onOpenEnd);
+                if (body._findingAnimSeq !== seq) return;
+                const prevTransition = body.style.transition;
+                body.style.transition = 'none';
                 body.style.height = '';
+                body.style.paddingBottom = '';
+                const padBottom = getComputedStyle(body).paddingBottom;
+                const h = body.getBoundingClientRect().height;
+                body.style.height = '0px';
+                body.style.paddingBottom = '0px';
+                void body.offsetHeight;
+                body.style.transition = prevTransition;
+                requestAnimationFrame(() => {
+                  if (body._findingAnimSeq !== seq) return;
+                  body.style.height = h + 'px';
+                  body.style.paddingBottom = padBottom;
+                  body.style.opacity = '1';
+                });
+              });
+              // Backstop for the same reason as the close path; 300ms covers the
+              // deferred measure frame plus the 220ms transition.
+              const openDone = () => {
+                body.removeEventListener('transitionend', onOpenEnd);
+                clearTimeout(body._findingAnimTimer);
+                body._findingAnimEnd = null;
+                body.style.height = '';
+                body.style.paddingBottom = '';
                 body.style.opacity = '';
               };
+              const onOpenEnd = (ev) => {
+                if (ev.target !== body || ev.propertyName !== 'height') return;
+                openDone();
+              };
+              body._findingAnimEnd = onOpenEnd;
+              body._findingAnimTimer = setTimeout(openDone, 300);
               body.addEventListener('transitionend', onOpenEnd);
             }
           });
@@ -3776,6 +4593,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       initSmartDefaults();
       initToggleAll();
       initToc();
+      initScannerTabs();
       initCopy();
       initCopyAll();
       initFixCopy();
@@ -3784,6 +4602,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       initHelp();
       initShortcuts();
       initSyntaxHighlight();
+      initRefsToggles();
       initFindingAnimations();
 
       // Restore persisted state

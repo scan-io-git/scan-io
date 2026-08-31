@@ -8,25 +8,30 @@ The `to-html` command converts sarif, standard sast output format, to a human-fr
 - [Usage Examples](#usage-examples)
 - [Report features](#report-features)
   - [Security](#security)
+  - [Required and Recommended](#required-and-recommended)
+  - [Multiple scanners](#multiple-scanners)
+  - [False-positive review](#false-positive-review)
+  - [References](#references)
   - [Filtering](#filtering)
   - [Suppressed findings](#suppressed-findings)
 
 ## Syntax
 ```
-scanio to-html --input/-i PATH --output/-o PATH [--source/-s PATH] [--templates-path/-t PATH] [--pull-request ID] [--required SEVERITIES] [--no-supressions] [--no-csp]
+scanio to-html --input/-i PATH [--input/-i PATH ...] --output/-o PATH [--source/-s PATH] [--templates-path/-t PATH] [--pull-request ID] [--required SEVERITIES] [--never-demote SEVERITIES] [--no-supressions] [--no-csp]
 ```
 
 ### Options
 | Option | Type | Required | Default Value | Description |
 |--------|------|----------|---------------|-------------|
-| `--input`, `-i` | string | Yes | `none` | Path to input file, sarif report |
+| `--input`, `-i` | string | Yes | `none` | Path to an input sarif report. Repeatable: pass `-i` once per report to merge several scanners into a single consolidated report. Findings are rendered in the order the inputs are given, so a caller iterating an unordered set of tools should sort it for a reproducible report. A missing or unparseable input fails the whole render rather than producing a partial report. |
 | `--output`, `-o` | string | Yes | `none` | Path to output file, html report |
 | `--source`, `-s` | string | No | `none` | Path to source code folder |
 | `--templates-path`, `-t` | string | No | `none` | Path to templates folder |
 | `--pull-request` | string | No | `none` | Pull request ID. Enables PR-aware links: the header pill links to the PR and each finding's "Location in PR" links to the PR diff at the exact line, with a secondary commit-permalink link. When omitted, auto-detected from CI env vars: GITHUB_REF (refs/pull/N/merge), CI_MERGE_REQUEST_IID, BITBUCKET_PR_ID |
 | `--no-supressions` | bool | No | `false` | Enable removing results with suppressions properties |
 | `--no-csp` | bool | No | `false` | Disable the Content-Security-Policy meta tag in the generated report |
-| `--required` | string | No | `none` | Comma-separated blocker severities, with optional per-severity confidence threshold. A severity listed without a threshold (e.g. `critical,high`) marks all matching findings as Required regardless of confidence score. A `sev:N` threshold (e.g. `critical:0.50,high:0.90`) demotes findings whose confidence is below N to Recommended; findings at or above N remain Required. When set, findings are split into "Required to fix" and "Recommended" sections. Env var fallback: `SCANIO_BLOCKER_SEVERITIES` (comma list); per-severity threshold via `SCANIO_CONFIDENCE_THRESHOLD_<SEV>` (e.g. `SCANIO_CONFIDENCE_THRESHOLD_HIGH=0.90`). The flag wins over env vars. |
+| `--required` | string | No | `none` | Comma-separated blocker severities, with optional per-severity confidence threshold. A severity listed without a threshold (e.g. `critical,high`) marks all matching findings as Required. A `sev:N` threshold (e.g. `critical:0.50,high:0.90`) demotes findings whose confidence is below N to Recommended. A false-positive verdict on the finding, when present, takes precedence over the threshold -- see [Required and Recommended](#required-and-recommended). When set, findings are split into Required and Recommended sections. Env var fallback: `SCANIO_BLOCKER_SEVERITIES` (comma list); per-severity threshold via `SCANIO_CONFIDENCE_THRESHOLD_<SEV>` (e.g. `SCANIO_CONFIDENCE_THRESHOLD_HIGH=0.90`). The flag wins over env vars. Each severity must be one of critical, high, medium, low, info, and each threshold must parse as a number between 0.0 and 1.0; an invalid severity or threshold fails the command with an error rather than being silently dropped. |
+| `--never-demote` | string | No | `none` | Comma-separated severities that stay Required regardless of any false-positive verdict or confidence threshold, e.g. `critical`. Only meaningful alongside `--required`: it pins severities within the blocker list and never promotes a severity `--required` did not list. Use it when one severity is non-negotiable regardless of what the false-positive review concluded. Env var fallback: `SCANIO_NEVER_DEMOTE` (comma list); the flag wins. Validated like `--required` -- an unrecognized severity fails the command. |
 
 ## Usage Examples
 The following examples demonstrate how to use the `to-html` command.
@@ -113,6 +118,14 @@ Demote low-confidence findings to Recommended. A finding is Required only if its
 scanio to-html -i results.sarif -o report.html --required "critical,high:0.90,medium:0.70"
 ```
 
+**Required to fix — pin a severity so a false-positive verdict cannot demote it**
+By default a `FALSE_POSITIVE` verdict demotes any severity, critical included. Pin the
+severities that must block regardless of what the false-positive review concluded. The
+review is still shown on the finding; it just no longer decides.
+```bash
+scanio to-html -i results.sarif -o report.html --required "critical,high" --never-demote "critical"
+```
+
 **Required to fix — env var configuration**
 Set `SCANIO_BLOCKER_SEVERITIES` and optional `SCANIO_CONFIDENCE_THRESHOLD_<SEV>` env vars instead of passing the flag. The `--required` flag wins if both are set.
 ```bash
@@ -121,13 +134,24 @@ export SCANIO_CONFIDENCE_THRESHOLD_HIGH=0.90
 scanio to-html -i results.sarif -o report.html
 ```
 
+**Consolidated report from several scanners**
+Pass `--input` once per report. The result is a single document with a scanner tab strip, one
+continuous finding numbering, and cross-scanner severity counts.
+```bash
+scanio to-html \
+  -i semgrep.sarif \
+  -i trufflehog3.sarif \
+  -o report.html -s /path/to/project --required "critical,high"
+```
+
 When `--required` is set (or detected from env vars):
-- Findings are split into "Required to fix" and "Recommended" sections in the findings list and TOC.
-- A "Required" filter pill appears in the summary bar.
+- Findings are split into "Required" and "Recommended" sections in the findings list and TOC.
+- "Required" and "Recommended" filter pills appear in the summary bar.
 - Each expanded finding card shows a notice banner explaining why the finding is required or recommended.
 - The TOC groups findings by priority (Required first) before severity.
-- A severity listed without a threshold: all matching findings are Required, confidence is not consulted.
-- A severity listed with a threshold: findings with no confidence signal are treated as fully confident (Required); findings with a score below the threshold are Recommended.
+
+For the full decision order, including how a false-positive verdict overrides a confidence
+threshold, see [Required and Recommended](#required-and-recommended).
 
 When `--required` is absent, the report is identical to the default — no Required/Recommended distinction.
 
@@ -147,9 +171,128 @@ Use `--no-csp` to omit the policy for email clients or viewers that do not suppo
 
 See [Why the HTML Report Embeds a Content-Security-Policy](../explanations/html-report-security.md) for the rationale.
 
+### Required and Recommended
+
+Off by default. Pass `--required` (or set `SCANIO_BLOCKER_SEVERITIES`) and every
+finding is classified as **Required** or **Recommended**, the report splits into two
+sections, two extra filter pills appear, and each finding carries a one-line notice
+explaining its classification.
+
+Suppressed findings are never classified. They are skipped entirely and keep their own
+section.
+
+Each severity in `--required` (or `SCANIO_BLOCKER_SEVERITIES`) must be one of critical,
+high, medium, low, info, and each `sev:N` threshold must parse as a number between 0.0
+and 1.0. An unrecognized severity or an invalid threshold -- from either the flag or the
+env vars -- fails the command with an error rather than being silently dropped. This is
+different from a severity listed with no threshold at all, which is a deliberate
+no-threshold policy: every matching finding is Required regardless of confidence, not an
+error.
+
+Each finding is decided by four checks, in order. The first one that applies wins.
+
+**1. Is the severity a blocker?**
+If the severity is not in the list you passed, the finding is Recommended and nothing
+else is consulted. `Info severity is not required`. `--never-demote` does not change
+this: pinning a severity you never listed as a blocker leaves it Recommended.
+
+**2. Is the severity pinned by `--never-demote`?**
+If so the finding is Required, and neither the verdict nor the threshold is consulted.
+The notice reads `Critical severity, always required`, or `Critical severity, always
+required despite false-positive review` when the review disagreed. The verdict is still
+read and the false-positive panel still renders it -- the policy overrides the
+classification, it does not hide the review.
+
+**3. Is there a false-positive verdict?**
+If the finding carries a recognized verdict in `properties.fp.verdict`, that verdict
+decides, overriding any confidence threshold you configured:
+
+| verdict | result |
+|---------|--------|
+| `FALSE_POSITIVE` | Recommended |
+| `TRUE_POSITIVE` | Required |
+| `NEEDS_VERIFICATION` | Required |
+
+No severity is special-cased by default. A `FALSE_POSITIVE` verdict demotes a critical
+finding exactly as it demotes any other severity you listed. Pass
+`--never-demote critical` if that is not what you want.
+
+**4. Otherwise, fall back to confidence.**
+With no verdict present, the confidence threshold for that severity applies:
+
+| situation | result |
+|-----------|--------|
+| no threshold configured for the severity | Required |
+| threshold configured, but the finding has no confidence signal | Required |
+| confidence at or above the threshold | Required |
+| confidence below the threshold | Recommended |
+
+Every ambiguous case resolves to Required. The failure mode is over-reporting rather
+than letting something through unnoticed.
+
+Confidence itself is resolved from `properties.confidence` first, then a
+`HIGH/MEDIUM/LOW CONFIDENCE` rule tag, then `rule.properties.precision`.
+
+The notice on each finding states which check applied, for example
+`High severity, confidence 45% < 60% threshold` or
+`Critical severity, confirmed by FP review`.
+
+### Multiple scanners
+
+Pass `--input` more than once and the reports are merged into one document with a single
+continuous finding numbering, ordered by severity (or by Required then severity when
+`--required` is set) rather than grouped by scanner.
+
+- A **tab strip** above the findings offers `All scanners` plus one tab per scanner, each
+  with its count. Selecting a tab narrows the findings and recomputes the severity and
+  Required/Recommended pill counts against that tab. Those counts describe the tab, not any
+  search term or severity filter applied on top of it -- the search box reports that
+  narrowing separately as "N of M shown".
+- Tabs that do not fit collapse into a `+N more` menu, remeasured on resize.
+- The findings panel gains a **By scanner** grouping mode alongside By severity and By
+  finding.
+- Each finding's `Scanner` metadata field names the tool that reported it.
+
+A scanner is a distinct tool name, so two inputs produced by the same tool collapse into
+one tab. With a single scanner none of the above appears and the report renders exactly as
+it always has; the header names the tool instead.
+
+### False-positive review
+
+When a finding carries a `properties.fp` object, the report renders a **False-positive
+review** panel between the classification notice and the metadata list, showing the
+verdict and the reviewer's reasoning:
+
+| verdict | shown as |
+|---------|----------|
+| `TRUE_POSITIVE` | Confirmed as a real issue |
+| `FALSE_POSITIVE` | Likely false positive |
+| `NEEDS_VERIFICATION` | Needs verification (hover for guidance) |
+
+Findings without a recognized verdict get no panel at all: the absence of a verdict
+already says the finding was not reviewed.
+
+If `properties.pre_fp_confidence` is present, the Confidence field shows the move as
+`High (85%) -> Low (12%)`. When it is absent only the current value is shown; no prior
+value is invented.
+
+A `Likely false positive` verdict always results in Recommended when classification is
+enabled, for every severity. The panel and the classification notice never disagree.
+
+### References
+
+A finding's References list shows the first three links, with a `Show all N references`
+button when there are more. Most findings carry a single reference, so the control only
+appears where it earns its place.
+
+Nothing is hidden permanently: the remaining links stay in the page, so browser
+find-in-page and the report's own search still match text inside a collapsed list, and
+printing reveals every reference and drops the button.
+
 ### Filtering
 
 - **Severity pills** -- click a severity label in the toolbar to show only findings of that level.
+- **Scanner tabs** -- with more than one input report, select a tab to show only that scanner's findings. Combines with the pills and the search box.
 - **Free-text search** -- the search box filters findings by any combination of words. Matching text is highlighted in amber wherever it appears: title, file path, description, and metadata fields (Category, Confidence, Rule, Scanner). The findings panel (TOC) updates in sync.
 
 The search index covers: title, description, file path, severity, rule ID, and all metadata field values. Typing `semgrep` finds all Semgrep findings; typing `low confidence` finds findings where both words appear anywhere in the finding.

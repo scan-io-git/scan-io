@@ -56,7 +56,6 @@ var categoryLabels = map[Category]string{
 }
 
 // cweToCategory maps CWE IDs to security categories.
-// Ported from sec-scan-handler/src/scanner/models/sarif.py:_CWE_TO_CATEGORY.
 var cweToCategory = map[int]Category{
 	// Injection — SQL/NoSQL/code/EL/LDAP/CRLF/XPath/XQuery
 	74: CategoryInjection, 75: CategoryInjection, 89: CategoryInjection,
@@ -136,7 +135,7 @@ var cweToCategory = map[int]Category{
 }
 
 // ruleIDKeywords is an ordered list of (lowercase substring, Category) pairs.
-// Used when no CWE tag is present. Ported from sec-scan-handler:_RULEID_CATEGORY_KEYWORDS.
+// Used when no CWE tag is present; the first match wins, so order matters.
 var ruleIDKeywords = []struct {
 	kw  string
 	cat Category

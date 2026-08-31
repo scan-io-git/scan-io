@@ -553,9 +553,15 @@ func TestResolveSourceFolderRelativePaths(t *testing.T) {
 			t.Fatalf("failed to change directory: %v", err)
 		}
 
-		// Test relative path
+		// Test relative path. ResolveSourceFolder goes through filepath.Abs, which
+		// reads the working directory from the kernel and so returns the physical
+		// path. On macOS the temp dir sits under /var, a symlink to /private/var, so
+		// comparing against the raw MkdirTemp string would fail on the prefix alone.
 		result := ResolveSourceFolder("./testdir", logger)
-		expected := filepath.Clean(testDir)
+		expected, err := filepath.EvalSymlinks(testDir)
+		if err != nil {
+			t.Fatalf("failed to resolve test dir: %v", err)
+		}
 
 		if result != expected {
 			t.Errorf("expected %s, got %s", expected, result)
