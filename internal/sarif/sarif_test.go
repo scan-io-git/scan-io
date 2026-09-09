@@ -1,11 +1,13 @@
 package sarif
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 	"unicode/utf8"
 
+	"github.com/hashicorp/go-hclog"
 	gosarif "github.com/owenrumney/go-sarif/v2/sarif"
 )
 
@@ -70,8 +72,8 @@ func TestEnrichResultsLevelPropertyHandlesMultipleRuns(t *testing.T) {
 		RuleID: &ruleIDOne,
 	}
 	runTwoResult := &gosarif.Result{
-		RuleID:  &ruleIDTwo,
-		Level:   &resultLevel,
+		RuleID: &ruleIDTwo,
+		Level:  &resultLevel,
 	}
 
 	report := Report{
@@ -1075,10 +1077,10 @@ func TestResolveFindingTitle(t *testing.T) {
 			want:      "Bad call",
 		},
 		{
-			name:      "shortDesc empty falls through to name",
-			ruleID:    "some-rule",
-			ruleName:  "Dangerous System Call",
-			want:      "Dangerous System Call",
+			name:     "shortDesc empty falls through to name",
+			ruleID:   "some-rule",
+			ruleName: "Dangerous System Call",
+			want:     "Dangerous System Call",
 		},
 		{
 			name:     "name contains ruleID short-circuits to humanize",
@@ -1187,6 +1189,97 @@ func TestEnrichResultsLocationPropertyConfinesReadsToSourceFolder(t *testing.T) 
 		}
 		if got, _ := loc.PhysicalLocation.ArtifactLocation.Properties["Code"].(string); got != "line1" {
 			t.Fatalf("expected %q, got %q", "line1", got)
+		}
+	})
+}
+
+// aiReportSARIF mirrors what the pr-sec-review MCP writer emits for a finding that
+// carries data_flow: a primary location with no "properties" object, plus codeFlows
+// whose steps each carry a region. Loading it from disk matters — the nil map this
+// test guards against only exists after encoding/json leaves an absent key unset.
+const aiReportSARIF = `{
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {"driver": {"name": "pr-sec-review", "rules": [{"id": "AI-0001"}]}},
+      "results": [
+        {
+          "ruleId": "AI-0001",
+          "message": {"text": "SQL injection"},
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {"uri": "practice/api/server/users.go"},
+                "region": {"startLine": 42}
+              }
+            }
+          ],
+          %s
+          "properties": {"Severity": "critical"}
+        }
+      ]
+    }
+  ]
+}`
+
+const aiReportCodeFlows = `"codeFlows": [
+    {
+      "threadFlows": [
+        {
+          "locations": [
+            {"location": {"physicalLocation": {"artifactLocation": {"uri": "practice/api/server/users.go"}, "region": {"startLine": 30}}}},
+            {"location": {"physicalLocation": {"artifactLocation": {"uri": "practice/api/server/users.go"}, "region": {"startLine": 42}}}}
+          ]
+        }
+      ]
+    }
+  ],`
+
+// TestEnrichResultsLocationURIPropertyNilArtifactProperties covers a result whose
+// primary artifactLocation has no properties map. EnrichResultsCodeFlowProperty
+// allocates that map as a side effect, but only for results it synthesises a code
+// flow for, so a result that ships its own codeFlows reaches
+// EnrichResultsLocationURIProperty with the map still nil.
+func TestEnrichResultsLocationURIPropertyNilArtifactProperties(t *testing.T) {
+	const wantURI = "practice/api/server/users.go"
+
+	// Both enrichers run in the order cmd/to-html applies them: the defect is in
+	// their interaction, not in either one alone.
+	enrich := func(t *testing.T, body string) *gosarif.Result {
+		t.Helper()
+		dir := t.TempDir()
+		path := filepath.Join(dir, "ai_report.sarif")
+		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+			t.Fatalf("write fixture: %v", err)
+		}
+		report, err := ReadReport(path, hclog.NewNullLogger(), dir, false)
+		if err != nil {
+			t.Fatalf("ReadReport: %v", err)
+		}
+		report.EnrichResultsCodeFlowProperty(func(_ *gosarif.Location) string { return "" })
+		report.EnrichResultsLocationURIProperty(
+			func(_ *gosarif.Location) string { return "" },
+			nil,
+		)
+		return report.Runs[0].Results[0]
+	}
+
+	t.Run("result with its own codeFlows", func(t *testing.T) {
+		result := enrich(t, fmt.Sprintf(aiReportSARIF, aiReportCodeFlows))
+		got, _ := result.Locations[0].PhysicalLocation.ArtifactLocation.Properties["URI"].(string)
+		if got != wantURI {
+			t.Errorf("URI = %q, want %q", got, wantURI)
+		}
+	})
+
+	// The path Semgrep and TruffleHog take. Their results carry no codeFlows, so
+	// EnrichResultsCodeFlowProperty synthesises one over the same location pointer
+	// and allocates the map on the way through — which is why only AI reports crashed.
+	t.Run("result without codeFlows", func(t *testing.T) {
+		result := enrich(t, fmt.Sprintf(aiReportSARIF, ""))
+		got, _ := result.Locations[0].PhysicalLocation.ArtifactLocation.Properties["URI"].(string)
+		if got != wantURI {
+			t.Errorf("URI = %q, want %q", got, wantURI)
 		}
 	})
 }
