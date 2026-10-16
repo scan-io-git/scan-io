@@ -164,6 +164,28 @@ The `fixes.artifactChanges` SARIF field (machine-executable patch format) is int
 
 **Copy button** uses the existing `data-copied` pattern: `fix-copy-btn[data-copied="1"]` turns green via `--success-fg`. The handler reads `code.innerText` from the nearest `.finding__fix-codeblock`.
 
+## Persisted state
+
+Two kinds of state, stored differently on purpose.
+
+**Reading preferences** — theme, TOC open state, TOC width, TOC grouping — stay in `localStorage` under `theme` and `report.toc*`. They describe how someone likes to read every report, so sharing them across reports is the point.
+
+**Content filters** — active severities and the selected scanner — go to `sessionStorage` under `report.filters.<id>`, where `<id>` is `data-report-state` on `<html>`, emitted by `reportStateID` in `cmd/to-html/report_state.go`. Both halves of that scoping are needed:
+
+- **Per report**, or one report's filters apply to another. They previously shared one global key, so filtering to Medium + Semgrep on one PR's report and then opening a different PR's report applied both — hiding findings the reader never filtered.
+
+  The id covers every input that decides *which findings exist*: repo, PR, commit, the scanner set, and whether `--no-supressions` stripped results. So a merged two-scanner report and a single-scanner one from the same commit get different ids, as do the two `--no-supressions` variants. `--required` and `--never-demote` are deliberately excluded: they annotate and reorder without removing anything, so a filter stays equally valid across those variants and they share an id on purpose — which is why `example.html` and `example-required.html` carry the same one.
+- **Per session**, so the browser owns the lifetime. There is deliberately no cap, TTL or eviction here; adding `localStorage` back would require all three. The trade is that closing the tab discards the filters.
+
+`reportStateID` returns `""` when there is no commit to identify the report, and then nothing is persisted at all — an unfiltered report is the safe state, and a shared fallback id would recreate the leak.
+
+The search query is **not** persisted. It is a one-off question rather than a reading mode, and restoring one nobody remembered typing left a report showing 1 of 17 findings.
+
+Two ordering rules to preserve:
+
+- `initScannerTabs` runs before the boot block restores `activeSeverities`, so its initial `setActive(restored, false)` passes `persist=false`. Persisting there would write an empty severity set over the one about to be restored.
+- `persistFilters` removes the entry outright once nothing is filtered, so "no entry" always means "showing everything" rather than "an empty filter was saved".
+
 ## Search
 
 The search input filters findings by tokenised full-text match (all tokens must appear, case-insensitive). The index is built once on `DOMContentLoaded` from each finding's:

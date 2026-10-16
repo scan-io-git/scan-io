@@ -299,6 +299,11 @@ The search index covers: title, description, file path, severity, rule ID, and a
 
 Both filters combine with AND logic -- active severity pill plus a search term shows only findings that satisfy both.
 
+Severity and scanner selections are remembered for the report you are viewing, in that
+browser tab: reload and they come back. They are scoped to the individual report, so a
+filter set on one report never applies to another, and they are discarded when the tab
+closes. The search box is not remembered.
+
 ### Suppressed findings
 
 Suppressions are shown in a collapsed section at the bottom. If the active filter matches no suppressed findings, the section is hidden entirely.

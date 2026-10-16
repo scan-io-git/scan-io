@@ -19,7 +19,9 @@ python3 -m http.server 9999 --directory templates/tohtml/example
 # open http://localhost:9999/example.html
 ```
 
-Clear the site's localStorage and sessionStorage before walking the checklist (DevTools → Application → Storage, or run `localStorage.clear(); sessionStorage.clear();` in the console): the report persists filter, tab, and TOC state across visits, so a stale filter left over from a previous session makes an otherwise-correct report look broken.
+Clear the site's localStorage and sessionStorage before walking the checklist (DevTools → Application → Storage, or run `localStorage.clear(); sessionStorage.clear();` in the console): the report persists TOC state across visits in `localStorage`, and the active severities and scanner tab for the current tab in `sessionStorage`, so state left over from a previous pass makes an otherwise-correct report look broken.
+
+Note the two are scoped differently, which matters when checking filter behaviour. TOC preferences are shared by every report. Severity and scanner selections are keyed by `data-report-state` on `<html>`, so they apply only to the report they were set on and only in that tab — see "Persisted state" in `templates/tohtml/README.md`. The search query is not persisted at all.
 
 Confirm each of the following on `example.html` (single scanner):
 
