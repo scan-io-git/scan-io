@@ -4,7 +4,7 @@
 
 # Default Plugins' List
 # Dependencies will be installed if the docker file supports it, othervise ignored and only compile binaries of plugins
-ARG PLUGINS="github,gitlab,bitbucket,semgrep,bandit,trufflehog"
+ARG PLUGINS="github,gitlab,bitbucket,semgrep,bandit,trufflehog,betterleaks"
 
 # Custom binary name and in-image path root. Filesystem relabel only;
 # does not change the SCANIO_ env prefix, scanio: config key, or magic cookie.
@@ -102,6 +102,22 @@ RUN set -euxo pipefail && \
           tar -xzf "${TARFILE}" && \
           mv trufflehog /usr/local/bin/ && \
           rm -f "${TARFILE}" "${CHECKSUMFILE}" ;; \
+        betterleaks) \
+          echo "Installing Betterleaks binary..."; \
+          BETTERLEAKS_VER="2.0.0-rc.2" && \
+          case "$TARGETARCH" in \
+            amd64) BL_ARCH="x64"; BL_SHA256="8f622e1fc93d06c7ecd2250e8d5d1cc323f379b1b0995364f973da476331b918" ;; \
+            arm64) BL_ARCH="arm64"; BL_SHA256="47d2d27793ec663937d4e756fc49c4a157332bf4a62ce70ad0a98046f1294563" ;; \
+            *) echo "Betterleaks: unsupported architecture '$TARGETARCH' (amd64 and arm64 only)" >&2; exit 1 ;; \
+          esac && \
+          BL_TARFILE="betterleaks_${BETTERLEAKS_VER}_${TARGETOS}_${BL_ARCH}.tar.gz" && \
+          curl -fsSL -O "https://github.com/betterleaks/betterleaks/releases/download/v${BETTERLEAKS_VER}/${BL_TARFILE}" && \
+          echo "${BL_SHA256}  ${BL_TARFILE}" | sha256sum -c - && \
+          tar -xzf "${BL_TARFILE}" betterleaks && \
+          mv betterleaks /usr/local/bin/ && \
+          rm -f "${BL_TARFILE}" && \
+          test "$(betterleaks --version)" = "${BETTERLEAKS_VER}" && \
+          echo "Betterleaks smoke test passed: $(betterleaks --version)" ;; \
         *) echo "No dependencies installed for plugin: $plugin" ;; \
       esac; \
     done && \
