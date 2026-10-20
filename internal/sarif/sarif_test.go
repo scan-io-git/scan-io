@@ -773,6 +773,22 @@ func TestEnrichResultsCategoryProperty_GitleaksDriverName(t *testing.T) {
 	}
 }
 
+func TestEnrichResultsCategoryProperty_BetterleaksDriverName(t *testing.T) {
+	// Betterleaks uses rule IDs like "generic-password" with no CWE tags.
+	id := "generic-password"
+	rule := &gosarif.ReportingDescriptor{ID: id}
+	result := resultFor(id)
+	report := makeSimpleReport(id, rule, result)
+	report.Runs[0].Tool.Driver.Name = "betterleaks"
+
+	report.EnrichResultsCategoryProperty()
+
+	slug, _ := result.Properties["CategorySlug"].(string)
+	if slug != "SECRETS" {
+		t.Errorf("CategorySlug: want %q, got %q", "SECRETS", slug)
+	}
+}
+
 func TestEnrichResultsCategoryProperty_SecretScannerOverridesKeyword(t *testing.T) {
 	// "github-oauth" contains "auth" — keyword path would resolve AUTH, but the
 	// scanner-name path must win and return SECRETS.

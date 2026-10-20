@@ -174,6 +174,7 @@ var secretScanners = map[string]Category{
 	"trufflehog3": CategorySecrets,
 	"trufflehog":  CategorySecrets,
 	"gitleaks":    CategorySecrets,
+	"betterleaks": CategorySecrets,
 }
 
 // resolveCategory derives a Category from the tool driver name, rule taxonomy tags,

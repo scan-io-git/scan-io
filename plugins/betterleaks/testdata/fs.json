@@ -1,0 +1,89 @@
+{
+ "schema_version": "1",
+ "findings": [
+ {
+  "rule_id": "generic-password",
+  "rule_hash": "030720b41ddba5fbdf4305b398fc8e22ebdd48fd6b0648dc8a1c1ccbb28291fe",
+  "description": "Detected a potential hardcoded password literal, which may expose account credentials.",
+  "confidence": "low",
+  "match": {
+   "full": "password = \"Hunter2Hunter2xQ\"",
+   "value": "Hunter2Hunter2xQ",
+   "fingerprint": "ae852db5b155e5b7576f72cf561de2bc3f7adf40009c908224a4aa7b9f6daaed"
+  },
+  "attributes": {
+   "resource": "fs.content"
+  },
+  "location": {
+   "path": "fs/settings.yml",
+   "start_line": 2,
+   "end_line": 2,
+   "start_column": 3,
+   "end_column": 31
+  }
+ },
+ {
+  "rule_id": "example-api-key",
+  "rule_hash": "f7bd10ce0cb92787a3eaa8d41206e8383473a8954404f6e265edf3dc8273c793",
+  "description": "Example API key (exk_ prefix) used for test fixtures.",
+  "confidence": "high",
+  "match": {
+   "full": "exk_Qm7ZpL2vXc9RtB4nYh8WdK3sGf6JaE1uNo5TiV0x",
+   "value": "exk_Qm7ZpL2vXc9RtB4nYh8WdK3sGf6JaE1uNo5TiV0x",
+   "fingerprint": "335e68a155ed4aad69e2dd13f9b0dd0538d23028ffbb3e578d10740c978d9bc8"
+  },
+  "attributes": {
+   "resource": "fs.content"
+  },
+  "location": {
+   "path": "fs/sub/deploy.conf",
+   "start_line": 2,
+   "end_line": 2,
+   "start_column": 9,
+   "end_column": 52
+  },
+  "tags": [
+   "example",
+   "severity:high"
+  ]
+ }
+]
+,
+ "scan": {
+  "state": "complete",
+  "source": {
+   "type": "filesystem",
+   "targets": [
+    "fs"
+   ]
+  },
+  "started": "2026-10-20T05:26:47.861072Z",
+  "finished": "2026-10-20T05:26:47.980983Z",
+  "betterleaks_version": "2.0.0-rc.2",
+  "config_hash": "3a5bafd24d9a1bf5b85c59f2d19b680f71b00e18012855e65271f8e43344896f",
+  "bytes_scanned": 105,
+  "num_findings": 2,
+  "confidence_counts": {
+   "high": 1,
+   "medium": 0,
+   "low": 1,
+   "none": 0,
+   "other": 0
+  },
+  "severity_counts": {
+   "high": 0,
+   "medium": 0,
+   "unknown": 0,
+   "none": 2
+  },
+  "status_counts": {
+   "valid": 0,
+   "invalid": 0,
+   "revoked": 0,
+   "needs_validation": 0,
+   "unknown": 0,
+   "error": 0,
+   "none": 2
+  }
+ }
+}
