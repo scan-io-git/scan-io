@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/owenrumney/go-sarif/v2/sarif"
@@ -108,8 +109,9 @@ func LoadCompleteReport(exitCode int, path string) (*Report, error) {
 	return report, nil
 }
 
-// JSONToSarif converts a parsed report to SARIF 2.1.0.
-func JSONToSarif(report *Report) (*sarif.Report, error) {
+// JSONToSarif converts a parsed report to SARIF 2.1.0. Absolute finding paths
+// inside targetPath are emitted relative to it.
+func JSONToSarif(report *Report, targetPath string) (*sarif.Report, error) {
 	out, err := sarif.New(sarif.Version210)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create SARIF report: %w", err)
@@ -118,7 +120,7 @@ func JSONToSarif(report *Report) (*sarif.Report, error) {
 	run := sarif.NewRunWithInformationURI(toolName, toolInformationURI)
 	run.Tool.Driver.WithVersion(report.Scan.BetterleaksVersion)
 	for i := range report.Findings {
-		addFinding(run, &report.Findings[i])
+		addFinding(run, &report.Findings[i], targetPath)
 	}
 
 	run.AddInvocation(report.Scan.State == scanStateComplete)
@@ -131,7 +133,7 @@ func JSONToSarif(report *Report) (*sarif.Report, error) {
 	return out, nil
 }
 
-func addFinding(run *sarif.Run, f *Finding) {
+func addFinding(run *sarif.Run, f *Finding, targetPath string) {
 	rule := run.AddRule(f.RuleID)
 	if rule.ShortDescription == nil {
 		rule.WithDescription(f.Description).
@@ -146,14 +148,14 @@ func addFinding(run *sarif.Run, f *Finding) {
 		result.WithPartialFingerPrints(map[string]interface{}{fingerprintKey: f.Match.Fingerprint})
 	}
 	if f.Location.Path != "" {
-		result.AddLocation(buildLocation(f))
+		result.AddLocation(buildLocation(f, targetPath))
 	}
 	result.PropertyBag = *sarif.NewPropertyBag()
 	setResultProperties(result, f)
 	run.AddResult(result)
 }
 
-func buildLocation(f *Finding) *sarif.Location {
+func buildLocation(f *Finding, targetPath string) *sarif.Location {
 	region := sarif.NewRegion().
 		WithStartLine(f.Location.StartLine).
 		WithStartColumn(f.Location.StartColumn).
@@ -162,12 +164,29 @@ func buildLocation(f *Finding) *sarif.Location {
 	if f.Match.Full != "" {
 		region.WithSnippet(sarif.NewArtifactContent().WithText(f.Match.Full))
 	}
-	uri := strings.TrimPrefix(f.Location.Path, "./")
+	uri := artifactURI(f.Location.Path, targetPath)
 	return sarif.NewLocation().WithPhysicalLocation(
 		sarif.NewPhysicalLocation().
 			WithArtifactLocation(sarif.NewArtifactLocation().WithUri(uri)).
 			WithRegion(region),
 	)
+}
+
+// artifactURI makes an absolute path inside targetPath relative to it, as fs
+// mode reports absolute paths while other scanners report target-relative ones.
+// Relative paths and paths outside the target are returned unchanged.
+func artifactURI(path, targetPath string) string {
+	if !filepath.IsAbs(path) || targetPath == "" {
+		return strings.TrimPrefix(path, "./")
+	}
+	rel, err := filepath.Rel(filepath.Clean(targetPath), filepath.Clean(path))
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return path
+	}
+	if rel == "." {
+		rel = filepath.Base(path)
+	}
+	return filepath.ToSlash(rel)
 }
 
 func setResultProperties(result *sarif.Result, f *Finding) {
@@ -235,9 +254,9 @@ func nonNil(s []string) []string {
 }
 
 // WriteSarif writes the SARIF report next to the JSON report (same base name,
-// .sarif extension) and returns its path.
-func WriteSarif(report *Report, jsonPath string) (string, error) {
-	sarifReport, err := JSONToSarif(report)
+// .sarif extension) and returns its path. The JSON report is left untouched.
+func WriteSarif(report *Report, jsonPath, targetPath string) (string, error) {
+	sarifReport, err := JSONToSarif(report, targetPath)
 	if err != nil {
 		return "", err
 	}

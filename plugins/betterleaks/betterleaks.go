@@ -122,7 +122,7 @@ func (g *ScannerBetterleaks) Scan(args shared.ScannerScanRequest) (shared.Scanne
 	result.ResultsPath = jsonPath
 	if needsConversion {
 		g.logger.Warn("Converting report", "originalFormat", originalFormat)
-		sarifPath, err := plugin_internal.WriteSarif(report, jsonPath)
+		sarifPath, err := plugin_internal.WriteSarif(report, jsonPath, args.TargetPath)
 		if err != nil {
 			g.logger.Error("Error during report conversion", "error", err)
 			return result, fmt.Errorf("report conversion failed: %w", err)

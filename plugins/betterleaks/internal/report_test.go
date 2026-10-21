@@ -31,7 +31,7 @@ func parseJSONReport(t *testing.T, raw string) *Report {
 
 func toSarifBytes(t *testing.T, report *Report) []byte {
 	t.Helper()
-	out, err := JSONToSarif(report)
+	out, err := JSONToSarif(report, "")
 	if err != nil {
 		t.Fatalf("JSONToSarif: %v", err)
 	}
@@ -473,7 +473,7 @@ func TestWriteSarif_WritesFileNextToJSONAndKeepsJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sarifPath, err := WriteSarif(report, jsonPath)
+	sarifPath, err := WriteSarif(report, jsonPath, "")
 
 	if err != nil {
 		t.Fatalf("WriteSarif: %v", err)
@@ -485,5 +485,27 @@ func TestWriteSarif_WritesFileNextToJSONAndKeepsJSON(t *testing.T) {
 		if _, err := os.Stat(p); err != nil {
 			t.Errorf("expected %s to exist: %v", p, err)
 		}
+	}
+}
+
+func TestArtifactURI(t *testing.T) {
+	tests := []struct {
+		name, path, target, want string
+	}{
+		{"absolute inside target", "/work/repo/pkg/a.go", "/work/repo", "pkg/a.go"},
+		{"absolute inside target with trailing slash", "/work/repo/pkg/a.go", "/work/repo/", "pkg/a.go"},
+		{"relative git path unchanged", "pkg/a.go", "/work/repo", "pkg/a.go"},
+		{"dot slash prefix trimmed", "./pkg/a.go", "/work/repo", "pkg/a.go"},
+		{"absolute outside target unchanged", "/other/pkg/a.go", "/work/repo", "/other/pkg/a.go"},
+		{"sibling with shared prefix unchanged", "/work/repo2/a.go", "/work/repo", "/work/repo2/a.go"},
+		{"target is the file itself", "/work/repo/a.go", "/work/repo/a.go", "a.go"},
+		{"empty target unchanged", "/work/repo/a.go", "", "/work/repo/a.go"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := artifactURI(tt.path, tt.target); got != tt.want {
+				t.Errorf("artifactURI(%q, %q) = %q, want %q", tt.path, tt.target, got, tt.want)
+			}
+		})
 	}
 }
