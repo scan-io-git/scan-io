@@ -1,0 +1,21 @@
+# Neutral config used to generate the JSON fixtures in this directory.
+
+[[rules]]
+id = "example-api-key"
+description = "Example API key (exk_ prefix) used for test fixtures."
+regex = '''\b(exk_[A-Za-z0-9]{40})\b'''
+keywords = ["exk_"]
+confidence = "high"
+tags = ["example", "severity:high"]
+components = [ { id = "example-api-host", optional = true } ]
+
+[[rules]]
+id = "example-api-host"
+description = "Example API host, component of example-api-key."
+regex = '''(?i)(?:^|[^a-z0-9.-])(api\.example\.com)(?:$|[^a-z0-9-])'''
+keywords = ["api.example.com"]
+confidence = "high"
+skipReport = true
+
+[extend]
+useDefault = true

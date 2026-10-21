@@ -56,6 +56,7 @@ func parseThreshold(raw string) (float64, error) {
 // Env: SCANIO_BLOCKER_SEVERITIES="critical,high",
 //
 //	SCANIO_CONFIDENCE_THRESHOLD_<SEV>="0.95".
+//
 // parseSeverityList parses a comma-separated severity list, rejecting any name
 // that is not a known bucket. source names the flag or env var in the error, so a
 // typo says where it came from.

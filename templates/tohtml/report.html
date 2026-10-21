@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"{{ with .Metadata.ReportStateID }} data-report-state="{{ . }}"{{ end }}>
 
 <head>
   {{ if .CSP.Enabled }}<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-{{ .CSP.Nonce }}'; style-src 'nonce-{{ .CSP.Nonce }}'; img-src data:; base-uri 'none'; form-action 'none'">{{ end }}
@@ -3111,8 +3111,38 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         }
       }
 
-      function persistSeverities() {
-        try { localStorage.setItem('report.severities', Array.from(activeSeverities).join(',')); } catch (_) {}
+      // Filter state is scoped two ways: to this report, via the id Go derives from
+      // repo + PR + commit, and to this tab, by living in sessionStorage. Both are
+      // needed. A global key restored one report's filters onto a different PR's
+      // report; localStorage alone would keep doing that across tabs. Scoping to the
+      // session also means the browser owns the lifetime, so there is no cap, TTL or
+      // eviction to maintain here.
+      //
+      // No id means the report is unidentifiable (no commit metadata) and nothing is
+      // persisted: an unfiltered report is the safe state.
+      //
+      // Reading preferences — theme, TOC width, TOC open state, TOC grouping — stay in
+      // localStorage on purpose. They describe how someone likes to read every report,
+      // not which subset of one report they are looking at.
+      const reportStateKey = (() => {
+        const id = document.documentElement.dataset.reportState || '';
+        return id ? 'report.filters.' + id : '';
+      })();
+
+      function readFilterState() {
+        if (!reportStateKey) return null;
+        try { return JSON.parse(sessionStorage.getItem(reportStateKey) || 'null'); } catch (_) { return null; }
+      }
+
+      // Persists severities and scanner together, and removes the entry outright once
+      // nothing is filtered, so "no entry" always means "showing everything".
+      function persistFilters() {
+        if (!reportStateKey) return;
+        const sev = Array.from(activeSeverities);
+        try {
+          if (sev.length === 0 && !activeScanner) sessionStorage.removeItem(reportStateKey);
+          else sessionStorage.setItem(reportStateKey, JSON.stringify({ sev: sev, scanner: activeScanner }));
+        } catch (_) {}
       }
 
       function initScrollUp() {
@@ -3218,7 +3248,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             else activeSeverities.add(sev);
           }
           syncPillState();
-          persistSeverities();
+          persistFilters();
           applyVisibility();
         }));
         pills.forEach(p => {
@@ -3239,7 +3269,6 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           clearTimeout(debounce);
           debounce = setTimeout(() => {
             activeSearch = searchInput.value;
-            try { localStorage.setItem('report.search', activeSearch); } catch (_) {}
             applyVisibility();
             updateClearBtn();
           }, 150);
@@ -3249,7 +3278,6 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           clearBtn.addEventListener('click', () => {
             searchInput.value = '';
             activeSearch = '';
-            try { localStorage.setItem('report.search', ''); } catch (_) {}
             updateClearBtn();
             applyVisibility();
             searchInput.focus();
@@ -3286,7 +3314,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           if (searchInput) searchInput.value = '';
           if (syncPillState) syncPillState();
           if (resetScannerTab) resetScannerTab();
-          persistSeverities();
+          persistFilters();
           applyVisibility();
           if (searchInput) searchInput.focus();
         });
@@ -4145,12 +4173,15 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           moreBtn.classList.toggle('is-active', !!activeBtn && menu.contains(activeBtn));
         }
 
-        function setActive(scanner) {
+        // persist=false for the initial restore: initScannerTabs runs before the boot
+        // block reinstates activeSeverities, so writing here would save an empty
+        // severity set over the one we are about to restore.
+        function setActive(scanner, persist = true) {
           activeScanner = scanner;
           allTabs.forEach(btn => btn.setAttribute('aria-selected', String(btn.dataset.scannerTab === scanner)));
           updateMoreActiveState();
           closeMenu();
-          try { localStorage.setItem('report.scanner', scanner); } catch (_) {}
+          if (persist) persistFilters();
           applyVisibility();
           updateSummaryPillCounts();
         }
@@ -4205,10 +4236,11 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
 
         updateTabCounts();
 
-        let restored = '';
-        try { restored = localStorage.getItem('report.scanner') || ''; } catch (_) {}
+        // Guarded on the tab existing: a report merged from a different scanner set
+        // must not restore a selection it cannot show.
+        const restored = (readFilterState() || {}).scanner || '';
         if (restored && allTabs.some(btn => btn.dataset.scannerTab === restored)) {
-          setActive(restored);
+          setActive(restored, false);
         }
 
         measureOverflow();
@@ -4355,7 +4387,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             if (searchInput) searchInput.value = '';
             if (syncPillState) syncPillState();
             if (resetScannerTab) resetScannerTab();
-            persistSeverities();
+            persistFilters();
             applyVisibility();
             e.preventDefault();
             return;
@@ -4605,14 +4637,15 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       initRefsToggles();
       initFindingAnimations();
 
-      // Restore persisted state
-      try {
-        const raw = localStorage.getItem('report.severities');
-        if (raw !== null) activeSeverities = new Set(raw.split(',').filter(Boolean));
-        const s = localStorage.getItem('report.search');
-        if (s) { searchInput.value = s; activeSearch = s; }
-        // toc open state restored inside initToc()
-      } catch (_) {}
+      // Restore this report's filters for this tab. The search box is deliberately
+      // not restored: a text query is a one-off question, and reinstating one nobody
+      // remembers typing hid all but one finding in a report it was never run against.
+      const persisted = readFilterState();
+      if (persisted && Array.isArray(persisted.sev)) {
+        activeSeverities = new Set(persisted.sev.filter(Boolean));
+      }
+      // Scanner is restored in initScannerTabs, where the tab list is known.
+      // TOC open state is restored inside initToc().
       if (syncPillState) syncPillState();
       applyVisibility();
       syncToggleLabel();

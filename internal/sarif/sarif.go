@@ -362,7 +362,9 @@ func (r Report) EnrichResultsLocationProperty(location *sarif.Location) error {
 	if region != nil && region.Snippet != nil && region.Snippet.Text != nil && *region.Snippet.Text != "" {
 		full := *region.Snippet.Text
 		artifactLocation.Properties["Code"] = full
-		artifactLocation.Properties["CodeLines"] = strings.Split(full, "\n")
+		lines := strings.Split(full, "\n")
+		artifactLocation.Properties["CodeLines"] = lines
+		resetColumnsOutsideCode(region, lines)
 		return nil
 	}
 
@@ -376,8 +378,35 @@ func (r Report) EnrichResultsLocationProperty(location *sarif.Location) error {
 	}
 	artifactLocation.Properties["Code"] = strings.Join(lines, "\n")
 	artifactLocation.Properties["CodeLines"] = lines
+	resetColumnsOutsideCode(location.PhysicalLocation.Region, lines)
 
 	return nil
+}
+
+// resetColumnsOutsideCode zeroes the StartColumn/EndColumn template properties when they do not
+// fit the code lines the report template slices by byte offset. Some producers put only the
+// matched text in snippet.text while the columns refer to the full source line. Zero columns
+// make the template highlight the whole snippet line.
+func resetColumnsOutsideCode(region *sarif.Region, lines []string) {
+	start, _ := region.Properties["StartColumn"].(int)
+	end, _ := region.Properties["EndColumn"].(int)
+	if len(lines) == 0 {
+		return
+	}
+
+	fits := start >= 0 && end >= 0
+	if region.Properties["StartLine"] == region.Properties["EndLine"] {
+		fits = fits && start <= end
+		for _, line := range lines {
+			fits = fits && end <= len(line)
+		}
+	} else {
+		fits = fits && start <= len(lines[0]) && end <= len(lines[len(lines)-1])
+	}
+	if !fits {
+		region.Properties["StartColumn"] = 0
+		region.Properties["EndColumn"] = 0
+	}
 }
 
 // readLinesFromFile reads the [StartLine, EndLine] range from the file referenced by loc.
@@ -624,6 +653,10 @@ func (r Report) EnrichResultsLocationURIProperty(
 		artifactLocation := location.PhysicalLocation.ArtifactLocation
 		if artifactLocation.URI == nil {
 			continue
+		}
+
+		if artifactLocation.Properties == nil {
+			artifactLocation.Properties = make(map[string]interface{})
 		}
 
 		if !filepath.IsAbs(*artifactLocation.URI) {

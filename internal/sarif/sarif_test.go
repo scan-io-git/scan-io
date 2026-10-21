@@ -1,11 +1,13 @@
 package sarif
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 	"unicode/utf8"
 
+	"github.com/hashicorp/go-hclog"
 	gosarif "github.com/owenrumney/go-sarif/v2/sarif"
 )
 
@@ -70,8 +72,8 @@ func TestEnrichResultsLevelPropertyHandlesMultipleRuns(t *testing.T) {
 		RuleID: &ruleIDOne,
 	}
 	runTwoResult := &gosarif.Result{
-		RuleID:  &ruleIDTwo,
-		Level:   &resultLevel,
+		RuleID: &ruleIDTwo,
+		Level:  &resultLevel,
 	}
 
 	report := Report{
@@ -771,6 +773,22 @@ func TestEnrichResultsCategoryProperty_GitleaksDriverName(t *testing.T) {
 	}
 }
 
+func TestEnrichResultsCategoryProperty_BetterleaksDriverName(t *testing.T) {
+	// Betterleaks uses rule IDs like "generic-password" with no CWE tags.
+	id := "generic-password"
+	rule := &gosarif.ReportingDescriptor{ID: id}
+	result := resultFor(id)
+	report := makeSimpleReport(id, rule, result)
+	report.Runs[0].Tool.Driver.Name = "betterleaks"
+
+	report.EnrichResultsCategoryProperty()
+
+	slug, _ := result.Properties["CategorySlug"].(string)
+	if slug != "SECRETS" {
+		t.Errorf("CategorySlug: want %q, got %q", "SECRETS", slug)
+	}
+}
+
 func TestEnrichResultsCategoryProperty_SecretScannerOverridesKeyword(t *testing.T) {
 	// "github-oauth" contains "auth" — keyword path would resolve AUTH, but the
 	// scanner-name path must win and return SECRETS.
@@ -1075,10 +1093,10 @@ func TestResolveFindingTitle(t *testing.T) {
 			want:      "Bad call",
 		},
 		{
-			name:      "shortDesc empty falls through to name",
-			ruleID:    "some-rule",
-			ruleName:  "Dangerous System Call",
-			want:      "Dangerous System Call",
+			name:     "shortDesc empty falls through to name",
+			ruleID:   "some-rule",
+			ruleName: "Dangerous System Call",
+			want:     "Dangerous System Call",
 		},
 		{
 			name:     "name contains ruleID short-circuits to humanize",
@@ -1189,4 +1207,201 @@ func TestEnrichResultsLocationPropertyConfinesReadsToSourceFolder(t *testing.T) 
 			t.Fatalf("expected %q, got %q", "line1", got)
 		}
 	})
+}
+
+// aiReportSARIF mirrors what the pr-sec-review MCP writer emits for a finding that
+// carries data_flow: a primary location with no "properties" object, plus codeFlows
+// whose steps each carry a region. Loading it from disk matters — the nil map this
+// test guards against only exists after encoding/json leaves an absent key unset.
+const aiReportSARIF = `{
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {"driver": {"name": "pr-sec-review", "rules": [{"id": "AI-0001"}]}},
+      "results": [
+        {
+          "ruleId": "AI-0001",
+          "message": {"text": "SQL injection"},
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {"uri": "practice/api/server/users.go"},
+                "region": {"startLine": 42}
+              }
+            }
+          ],
+          %s
+          "properties": {"Severity": "critical"}
+        }
+      ]
+    }
+  ]
+}`
+
+const aiReportCodeFlows = `"codeFlows": [
+    {
+      "threadFlows": [
+        {
+          "locations": [
+            {"location": {"physicalLocation": {"artifactLocation": {"uri": "practice/api/server/users.go"}, "region": {"startLine": 30}}}},
+            {"location": {"physicalLocation": {"artifactLocation": {"uri": "practice/api/server/users.go"}, "region": {"startLine": 42}}}}
+          ]
+        }
+      ]
+    }
+  ],`
+
+// TestEnrichResultsLocationURIPropertyNilArtifactProperties covers a result whose
+// primary artifactLocation has no properties map. EnrichResultsCodeFlowProperty
+// allocates that map as a side effect, but only for results it synthesises a code
+// flow for, so a result that ships its own codeFlows reaches
+// EnrichResultsLocationURIProperty with the map still nil.
+func TestEnrichResultsLocationURIPropertyNilArtifactProperties(t *testing.T) {
+	const wantURI = "practice/api/server/users.go"
+
+	// Both enrichers run in the order cmd/to-html applies them: the defect is in
+	// their interaction, not in either one alone.
+	enrich := func(t *testing.T, body string) *gosarif.Result {
+		t.Helper()
+		dir := t.TempDir()
+		path := filepath.Join(dir, "ai_report.sarif")
+		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+			t.Fatalf("write fixture: %v", err)
+		}
+		report, err := ReadReport(path, hclog.NewNullLogger(), dir, false)
+		if err != nil {
+			t.Fatalf("ReadReport: %v", err)
+		}
+		report.EnrichResultsCodeFlowProperty(func(_ *gosarif.Location) string { return "" })
+		report.EnrichResultsLocationURIProperty(
+			func(_ *gosarif.Location) string { return "" },
+			nil,
+		)
+		return report.Runs[0].Results[0]
+	}
+
+	t.Run("result with its own codeFlows", func(t *testing.T) {
+		result := enrich(t, fmt.Sprintf(aiReportSARIF, aiReportCodeFlows))
+		got, _ := result.Locations[0].PhysicalLocation.ArtifactLocation.Properties["URI"].(string)
+		if got != wantURI {
+			t.Errorf("URI = %q, want %q", got, wantURI)
+		}
+	})
+
+	// The path Semgrep and TruffleHog take. Their results carry no codeFlows, so
+	// EnrichResultsCodeFlowProperty synthesises one over the same location pointer
+	// and allocates the map on the way through — which is why only AI reports crashed.
+	t.Run("result without codeFlows", func(t *testing.T) {
+		result := enrich(t, fmt.Sprintf(aiReportSARIF, ""))
+		got, _ := result.Locations[0].PhysicalLocation.ArtifactLocation.Properties["URI"].(string)
+		if got != wantURI {
+			t.Errorf("URI = %q, want %q", got, wantURI)
+		}
+	})
+}
+
+func TestEnrichResultsLocationPropertyColumnsFitCodeLines(t *testing.T) {
+	tests := []struct {
+		name               string
+		snippet            string
+		startLine, endLine int
+		startCol, endCol   *int
+		wantStart, wantEnd int
+	}{
+		{
+			name:      "region text only snippet with columns from the full line",
+			snippet:   `APIKey = "lp_live_FAKE51JXk2mQZTr9vCwNa8fH3sKp0dE7bY"`,
+			startLine: 12, endLine: 12,
+			startCol: intPtr(21), endCol: intPtr(74),
+			wantStart: 0, wantEnd: 0,
+		},
+		{
+			name:      "whole line snippet with fitting columns",
+			snippet:   `APIKey = "lp_live_FAKE51JXk2mQZTr9vCwNa8fH3sKp0dE7bY"`,
+			startLine: 12, endLine: 12,
+			startCol: intPtr(11), endCol: intPtr(53),
+			wantStart: 10, wantEnd: 52,
+		},
+		{
+			name:      "multi-line with fitting columns",
+			snippet:   "first line here\nsecond line",
+			startLine: 3, endLine: 4,
+			startCol: intPtr(6), endCol: intPtr(7),
+			wantStart: 5, wantEnd: 6,
+		},
+		{
+			name:      "multi-line with end column past last line",
+			snippet:   "first line here\nsecond",
+			startLine: 3, endLine: 4,
+			startCol: intPtr(6), endCol: intPtr(40),
+			wantStart: 0, wantEnd: 0,
+		},
+		{
+			name:      "multi-line with start column past first line",
+			snippet:   "first\nsecond line",
+			startLine: 3, endLine: 4,
+			startCol: intPtr(40), endCol: intPtr(3),
+			wantStart: 0, wantEnd: 0,
+		},
+		{
+			name:      "no columns",
+			snippet:   "some code",
+			startLine: 1, endLine: 1,
+			wantStart: 0, wantEnd: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			region := &gosarif.Region{
+				StartLine:   &tt.startLine,
+				EndLine:     &tt.endLine,
+				StartColumn: tt.startCol,
+				EndColumn:   tt.endCol,
+				Snippet:     &gosarif.ArtifactContent{Text: &tt.snippet},
+			}
+			loc := gosarif.NewLocationWithPhysicalLocation(&gosarif.PhysicalLocation{
+				ArtifactLocation: gosarif.NewSimpleArtifactLocation("src/app.go"),
+				Region:           region,
+			})
+
+			if err := (Report{}).EnrichResultsLocationProperty(loc); err != nil {
+				t.Fatalf("EnrichResultsLocationProperty() error = %v", err)
+			}
+
+			if got := region.Properties["StartColumn"]; got != tt.wantStart {
+				t.Errorf("StartColumn property = %v, want %d", got, tt.wantStart)
+			}
+			if got := region.Properties["EndColumn"]; got != tt.wantEnd {
+				t.Errorf("EndColumn property = %v, want %d", got, tt.wantEnd)
+			}
+			if tt.startCol != nil && *region.StartColumn != *tt.startCol {
+				t.Errorf("SARIF StartColumn changed to %d", *region.StartColumn)
+			}
+			if tt.endCol != nil && *region.EndColumn != *tt.endCol {
+				t.Errorf("SARIF EndColumn changed to %d", *region.EndColumn)
+			}
+		})
+	}
+}
+
+func TestEnrichResultsLocationPropertyColumnsFitFileLines(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "app.go"), []byte("short\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	startLine, endLine, startCol, endCol := 1, 1, 3, 60
+	region := &gosarif.Region{StartLine: &startLine, EndLine: &endLine, StartColumn: &startCol, EndColumn: &endCol}
+	loc := gosarif.NewLocationWithPhysicalLocation(&gosarif.PhysicalLocation{
+		ArtifactLocation: gosarif.NewSimpleArtifactLocation("app.go"),
+		Region:           region,
+	})
+
+	if err := (Report{sourceFolder: dir}).EnrichResultsLocationProperty(loc); err != nil {
+		t.Fatalf("EnrichResultsLocationProperty() error = %v", err)
+	}
+
+	if region.Properties["StartColumn"] != 0 || region.Properties["EndColumn"] != 0 {
+		t.Errorf("columns = %v/%v, want 0/0", region.Properties["StartColumn"], region.Properties["EndColumn"])
+	}
 }

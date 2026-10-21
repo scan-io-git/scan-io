@@ -78,3 +78,7 @@ If all approaches fail, `merge_base_sha` is omitted. The value is either the tru
 ### No merge base (initial commit / unrelated histories)
 
 Some PRs genuinely have no merge base — an initial commit, or a fork whose branch was created with an independent history so it shares no commit with the target. Bitbucket Server signals this by returning git's empty-tree hash (`4b825dc642cb6eb9a060e54bf8d69288fbee4904`) as the changes `fromHash`. Scanio recognises that sentinel, skips the deepening/fallback, and omits `merge_base_sha`. There is no valid baseline to give a change-aware scanner in this case (the empty tree is not a commit, and the unrelated base has no common ancestor), so the entire head is new — consumers must run a full scan by omitting `--baseline-commit`, which for an all-new head is equivalent to a diff-aware scan.
+
+## Diff-lines uses the merge base
+
+`--diff-lines` follows the same rule as `--baseline-commit`: on GitHub and Bitbucket the sparse files hold the lines added since `merge_base_sha`, not since `base_sha`. Diffing against the target tip would report lines the target branch changed or deleted after the PR branched as if the PR had added them. The commit actually used is returned as `diff_lines_base_sha`. It falls back to `base_sha` when no merge base can be resolved (no common ancestor, or the commit cannot be fetched). `--diff-lines` resolves the merge base itself when `--fetch-base` is not set, but `merge_base_sha` is still emitted only with `--fetch-base`. GitLab uses `diff_refs.base_sha`, which GitLab defines as the merge base.
