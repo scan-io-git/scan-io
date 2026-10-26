@@ -52,6 +52,7 @@ terraform.rc
 # Reports, scan output & local data
 *.sarif
 *.json
+!plugins/betterleaks/testdata/*.json
 *report.html
 *results.html
 # Keep the committed example fixture and its rendered output

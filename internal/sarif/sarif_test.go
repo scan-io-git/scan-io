@@ -773,6 +773,22 @@ func TestEnrichResultsCategoryProperty_GitleaksDriverName(t *testing.T) {
 	}
 }
 
+func TestEnrichResultsCategoryProperty_BetterleaksDriverName(t *testing.T) {
+	// Betterleaks uses rule IDs like "generic-password" with no CWE tags.
+	id := "generic-password"
+	rule := &gosarif.ReportingDescriptor{ID: id}
+	result := resultFor(id)
+	report := makeSimpleReport(id, rule, result)
+	report.Runs[0].Tool.Driver.Name = "betterleaks"
+
+	report.EnrichResultsCategoryProperty()
+
+	slug, _ := result.Properties["CategorySlug"].(string)
+	if slug != "SECRETS" {
+		t.Errorf("CategorySlug: want %q, got %q", "SECRETS", slug)
+	}
+}
+
 func TestEnrichResultsCategoryProperty_SecretScannerOverridesKeyword(t *testing.T) {
 	// "github-oauth" contains "auth" — keyword path would resolve AUTH, but the
 	// scanner-name path must win and return SECRETS.
@@ -1282,4 +1298,110 @@ func TestEnrichResultsLocationURIPropertyNilArtifactProperties(t *testing.T) {
 			t.Errorf("URI = %q, want %q", got, wantURI)
 		}
 	})
+}
+
+func TestEnrichResultsLocationPropertyColumnsFitCodeLines(t *testing.T) {
+	tests := []struct {
+		name               string
+		snippet            string
+		startLine, endLine int
+		startCol, endCol   *int
+		wantStart, wantEnd int
+	}{
+		{
+			name:      "region text only snippet with columns from the full line",
+			snippet:   `APIKey = "lp_live_FAKE51JXk2mQZTr9vCwNa8fH3sKp0dE7bY"`,
+			startLine: 12, endLine: 12,
+			startCol: intPtr(21), endCol: intPtr(74),
+			wantStart: 0, wantEnd: 0,
+		},
+		{
+			name:      "whole line snippet with fitting columns",
+			snippet:   `APIKey = "lp_live_FAKE51JXk2mQZTr9vCwNa8fH3sKp0dE7bY"`,
+			startLine: 12, endLine: 12,
+			startCol: intPtr(11), endCol: intPtr(53),
+			wantStart: 10, wantEnd: 52,
+		},
+		{
+			name:      "multi-line with fitting columns",
+			snippet:   "first line here\nsecond line",
+			startLine: 3, endLine: 4,
+			startCol: intPtr(6), endCol: intPtr(7),
+			wantStart: 5, wantEnd: 6,
+		},
+		{
+			name:      "multi-line with end column past last line",
+			snippet:   "first line here\nsecond",
+			startLine: 3, endLine: 4,
+			startCol: intPtr(6), endCol: intPtr(40),
+			wantStart: 0, wantEnd: 0,
+		},
+		{
+			name:      "multi-line with start column past first line",
+			snippet:   "first\nsecond line",
+			startLine: 3, endLine: 4,
+			startCol: intPtr(40), endCol: intPtr(3),
+			wantStart: 0, wantEnd: 0,
+		},
+		{
+			name:      "no columns",
+			snippet:   "some code",
+			startLine: 1, endLine: 1,
+			wantStart: 0, wantEnd: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			region := &gosarif.Region{
+				StartLine:   &tt.startLine,
+				EndLine:     &tt.endLine,
+				StartColumn: tt.startCol,
+				EndColumn:   tt.endCol,
+				Snippet:     &gosarif.ArtifactContent{Text: &tt.snippet},
+			}
+			loc := gosarif.NewLocationWithPhysicalLocation(&gosarif.PhysicalLocation{
+				ArtifactLocation: gosarif.NewSimpleArtifactLocation("src/app.go"),
+				Region:           region,
+			})
+
+			if err := (Report{}).EnrichResultsLocationProperty(loc); err != nil {
+				t.Fatalf("EnrichResultsLocationProperty() error = %v", err)
+			}
+
+			if got := region.Properties["StartColumn"]; got != tt.wantStart {
+				t.Errorf("StartColumn property = %v, want %d", got, tt.wantStart)
+			}
+			if got := region.Properties["EndColumn"]; got != tt.wantEnd {
+				t.Errorf("EndColumn property = %v, want %d", got, tt.wantEnd)
+			}
+			if tt.startCol != nil && *region.StartColumn != *tt.startCol {
+				t.Errorf("SARIF StartColumn changed to %d", *region.StartColumn)
+			}
+			if tt.endCol != nil && *region.EndColumn != *tt.endCol {
+				t.Errorf("SARIF EndColumn changed to %d", *region.EndColumn)
+			}
+		})
+	}
+}
+
+func TestEnrichResultsLocationPropertyColumnsFitFileLines(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "app.go"), []byte("short\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	startLine, endLine, startCol, endCol := 1, 1, 3, 60
+	region := &gosarif.Region{StartLine: &startLine, EndLine: &endLine, StartColumn: &startCol, EndColumn: &endCol}
+	loc := gosarif.NewLocationWithPhysicalLocation(&gosarif.PhysicalLocation{
+		ArtifactLocation: gosarif.NewSimpleArtifactLocation("app.go"),
+		Region:           region,
+	})
+
+	if err := (Report{sourceFolder: dir}).EnrichResultsLocationProperty(loc); err != nil {
+		t.Fatalf("EnrichResultsLocationProperty() error = %v", err)
+	}
+
+	if region.Properties["StartColumn"] != 0 || region.Properties["EndColumn"] != 0 {
+		t.Errorf("columns = %v/%v, want 0/0", region.Properties["StartColumn"], region.Properties["EndColumn"])
+	}
 }
