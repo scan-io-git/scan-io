@@ -164,6 +164,43 @@ func TestMaterializeDiffSymlinks(t *testing.T) {
 	}
 }
 
+func TestWriteSparseFileStaysInDiffRoot(t *testing.T) {
+	base := t.TempDir()
+	repoDir := filepath.Join(base, "repo")
+	diffDir := filepath.Join(base, "diff")
+	for _, dir := range []string{filepath.Join(repoDir, "a", "b"), diffDir} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", dir, err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(repoDir, "x"), []byte("x\n"), 0o644); err != nil {
+		t.Fatalf("write x: %v", err)
+	}
+	// "l/../../x" reads repo/x through the link, but joined lexically onto
+	// diffDir it points at base/x.
+	if err := os.Symlink(filepath.Join("a", "b"), filepath.Join(repoDir, "l")); err != nil {
+		t.Fatalf("Symlink: %v", err)
+	}
+
+	repo, err := os.OpenRoot(repoDir)
+	if err != nil {
+		t.Fatalf("OpenRoot repo: %v", err)
+	}
+	defer repo.Close()
+	diff, err := os.OpenRoot(diffDir)
+	if err != nil {
+		t.Fatalf("OpenRoot diff: %v", err)
+	}
+	defer diff.Close()
+
+	if err := writeSparseFile(repo, diff, "l/../../x", map[int]string{1: "added"}); err == nil {
+		t.Errorf("expected an error for a path that leaves the diff root")
+	}
+	if _, err := os.Lstat(filepath.Join(base, "x")); !os.IsNotExist(err) {
+		t.Errorf("expected nothing written outside the diff root, got err=%v", err)
+	}
+}
+
 // func TestAddedLinesFetchesMissingCommit(t *testing.T) {
 // 	repoDir, baseHash, headHash := setupDiffRepoWithRemote(t)
 

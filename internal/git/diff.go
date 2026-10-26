@@ -168,6 +168,12 @@ func MaterializeDiff(gitClient *Client, repoRoot, diffRoot, baseSHA, headSHA str
 	}
 	defer repo.Close()
 
+	diff, err := os.OpenRoot(diffRoot)
+	if err != nil {
+		return fmt.Errorf("open diff root %q: %w", diffRoot, err)
+	}
+	defer diff.Close()
+
 	for _, relPath := range paths {
 		relPath = strings.TrimSpace(relPath)
 		if relPath == "" {
@@ -180,7 +186,7 @@ func MaterializeDiff(gitClient *Client, repoRoot, diffRoot, baseSHA, headSHA str
 			continue
 		}
 
-		if err := writeSparseFile(repo, diffRoot, relPath, lines); err != nil {
+		if err := writeSparseFile(repo, diff, relPath, lines); err != nil {
 			gitClient.logger.Warn("skipping file writing due to error", "err", err)
 			continue
 		}
@@ -189,12 +195,12 @@ func MaterializeDiff(gitClient *Client, repoRoot, diffRoot, baseSHA, headSHA str
 	return nil
 }
 
-// writeSparseFile writes a copy of relPath into diffRoot, keeping only the line
+// writeSparseFile writes a copy of relPath into diff, keeping only the line
 // numbers present in the supplied map and leaving other positions empty. The file
 // retains trailing newline semantics from the source to minimise surprises for
-// downstream tools. Reads go through repo, so symlinks that resolve outside the
-// repository fail instead of being followed.
-func writeSparseFile(repo *os.Root, diffRoot, relPath string, lines map[int]string) error {
+// downstream tools. Reads and writes go through repo and diff, so paths that
+// resolve outside either root fail instead of being followed.
+func writeSparseFile(repo, diff *os.Root, relPath string, lines map[int]string) error {
 	data, err := repo.ReadFile(relPath)
 	if err != nil {
 		return fmt.Errorf("failed to read %q for diff materialisation: %w", relPath, err)
@@ -220,13 +226,12 @@ func writeSparseFile(repo *os.Root, diffRoot, relPath string, lines map[int]stri
 		output += "\n"
 	}
 
-	dstPath := filepath.Join(diffRoot, relPath)
-	if err := sharedfiles.CreateFolderIfNotExists(filepath.Dir(dstPath)); err != nil {
+	if err := diff.MkdirAll(filepath.Dir(relPath), os.ModePerm); err != nil {
 		return fmt.Errorf("failed to prepare folder for %q: %w", relPath, err)
 	}
 
-	if err := os.WriteFile(dstPath, []byte(output), 0600); err != nil {
-		return fmt.Errorf("failed to write diff file %q: %w", dstPath, err)
+	if err := diff.WriteFile(relPath, []byte(output), 0600); err != nil {
+		return fmt.Errorf("failed to write diff file %q (root %q): %w", relPath, diff.Name(), err)
 	}
 
 	return nil
