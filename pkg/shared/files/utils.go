@@ -2,6 +2,7 @@ package files
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -48,7 +49,20 @@ func GetValidatedFileName(path string) (string, error) {
 	return filepath.Base(path), nil
 }
 
+// UnsafeSymlinkError reports a symlink that was not copied because its target is
+// absolute, escapes the root, or cannot be resolved inside it.
+type UnsafeSymlinkError struct {
+	Link   string
+	Target string
+	Reason string
+}
+
+func (e *UnsafeSymlinkError) Error() string {
+	return fmt.Sprintf("unsafe symlink %q -> %q: %s", e.Link, e.Target, e.Reason)
+}
+
 // CopyDotFiles copies dot-prefixed entries from src to dst using root-scoped ops.
+// Symlinks whose targets would leave dst are skipped with a warning.
 func CopyDotFiles(src, dst string, logger hclog.Logger) error {
 	logger.Debug("copying files starting with a dot", "source", src, "destination", dst)
 	srcRoot, err := os.OpenRoot(src)
@@ -77,20 +91,37 @@ func CopyDotFiles(src, dst string, logger hclog.Logger) error {
 			srcPath := file.Name()
 			dstPath := file.Name()
 
-			if file.IsDir() {
-				if err := copyWithRoot(srcRoot, dstRoot, srcPath, dstPath); err != nil {
-					logger.Error("error copying directory", "srcRoot", srcRoot.Name(), "path", srcPath, "error", err)
-					return err
-				}
-			} else {
-				if err := copyWithRoot(srcRoot, dstRoot, srcPath, dstPath); err != nil {
-					logger.Error("error copying file", "srcRoot", srcRoot.Name(), "path", srcPath, "error", err)
-					return err
-				}
+			err := copyWithRoot(srcRoot, dstRoot, srcPath, dstPath)
+			var unsafeLink *UnsafeSymlinkError
+			switch {
+			case err == nil:
+			case errors.As(err, &unsafeLink):
+				warnSkippedSymlinks(logger, err)
+			case file.IsDir():
+				logger.Error("error copying directory", "srcRoot", srcRoot.Name(), "path", srcPath, "error", err)
+				return err
+			default:
+				logger.Error("error copying file", "srcRoot", srcRoot.Name(), "path", srcPath, "error", err)
+				return err
 			}
 		}
 	}
 	return nil
+}
+
+// warnSkippedSymlinks logs one warning per UnsafeSymlinkError joined into err.
+func warnSkippedSymlinks(logger hclog.Logger, err error) {
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		for _, e := range joined.Unwrap() {
+			warnSkippedSymlinks(logger, e)
+		}
+		return
+	}
+	var unsafeLink *UnsafeSymlinkError
+	if errors.As(err, &unsafeLink) {
+		logger.Warn("skipping symlink that points outside the destination",
+			"link", unsafeLink.Link, "target", unsafeLink.Target, "reason", unsafeLink.Reason)
+	}
 }
 
 // RemoveAndRecreate removes the directory if it exists and then creates it again.
@@ -169,6 +200,8 @@ func CopyFile(srcRoot, dstRoot *os.Root, srcFile, destFile string, perm fs.FileM
 }
 
 // CopyDir copies a directory recursively using root-scoped operations.
+// Unsafe symlinks do not stop the copy: they are skipped and returned joined
+// together once the rest of the directory is copied.
 func CopyDir(srcRoot, dstRoot *os.Root, srcDir, destDir string, perm fs.FileMode) error {
 	entries, err := fs.ReadDir(srcRoot.FS(), srcDir)
 	if err != nil {
@@ -179,23 +212,40 @@ func CopyDir(srcRoot, dstRoot *os.Root, srcDir, destDir string, perm fs.FileMode
 		return fmt.Errorf("failed to create destination directory %q (root %q): %w", destDir, dstRoot.Name(), err)
 	}
 
+	var skipped []error
 	for _, entry := range entries {
 		srcPath := filepath.Join(srcDir, entry.Name())
 		destPath := filepath.Join(destDir, entry.Name())
 
 		if err := copyWithRoot(srcRoot, dstRoot, srcPath, destPath); err != nil {
-			return err
+			var unsafeLink *UnsafeSymlinkError
+			if !errors.As(err, &unsafeLink) {
+				return err
+			}
+			skipped = append(skipped, err)
 		}
 	}
 
-	return nil
+	return errors.Join(skipped...)
 }
 
-// CopySymLink copies a symlink using root-scoped operations.
+// CopySymLink copies a symlink using root-scoped operations. It returns an
+// *UnsafeSymlinkError without touching dstRoot when the target could leave
+// either root.
 func CopySymLink(srcRoot, dstRoot *os.Root, srcLink, destLink string) error {
 	linkTarget, err := srcRoot.Readlink(srcLink)
 	if err != nil {
 		return fmt.Errorf("failed to read symlink %q (root %q): %w", srcLink, srcRoot.Name(), err)
+	}
+
+	// The source tree is complete, so checking it catches escapes through other
+	// links regardless of copy order; dstRoot may differ where changed files
+	// were copied in before.
+	if err := checkSymlinkTarget(srcRoot, srcLink, linkTarget); err != nil {
+		return err
+	}
+	if err := checkSymlinkTarget(dstRoot, destLink, linkTarget); err != nil {
+		return err
 	}
 
 	destDir := filepath.Dir(destLink)
@@ -223,17 +273,27 @@ func CopySymLink(srcRoot, dstRoot *os.Root, srcLink, destLink string) error {
 		return fmt.Errorf("failed to stat destination %q (root %q): %w", destLink, dstRoot.Name(), err)
 	}
 
-	// check a symlink dst file exists or reachable inside root
-	resolved := linkTarget
-	if !filepath.IsAbs(linkTarget) {
-		resolved = filepath.Clean(filepath.Join(filepath.Dir(destLink), linkTarget))
-	}
-	if _, err := dstRoot.Stat(resolved); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to validate symlink %q -> %q (root %q): %w", destLink, linkTarget, dstRoot.Name(), err)
-	}
-
 	if err := dstRoot.Symlink(linkTarget, destLink); err != nil {
 		return fmt.Errorf("failed to create symlink %q -> %q (root %q): %w", destLink, linkTarget, dstRoot.Name(), err)
+	}
+	return nil
+}
+
+// checkSymlinkTarget returns an *UnsafeSymlinkError when target, read from the
+// link at linkPath, is absolute or does not resolve inside root. The joined
+// path is left uncleaned so that root.Stat resolves intermediate links before
+// "..", the way the OS will. A missing target is allowed, so dangling links
+// inside the root are still copied.
+func checkSymlinkTarget(root *os.Root, linkPath, target string) error {
+	if filepath.IsAbs(target) {
+		return &UnsafeSymlinkError{Link: linkPath, Target: target, Reason: "absolute target"}
+	}
+	resolved := filepath.Dir(linkPath) + string(filepath.Separator) + target
+	if !filepath.IsLocal(resolved) {
+		return &UnsafeSymlinkError{Link: linkPath, Target: target, Reason: "target escapes the root"}
+	}
+	if _, err := root.Stat(resolved); err != nil && !os.IsNotExist(err) {
+		return &UnsafeSymlinkError{Link: linkPath, Target: target, Reason: err.Error()}
 	}
 	return nil
 }
