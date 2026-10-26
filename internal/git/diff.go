@@ -162,6 +162,12 @@ func MaterializeDiff(gitClient *Client, repoRoot, diffRoot, baseSHA, headSHA str
 		paths = sortedKeys(addedLines)
 	}
 
+	repo, err := os.OpenRoot(repoRoot)
+	if err != nil {
+		return fmt.Errorf("open repository root %q: %w", repoRoot, err)
+	}
+	defer repo.Close()
+
 	for _, relPath := range paths {
 		relPath = strings.TrimSpace(relPath)
 		if relPath == "" {
@@ -174,7 +180,7 @@ func MaterializeDiff(gitClient *Client, repoRoot, diffRoot, baseSHA, headSHA str
 			continue
 		}
 
-		if err := writeSparseFile(repoRoot, diffRoot, relPath, lines); err != nil {
+		if err := writeSparseFile(repo, diffRoot, relPath, lines); err != nil {
 			gitClient.logger.Warn("skipping file writing due to error", "err", err)
 			continue
 		}
@@ -186,10 +192,10 @@ func MaterializeDiff(gitClient *Client, repoRoot, diffRoot, baseSHA, headSHA str
 // writeSparseFile writes a copy of relPath into diffRoot, keeping only the line
 // numbers present in the supplied map and leaving other positions empty. The file
 // retains trailing newline semantics from the source to minimise surprises for
-// downstream tools.
-func writeSparseFile(repoRoot, diffRoot, relPath string, lines map[int]string) error {
-	srcPath := filepath.Join(repoRoot, relPath)
-	data, err := os.ReadFile(srcPath)
+// downstream tools. Reads go through repo, so symlinks that resolve outside the
+// repository fail instead of being followed.
+func writeSparseFile(repo *os.Root, diffRoot, relPath string, lines map[int]string) error {
+	data, err := repo.ReadFile(relPath)
 	if err != nil {
 		return fmt.Errorf("failed to read %q for diff materialisation: %w", relPath, err)
 	}
