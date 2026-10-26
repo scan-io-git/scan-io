@@ -35,7 +35,7 @@ This command supports operations at different levels, including individual repos
 
 ## Syntax
 ```bash
-scanio fetch --vcs/-p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [--output/-o PATH] [--rm-ext LIST_OF_EXTENSIONS] [-j THREADS_NUMBER, default=1] {--input-file/-i PATH | [-b BRANCH/HASH] URL}
+scanio fetch --vcs/-p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [--output/-o PATH] [--rm-ext LIST_OF_EXTENSIONS] [--rm-unsafe-symlinks] [-j THREADS_NUMBER, default=1] {--input-file/-i PATH | [-b BRANCH/HASH] URL}
 ```
 
 ### Options
@@ -59,6 +59,7 @@ scanio fetch --vcs/-p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [
 | `--no-tags`   | bool  | No         | `false`                                                       | Do not fetch any tags from the repository. If neither `--tags` nor `--no-tags` is set, tag-following is used by default.     |
 | `--auto-repair`   | bool  | No         | `false`                                                       | Automatically repair shallow or corrupted repositories by forcing a refetch and recloning if necessary.     |
 | `-clean-workdir`   | bool  | No         | `false`                                                       | Reset the working tree to HEAD and remove untracked files and directories. Equivalent to `git reset --hard` + `git clean -fdx`.     |
+| `--rm-unsafe-symlinks` | bool  | No         | `false`                                                       | Remove symlinks from the fetched repository whose targets are absolute or resolve outside it. Fails the fetch if the sweep cannot complete. |
 
 
 **Using List Command Output as Input**<br>

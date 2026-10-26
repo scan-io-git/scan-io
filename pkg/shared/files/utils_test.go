@@ -2,6 +2,8 @@ package files
 
 import (
 	"bytes"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -234,5 +236,164 @@ func writeTestFile(t *testing.T, path, content string) {
 	}
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("WriteFile(%q): %v", path, err)
+	}
+}
+
+func TestRemoveUnsafeSymlinks(t *testing.T) {
+	// "{outside}" in a link target is replaced with the path of a file that
+	// exists next to the tree, outside it.
+	tests := []struct {
+		name        string
+		links       map[string]string
+		wantKept    []string
+		wantRemoved []string
+	}{
+		{
+			name:     "relative target inside the tree is kept",
+			links:    map[string]string{"ref.md": "notes/real.md"},
+			wantKept: []string{"ref.md"},
+		},
+		{
+			name:        "absolute target outside the tree is removed",
+			links:       map[string]string{"ref.md": "{outside}"},
+			wantRemoved: []string{"ref.md"},
+		},
+		{
+			name:        "relative target escaping the tree is removed",
+			links:       map[string]string{"ref.md": "../../outside.txt"},
+			wantRemoved: []string{"ref.md"},
+		},
+		{
+			name:        "target stepping up after a name is removed",
+			links:       map[string]string{"ref.md": "notes/../real.md"},
+			wantRemoved: []string{"ref.md"},
+		},
+		{
+			name:        "target escaping through another symlink is removed",
+			links:       map[string]string{"sub/ref.md": "up/../..", "sub/up": ".."},
+			wantKept:    []string{"sub/up"},
+			wantRemoved: []string{"sub/ref.md"},
+		},
+		{
+			name:     "dangling target inside the tree is kept",
+			links:    map[string]string{"ref.md": "missing.md"},
+			wantKept: []string{"ref.md"},
+		},
+		{
+			name:     "target inside .git is kept",
+			links:    map[string]string{"notes.txt": ".git/config"},
+			wantKept: []string{"notes.txt"},
+		},
+		{
+			name:        "unsafe symlink inside .git is removed",
+			links:       map[string]string{".git/evil": "{outside}"},
+			wantRemoved: []string{".git/evil"},
+		},
+		{
+			name: "directory symlink is kept and not descended into",
+			links: map[string]string{
+				"dirlink":         "notes",
+				"notes/escape.md": "{outside}",
+			},
+			wantKept:    []string{"dirlink"},
+			wantRemoved: []string{"notes/escape.md"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := t.TempDir()
+			outside := filepath.Join(base, "outside.txt")
+			writeTestFile(t, outside, "secret")
+			root := filepath.Join(base, "tree")
+			regular := map[string]string{
+				"real.md":       "real",
+				"notes/real.md": "notes",
+				".git/config":   "cfg",
+			}
+			for rel, content := range regular {
+				writeTestFile(t, filepath.Join(root, rel), content)
+			}
+			targets := map[string]string{}
+			for link, target := range tt.links {
+				target = strings.ReplaceAll(target, "{outside}", outside)
+				targets[link] = target
+			}
+			// Links are created after all directories exist so order does not matter.
+			for link, target := range targets {
+				if err := os.MkdirAll(filepath.Dir(filepath.Join(root, link)), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(target, filepath.Join(root, link)); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			var logs bytes.Buffer
+			logger := hclog.New(&hclog.LoggerOptions{Output: &logs, Level: hclog.Debug})
+			if err := RemoveUnsafeSymlinks(root, logger); err != nil {
+				t.Fatalf("RemoveUnsafeSymlinks() error = %v", err)
+			}
+
+			for _, link := range tt.wantKept {
+				got, err := os.Readlink(filepath.Join(root, link))
+				if err != nil {
+					t.Errorf("link %q should be kept: %v", link, err)
+				} else if got != targets[link] {
+					t.Errorf("link %q target = %q, want %q", link, got, targets[link])
+				}
+			}
+			for _, link := range tt.wantRemoved {
+				if _, err := os.Lstat(filepath.Join(root, link)); !errors.Is(err, fs.ErrNotExist) {
+					t.Errorf("link %q should be removed, Lstat error = %v", link, err)
+				}
+			}
+			for rel, content := range regular {
+				data, err := os.ReadFile(filepath.Join(root, rel))
+				if err != nil || string(data) != content {
+					t.Errorf("regular file %q changed: %q, %v", rel, data, err)
+				}
+			}
+			if data, err := os.ReadFile(outside); err != nil || string(data) != "secret" {
+				t.Errorf("file outside the tree changed: %q, %v", data, err)
+			}
+			if got := strings.Count(logs.String(), "[WARN]"); got != len(tt.wantRemoved) {
+				t.Errorf("WARN lines = %d, want %d\n%s", got, len(tt.wantRemoved), logs.String())
+			}
+			for _, link := range tt.wantRemoved {
+				if !strings.Contains(logs.String(), "link="+link) {
+					t.Errorf("no warning for %q\n%s", link, logs.String())
+				}
+			}
+		})
+	}
+}
+
+func TestRemoveUnsafeSymlinksMissingRoot(t *testing.T) {
+	err := RemoveUnsafeSymlinks(filepath.Join(t.TempDir(), "missing"), hclog.NewNullLogger())
+	if err == nil {
+		t.Fatal("expected an error for a missing root")
+	}
+}
+
+func TestRemoveUnsafeSymlinksRemovalFailure(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("directory permissions do not apply to root")
+	}
+	root := t.TempDir()
+	dir := filepath.Join(root, "locked")
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("/absolute/outside", filepath.Join(dir, "evil")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	if err := RemoveUnsafeSymlinks(root, hclog.NewNullLogger()); err == nil {
+		t.Fatal("expected an error when the link cannot be removed")
 	}
 }

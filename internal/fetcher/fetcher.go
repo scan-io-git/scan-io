@@ -18,31 +18,33 @@ import (
 
 // Fetcher represents the configuration and behavior of a fetcher.
 type Fetcher struct {
-	PluginName     string             // Name of the VCS plugin to use
-	AuthType       string             // Authentication type (e.g., "http", "ssh")
-	SshKey         string             // Path to the SSH key
-	OutputPath     string             // Output path for fetching
-	RmListExts     []string           // List of extensions to remove after fetching
-	AutoRepair     bool               // Repair corrupted repositories by forcing a refetch or recloning
-	CleanWorkdir   bool               // Reset the working tree to HEAD and remove untracked files
-	ConcurrentJobs int                // Number of concurrent jobs to run
-	FetchScope     ftutils.FetchScope // Used to mark diff fetch mode.
-	logger         hclog.Logger       // Logger for logging messages and errors
+	PluginName       string             // Name of the VCS plugin to use
+	AuthType         string             // Authentication type (e.g., "http", "ssh")
+	SshKey           string             // Path to the SSH key
+	OutputPath       string             // Output path for fetching
+	RmListExts       []string           // List of extensions to remove after fetching
+	AutoRepair       bool               // Repair corrupted repositories by forcing a refetch or recloning
+	CleanWorkdir     bool               // Reset the working tree to HEAD and remove untracked files
+	RmUnsafeSymlinks bool               // Remove symlinks whose targets are absolute or resolve outside the fetched repository
+	ConcurrentJobs   int                // Number of concurrent jobs to run
+	FetchScope       ftutils.FetchScope // Used to mark diff fetch mode.
+	logger           hclog.Logger       // Logger for logging messages and errors
 }
 
 // New creates a new Fetcher instance with the provided configuration.
-func New(pluginName, authType, sshKey, outputPath string, rmListExts []string, repair, clean bool, jobs int, scope ftutils.FetchScope, logger hclog.Logger) *Fetcher {
+func New(pluginName, authType, sshKey, outputPath string, rmListExts []string, repair, clean, rmUnsafeSymlinks bool, jobs int, scope ftutils.FetchScope, logger hclog.Logger) *Fetcher {
 	return &Fetcher{
-		PluginName:     pluginName,
-		AuthType:       authType,
-		SshKey:         sshKey,
-		OutputPath:     outputPath, // TODO: fix the PR fetch behavior. It ignores output the path now
-		RmListExts:     rmListExts,
-		AutoRepair:     repair,
-		CleanWorkdir:   clean,
-		ConcurrentJobs: jobs,
-		FetchScope:     scope,
-		logger:         logger,
+		PluginName:       pluginName,
+		AuthType:         authType,
+		SshKey:           sshKey,
+		OutputPath:       outputPath, // TODO: fix the PR fetch behavior. It ignores output the path now
+		RmListExts:       rmListExts,
+		AutoRepair:       repair,
+		CleanWorkdir:     clean,
+		RmUnsafeSymlinks: rmUnsafeSymlinks,
+		ConcurrentJobs:   jobs,
+		FetchScope:       scope,
+		logger:           logger,
 	}
 }
 
@@ -125,6 +127,12 @@ func (f *Fetcher) fetchRepo(cfg *config.Config, fetchArgs shared.VCSFetchRequest
 		if err != nil {
 			f.logger.Error("VCS plugin fetch failed", "fetchArgs", fetchArgs, "error", err)
 			return fmt.Errorf("VCS plugin fetch failed. Error: %w", err)
+		}
+
+		if f.RmUnsafeSymlinks {
+			if err := files.RemoveUnsafeSymlinks(fetchArgs.TargetFolder, f.logger); err != nil {
+				return fmt.Errorf("failed to remove unsafe symlinks: %w", err)
+			}
 		}
 
 		if len(f.RmListExts) != 0 {

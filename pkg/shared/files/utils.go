@@ -322,6 +322,63 @@ func parentAfterName(target string) bool {
 	return false
 }
 
+// RemoveUnsafeSymlinks deletes every symlink under root, .git included, whose
+// target is absolute or does not resolve inside root. A fetched clone keeps links
+// exactly as committed, so a hostile change can point them at host files that
+// scanners would follow. Verdicts are all taken before any removal so deleting one
+// link cannot change the verdict on another. Any failure is returned so callers
+// can fail closed.
+func RemoveUnsafeSymlinks(root string, logger hclog.Logger) error {
+	rootFS, err := os.OpenRoot(root)
+	if err != nil {
+		return fmt.Errorf("failed to open root %q: %w", root, err)
+	}
+	defer rootFS.Close()
+
+	unsafeLinks, err := findUnsafeSymlinks(rootFS)
+	if err != nil {
+		return err
+	}
+
+	for _, link := range unsafeLinks {
+		if err := rootFS.Remove(link.Link); err != nil {
+			return fmt.Errorf("failed to remove unsafe symlink %q (root %q): %w", link.Link, root, err)
+		}
+		logger.Warn("removed unsafe symlink",
+			"link", link.Link, "target", link.Target, "reason", link.Reason)
+	}
+	if len(unsafeLinks) > 0 {
+		logger.Info("removed unsafe symlinks", "root", root, "count", len(unsafeLinks))
+	} else {
+		logger.Debug("no unsafe symlinks found", "root", root)
+	}
+	return nil
+}
+
+// findUnsafeSymlinks walks root without following links and returns the
+// symlinks that fail checkSymlinkTarget against the untouched tree.
+func findUnsafeSymlinks(root *os.Root) ([]*UnsafeSymlinkError, error) {
+	var unsafeLinks []*UnsafeSymlinkError
+	err := fs.WalkDir(root.FS(), ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return fmt.Errorf("failed to walk %q (root %q): %w", path, root.Name(), err)
+		}
+		if d.Type()&fs.ModeSymlink == 0 {
+			return nil
+		}
+		target, err := root.Readlink(path)
+		if err != nil {
+			return fmt.Errorf("failed to read symlink %q (root %q): %w", path, root.Name(), err)
+		}
+		var unsafeLink *UnsafeSymlinkError
+		if errors.As(checkSymlinkTarget(root, path, target), &unsafeLink) {
+			unsafeLinks = append(unsafeLinks, unsafeLink)
+		}
+		return nil
+	})
+	return unsafeLinks, err
+}
+
 // CreateFolderIfNotExists checks if a folder exists, and if not, creates it.
 func CreateFolderIfNotExists(folder string) error {
 	if _, err := os.Stat(folder); os.IsNotExist(err) {

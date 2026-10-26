@@ -18,23 +18,24 @@ import (
 
 // RunOptionsFetch holds the arguments for the fetch command.
 type RunOptionsFetch struct {
-	VCSPluginName string   `json:"vcs_plugin_name,omitempty"`
-	InputFile     string   `json:"input_file,omitempty"`
-	AuthType      string   `json:"auth_type,omitempty"`
-	SSHKey        string   `json:"ssh_key,omitempty"`
-	Branch        string   `json:"branch,omitempty"`
-	OutputPath    string   `json:"output_path,omitempty"`
-	PrMode        string   `json:"pr_mode,omitempty"`
-	DiffLines     bool     `json:"diff_lines,omitempty"`
-	DiffFiles     bool     `json:"diff_files,omitempty"`
-	SingleBranch  bool     `json:"single_branch,omitempty"`
-	Tags          bool     `json:"tags,omitempty"`
-	NoTags        bool     `json:"no_tags,omitempty"`
-	Depth         int      `json:"depth,omitempty"`
-	AutoRepair    bool     `json:"auto_repair,omitempty"`
-	CleanWorkdir  bool     `json:"clean_workdir,omitempty"`
-	RmListExts    []string `json:"rm_list_exts"`
-	Threads       int      `json:"threads"`
+	VCSPluginName    string   `json:"vcs_plugin_name,omitempty"`
+	InputFile        string   `json:"input_file,omitempty"`
+	AuthType         string   `json:"auth_type,omitempty"`
+	SSHKey           string   `json:"ssh_key,omitempty"`
+	Branch           string   `json:"branch,omitempty"`
+	OutputPath       string   `json:"output_path,omitempty"`
+	PrMode           string   `json:"pr_mode,omitempty"`
+	DiffLines        bool     `json:"diff_lines,omitempty"`
+	DiffFiles        bool     `json:"diff_files,omitempty"`
+	SingleBranch     bool     `json:"single_branch,omitempty"`
+	Tags             bool     `json:"tags,omitempty"`
+	NoTags           bool     `json:"no_tags,omitempty"`
+	Depth            int      `json:"depth,omitempty"`
+	AutoRepair       bool     `json:"auto_repair,omitempty"`
+	CleanWorkdir     bool     `json:"clean_workdir,omitempty"`
+	RmListExts       []string `json:"rm_list_exts"`
+	RmUnsafeSymlinks bool     `json:"rm_unsafe_symlinks,omitempty"`
+	Threads          int      `json:"threads"`
 }
 
 // Global variables for configuration and command arguments
@@ -120,6 +121,7 @@ func runFetchCommand(cmd *cobra.Command, args []string) error {
 		fetchOptions.RmListExts,
 		fetchOptions.AutoRepair,
 		fetchOptions.CleanWorkdir,
+		fetchOptions.RmUnsafeSymlinks,
 		fetchOptions.Threads,
 		scope,
 		logger,
@@ -183,6 +185,7 @@ func init() {
 	FetchCmd.Flags().BoolVar(&fetchOptions.NoTags, "no-tags", false, "Do not fetch any tags from the repository.")
 	FetchCmd.Flags().BoolVar(&fetchOptions.AutoRepair, "auto-repair", false, "Automatically repair corrupted repositories by forcing a refetch and recloning if needed.")
 	FetchCmd.Flags().BoolVar(&fetchOptions.CleanWorkdir, "clean-workdir", false, "Reset the working tree to HEAD and remove untracked files (like 'git reset --hard' + 'git clean -fdx').")
+	FetchCmd.Flags().BoolVar(&fetchOptions.RmUnsafeSymlinks, "rm-unsafe-symlinks", false, "Remove symlinks from the fetched repository whose targets are absolute or resolve outside it. Fails the fetch if the sweep cannot complete.")
 	FetchCmd.Flags().StringSliceVar(&fetchOptions.RmListExts, "rm-ext", []string{"csv", "png", "ipynb", "txt", "md", "mp4", "zip", "gif", "gz", "jpg", "jpeg", "cache", "tar", "svg", "bin", "lock", "exe"}, "Comma-separated list of file extensions to remove automatically after fetching.")
 	FetchCmd.Flags().IntVarP(&fetchOptions.Threads, "threads", "j", 1, "Number of concurrent threads to use.")
 	FetchCmd.Flags().BoolP("help", "h", false, "Show help for the fetch command.")
