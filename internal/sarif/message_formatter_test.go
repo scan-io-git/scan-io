@@ -7,6 +7,7 @@ import (
 
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/scan-io-git/scan-io/internal/git"
+	"github.com/scan-io-git/scan-io/pkg/shared/vcsurl"
 )
 
 func TestFormatMessageWithSingleReference(t *testing.T) {
@@ -398,6 +399,55 @@ func TestBuildLocationLinkWithSubfolder(t *testing.T) {
 
 	if result != expected {
 		t.Errorf("Expected: %s\nGot: %s", expected, result)
+	}
+}
+
+func TestBuildLocationLinkWithVCSURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		vcsType  vcsurl.VCSType
+		baseLink string
+		want     string
+	}{
+		{
+			name:     "github via VCSURL",
+			vcsType:  vcsurl.Github,
+			baseLink: "https://github.com/test-org/test-repo",
+			want:     "https://github.com/test-org/test-repo/blob/main/main.py#L10",
+		},
+		{
+			name:     "bitbucket via VCSURL",
+			vcsType:  vcsurl.Bitbucket,
+			baseLink: "https://git.example-corp.internal/projects/ORG/repos/test-repo",
+			want:     "https://git.example-corp.internal/projects/ORG/repos/test-repo/browse/main.py?at=main#10",
+		},
+		{
+			name:     "gitlab via VCSURL",
+			vcsType:  vcsurl.Gitlab,
+			baseLink: "https://gitlab.example-corp.internal/test-org/test-repo",
+			want:     "https://gitlab.example-corp.internal/test-org/test-repo/-/blob/main/main.py#L10",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			location := createTestLocation("main.py", 10, 5, 10, 15)
+			repoMetadata := &git.RepositoryMetadata{
+				RepoRootFolder: "/test/source",
+			}
+			options := MessageFormatOptions{
+				Ref:          "main",
+				SourceFolder: "/test/source",
+				VCSURL: &vcsurl.VCSURL{
+					VCSType:      tt.vcsType,
+					HTTPRepoLink: tt.baseLink,
+				},
+			}
+			got := buildLocationLink(location, repoMetadata, options)
+			if got != tt.want {
+				t.Errorf("buildLocationLink() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
 

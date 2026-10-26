@@ -555,6 +555,37 @@ func (g *VCSGitlab) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRespon
 
 	extras := map[string]string{"repo_root": args.TargetFolder}
 
+	if args.FetchBase {
+		baseSHA := mrData.DiffRefs.BaseSha
+		if baseSHA == "" {
+			return shared.VCSFetchResponse{}, fmt.Errorf("cannot fetch base: MR base commit SHA unavailable")
+		}
+		if err := git.EnsureCommitPresent(clientGit, args.TargetFolder, baseSHA); err != nil {
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to fetch base commit %q: %w", baseSHA, err)
+		}
+		extras["base_sha"] = baseSHA
+
+		headSHA := mrData.DiffRefs.HeadSha
+		if headSHA == "" {
+			headSHA = mrData.SHA
+		}
+
+		api := func() (string, error) {
+			refs := []string{mrData.TargetBranch, headSHA}
+			mbCommit, _, err := client.Repositories.MergeBase(projectID, &gitlab.MergeBaseOptions{Ref: &refs})
+			if err != nil {
+				return "", err
+			}
+			if mbCommit != nil {
+				return mbCommit.ID, nil
+			}
+			return "", nil
+		}
+		if mb := clientGit.ResolveMergeBase(args.TargetFolder, headSHA, mrData.TargetBranch, baseSHA, api); mb != "" {
+			extras["merge_base_sha"] = mb
+		}
+	}
+
 	baseDestPath := config.GetPRTempPath(g.globalConfig, args.RepoParam.Domain, args.RepoParam.Namespace, args.RepoParam.Repository, mrID)
 	needDiffFiles := args.FetchScope == ftutils.ScopeDiffFiles || args.FetchScope == ftutils.ScopeDiff
 	needDiffLines := args.FetchScope == ftutils.ScopeDiffLines || args.FetchScope == ftutils.ScopeDiff
@@ -604,6 +635,8 @@ func (g *VCSGitlab) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRespon
 
 		extras["diff_lines_root"] = diffLinesRoot
 		if baseSHA != "" {
+			// base_sha guarantee holds here because MaterializeDiff calls
+			// ensureCommitPresent internally before computing the diff.
 			extras["base_sha"] = baseSHA
 		}
 		if headSHA != "" {

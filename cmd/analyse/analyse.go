@@ -22,6 +22,7 @@ type RunOptionsAnalyse struct {
 	ScannerConfig  string   `json:"scanner_config,omitempty"`
 	AdditionalArgs []string `json:"additional_args,omitempty"`
 	OutputPath     string   `json:"output_path,omitempty"`
+	Command        string   `json:"command,omitempty"`
 	Threads        int      `json:"threads"`
 }
 
@@ -88,6 +89,7 @@ func runAnalyseCommand(cmd *cobra.Command, args []string) error {
 		analyseOptions.Scanner,
 		analyseOptions.ScannerConfig,
 		analyseOptions.ReportFormat,
+		analyseOptions.Command,
 		analyseOptions.AdditionalArgs,
 		analyseOptions.Threads,
 		logger,
@@ -147,6 +149,7 @@ func init() {
 	AnalyseCmd.Flags().StringVarP(&analyseOptions.InputFile, "input-file", "i", "", "Path to a file in Scanio format containing a list of repositories to analyse. Use the list command to prepare this file.")
 	AnalyseCmd.Flags().StringVarP(&analyseOptions.OutputPath, "output", "o", "", "Path to the output file or directory where the scanner's results will be saved.")
 	AnalyseCmd.Flags().StringVarP(&analyseOptions.Scanner, "scanner", "p", "", "Name of the scanner plugin to use (e.g., semgrep, bandit).")
+	AnalyseCmd.Flags().StringVar(&analyseOptions.Command, "command", "", "Scanner subcommand override (e.g., 'ci' for semgrep ci). Defaults to the scanner's standard scan command.")
 	AnalyseCmd.Flags().IntVarP(&analyseOptions.Threads, "threads", "j", 1, "Number of concurrent threads to use.")
 	AnalyseCmd.Flags().BoolP("help", "h", false, "Show help for the analyse command.")
 }

@@ -15,9 +15,11 @@ This command supports operations at different levels, including individual repos
 - [Supported Authentication Types](#supported-authentication-types)
 - [Syntax](#syntax)
 - [Options](#options)
+- [Symlink handling](#symlink-handling)
 - [Core Validation](#core-validation)
 - [Usage Examples](#usage-examples)
 - [Command Output Format](#command-output-format)
+- [Diff-aware scanning](#diff-aware-scanning)
 
 ## Supported Actions
 | Action                                        | Supported Platforms          |
@@ -50,15 +52,16 @@ scanio fetch --vcs/-p PLUGIN_NAME --auth-type/-a AUTH_TYPE [--ssh-key/-k PATH] [
 | `--ssh-key`, `-k` | string  | Conditional | `none`                                                       | Path to the SSH key to use (if `auth-type` is `ssh-key`).                    |
 | `--threads`, `-j`| int     | No          | `1`                                                          | Number of concurrent threads to use for parallel fetching.                   |
 | `--vcs`, `-p`    | string  | Yes         | `none`                                                       | Specifies the VCS plugin to use (e.g., `bitbucket`, `gitlab`, `github`).     |
-| `--pr-mode`   | string  | No         | `branch`                                                       | Pull request fetch strategy. References are resolved automatically via the VCS provider API — users don’t need to specify refs manually. Possible values: branch (fetch the PR’s source branch), ref (fetch the provider’s PR ref, e.g., GitHub refs/pull/<id>/head), or commit (fetch the PR head’s latest commit in detached mode). Ignored if URL doesn't contain PR ID.     |
-| `--diff-lines` | bool   | No         | `false`                                                        | For pull-request URLs, materialise only added/modified **lines** (plus dotfiles) into a dedicated diff folder. Useful for scanners that inspect hunks (e.g., secrets/SAST). |
-| `--diff-files` | bool   | No         | `false`                                                        | For pull-request URLs, copy the fully changed **files** (plus dotfiles) into a dedicated folder so scanners can run with complete file context. |
+| `--pr-mode`   | string  | No         | `branch`                                                       | **[PR mode only]** Pull request fetch strategy. References are resolved automatically via the VCS provider API — users don’t need to specify refs manually. Possible values: `branch` (fetch the PR’s source branch), `ref` (fetch the provider’s PR ref, e.g., GitHub `refs/pull/<id>/head`), or `commit` (fetch the PR head’s latest commit in detached mode). Ignored if URL doesn’t contain PR ID.     |
+| `--diff-lines` | bool   | No         | `false`                                                        | **[PR mode only]** Materialise only added/modified **lines** (plus dotfiles) into a dedicated diff-lines folder. Useful for scanners that inspect hunks (e.g., secrets/SAST). Also sets `base_sha` in the result extras. |
+| `--diff-files` | bool   | No         | `false`                                                        | **[PR mode only]** Copy the fully changed **files** (plus dotfiles) into a dedicated diff-files folder so scanners can run with complete file context. |
 | `--single-branch`   | bool  | No         | `false`                                                       | Fetch only the specified branch, without history from other branches.     |
 | `--depth`   | int  | No         | `0`                                                       | Create a shallow clone with history truncated to n commits. `0` = full history, `1` = shallowest. |
 | `--tags`   | bool  | No         | `false`                                                       | Fetch all tags from the repository. If neither `--tags` nor `--no-tags` is set, tag-following is used by default.    |
 | `--no-tags`   | bool  | No         | `false`                                                       | Do not fetch any tags from the repository. If neither `--tags` nor `--no-tags` is set, tag-following is used by default.     |
 | `--auto-repair`   | bool  | No         | `false`                                                       | Automatically repair shallow or corrupted repositories by forcing a refetch and recloning if necessary.     |
 | `-clean-workdir`   | bool  | No         | `false`                                                       | Reset the working tree to HEAD and remove untracked files and directories. Equivalent to `git reset --hard` + `git clean -fdx`.     |
+| `--fetch-base`    | bool  | No          | `false`                                                       | **[PR mode only]** Fetch the PR base commit into the local git object store. Sets `base_sha` (target-branch tip) and `merge_base_sha` (fork point) in the result extras. Use `merge_base_sha` as the `--baseline-commit` argument to semgrep. See [Diff-aware scanning](#diff-aware-scanning).  |
 | `--rm-unsafe-symlinks` | bool  | No         | `false`                                                       | After the fetch and before `--rm-ext`, remove symlinks from the whole clone (including `.git/`) whose targets are absolute, resolve outside the clone, contain `..` after a path name, or cannot be resolved. Fails the fetch if the sweep cannot complete. See [Symlink handling](#symlink-handling). |
 
 
@@ -107,6 +110,7 @@ The `fetch` command includes several validation layers to ensure robust executio
 - **Authentication Validation**: Ensures the specified `--auth-type` is valid. If `ssh-key` is selected, the presence of a valid `--ssh-key` path and key is required.
 - **Input Validation**: Confirms that either an `--input-file` or a valid URL is provided. Both cannot be omitted simultaneously.
 - **URL Parsing and Verification**: If a URL is provided, it is parsed using the internal [vcsurl dependency](../../pkg/shared/vcsurl/vcsurl.go). The core ensures the URL's validity and that it aligns with the expected structure for supported VCS platforms.
+- **PR-mode flags**: `--fetch-base`, `--diff-lines`, and `--diff-files` are only valid when the URL contains a pull request ID. Using `--fetch-base` without a PR URL returns an error.
 
 ## Usage Examples
 The following examples demonstrate how to use the `fetch` command for different plugins. Each example covers specific use cases, such as fetching repositories, pull requests, using authentication methods, and managing parallel jobs.
@@ -130,6 +134,7 @@ The `fetch` command generates a JSON file as output, capturing detailed informat
         "ssh_key": "<path_to_ssh_key>",
         "target_folder": "<path_to_folder_for_code>",
         "fetch_mode": "<fetch_mode>",
+        "fetch_base": "<fetch_base_bool>",
         "repo_param": {
           "domain": "<domain_name>",
           "namespace": "<namespace_name>",
@@ -140,10 +145,20 @@ The `fetch` command generates a JSON file as output, capturing detailed informat
         },
         "depth": "<depth>",
         "single_branch": "<single_branch_bool>",
-        "tag_mode": "<tag_mode>",
+        "tag_mode": "<tag_mode>"
       },
       "result": {
-        "path": "<path_to_folder_with_saved_code>"
+        "path": "<path_to_folder_with_saved_code>",
+        "scope": "<scope>",
+        "extras": {
+          "repo_root": "<path_to_repo_root>",
+          "diff_files_root": "<path_to_diff_files_folder>",
+          "diff_lines_root": "<path_to_diff_lines_folder>",
+          "base_sha": "<base_commit_sha>",
+          "diff_lines_base_sha": "<diff_lines_base_commit_sha>",
+          "merge_base_sha": "<fork_point_sha>",
+          "head_sha": "<head_commit_sha>"
+        }
       },
       "status": "<status>",
       "message": "<error_message>"
@@ -171,9 +186,10 @@ The `fetch` command generates a JSON file as output, capturing detailed informat
 | `target_folder`| Path to the folder where the repository code will be saved.              |
 | `fetch_mode`| The fetch mode (`basic`, `pull-branch`, `pull-ref`, `pull-commit`).         |
 | `repo_param`| Contains repository-specific parameters, including domain and namespace.    |
-| `depth`| Actuall depth during cloning/fetching by git dependency.                         |
+| `depth`| Actual depth used during cloning/fetching.                                       |
 | `single_branch`| Fetch only the specified branch status.                                  |
-| `tag_mode`| Tag mode used during cloning by git dependency (all, no, or following tags)   |
+| `tag_mode`| Tag mode used during cloning (all, no, or following tags).                    |
+| `fetch_base`| Whether `--fetch-base` was set. When `true`, the PR base commit is present in the local git store and `base_sha` is populated in `result.extras`. |
 
 
 ### Fields in the `repo_param` Object
@@ -192,4 +208,30 @@ The `fetch` command generates a JSON file as output, capturing detailed informat
 |-------------|-----------------------------------------------------------------------------|
 | `path`      | Path to the repository checkout on disk (always the repo root). When diff modes are enabled inspect the `extras` map for `diff_lines_root` and/or `diff_files_root` to find derived artifacts. |
 | `scope`     | Represents the fetch scope (`full`, `diff-lines`, `diff-files`, or `diff`). Mirrors the active diff flags so downstream automation can branch logic. |
-| `extras`    | Key/value metadata returned by the VCS plugin. Diff outputs include `repo_root`, optional `diff_lines_root`/`diff_files_root`, and the `base_sha`/`head_sha` pair when supplied by the VCS. |
+| `extras`    | Key/value metadata returned by the VCS plugin. Always includes `repo_root`. Optional keys: `diff_files_root` (set when `--diff-files`), `diff_lines_root` (set when `--diff-lines`), `base_sha` (set when `--fetch-base` or `--diff-lines`), `merge_base_sha` (set when `--fetch-base`; see below), `diff_lines_base_sha` (set when `--diff-lines` on GitHub and Bitbucket; the merge base the sparse diff was computed against, or the target tip when no merge base could be resolved), `head_sha` (set when `--diff-lines`). When `base_sha` is present the commit is guaranteed to be in the local git object store. |
+
+## Diff-aware scanning
+
+Three flags are relevant only in PR mode and work together to support diff-aware scanning:
+
+| Flag | What it does |
+|------|--------------|
+| `--diff-files` | Copies the full content of changed files to a `diff-files` folder. Useful for file-scoped scanners. |
+| `--diff-lines` | Writes sparse files containing only added lines to a `diff-lines` folder. Also fetches the base commit. Added lines are computed against the PR merge base, falling back to the target-branch tip when none can be resolved. |
+| `--fetch-base` | Fetches the PR base commit into the local git store without materialising any files. Sets `base_sha` in `result.extras`. |
+
+`--fetch-base` is intended for scanners that perform their own diff logic (e.g. `semgrep --baseline-commit`). It is a lighter alternative to `--diff-lines` when you want the base commit available but do not need the materialised diff folder.
+
+When `--fetch-base` is set, two SHA values are populated in `result.extras`:
+
+| Key | Value | Use |
+|-----|-------|-----|
+| `base_sha` | Target-branch tip at clone time | Drift detection; do not pass to `--baseline-commit` when the PR is behind the target |
+| `merge_base_sha` | Fork point (merge-base of HEAD and target) | Pass this to `semgrep --baseline-commit` |
+
+The distinction matters when the PR is behind the target branch: `base_sha` would be a commit the PR author never touched, causing semgrep to exclude unrelated findings. `merge_base_sha` is always the true divergence point.
+
+> [!NOTE]
+> `base_sha` appears when `--fetch-base` or `--diff-lines` is set; `merge_base_sha` appears only with `--fetch-base` and only when the fork point can be determined. Scanio uses three steps in order: (1) VCS provider API returns the correct SHA; (2) go-git deepens the local shallow clone until the SHA is reachable from HEAD (required for `git diff --merge-base`); (3) git-binary fallback computes and materializes when the API or go-git path fails. If all steps fail, the field is omitted and the fetch still succeeds. A plain fetch without either flag populates neither field.
+
+For a worked example see [How to run diff-aware PR scanning](../how-to/diff-aware-pr-scanning.md).

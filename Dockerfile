@@ -4,7 +4,11 @@
 
 # Default Plugins' List
 # Dependencies will be installed if the docker file supports it, othervise ignored and only compile binaries of plugins
-ARG PLUGINS="github,gitlab,bitbucket,semgrep,bandit,trufflehog"
+ARG PLUGINS="github,gitlab,bitbucket,semgrep,bandit,trufflehog,betterleaks"
+
+# Custom binary name and in-image path root. Filesystem relabel only;
+# does not change the SCANIO_ env prefix, scanio: config key, or magic cookie.
+ARG APP_NAME=scanio
 
 # Stage 1: Build Scanio core and plugins
 FROM golang:1.26.10-alpine3.24 AS build-scanio
@@ -15,13 +19,19 @@ WORKDIR /usr/src/scanio
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy the source code
-COPY . .
+# Copy build inputs only — runtime assets (rules/, templates/, config.yml) are
+# brought in by the runtime stage below.
+COPY Makefile VERSION main.go ./
+COPY cmd/ cmd/
+COPY internal/ internal/
+COPY pkg/ pkg/
+COPY plugins/ plugins/
 
 # Set target architecture for multi-arch builds
 ARG TARGETOS
 ARG TARGETARCH
 ARG PLUGINS
+ARG APP_NAME
 
 # Install make and other build dependencies
 RUN apk update && \
@@ -32,7 +42,7 @@ RUN apk update && \
 
 # Build the core and plugins using the Makefile
 RUN echo "Building binaries and plugins for '$TARGETOS/$TARGETARCH'"
-RUN make build PLUGINS="$PLUGINS" CORE_BINARY=/usr/bin/scanio PLUGINS_DIR=/usr/bin/plugins
+RUN make build PLUGINS="$PLUGINS" CORE_BINARY=/usr/bin/$APP_NAME PLUGINS_DIR=/usr/bin/plugins
 
 # Stage 2: Prepare the runtime environment
 FROM alpine:3.23.4 AS runtime
@@ -41,6 +51,11 @@ FROM alpine:3.23.4 AS runtime
 ARG TARGETOS
 ARG TARGETARCH
 ARG PLUGINS
+ARG APP_NAME
+
+# Optional dependency overlay (no-op by default). Copied before the dependency
+# RUN so it executes inside the same cleanup window.
+COPY docker-context-files/ /tmp/docker-context-files/
 
 RUN set -euxo pipefail && \
     echo "Building dependencies for '$TARGETOS/$TARGETARCH'" && \
@@ -87,45 +102,79 @@ RUN set -euxo pipefail && \
           tar -xzf "${TARFILE}" && \
           mv trufflehog /usr/local/bin/ && \
           rm -f "${TARFILE}" "${CHECKSUMFILE}" ;; \
+        betterleaks) \
+          echo "Installing Betterleaks binary..."; \
+          BETTERLEAKS_VER="2.0.0-rc.2" && \
+          case "$TARGETARCH" in \
+            amd64) BL_ARCH="x64"; BL_SHA256="8f622e1fc93d06c7ecd2250e8d5d1cc323f379b1b0995364f973da476331b918" ;; \
+            arm64) BL_ARCH="arm64"; BL_SHA256="47d2d27793ec663937d4e756fc49c4a157332bf4a62ce70ad0a98046f1294563" ;; \
+            *) echo "Betterleaks: unsupported architecture '$TARGETARCH' (amd64 and arm64 only)" >&2; exit 1 ;; \
+          esac && \
+          BL_TARFILE="betterleaks_${BETTERLEAKS_VER}_${TARGETOS}_${BL_ARCH}.tar.gz" && \
+          curl -fsSL -O "https://github.com/betterleaks/betterleaks/releases/download/v${BETTERLEAKS_VER}/${BL_TARFILE}" && \
+          echo "${BL_SHA256}  ${BL_TARFILE}" | sha256sum -c - && \
+          tar -xzf "${BL_TARFILE}" betterleaks && \
+          mv betterleaks /usr/local/bin/ && \
+          rm -f "${BL_TARFILE}" && \
+          test "$(betterleaks --version)" = "${BETTERLEAKS_VER}" && \
+          echo "Betterleaks smoke test passed: $(betterleaks --version)" ;; \
         *) echo "No dependencies installed for plugin: $plugin" ;; \
       esac; \
     done && \
+    echo "Running dependency overlay (install-deps.sh)..." && \
+    chmod +x /tmp/docker-context-files/install-deps.sh && \
+    /tmp/docker-context-files/install-deps.sh && \
     apk del .build-deps && \
     find /usr -name '*.o' -delete && \
     find /usr -name '*.a' -delete && \
     rm -rf /var/cache/apk/* && \
     find /usr -name '__pycache__' -exec rm -rf {} + && \
-    rm -rf /root/.cache/pip
+    rm -rf /root/.cache/pip && \
+    rm -rf /tmp/docker-context-files
 
-RUN mkdir -p /scanio /scanio/plugins /scanio/rules /scanio/templates \
-          /scanio/projects /scanio/results /scanio/tmp /scanio/artifacts /scanio/log /data
+RUN mkdir -p /$APP_NAME /$APP_NAME/plugins /$APP_NAME/rules /$APP_NAME/templates \
+          /$APP_NAME/projects /$APP_NAME/results /$APP_NAME/tmp /$APP_NAME/artifacts /$APP_NAME/log /data
 
 # Copy built binaries and other necessary files from the build stage
-COPY --from=build-scanio /usr/bin/scanio /bin/scanio
-COPY --from=build-scanio /usr/bin/plugins/ /scanio/plugins/
+COPY --from=build-scanio /usr/bin/$APP_NAME /bin/$APP_NAME
+COPY --from=build-scanio /usr/bin/plugins/ /$APP_NAME/plugins/
 
 # Copy additional resources
-COPY rules /scanio/rules
-COPY templates /scanio/templates
-COPY VERSION /scanio/VERSION
-COPY config.yml /scanio/config.yml
+COPY rules /$APP_NAME/rules
+COPY templates /$APP_NAME/templates
+COPY VERSION /$APP_NAME/VERSION
+COPY config.yml /$APP_NAME/config.yml
 
 # Set PATH for venv manually
 ENV PATH="/opt/venvs/semgrep/bin:/opt/venvs/trufflehog3/bin:/opt/venvs/bandit/bin:${PATH}"
 
 # Write to config.yml customized values
-RUN echo -e "\n\nscanio:" >> /scanio/config.yml && \
-    echo -e "  home_folder: /scanio" >> /scanio/config.yml && \
-    echo -e "  plugins_folder: /scanio/plugins" >> /scanio/config.yml && \
-    echo -e "  projects_folder: /scanio/projects" >> /scanio/config.yml && \
-    echo -e "  results_folder: /scanio/results" >> /scanio/config.yml && \
-    echo -e "  temp_folder: /scanio/tmp" >> /scanio/config.yml && \
-    echo -e "  artifacts_folder: /scanio/artifacts\n" >> /scanio/config.yml
+RUN echo -e "\n\nscanio:" >> /$APP_NAME/config.yml && \
+    echo -e "  home_folder: /$APP_NAME" >> /$APP_NAME/config.yml && \
+    echo -e "  plugins_folder: /$APP_NAME/plugins" >> /$APP_NAME/config.yml && \
+    echo -e "  projects_folder: /$APP_NAME/projects" >> /$APP_NAME/config.yml && \
+    echo -e "  results_folder: /$APP_NAME/results" >> /$APP_NAME/config.yml && \
+    echo -e "  temp_folder: /$APP_NAME/tmp" >> /$APP_NAME/config.yml && \
+    echo -e "  artifacts_folder: /$APP_NAME/artifacts\n" >> /$APP_NAME/config.yml
 
-RUN addgroup -S scanio && adduser -S -G scanio scanio && \
-    chown -R scanio:scanio /scanio /data
+# The compiled default config search paths are /scanio and ~/.scanio. Once the
+# tree is relocated, point the binary at the moved config explicitly.
+ENV SCANIO_CONFIG_PATH=/$APP_NAME/config.yml
 
-USER scanio
+RUN addgroup -S $APP_NAME && adduser -S -G $APP_NAME -h /home/$APP_NAME $APP_NAME && \
+    mkdir -p /home/$APP_NAME/.cache && \
+    chown -R $APP_NAME:$APP_NAME /$APP_NAME /data /home/$APP_NAME
 
-ENTRYPOINT ["/bin/scanio"]
+# The non-root runtime user needs HOME set so tools that write to ~ (config,
+# caches) resolve it to a writable, user-owned directory.
+ENV HOME=/home/$APP_NAME
+
+# Exec-form ENTRYPOINT cannot interpolate $APP_NAME, so generate a wrapper that
+# execs the renamed binary with clean arg and signal forwarding.
+RUN printf '#!/bin/sh\nexec "/bin/%s" "$@"\n' "$APP_NAME" > /usr/local/bin/docker-entrypoint && \
+    chmod +x /usr/local/bin/docker-entrypoint
+
+USER $APP_NAME
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint"]
 CMD ["--help"]

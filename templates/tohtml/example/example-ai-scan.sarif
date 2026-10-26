@@ -1,0 +1,426 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "AI Security Scanner",
+          "semanticVersion": "1.4.0",
+          "rules": [
+            {
+              "id": "ai.security.audit.privilege-escalation-via-missing-authz-check",
+              "name": "privilege-escalation-via-missing-authz-check",
+              "shortDescription": {
+                "text": "Privilege escalation via missing authorization check"
+              },
+              "fullDescription": {
+                "text": "An administrative action is reachable without verifying the caller holds an admin role, letting a standard user grant themselves elevated privileges."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "problem.severity": "critical"
+              }
+            },
+            {
+              "id": "ai.security.audit.idor-via-predictable-resource-id",
+              "name": "idor-via-predictable-resource-id",
+              "shortDescription": {
+                "text": "IDOR via predictable, unauthorized resource ID"
+              },
+              "fullDescription": {
+                "text": "A record lookup trusts a client-supplied ID without checking it belongs to the requesting tenant, allowing cross-tenant data access."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "problem.severity": "high"
+              }
+            },
+            {
+              "id": "ai.security.audit.auth-bypass-via-incomplete-session-revocation",
+              "name": "auth-bypass-via-incomplete-session-revocation",
+              "shortDescription": {
+                "text": "Session not fully revoked on logout across devices"
+              },
+              "fullDescription": {
+                "text": "Logging out invalidates only the current session token; other active sessions for the same account may remain valid."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "problem.severity": "high"
+              }
+            },
+            {
+              "id": "ai.security.audit.sensitive-data-exposure-in-application-logs",
+              "name": "sensitive-data-exposure-in-application-logs",
+              "shortDescription": {
+                "text": "Sensitive data exposure in application logs"
+              },
+              "fullDescription": {
+                "text": "A request handler logs its full payload, including fields that carry credentials or other sensitive values, at debug level."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "problem.severity": "medium"
+              }
+            },
+            {
+              "id": "ai.security.audit.mass-assignment-via-unvalidated-model-binding",
+              "name": "mass-assignment-via-unvalidated-model-binding",
+              "shortDescription": {
+                "text": "Mass assignment via unvalidated model binding"
+              },
+              "fullDescription": {
+                "text": "A handler binds the entire request body onto a model without an allow-list, letting a caller set fields that should not be client-writable."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "problem.severity": "medium",
+                "precision": "medium"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "ai.security.audit.privilege-escalation-via-missing-authz-check",
+          "level": "error",
+          "message": {
+            "text": "The promote_to_admin handler is reachable without verifying the caller holds an admin role; a standard user could call it directly to grant themselves admin access."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/services/admin_actions.py",
+                  "properties": {}
+                },
+                "region": {
+                  "startLine": 142,
+                  "endLine": 142,
+                  "startColumn": 5,
+                  "endColumn": 43,
+                  "snippet": {
+                    "text": "    db.users.update(user_id, role=\"admin\")"
+                  }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "app/services/admin_actions.py",
+                            "properties": {}
+                          },
+                          "region": {
+                            "startLine": 142,
+                            "endLine": 142,
+                            "startColumn": 5,
+                            "endColumn": 43,
+                            "snippet": {
+                              "text": "    db.users.update(user_id, role=\"admin\")"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "confidence": 0.05,
+            "pre_fp_confidence": 0.88,
+            "fp": {
+              "verdict": "FALSE_POSITIVE",
+              "p_real": 0.05,
+              "reasoning": "The route is registered behind the require_role(\"admin\") decorator in the parent blueprint, which runs before this handler and rejects non-admin callers with a 403. The handler is unreachable by a standard user.",
+              "evidence": [
+                "admin_actions blueprint is registered with before_request require_role(\"admin\") in app/services/__init__.py.",
+                "Traced an unauthenticated and a standard-user request to this route in the test environment; both were rejected with 403 before promote_to_admin executed."
+              ]
+            }
+          }
+        },
+        {
+          "ruleId": "ai.security.audit.idor-via-predictable-resource-id",
+          "level": "error",
+          "message": {
+            "text": "get_order returns any order matching order_id without checking it belongs to the requesting tenant, allowing cross-tenant access to order data."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/services/orders.py",
+                  "properties": {}
+                },
+                "region": {
+                  "startLine": 88,
+                  "endLine": 88,
+                  "startColumn": 12,
+                  "endColumn": 48,
+                  "snippet": {
+                    "text": "    return db.orders.find_one({\"id\": order_id})"
+                  }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "app/services/orders.py",
+                            "properties": {}
+                          },
+                          "region": {
+                            "startLine": 88,
+                            "endLine": 88,
+                            "startColumn": 12,
+                            "endColumn": 48,
+                            "snippet": {
+                              "text": "    return db.orders.find_one({\"id\": order_id})"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "confidence": 0.93,
+            "pre_fp_confidence": 0.55,
+            "fp": {
+              "verdict": "TRUE_POSITIVE",
+              "p_real": 0.93,
+              "reasoning": "Confirmed: order_id is attacker-controlled and no tenant or ownership check occurs before the record is returned to the caller.",
+              "evidence": [
+                "Reproduced by requesting /api/orders/{id} for an order belonging to a different tenant; the full order record was returned.",
+                "No tenant_id or owner check present anywhere in get_order or its callers."
+              ]
+            }
+          }
+        },
+        {
+          "ruleId": "ai.security.audit.auth-bypass-via-incomplete-session-revocation",
+          "level": "error",
+          "message": {
+            "text": "logout() revokes only the current session token; other active sessions for the same account remain valid after logout."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/auth/session.py",
+                  "properties": {}
+                },
+                "region": {
+                  "startLine": 61,
+                  "endLine": 61,
+                  "startColumn": 5,
+                  "endColumn": 40,
+                  "snippet": {
+                    "text": "    session_store.revoke(current_token)"
+                  }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "app/auth/session.py",
+                            "properties": {}
+                          },
+                          "region": {
+                            "startLine": 61,
+                            "endLine": 61,
+                            "startColumn": 5,
+                            "endColumn": 40,
+                            "snippet": {
+                              "text": "    session_store.revoke(current_token)"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "confidence": 0.5,
+            "fp": {
+              "verdict": "NEEDS_VERIFICATION",
+              "p_real": 0.5,
+              "reasoning": "logout() only revokes current_token and never enumerates other sessions for the account, but it is unclear from static analysis alone whether a separate background job also expires them. Needs a manual multi-device test.",
+              "evidence": [
+                "logout() calls session_store.revoke(current_token) and returns; no call to revoke_all_for_account was found in this handler.",
+                "A scheduled session_reaper job exists in app/auth/session.py but its trigger conditions could not be determined from this file alone."
+              ]
+            }
+          }
+        },
+        {
+          "ruleId": "ai.security.audit.sensitive-data-exposure-in-application-logs",
+          "level": "warning",
+          "message": {
+            "text": "The password reset handler logs its full request payload, including the plaintext new password, at debug level."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/utils/logging.py",
+                  "properties": {}
+                },
+                "region": {
+                  "startLine": 27,
+                  "endLine": 27,
+                  "startColumn": 5,
+                  "endColumn": 52,
+                  "snippet": {
+                    "text": "    logger.debug(\"reset request: %s\", request.json)"
+                  }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "app/utils/logging.py",
+                            "properties": {}
+                          },
+                          "region": {
+                            "startLine": 27,
+                            "endLine": 27,
+                            "startColumn": 5,
+                            "endColumn": 52,
+                            "snippet": {
+                              "text": "    logger.debug(\"reset request: %s\", request.json)"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "confidence": 0.1,
+            "fp": {
+              "verdict": "FALSE_POSITIVE",
+              "p_real": 0.1,
+              "reasoning": "debug-level logging is disabled in every environment that receives real traffic: config/production.py and config/staging.py both set LOG_LEVEL to INFO, and this line only executes in the local dev profile.",
+              "evidence": [
+                "config/production.py: LOG_LEVEL = \"INFO\".",
+                "config/staging.py: LOG_LEVEL = \"INFO\".",
+                "Only config/dev.py sets LOG_LEVEL = \"DEBUG\", and that profile is not deployed."
+              ]
+            }
+          }
+        },
+        {
+          "ruleId": "ai.security.audit.mass-assignment-via-unvalidated-model-binding",
+          "level": "warning",
+          "message": {
+            "text": "update_profile binds the entire request body onto the user model, letting a caller set fields such as is_verified that should not be client-writable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/models/profile.py",
+                  "properties": {}
+                },
+                "region": {
+                  "startLine": 19,
+                  "endLine": 19,
+                  "startColumn": 5,
+                  "endColumn": 32,
+                  "snippet": {
+                    "text": "    user.update(**request.json)"
+                  }
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "app/models/profile.py",
+                            "properties": {}
+                          },
+                          "region": {
+                            "startLine": 19,
+                            "endLine": 19,
+                            "startColumn": 5,
+                            "endColumn": 32,
+                            "snippet": {
+                              "text": "    user.update(**request.json)"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {}
+        }
+      ]
+    }
+  ]
+}

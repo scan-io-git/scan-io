@@ -21,6 +21,7 @@ type ScannerScanRequest struct {
 	ConfigPath     string   `json:"config_path"`     // Path to the configuration file for the scanner
 	ReportFormat   string   `json:"report_format"`   // Format of the report to generate (e.g., JSON, Sarif)
 	AdditionalArgs []string `json:"additional_args"` // Additional arguments for the scanner
+	Command        string   `json:"command,omitempty"` // Scanner subcommand override; interpretation is plugin-specific, not all plugins support this
 }
 
 // ScannerScanResponse represents the response from a scan plugin.

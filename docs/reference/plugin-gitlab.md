@@ -278,7 +278,7 @@ https://gitlab.com/testing_scanio/testingsubgroup/subrouplevel2/projectlevel2/-/
 When `--diff-lines` or `--diff-files` is provided for a merge-request URL, the GitLab plugin:
 
 - clones the MR source branch/commit and produces a diff using GitLab’s `DiffRefs` (base and head SHAs) when available;
-- writes only added/modified lines for each changed file into a cleaned diff directory when `--diff-lines` is set, leaving unchanged lines blank for offset stability;
+- writes only added/modified lines for each changed file into a cleaned diff directory when `--diff-lines` is set, leaving unchanged lines blank for offset stability. Additions are computed against `diff_refs.base_sha`, which GitLab defines as the merge base, so no `diff_lines_base_sha` extra is emitted;
 - copies the fully changed files when `--diff-files` is set so scanners retain complete context;
 - copies dotfiles from the repository root into whichever diff directories are built, skipping unsafe symlinks with a `WARN` log (see [Symlink handling](cmd-fetch.md#symlink-handling)); and
 - recreates those directories on each invocation to ensure stale artifacts are removed in CI reruns.
@@ -290,8 +290,9 @@ The fetch response keeps `path` pointing to the repository checkout, sets `scope
 | `diff_lines_root` | Absolute path to the sparse diff folder (present when `--diff-lines` is used). |
 | `diff_files_root` | Absolute path to the full diff files folder (present when `--diff-files` is used). |
 | `repo_root`       | Path to the repository checkout used when computing the diff (and returned as `path`). |
-| `base_sha`        | Base commit SHA reported by GitLab (empty when the API omits it).            |
-| `head_sha`        | Head commit SHA from `DiffRefs` or the MR SHA.                               |
+| `base_sha`        | Target-branch tip SHA at fetch time. Set when `--fetch-base` or `--diff-lines` is used. |
+| `head_sha`        | PR head commit SHA from `DiffRefs` or the MR SHA. Set when `--diff-lines` is used. |
+| `merge_base_sha`  | True fork point (common ancestor of head and target branch). Set when `--fetch-base` is used. Pass this to `semgrep --baseline-commit`; never pass `base_sha`. |
 
 Without diff flags, the plugin returns `scope: "full"` and the `path`/`repo_root` both point to the repository checkout as in previous releases.
 

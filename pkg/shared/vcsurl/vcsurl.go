@@ -91,6 +91,13 @@ func (u *VCSURL) Protocol() Protocol {
 	}
 }
 
+// ParseOptions configures optional behaviour when parsing a VCS URL.
+type ParseOptions struct {
+	// HostMap maps hostnames to VCS types (e.g. "git.corp.com" -> Bitbucket).
+	// Consulted before hostname-substring and path-shape detection.
+	HostMap map[string]VCSType
+}
+
 // determineVCSType determines the VCS type based on the hostname
 func determineVCSType(host string) (VCSType, error) {
 	if strings.Contains(host, "github") {
@@ -104,12 +111,73 @@ func determineVCSType(host string) (VCSType, error) {
 	}
 }
 
+// inferVCSTypeFromShape infers the VCS type from URL path and query patterns.
+// Returns (type, true) on a confident match, (0, false) otherwise.
+func inferVCSTypeFromShape(u *url.URL) (VCSType, bool) {
+	p := u.Path
+
+	// GitLab: "/-/" is a unique segment present in every GitLab resource URL.
+	if strings.Contains(p, "/-/") {
+		return Gitlab, true
+	}
+
+	// Bitbucket DC: path-based markers unique to its browser and clone URLs.
+	dirs := GetPathDirs(p)
+	if len(dirs) >= 1 {
+		switch dirs[0] {
+		case "projects", "users":
+			if len(dirs) >= 4 && dirs[2] == "repos" {
+				return Bitbucket, true
+			}
+		case "scm":
+			return Bitbucket, true
+		}
+	}
+
+	// Bitbucket DC: "?at=" query param is used for ref navigation.
+	if u.Query().Get("at") != "" {
+		return Bitbucket, true
+	}
+
+	// Bitbucket DC: SSH port 7999 is the default Bitbucket DC SSH port.
+	if u.Port() == "7999" {
+		return Bitbucket, true
+	}
+
+	return 0, false
+}
+
+// resolveVCSType applies the detection chain for ParseWithOptions.
+// Order: HostMap -> hostname substring -> path/query shape -> GenericVCS.
+func resolveVCSType(u *url.URL, opts ParseOptions) VCSType {
+	// 1. Config-provided host map
+	if len(opts.HostMap) > 0 {
+		if t, ok := opts.HostMap[u.Hostname()]; ok {
+			return t
+		}
+	}
+
+	// 2. Hostname substring
+	if t, err := determineVCSType(u.Hostname()); err == nil {
+		return t
+	}
+
+	// 3. Path/query shape inference
+	if t, ok := inferVCSTypeFromShape(u); ok {
+		return t
+	}
+
+	return GenericVCS
+}
+
 // Parse parses a VCS URL and returns a VCSURL struct for unknown VCS Type
 func Parse(raw string) (*VCSURL, error) {
 	return ParseForVCSType(raw, UnknownVCS)
 }
 
-// ParseForVCSType parses a VCS URL and returns a VCSURL struct for a specific VCS Type
+// ParseForVCSType parses a VCS URL and returns a VCSURL struct for a specific VCS Type.
+// When vcsType is UnknownVCS, the type is resolved via hostname substring then path-shape
+// inference. For any other value the provided type is used directly.
 func ParseForVCSType(raw string, vcsType VCSType) (*VCSURL, error) {
 	var vcsURL VCSURL
 	vcsURL.Raw = raw
@@ -135,14 +203,60 @@ func ParseForVCSType(raw string, vcsType VCSType) (*VCSURL, error) {
 		return nil, fmt.Errorf("invalid scheme: %q", vcsURL.Raw)
 	}
 
-	// determine VCS type either from the input or from the URL Hostname
+	// determine VCS type either from the explicit input or via detection
 	effectiveVCSType := vcsType
 	if effectiveVCSType == UnknownVCS {
-		effectiveVCSType, _ = determineVCSType(vcsURL.ParsedURL.Hostname())
+		if t, err := determineVCSType(vcsURL.ParsedURL.Hostname()); err == nil {
+			effectiveVCSType = t
+		} else if t, ok := inferVCSTypeFromShape(vcsURL.ParsedURL); ok {
+			effectiveVCSType = t
+		} else {
+			effectiveVCSType = GenericVCS
+		}
 	}
 	vcsURL.VCSType = effectiveVCSType
 
 	// handle the URL based on the VCS type
+	switch effectiveVCSType {
+	case Bitbucket:
+		return parseBitbucket(vcsURL)
+	case Github:
+		return parseGithub(vcsURL)
+	case Gitlab:
+		return parseGitlab(vcsURL)
+	default:
+		return handleGenericVCS(vcsURL)
+	}
+}
+
+// ParseWithOptions parses a VCS URL applying config-map, hostname, and path-shape detection.
+// Use this when the caller can supply a host map loaded from application config.
+func ParseWithOptions(raw string, opts ParseOptions) (*VCSURL, error) {
+	var vcsURL VCSURL
+	vcsURL.Raw = raw
+
+	// preparse special type of URLs like "git@<host>:<path>"
+	spec := raw
+	if parts := regexp.MustCompile(`^git@([^:]+)\:(.*)$`).FindStringSubmatch(spec); len(parts) == 3 {
+		spec = fmt.Sprintf("ssh://%s/%s", parts[1], parts[2])
+	}
+
+	// strip .git suffix from the URL
+	spec = strings.TrimSuffix(spec, ".git")
+
+	parsedURL, err := url.ParseRequestURI(spec)
+	if err != nil {
+		return nil, err
+	}
+	vcsURL.ParsedURL = parsedURL
+
+	if !isValidScheme(vcsURL.ParsedURL.Scheme) {
+		return nil, fmt.Errorf("invalid scheme: %q", vcsURL.Raw)
+	}
+
+	effectiveVCSType := resolveVCSType(vcsURL.ParsedURL, opts)
+	vcsURL.VCSType = effectiveVCSType
+
 	switch effectiveVCSType {
 	case Bitbucket:
 		return parseBitbucket(vcsURL)

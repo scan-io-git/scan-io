@@ -1,0 +1,101 @@
+# VCS metadata (never needed in the image)
+**/.git
+**/.gitignore
+**/.gitattributes
+**/.github
+
+# OS / editor metadata
+.vscode
+.idea
+.cursorrules
+**/.DS_Store
+**/Thumbs.db
+**/*.swp
+**/*.swo
+
+# Secrets / credentials — root-only on purpose; **/ here would strip nested
+# secret-detection rule files under rules/.
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Docker (daemon reads these before the context is sent)
+Dockerfile
+.dockerignore
+
+# Docs & branding (kept in git; no value shipping them in the image)
+docs
+assets
+**/README.md
+LICENSE
+**/SECURITY.md
+**/AGENTS.md
+
+# Go build & test artifacts
+**/*.exe
+**/*.exe~
+**/*.dll
+**/*.so
+**/*.dylib
+**/*.test
+**/*.out
+**/coverage.*
+**/__debug_bin*
+bin/
+
+# Logs
+**/crash.log
+**/crash.*.log
+
+# Python venv / cache (left behind by plugin development)
+**/.venv
+**/__pycache__
+**/*.pyc
+
+# Terraform state and secrets
+**/.terraform
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfvars
+**/*.tfvars.json
+**/override.tf
+**/override.tf.json
+**/*_override.tf
+**/*_override.tf.json
+**/.terraform.lock.hcl
+.terraformrc
+terraform.rc
+
+# Reports, scan output & local data
+# report.html/results.html stay root-only on purpose: templates/tohtml/report.html
+# is the runtime to-html template and must ship in the image (cmd/to-html/to-html.go).
+data
+**/*.sarif
+*report.html
+*results.html
+
+# Runtime template extras — to-html uses ParseFiles on report.html only, so the
+# example/ demo dir and design-kit.html (a static design reference) don't belong in the image.
+templates/tohtml/example
+templates/tohtml/design-kit.html
+
+# Build-only tooling & test sources — never build inputs (make build compiles
+# cmd/internal/pkg/plugins; go build skips _test.go/testdata; scripts/ isn't COPYed).
+**/*_test.go
+**/testdata
+scripts/
+
+# Vagrant
+Vagrantfile
+.vagrant
+
+# Local tooling / agent scratch — git-ignored, not build inputs (~3.8 MB of context)
+.claude/
+.superpowers/
+.playwright-mcp/
+playground/
+screenshots/
+*.local*

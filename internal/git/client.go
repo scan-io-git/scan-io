@@ -23,6 +23,12 @@ type Client struct {
 	timeout      time.Duration
 	globalConfig *config.Config
 	vcs          string
+
+	// SSH key fields needed by the git CLI path (--fetch-base only).
+	// go-git discards the key path and passphrase after parsing, so they
+	// cannot be recovered from c.auth and must be stored separately.
+	sshKeyPath          string
+	sshKeyHasPassphrase bool
 }
 
 // Authenticator defines an interface for different authentication methods.
@@ -159,11 +165,18 @@ func New(logger hclog.Logger, globalConfig *config.Config, pluginConfig interfac
 
 	timeout := config.SetThen(globalConfig.GitClient.Timeout, time.Duration(10*time.Minute))
 
-	return &Client{
+	cl := &Client{
 		logger:       logger,
 		auth:         auth,
 		timeout:      timeout,
 		globalConfig: globalConfig,
 		vcs:          pluginName,
-	}, nil
+	}
+
+	if args.AuthType == "ssh-key" {
+		cl.sshKeyPath, _ = files.ExpandPath(args.SSHKey)
+		cl.sshKeyHasPassphrase = cfg["SSHKeyPassword"] != ""
+	}
+
+	return cl, nil
 }

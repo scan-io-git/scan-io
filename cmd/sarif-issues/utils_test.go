@@ -154,7 +154,7 @@ func TestBuildGitHubPermalink(t *testing.T) {
 		Ref:        "aec0b795c350ff53fe9ab01adf862408aa34c3fd",
 	}
 
-	link := buildGitHubPermalink(options, nil, fileURI, 11, 29)
+	link := buildPermalink(options, nil, fileURI, 11, 29)
 	expected := "https://github.com/scan-io-git/scanio-test/blob/aec0b795c350ff53fe9ab01adf862408aa34c3fd/apps/demo/main.py#L11-L29"
 	if link != expected {
 		t.Fatalf("expected permalink %q, got %q", expected, link)
@@ -167,7 +167,7 @@ func TestBuildGitHubPermalink(t *testing.T) {
 		RepoRootFolder: "/tmp/repo",
 		CommitHash:     &commit,
 	}
-	link = buildGitHubPermalink(options, metadata, fileURI, 5, 5)
+	link = buildPermalink(options, metadata, fileURI, 5, 5)
 	expected = "https://github.com/scan-io-git/scanio-test/blob/1234567890abcdef/apps/demo/main.py#L5"
 	if link != expected {
 		t.Fatalf("expected metadata permalink %q, got %q", expected, link)
@@ -176,7 +176,7 @@ func TestBuildGitHubPermalink(t *testing.T) {
 	// Missing ref and metadata commit should return empty string
 	options.Ref = ""
 	metadata.CommitHash = nil
-	link = buildGitHubPermalink(options, metadata, fileURI, 1, 1)
+	link = buildPermalink(options, metadata, fileURI, 1, 1)
 	if link != "" {
 		t.Fatalf("expected empty permalink when ref and metadata are missing, got %q", link)
 	}
@@ -553,9 +553,15 @@ func TestResolveSourceFolderRelativePaths(t *testing.T) {
 			t.Fatalf("failed to change directory: %v", err)
 		}
 
-		// Test relative path
+		// Test relative path. ResolveSourceFolder goes through filepath.Abs, which
+		// reads the working directory from the kernel and so returns the physical
+		// path. On macOS the temp dir sits under /var, a symlink to /private/var, so
+		// comparing against the raw MkdirTemp string would fail on the prefix alone.
 		result := ResolveSourceFolder("./testdir", logger)
-		expected := filepath.Clean(testDir)
+		expected, err := filepath.EvalSymlinks(testDir)
+		if err != nil {
+			t.Fatalf("failed to resolve test dir: %v", err)
+		}
 
 		if result != expected {
 			t.Errorf("expected %s, got %s", expected, result)

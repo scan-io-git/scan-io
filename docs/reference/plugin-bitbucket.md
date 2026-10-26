@@ -281,7 +281,7 @@ https:///bitbucket.com/projects/SCANIO/repos/scan-io/pull-requests/1/overview # 
 When `--diff-lines` or `--diff-files` is supplied for a pull-request URL, the Bitbucket plugin:
 
 - clones the PR head inside the standard repository cache and computes the diff between the provider-reported base and head commits;
-- materialises sparse diff files (only the added/modified lines) when `--diff-lines` is set, keeping unchanged lines blank for offset stability;
+- materialises sparse diff files (only the added/modified lines) when `--diff-lines` is set, keeping unchanged lines blank for offset stability. Additions are computed against the PR merge base, falling back to the target-branch tip when none can be resolved;
 - copies the fully changed files when `--diff-files` is set so scanners that need full context can run without touching the rest of the checkout;
 - copies dotfiles (for example `.gitignore`, scanner configuration files) into whichever diff folders are produced, skipping unsafe symlinks with a `WARN` log (see [Symlink handling](cmd-fetch.md#symlink-handling)); and
 - recreates the diff folders on every run so CI reruns do not accumulate stale artifacts.
@@ -293,8 +293,10 @@ The fetch response keeps `path` pointing to the repository checkout, sets `scope
 | `diff_lines_root` | Absolute path to sparse diff artifacts (present with `--diff-lines`). |
 | `diff_files_root` | Absolute path to full diff files (present with `--diff-files`). |
 | `repo_root`       | Path to the fully cloned repository (also returned as `path`).|
-| `base_sha`        | Provider base commit used for the diff (when available).     |
-| `head_sha`        | Provider head commit used for the diff.                      |
+| `base_sha`        | Target-branch tip SHA at fetch time. Set when `--fetch-base` or `--diff-lines` is used. |
+| `diff_lines_base_sha` | Commit the sparse diff was computed against: the merge base, or the target-branch tip when no merge base could be resolved. Set when `--diff-lines` is used. |
+| `head_sha`        | PR head commit SHA. Set when `--diff-lines` is used.         |
+| `merge_base_sha`  | True fork point (common ancestor of head and target branch). Set when `--fetch-base` is used. Pass this to `semgrep --baseline-commit`; never pass `base_sha`. |
 
 Without diff flags, the plugin returns `scope: "full"` and `path`/`repo_root` both point to the repository checkout, matching the previous behaviour.
 

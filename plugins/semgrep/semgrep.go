@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -16,6 +17,7 @@ import (
 
 const (
 	defaultCommand  = "scan"
+	ciCommand       = "ci"
 	autoConfig      = "auto"
 	metricsFlag     = "--metrics"
 	metricsOffValue = "off"
@@ -50,7 +52,18 @@ func (g *ScannerSemgrep) setGlobalConfig(globalConfig *config.Config) {
 	g.globalConfig = globalConfig
 }
 
+// resolveCommand returns the effective semgrep subcommand, defaulting to "scan".
+func resolveCommand(c string) string {
+	if c == "" {
+		return defaultCommand
+	}
+	return c
+}
+
 // buildCommandArgs constructs the command-line arguments for the Semgrep command.
+// In "ci" mode the subcommand is "ci": --config and the target path are omitted
+// (semgrep ci reads rules from the cloud and scans the working directory).
+// In all other modes (default: "scan") the existing behaviour is preserved.
 func (g *ScannerSemgrep) buildCommandArgs(args shared.ScannerScanRequest) []string {
 	var commandArgs []string
 
@@ -58,7 +71,8 @@ func (g *ScannerSemgrep) buildCommandArgs(args shared.ScannerScanRequest) []stri
 		commandArgs = append(commandArgs, arg...)
 	}
 
-	appendArg(defaultCommand)
+	cmd := resolveCommand(args.Command)
+	appendArg(cmd)
 
 	if len(args.AdditionalArgs) != 0 {
 		appendArg(args.AdditionalArgs...)
@@ -69,18 +83,23 @@ func (g *ScannerSemgrep) buildCommandArgs(args shared.ScannerScanRequest) []stri
 		appendArg(fmt.Sprintf("--%v", args.ReportFormat))
 	}
 
-	configPath := args.ConfigPath
-	if configPath == "" {
-		configPath = getDefaultRuleSet(g.globalConfig)
-	}
-	appendArg("-f", configPath)
+	if cmd != ciCommand {
+		configPath := args.ConfigPath
+		if configPath == "" {
+			configPath = getDefaultRuleSet(g.globalConfig)
+		}
+		appendArg("-f", configPath)
 
-	if configPath != autoConfig {
-		appendArg(metricsFlag, metricsOffValue)
+		if configPath != autoConfig {
+			appendArg(metricsFlag, metricsOffValue)
+		}
 	}
 
 	appendArg("--output", args.ResultsPath)
-	appendArg(args.TargetPath)
+
+	if cmd != ciCommand {
+		appendArg(args.TargetPath)
+	}
 
 	return commandArgs
 }
@@ -101,6 +120,12 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) (shared.ScannerSca
 	cmd := exec.Command("semgrep", commandArgs...)
 	g.logger.Debug("debug info", "cmd", cmd.Args)
 
+	// semgrep ci requires the working directory to be the repository root since
+	// it takes no explicit target path argument.
+	if resolveCommand(args.Command) == ciCommand {
+		cmd.Dir = args.TargetPath
+	}
+
 	var stdBuffer bytes.Buffer
 	mw := io.MultiWriter(g.logger.StandardWriter(&hclog.StandardLoggerOptions{
 		InferLevels: true,
@@ -110,8 +135,18 @@ func (g *ScannerSemgrep) Scan(args shared.ScannerScanRequest) (shared.ScannerSca
 	cmd.Stderr = mw
 
 	if err := cmd.Run(); err != nil {
-		g.logger.Error("semgrep execution error", "error", err)
-		return result, fmt.Errorf("semgrep execution error: %w. Output: %s", err, stdBuffer.String())
+		// Both semgrep scan and semgrep ci exit with code 1 when findings are
+		// present — this is not a failure. Since --output is always set, semgrep
+		// writes the results file before exiting, so no file check is needed.
+		// Any other non-zero code (e.g. 2 for a scan error, 3 for invalid config)
+		// is a genuine failure.
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
+			g.logger.Info("semgrep found issues (exit 1); results written", "path", args.ResultsPath)
+		} else {
+			g.logger.Error("semgrep execution error", "error", err)
+			return result, fmt.Errorf("semgrep execution error: %w. Output: %s", err, stdBuffer.String())
+		}
 	}
 
 	result.ResultsPath = args.ResultsPath

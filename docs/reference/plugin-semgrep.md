@@ -8,8 +8,9 @@ This plugin supports analyzing single projects or multiple repositories (via inp
 - [Supported Actions](#supported-actions)
 - [Plugin Dependencies](#plugin-dependencies)
 - [Semgrep Scan Execution Logic](#semgrep-scan-execution-logic)
-  - [How Scanio Builds the Semgrep Command](#how-scanio-builds-the-semgrep-command)
-    - [Additional Arguments](#additional-arguments)  
+  - [Scan mode (default)](#scan-mode-default)
+  - [CI mode (--command ci)](#ci-mode---command-ci)
+  - [Additional Arguments](#additional-arguments)
   - [Semgrep Configuration File](#semgrep-configuration-file)
   - [Report File Handling](#report-file-handling)
   - [Report File Formats](#report-file-formats)
@@ -22,13 +23,14 @@ This plugin supports analyzing single projects or multiple repositories (via inp
   
 
 ## Supported Actions
-| Feature                         | Supported                          |
-|--------------------------------|-------------------------------------|
-| Single Project Scanning        | ✅                                  |
-| Bulk Scanning via Input File   | ✅                                  |
-| Custom Scanner Arguments       | ✅                                  |
-| Semgrep Configuration Support  | ✅                                  |
-| Output Formats (Soft Validation) | JSON, JUNIT-XML, SARIF, Text, Vim |
+| Feature                              | Supported                          |
+|-------------------------------------|------------------------------------|
+| Single Project Scanning             | ✅                                  |
+| Bulk Scanning via Input File        | ✅                                  |
+| Custom Scanner Arguments            | ✅                                  |
+| Semgrep Configuration Support       | ✅                                  |
+| Semgrep CI mode (`semgrep ci`)      | ✅                                  |
+| Output Formats (Soft Validation)    | JSON, JUNIT-XML, SARIF, Text, Vim  |
 
 ## Plugin Dependencies
 If you use Scanio with Docker (building locally or using a pre-built image), all required Semgrep dependencies are included.
@@ -38,16 +40,23 @@ However, if you build Scanio as a standalone binary (without Docker), you must i
 Refer to the official [Semgrep Getting Started Guide](https://semgrep.dev/docs/getting-started/) for installation instructions.
 
 ## Semgrep Scan Execution Logic
-The Semgrep plugin utilizes the underlying semgrep `scan` command for performing scans. For detailed information about Semgrep's CLI capabilities, refer to the [official documentation](https://semgrep.dev/docs/for-developers/cli#semgrep-scan).
 
-### How Scanio Builds the Semgrep Command
-When running the analyse command with the Semgrep plugin, Scanio automatically translates the provided arguments into corresponding Semgrep CLI flags.
+The Semgrep plugin supports two execution modes selected via the `--command` flag on `scanio analyse`.
+
+| Mode | `--command` value | Semgrep subcommand | Rules source | Target argument |
+|------|------------------|--------------------|--------------|-----------------|
+| Scan (default) | _(omitted)_ | `semgrep scan` | `--config` / local rules | explicit path |
+| CI | `ci` | `semgrep ci` | Semgrep AppSec Platform | working directory |
+
+### Scan mode (default)
+
+The default mode uses `semgrep scan`. Scanio translates the provided arguments into the corresponding Semgrep CLI flags.
 
 Running the following Scanio command:
 ```bash
 scanio analyse --scanner semgrep --format sarif --config /path/to/scanner-config --output /path/to/scanner_results /path/to/my_project
 ```
-Will execute the following Semgrep command internally:
+Executes internally:
 ```bash
 semgrep scan --sarif -f /path/to/scanner-config --metrics=off --output /path/to/scanner_results /path/to/my_project
 ```
@@ -55,8 +64,28 @@ semgrep scan --sarif -f /path/to/scanner-config --metrics=off --output /path/to/
 > [!NOTE]  
 > Scanio automatically appends `--metrics=off` when a custom configuration is provided to disable Semgrep telemetry.
 
+### CI mode (`--command ci`)
+
+CI mode uses `semgrep ci`, which is designed for use with the [Semgrep AppSec Platform](https://semgrep.dev/products/semgrep-appsec-platform/). In this mode:
+
+- Rules are fetched from the platform using the `SEMGREP_APP_TOKEN` environment variable — the `--config` flag is not supported and is ignored.
+- No target path is passed as an argument; Semgrep scans the working directory (set to the value of `--output`'s base directory, or the path argument).
+- Exit code 1 from semgrep means findings were found — Scanio treats this as a successful scan, not an error.
+
+Running the following Scanio command:
+```bash
+scanio analyse --scanner semgrep --command ci --format sarif --output /path/to/scanner_results /path/to/repo_root -- --baseline-commit $BASE_SHA
+```
+Executes internally (with working directory set to `/path/to/repo_root`):
+```bash
+semgrep ci --baseline-commit $BASE_SHA --sarif --output /path/to/scanner_results
+```
+
+> [!NOTE]
+> `SEMGREP_APP_TOKEN` must be set in the environment. Without it, `semgrep ci` will not fetch organisation policies from the platform.
+
 ### Additional Arguments 
-Scanio allows users to pass any extra Semgrep arguments directly, all args after `--` will be added to the Semgrep command as is. These arguments will be inserted before the default Scanio-generated arguments, allowing users to override defaults if necessary.
+Scanio allows users to pass any extra Semgrep arguments directly. All args after `--` are appended to the Semgrep command before the Scanio-generated flags.
 ```bash
 scanio analyse --scanner semgrep --format sarif --config /path/to/scanner-config --output /path/to/scanner_results /path/to/my_project -- --verbose --severity INFO
 ```
@@ -122,8 +151,9 @@ The Semgrep plugin performs a soft validation of the specified output format fro
 
 ## Validation
 The Semgrep plugin enforces the following validation rules:
-- **Args Validation**: Verifying that the target path exists and is accessible for args.
-- **Report Format Validation**: Plugin checks if the provided output format is officially supported by the known Semgrep version.
+- **Args Validation**: Verifying that the target path exists and is accessible.
+- **Report Format Validation**: Plugin checks if the provided output format is officially supported by the known Semgrep version. An unsupported format logs a warning but does not abort the scan.
+- **Command Validation**: Only `ci` is accepted as a `--command` value. Any other non-empty value returns an error before the scan starts.
 
 ## Usage Examples
 
