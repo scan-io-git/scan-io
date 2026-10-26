@@ -283,7 +283,7 @@ When `--diff-lines` or `--diff-files` is supplied for a pull-request URL, the Bi
 - clones the PR head inside the standard repository cache and computes the diff between the provider-reported base and head commits;
 - materialises sparse diff files (only the added/modified lines) when `--diff-lines` is set, keeping unchanged lines blank for offset stability;
 - copies the fully changed files when `--diff-files` is set so scanners that need full context can run without touching the rest of the checkout;
-- copies dotfiles (for example `.gitignore`, scanner configuration files) into whichever diff folders are produced; and
+- copies dotfiles (for example `.gitignore`, scanner configuration files) into whichever diff folders are produced, skipping unsafe symlinks with a `WARN` log (see [Symlink handling](cmd-fetch.md#symlink-handling)); and
 - recreates the diff folders on every run so CI reruns do not accumulate stale artifacts.
 
 The fetch response keeps `path` pointing to the repository checkout, sets `scope` to `diff-lines`, `diff-files`, or `diff` (when both flags are present), and populates the following `extras` keys:

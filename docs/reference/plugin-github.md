@@ -257,7 +257,7 @@ https://github.com/scan-io-git/scan-io/pull/1 # HTTP type
 
 For pull-request URLs the GitHub plugin can prepare additional artifacts alongside the full checkout:
 
-- `--diff-lines` emits sparse files that contain only added/modified lines for files with statuses `added`, `modified`, or `renamed`. Unchanged lines are left blank so scanners retain line numbers. The folder is rebuilt on every run and dotfiles (for example `.gitignore`, `.semgrep`) are copied to keep scanner configuration intact.
+- `--diff-lines` emits sparse files that contain only added/modified lines for files with statuses `added`, `modified`, or `renamed`. Unchanged lines are left blank so scanners retain line numbers. The folder is rebuilt on every run and dotfiles (for example `.gitignore`, `.semgrep`) are copied to keep scanner configuration intact. Unsafe symlinks are skipped with a `WARN` log instead of failing the fetch; see [Symlink handling](cmd-fetch.md#symlink-handling).
 - `--diff-files` copies the fully changed files (plus dotfiles) into a separate folder so scanners that need complete file context can operate without traversing the whole checkout.
 - Supplying both flags produces both outputs. In that case the scope is reported as `diff` to preserve backwards compatibility; otherwise it will be `diff-lines` or `diff-files` accordingly.
 
