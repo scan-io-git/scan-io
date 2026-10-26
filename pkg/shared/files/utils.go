@@ -288,6 +288,9 @@ func checkSymlinkTarget(root *os.Root, linkPath, target string) error {
 	if filepath.IsAbs(target) {
 		return &UnsafeSymlinkError{Link: linkPath, Target: target, Reason: "absolute target"}
 	}
+	if parentAfterName(target) {
+		return &UnsafeSymlinkError{Link: linkPath, Target: target, Reason: `".." after a path name`}
+	}
 	resolved := filepath.Dir(linkPath) + string(filepath.Separator) + target
 	if !filepath.IsLocal(resolved) {
 		return &UnsafeSymlinkError{Link: linkPath, Target: target, Reason: "target escapes the root"}
@@ -296,6 +299,27 @@ func checkSymlinkTarget(root *os.Root, linkPath, target string) error {
 		return &UnsafeSymlinkError{Link: linkPath, Target: target, Reason: err.Error()}
 	}
 	return nil
+}
+
+// parentAfterName reports whether target steps up with ".." after descending
+// into a name, as in "a/../b". Where that name is missing or a link, the result
+// depends on what exists when the link is opened, so a check at copy time
+// cannot vouch for it. Leading ".." steps start from the link's own directory,
+// which exists, so they stay checkable.
+func parentAfterName(target string) bool {
+	descended := false
+	for _, part := range strings.Split(target, string(filepath.Separator)) {
+		switch part {
+		case "", ".":
+		case "..":
+			if descended {
+				return true
+			}
+		default:
+			descended = true
+		}
+	}
+	return false
 }
 
 // CreateFolderIfNotExists checks if a folder exists, and if not, creates it.

@@ -131,6 +131,30 @@ func TestCopyDotFilesSymlinks(t *testing.T) {
 			wantSkipped: []string{".agents/ref.md"},
 		},
 		{
+			name: "dangling target that could escape once a missing dir appears is skipped",
+			links: map[string]string{
+				".agents/ref.md": "missing/../up/../outside.txt",
+				".agents/up":     "..",
+			},
+			wantLinks:   []string{".agents/up"},
+			wantSkipped: []string{".agents/ref.md"},
+		},
+		{
+			name:        "target stepping back up after a name is skipped",
+			links:       map[string]string{".agents/ref.md": "notes/../z-after.txt"},
+			wantSkipped: []string{".agents/ref.md"},
+		},
+		{
+			name:      "leading parent steps inside the tree are copied",
+			links:     map[string]string{".agents/notes/ref.md": "../z-after.txt"},
+			wantLinks: []string{".agents/notes/ref.md"},
+		},
+		{
+			name:      "dot-slash prefix is copied",
+			links:     map[string]string{".agents/ref.md": "./notes/real.md"},
+			wantLinks: []string{".agents/ref.md"},
+		},
+		{
 			name:        "escaping symlink in a top-level dot entry is skipped",
 			links:       map[string]string{".escape": "{outside}"},
 			wantSkipped: []string{".escape"},
