@@ -7,7 +7,7 @@
 ARG PLUGINS="github,gitlab,bitbucket,semgrep,bandit,trufflehog"
 
 # Stage 1: Build Scanio core and plugins
-FROM golang:1.25.9-alpine3.23 AS build-scanio
+FROM golang:1.26.10-alpine3.24 AS build-scanio
 
 WORKDIR /usr/src/scanio
 
