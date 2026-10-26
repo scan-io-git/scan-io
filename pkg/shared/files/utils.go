@@ -25,6 +25,61 @@ func ExpandPath(path string) (string, error) {
 	return path, nil
 }
 
+// ErrOutsideRoot is returned when a path lies outside the root it must stay in.
+var ErrOutsideRoot = errors.New("path is outside the source folder")
+
+// OpenInRootPath opens path for reading, confined to root. Paths come from SARIF
+// results, which are untrusted: a plain os.Open would follow a symlink such as
+// config.py -> /home/ci/.aws/credentials, or accept "../../etc/passwd" or an absolute
+// path, and leak the content. Relative paths are resolved against root; absolute paths
+// must lie inside root. Symlinks that resolve outside root are rejected. A leading "~/"
+// in root is expanded. Refusals wrap ErrOutsideRoot.
+func OpenInRootPath(root, path string) (*os.File, error) {
+	expanded, err := ExpandPath(root)
+	if err != nil {
+		return nil, fmt.Errorf("failed to expand root: %w", err)
+	}
+	rootAbs, err := filepath.Abs(expanded)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve root: %w", err)
+	}
+	if !filepath.IsAbs(path) {
+		return openInRoot(rootAbs, path)
+	}
+
+	// Either side may be reached through a symlinked directory (for example
+	// /var -> /private/var), so accept a match on any resolved form of root and path.
+	roots := []string{rootAbs}
+	if real, err := filepath.EvalSymlinks(rootAbs); err == nil && real != rootAbs {
+		roots = append(roots, real)
+	}
+	paths := []string{path}
+	if dir, err := filepath.EvalSymlinks(filepath.Dir(path)); err == nil {
+		paths = append(paths, filepath.Join(dir, filepath.Base(path)))
+	}
+	for _, base := range roots {
+		for _, p := range paths {
+			rel, err := filepath.Rel(base, p)
+			if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				return openInRoot(base, rel)
+			}
+		}
+	}
+	return nil, fmt.Errorf("%w: %q", ErrOutsideRoot, path)
+}
+
+func openInRoot(root, rel string) (*os.File, error) {
+	f, err := os.OpenInRoot(root, rel)
+	if err != nil {
+		// The standard library does not export its escape error, so match its message.
+		if strings.Contains(err.Error(), "escapes from parent") {
+			return nil, fmt.Errorf("%w: %q: %v", ErrOutsideRoot, rel, err)
+		}
+		return nil, err
+	}
+	return f, nil
+}
+
 // ValidatePath checks if the given path is a valid file path for reading.
 func ValidatePath(path string) error {
 	info, err := os.Stat(path)

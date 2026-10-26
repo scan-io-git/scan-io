@@ -3,6 +3,7 @@ package files
 import (
 	"bytes"
 	"errors"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -395,5 +396,83 @@ func TestRemoveUnsafeSymlinksRemovalFailure(t *testing.T) {
 
 	if err := RemoveUnsafeSymlinks(root, hclog.NewNullLogger()); err == nil {
 		t.Fatal("expected an error when the link cannot be removed")
+	}
+}
+
+func TestOpenInRootPath(t *testing.T) {
+	base := t.TempDir()
+	realRoot := filepath.Join(base, "real")
+	outside := filepath.Join(base, "outside")
+	for _, d := range []string{realRoot, outside} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write := func(path, content string) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(filepath.Join(realRoot, "inside.txt"), "inside")
+	write(filepath.Join(outside, "outside.txt"), "outside")
+	link := func(target, name string) {
+		t.Helper()
+		if err := os.Symlink(target, filepath.Join(realRoot, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	link(filepath.Join(outside, "outside.txt"), "abs-out.txt")
+	link("inside.txt", "to-inside.txt")
+	rootLink := filepath.Join(base, "rootlink")
+	if err := os.Symlink(realRoot, rootLink); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name        string
+		root        string
+		path        string
+		want        string
+		wantOutside bool
+		wantErr     bool
+	}{
+		{name: "relative inside", root: realRoot, path: "inside.txt", want: "inside"},
+		{name: "absolute inside", root: realRoot, path: filepath.Join(realRoot, "inside.txt"), want: "inside"},
+		{name: "absolute outside", root: realRoot, path: filepath.Join(outside, "outside.txt"), wantOutside: true},
+		{name: "parent escape", root: realRoot, path: "../outside/outside.txt", wantOutside: true},
+		{name: "symlink to absolute outside file", root: realRoot, path: "abs-out.txt", wantOutside: true},
+		{name: "symlink to inside file", root: realRoot, path: "to-inside.txt", want: "inside"},
+		{name: "root through symlink, relative", root: rootLink, path: "inside.txt", want: "inside"},
+		{name: "root through symlink, absolute via real root", root: rootLink, path: filepath.Join(realRoot, "inside.txt"), want: "inside"},
+		{name: "root through symlink, absolute via link", root: rootLink, path: filepath.Join(rootLink, "inside.txt"), want: "inside"},
+		{name: "missing file is not an outside error", root: realRoot, path: "missing.txt", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f, err := OpenInRootPath(tt.root, tt.path)
+			if tt.wantOutside || tt.wantErr {
+				if err == nil {
+					f.Close()
+					t.Fatal("expected error, got nil")
+				}
+				if got := errors.Is(err, ErrOutsideRoot); got != tt.wantOutside {
+					t.Fatalf("errors.Is(err, ErrOutsideRoot) = %v, want %v (err: %v)", got, tt.wantOutside, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			defer f.Close()
+			data, err := io.ReadAll(f)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(data) != tt.want {
+				t.Fatalf("content = %q, want %q", data, tt.want)
+			}
+		})
 	}
 }

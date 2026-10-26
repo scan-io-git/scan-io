@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -195,6 +196,11 @@ func (r Report) EnrichResultsLocationProperty(location *sarif.Location) error {
 		return fmt.Errorf("source folder is not set")
 	}
 	codeLine, err := r.readLineFromFile(location.PhysicalLocation)
+	if errors.Is(err, files.ErrOutsideRoot) {
+		// Leave the location without a code line; the rest of the report still renders.
+		r.logger.Warn("skipping code line for path outside the source folder", "path", *artifactLocation.URI, "source_folder", r.sourceFolder)
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -213,20 +219,13 @@ func (r Report) readLineFromFile(loc *sarif.PhysicalLocation) (string, error) {
 		return "", fmt.Errorf("source folder is not set")
 	}
 
-	// Construct the file path
-	// Use *loc.ArtifactLocation.URI value if it's an absolute path, and make a concatenation of r.sourceFolder and *loc.ArtifactLocation.URI otherwise
-	filePath := *loc.ArtifactLocation.URI
-	if !filepath.IsAbs(filePath) {
-		fixedFilePath, err := files.ExpandPath(filepath.Join(r.sourceFolder, *loc.ArtifactLocation.URI))
-		if err != nil {
-			return "", fmt.Errorf("failed to contruct a file path: %w", err)
-		}
-		filePath = fixedFilePath
-	}
-
-	// Open the file
-	file, err := os.Open(filePath)
+	// Relative URIs are resolved against r.sourceFolder; absolute ones must be inside it.
+	// Reading is confined to the source folder because the URI comes from untrusted SARIF.
+	file, err := files.OpenInRootPath(r.sourceFolder, *loc.ArtifactLocation.URI)
 	if err != nil {
+		if errors.Is(err, files.ErrOutsideRoot) {
+			return "", err
+		}
 		return "", fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()

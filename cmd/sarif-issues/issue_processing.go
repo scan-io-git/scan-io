@@ -177,6 +177,13 @@ func listOpenIssues(options RunOptions, lg hclog.Logger) (map[int]OpenIssueEntry
 func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, sourceFolderAbs string, repoMetadata *git.RepositoryMetadata, lg hclog.Logger) []NewIssueData {
 	var newIssueData []NewIssueData
 
+	// SARIF paths may be relative to the repository root when --source-folder is a subfolder,
+	// so snippets are read confined to the repository root when it is known.
+	snippetRoot := sourceFolderAbs
+	if repoMetadata != nil && strings.TrimSpace(repoMetadata.RepoRootFolder) != "" {
+		snippetRoot = repoMetadata.RepoRootFolder
+	}
+
 	for _, run := range report.Runs {
 		// Build a map of rules keyed by rule ID for quick lookups
 		rulesByID := map[string]*sarif.ReportingDescriptor{}
@@ -223,7 +230,7 @@ func buildNewIssuesFromSARIF(report *internalsarif.Report, options RunOptions, s
 				lg.Warn("SARIF result missing line information", "rule_id", ruleID, "file", fileURI)
 			}
 
-			snippetHash := issuecorrelation.ComputeSnippetHash(localPath, line, endLine)
+			snippetHash := issuecorrelation.ComputeSnippetHash(snippetRoot, localPath, line, endLine)
 			if snippetHash == "" && fileURI != "<unknown>" && line > 0 {
 				lg.Warn("failed to compute snippet hash", "rule_id", ruleID, "file", fileURI, "line", line, "local_path", localPath)
 			}

@@ -44,6 +44,20 @@ line 5`
 		t.Fatalf("Failed to create empty test file: %v", err)
 	}
 
+	outsideDir := t.TempDir()
+	outsideFilePath := filepath.Join(outsideDir, "secret.txt")
+	if err := os.WriteFile(outsideFilePath, []byte("secret"), 0644); err != nil {
+		t.Fatalf("Failed to create outside file: %v", err)
+	}
+	if err := os.Symlink(outsideFilePath, filepath.Join(tempDir, "link.txt")); err != nil {
+		t.Fatalf("Failed to create symlink: %v", err)
+	}
+
+	escapingRel, err := filepath.Rel(tempDir, outsideFilePath)
+	if err != nil {
+		t.Fatalf("Failed to compute relative path: %v", err)
+	}
+
 	// Helper function to compute expected hash
 	computeExpectedHash := func(content string) string {
 		sum := sha256.Sum256([]byte(content))
@@ -152,6 +166,29 @@ line 5`
 			expected:  "",
 		},
 
+		// Confinement
+		{
+			name:      "absolute path outside root",
+			localPath: outsideFilePath,
+			line:      1,
+			endLine:   1,
+			expected:  "",
+		},
+		{
+			name:      "symlink inside root to file outside root",
+			localPath: filepath.Join(tempDir, "link.txt"),
+			line:      1,
+			endLine:   1,
+			expected:  "",
+		},
+		{
+			name:      "relative path escaping root",
+			localPath: escapingRel,
+			line:      1,
+			endLine:   1,
+			expected:  "",
+		},
+
 		// Boundary cases
 		{
 			name:      "endLine beyond file length (should clamp)",
@@ -171,10 +208,10 @@ line 5`
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := ComputeSnippetHash(tt.localPath, tt.line, tt.endLine)
+			result := ComputeSnippetHash(tempDir, tt.localPath, tt.line, tt.endLine)
 			if result != tt.expected {
-				t.Errorf("ComputeSnippetHash(%q, %d, %d) = %q, want %q",
-					tt.localPath, tt.line, tt.endLine, result, tt.expected)
+				t.Errorf("ComputeSnippetHash(%q, %q, %d, %d) = %q, want %q",
+					tempDir, tt.localPath, tt.line, tt.endLine, result, tt.expected)
 			}
 		})
 	}
@@ -204,8 +241,8 @@ func TestComputeSnippetHash_DifferentContentDifferentHash(t *testing.T) {
 		t.Fatalf("Failed to create file2: %v", err)
 	}
 
-	hash1 := ComputeSnippetHash(file1Path, 1, 1)
-	hash2 := ComputeSnippetHash(file2Path, 1, 1)
+	hash1 := ComputeSnippetHash(tempDir, file1Path, 1, 1)
+	hash2 := ComputeSnippetHash(tempDir, file2Path, 1, 1)
 
 	if hash1 == hash2 {
 		t.Errorf("Different content produced same hash: %q", hash1)
@@ -241,8 +278,8 @@ func TestComputeSnippetHash_SameContentSameHash(t *testing.T) {
 		t.Fatalf("Failed to create file2: %v", err)
 	}
 
-	hash1 := ComputeSnippetHash(file1Path, 1, 2)
-	hash2 := ComputeSnippetHash(file2Path, 1, 2)
+	hash1 := ComputeSnippetHash(tempDir, file1Path, 1, 2)
+	hash2 := ComputeSnippetHash(tempDir, file2Path, 1, 2)
 
 	if hash1 != hash2 {
 		t.Errorf("Identical content produced different hashes: %q vs %q", hash1, hash2)
