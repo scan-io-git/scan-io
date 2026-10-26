@@ -562,6 +562,23 @@ func (g *VCSGithub) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRespon
 
 	extras := map[string]string{"repo_root": args.TargetFolder}
 
+	headSHA := prData.Head.GetSHA()
+	baseBranch := prData.Base.GetRef()
+	api := func() (string, error) {
+		cmp, _, err := client.Repositories.CompareCommits(context.Background(),
+			args.RepoParam.Namespace, args.RepoParam.Repository,
+			baseBranch, prData.Head.GetLabel(), nil)
+		if err != nil {
+			return "", err
+		}
+		if mbc := cmp.GetMergeBaseCommit(); mbc != nil {
+			return mbc.GetSHA(), nil
+		}
+		return "", nil
+	}
+
+	var mergeBase string
+	mergeBaseResolved := false
 	if args.FetchBase {
 		baseSHA := prData.Base.GetSHA()
 		if baseSHA == "" {
@@ -572,22 +589,10 @@ func (g *VCSGithub) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRespon
 		}
 		extras["base_sha"] = baseSHA
 
-		headSHA := prData.Head.GetSHA()
-		baseBranch := prData.Base.GetRef()
-		api := func() (string, error) {
-			cmp, _, err := client.Repositories.CompareCommits(context.Background(),
-				args.RepoParam.Namespace, args.RepoParam.Repository,
-				baseBranch, prData.Head.GetLabel(), nil)
-			if err != nil {
-				return "", err
-			}
-			if mbc := cmp.GetMergeBaseCommit(); mbc != nil {
-				return mbc.GetSHA(), nil
-			}
-			return "", nil
-		}
-		if mb := clientGit.ResolveMergeBase(args.TargetFolder, headSHA, baseBranch, baseSHA, api); mb != "" {
-			extras["merge_base_sha"] = mb
+		mergeBase = clientGit.ResolveMergeBase(args.TargetFolder, headSHA, baseBranch, baseSHA, api)
+		mergeBaseResolved = true
+		if mergeBase != "" {
+			extras["merge_base_sha"] = mergeBase
 		}
 	}
 
@@ -625,9 +630,13 @@ func (g *VCSGithub) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRespon
 		}
 
 		baseSHA := prData.Base.GetSHA()
-		headSHA := prData.Head.GetSHA()
 
-		if err := git.MaterializeDiff(clientGit, args.TargetFolder, diffLinesRoot, baseSHA, headSHA, changedPaths); err != nil {
+		if !mergeBaseResolved {
+			mergeBase = clientGit.ResolveMergeBase(args.TargetFolder, headSHA, baseBranch, baseSHA, api)
+		}
+		diffBase := git.DiffLinesBase(clientGit, args.TargetFolder, mergeBase, baseSHA)
+
+		if err := git.MaterializeDiff(clientGit, args.TargetFolder, diffLinesRoot, diffBase, headSHA, changedPaths); err != nil {
 			return shared.VCSFetchResponse{}, err
 		}
 
@@ -637,9 +646,15 @@ func (g *VCSGithub) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRespon
 
 		extras["diff_lines_root"] = diffLinesRoot
 		if baseSHA != "" {
-			// base_sha guarantee holds here because MaterializeDiff calls
-			// ensureCommitPresent internally before computing the diff.
+			// MaterializeDiff only fetches diffBase, which is the merge base
+			// rather than the target tip, so fetch the tip to honor base_sha.
+			if err := git.EnsureCommitPresent(clientGit, args.TargetFolder, baseSHA); err != nil {
+				return shared.VCSFetchResponse{}, fmt.Errorf("failed to fetch base commit %q: %w", baseSHA, err)
+			}
 			extras["base_sha"] = baseSHA
+		}
+		if diffBase != "" {
+			extras["diff_lines_base_sha"] = diffBase
 		}
 		if headSHA != "" {
 			extras["head_sha"] = headSHA

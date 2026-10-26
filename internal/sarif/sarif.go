@@ -626,6 +626,10 @@ func (r Report) EnrichResultsLocationURIProperty(
 			continue
 		}
 
+		if artifactLocation.Properties == nil {
+			artifactLocation.Properties = make(map[string]interface{})
+		}
+
 		if !filepath.IsAbs(*artifactLocation.URI) {
 			artifactLocation.Properties["URI"] = *artifactLocation.URI
 		} else {

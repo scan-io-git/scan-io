@@ -373,6 +373,11 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRes
 
 	extras := map[string]string{"repo_root": args.TargetFolder}
 
+	headSHA := prData.FromReference.LatestCommit
+	baseBranch := prData.ToReference.DisplayID
+
+	var mergeBase string
+	mergeBaseResolved := false
 	if args.FetchBase {
 		baseSHA := prData.ToReference.LatestCommit
 		if baseSHA == "" {
@@ -383,10 +388,10 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRes
 		}
 		extras["base_sha"] = baseSHA
 
-		headSHA := prData.FromReference.LatestCommit
-		baseBranch := prData.ToReference.DisplayID
-		if mb := clientGit.ResolveMergeBase(args.TargetFolder, headSHA, baseBranch, baseSHA, prData.GetMergeBaseSHA); mb != "" {
-			extras["merge_base_sha"] = mb
+		mergeBase = clientGit.ResolveMergeBase(args.TargetFolder, headSHA, baseBranch, baseSHA, prData.GetMergeBaseSHA)
+		mergeBaseResolved = true
+		if mergeBase != "" {
+			extras["merge_base_sha"] = mergeBase
 		}
 	}
 
@@ -422,13 +427,17 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRes
 			return shared.VCSFetchResponse{}, fmt.Errorf("failed to prepare clean diff-lines folder: %w", err)
 		}
 
-		headSHA := prData.FromReference.LatestCommit
 		if headSHA == "" {
 			headSHA = args.Branch
 		}
 		baseSHA := prData.ToReference.LatestCommit
 
-		if err := git.MaterializeDiff(clientGit, args.TargetFolder, diffLinesRoot, baseSHA, headSHA, changedPaths); err != nil {
+		if !mergeBaseResolved {
+			mergeBase = clientGit.ResolveMergeBase(args.TargetFolder, headSHA, baseBranch, baseSHA, prData.GetMergeBaseSHA)
+		}
+		diffBase := git.DiffLinesBase(clientGit, args.TargetFolder, mergeBase, baseSHA)
+
+		if err := git.MaterializeDiff(clientGit, args.TargetFolder, diffLinesRoot, diffBase, headSHA, changedPaths); err != nil {
 			return shared.VCSFetchResponse{}, err
 		}
 
@@ -438,9 +447,15 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRes
 
 		extras["diff_lines_root"] = diffLinesRoot
 		if baseSHA != "" {
-			// base_sha guarantee holds here because MaterializeDiff calls
-			// ensureCommitPresent internally before computing the diff.
+			// MaterializeDiff only fetches diffBase, which is the merge base
+			// rather than the target tip, so fetch the tip to honor base_sha.
+			if err := git.EnsureCommitPresent(clientGit, args.TargetFolder, baseSHA); err != nil {
+				return shared.VCSFetchResponse{}, fmt.Errorf("failed to fetch base commit %q: %w", baseSHA, err)
+			}
 			extras["base_sha"] = baseSHA
+		}
+		if diffBase != "" {
+			extras["diff_lines_base_sha"] = diffBase
 		}
 		if headSHA != "" {
 			extras["head_sha"] = headSHA

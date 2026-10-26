@@ -68,11 +68,14 @@ type ReportMetadata struct {
 	SuppressionInfo map[string]int
 	RequiredEnabled bool
 	RequiredInfo    map[string]int
-	WebURL          string
-	BranchURL       string
-	CommitURL       string
-	PRURL           string
-	VCSURL          *VCSURLInfo
+	// ReportStateID scopes the reader's filter state to this report; empty means
+	// the report is unidentifiable and filters must not be persisted at all.
+	ReportStateID string
+	WebURL        string
+	BranchURL     string
+	CommitURL     string
+	PRURL         string
+	VCSURL        *VCSURLInfo
 }
 
 // Global variables for configuration and command arguments
@@ -317,6 +320,7 @@ var ToHtmlCmd = &cobra.Command{
 			RequiredEnabled:    requiredEnabled,
 			RequiredInfo:       requiredInfo,
 		}
+		metadata.ReportStateID = resolveReportStateID(repositoryMetadata, parsedURL, commitHash, scanners, allToHTMLOptions.NoSuppressions)
 		if parsedURL != nil {
 			metadata.WebURL = parsedURL.HTTPRepoLink
 			metadata.PRURL = parsedURL.PRURL()
