@@ -44,6 +44,8 @@ scanio to-html -i /path/to/project/results.sarif -o /path/to/project/results.htm
 
 **With code snippets**  
 Convert sarif output to html report with code snippets. Add a source code folder argument, so the tool can extract code snippets for corresponding code flows and locations in a report.
+
+Snippets are read only from inside the source folder. A location whose path is absolute outside the folder, escapes it with `..`, or goes through a symlink that resolves outside it gets no code snippet and a `WARN` log; the rest of the report renders. Absolute paths inside the source folder are read as usual.
 ```bash
 scanio to-html -i /path/to/project/results.sarif -o /path/to/project/results.html -s /path/to/project
 ```

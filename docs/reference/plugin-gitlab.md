@@ -280,7 +280,7 @@ When `--diff-lines` or `--diff-files` is provided for a merge-request URL, the G
 - clones the MR source branch/commit and produces a diff using GitLab’s `DiffRefs` (base and head SHAs) when available;
 - writes only added/modified lines for each changed file into a cleaned diff directory when `--diff-lines` is set, leaving unchanged lines blank for offset stability. Additions are computed against `diff_refs.base_sha`, which GitLab defines as the merge base, so no `diff_lines_base_sha` extra is emitted;
 - copies the fully changed files when `--diff-files` is set so scanners retain complete context;
-- copies dotfiles from the repository root into whichever diff directories are built; and
+- copies dotfiles from the repository root into whichever diff directories are built, skipping unsafe symlinks with a `WARN` log (see [Symlink handling](cmd-fetch.md#symlink-handling)); and
 - recreates those directories on each invocation to ensure stale artifacts are removed in CI reruns.
 
 The fetch response keeps `path` pointing to the repository checkout, sets `scope` to `diff-lines`, `diff-files`, or `diff` (both flags), and adds the following metadata:

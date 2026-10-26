@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -419,14 +420,13 @@ func (r Report) readLinesFromFile(loc *sarif.PhysicalLocation) ([]string, error)
 		return nil, fmt.Errorf("region or StartLine is nil")
 	}
 
-	root, err := os.OpenRoot(r.sourceFolder)
+	// Relative URIs are resolved against r.sourceFolder; absolute ones must be inside it.
+	// Reading is confined to the source folder because the URI comes from untrusted SARIF.
+	file, err := files.OpenInRootPath(r.sourceFolder, *loc.ArtifactLocation.URI)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open source root %q: %w", r.sourceFolder, err)
-	}
-	defer root.Close()
-
-	file, err := root.Open(*loc.ArtifactLocation.URI)
-	if err != nil {
+		if errors.Is(err, files.ErrOutsideRoot) {
+			return nil, err
+		}
 		return nil, fmt.Errorf("failed to open file %q within source folder: %w", *loc.ArtifactLocation.URI, err)
 	}
 	defer file.Close()
@@ -481,7 +481,11 @@ func (r Report) EnrichResultsCodeFlowProperty(locationWebURLCallback func(artifa
 				for _, location := range threadflow.Locations {
 					err := r.EnrichResultsLocationProperty(location.Location)
 					if err != nil {
-						r.logger.Debug("can't read source file", "err", err)
+						if errors.Is(err, files.ErrOutsideRoot) {
+							r.logger.Warn("skipping code line for path outside the source folder", "source_folder", r.sourceFolder, "error", err)
+						} else {
+							r.logger.Debug("can't read source file", "err", err)
+						}
 						continue
 					}
 

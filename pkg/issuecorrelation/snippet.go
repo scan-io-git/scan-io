@@ -3,17 +3,25 @@ package issuecorrelation
 import (
 	"crypto/sha256"
 	"fmt"
-	"os"
+	"io"
 	"strings"
+
+	"github.com/scan-io-git/scan-io/pkg/shared/files"
 )
 
-// ComputeSnippetHash reads the snippet (single line or range) from a local filesystem path
-// and returns its SHA256 hex string. Returns empty string on any error or if inputs are invalid.
-func ComputeSnippetHash(localPath string, line, endLine int) string {
-	if strings.TrimSpace(localPath) == "" || line <= 0 {
+// ComputeSnippetHash reads the snippet (single line or range) from path and returns its
+// SHA256 hex string. path is relative to root or absolute inside it; symlinks and paths
+// that lead outside root are refused. Returns empty string on any error or if inputs are invalid.
+func ComputeSnippetHash(root, path string, line, endLine int) string {
+	if strings.TrimSpace(root) == "" || strings.TrimSpace(path) == "" || line <= 0 {
 		return ""
 	}
-	data, err := os.ReadFile(localPath)
+	f, err := files.OpenInRootPath(root, path)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	data, err := io.ReadAll(f)
 	if err != nil {
 		return ""
 	}

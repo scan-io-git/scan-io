@@ -177,6 +177,8 @@ For detailed GitHub plugin configuration, refer to [GitHub Plugin Documentation]
 
 > **Recommendation:** Run the command from your repository root and pass `--source-folder` as repo-relative paths (for example `--source-folder apps/demo`). The flag defaults to `.` when omitted; if git metadata cannot be detected, permalinks and snippet hashing may be incomplete.
 
+Snippet hashes are computed only from files inside the repository root (or the source folder when the repository root is unknown). Paths that are absolute outside it, escape it with `..`, or go through a symlink that resolves outside it get no snippet hash, and a `failed to compute snippet hash` warning is logged.
+
 ### Basic Usage in GitHub Actions
 Create issues from SARIF report using environment variables:
 ```bash
