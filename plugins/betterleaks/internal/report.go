@@ -18,10 +18,9 @@ const (
 	severityTagPrefix  = "severity:"
 )
 
-// Report is the betterleaks v2 JSON envelope. Fields that carry secret values
-// (match.value, match.captures, match.context) and author identity
-// (git.author_*, git.committer_*) are deliberately not declared, so they cannot
-// reach the SARIF output.
+// Report is the betterleaks v2 JSON envelope. Author identity
+// (git.author_*, git.committer_*) is deliberately not read from the attributes,
+// so it cannot reach the SARIF output.
 type Report struct {
 	SchemaVersion string    `json:"schema_version"`
 	Findings      []Finding `json:"findings"`
@@ -52,10 +51,14 @@ type Finding struct {
 	Tags          []string       `json:"tags"`
 }
 
-// Match holds the matched text and its fingerprint.
+// Match holds the matched text, the selected secret value, named capture
+// groups, the surrounding text and the fingerprint.
 type Match struct {
-	Full        string `json:"full"`
-	Fingerprint string `json:"fingerprint"`
+	Full        string         `json:"full"`
+	Value       string         `json:"value"`
+	Captures    map[string]any `json:"captures"`
+	Context     string         `json:"context"`
+	Fingerprint string         `json:"fingerprint"`
 }
 
 // Location is a 1-based position; EndColumn is inclusive.
@@ -69,14 +72,34 @@ type Location struct {
 
 // Analysis is present only when validation or analysis ran.
 type Analysis struct {
-	Status string `json:"status"`
+	Status         string         `json:"status"`
+	StatusReason   string         `json:"status_reason"`
+	StatusMetadata map[string]any `json:"status_metadata"`
 }
 
 // ComponentSet lists the extra matches a composite rule required.
 type ComponentSet struct {
-	Components []struct {
-		RuleID string `json:"rule_id"`
-	} `json:"components"`
+	Components []Component `json:"components"`
+}
+
+// Component is one extra match of a composite rule.
+type Component struct {
+	RuleID   string   `json:"rule_id"`
+	Optional bool     `json:"optional"`
+	Match    Match    `json:"match"`
+	Location Location `json:"location"`
+}
+
+// componentProperty is the SARIF shape of a component. Set is the 0-based index
+// of the component set it came from. Location keeps betterleaks coordinates
+// (1-based, inclusive end column); its path is made relative like the finding path.
+type componentProperty struct {
+	Set      int      `json:"set"`
+	RuleID   string   `json:"rule_id"`
+	Optional bool     `json:"optional"`
+	Value    string   `json:"value,omitempty"`
+	Full     string   `json:"full,omitempty"`
+	Location Location `json:"location"`
 }
 
 // ParseReport reads and decodes a betterleaks JSON report.
@@ -151,7 +174,7 @@ func addFinding(run *sarif.Run, f *Finding, targetPath string) {
 		result.AddLocation(buildLocation(f, targetPath))
 	}
 	result.PropertyBag = *sarif.NewPropertyBag()
-	setResultProperties(result, f)
+	setResultProperties(result, f, targetPath)
 	run.AddResult(result)
 }
 
@@ -165,11 +188,14 @@ func buildLocation(f *Finding, targetPath string) *sarif.Location {
 		region.WithSnippet(sarif.NewArtifactContent().WithText(f.Match.Full))
 	}
 	uri := artifactURI(f.Location.Path, targetPath)
-	return sarif.NewLocation().WithPhysicalLocation(
-		sarif.NewPhysicalLocation().
-			WithArtifactLocation(sarif.NewArtifactLocation().WithUri(uri)).
-			WithRegion(region),
-	)
+	physical := sarif.NewPhysicalLocation().
+		WithArtifactLocation(sarif.NewArtifactLocation().WithUri(uri)).
+		WithRegion(region)
+	if f.Match.Context != "" {
+		// betterleaks does not report the context's line range, so only the text is set.
+		physical.WithContextRegion(sarif.NewRegion().WithSnippet(sarif.NewArtifactContent().WithText(f.Match.Context)))
+	}
+	return sarif.NewLocation().WithPhysicalLocation(physical)
 }
 
 // artifactURI makes an absolute path inside targetPath relative to it, as fs
@@ -189,15 +215,24 @@ func artifactURI(path, targetPath string) string {
 	return filepath.ToSlash(rel)
 }
 
-func setResultProperties(result *sarif.Result, f *Finding) {
+func setResultProperties(result *sarif.Result, f *Finding, targetPath string) {
 	result.Add("confidence", f.Confidence)
 	for _, key := range []string{"resource", "git.sha", "git.date"} {
 		if v, ok := f.Attributes[key].(string); ok && v != "" {
 			result.Add(key, v)
 		}
 	}
-	if f.Analysis != nil && f.Analysis.Status != "" {
-		result.Add("validation_status", f.Analysis.Status)
+	if msg, ok := f.Attributes["git.message"].(string); ok && msg != "" {
+		result.Add("git.message", msg)
+	}
+	if f.Match.Value != "" {
+		result.Add("secret", f.Match.Value)
+	}
+	if len(f.Match.Captures) > 0 {
+		result.Add("captures", f.Match.Captures)
+	}
+	if f.Analysis != nil {
+		addAnalysisProperties(result, f.Analysis)
 	}
 	if len(f.Encodings) > 0 {
 		result.Add("encodings", f.Encodings)
@@ -208,6 +243,40 @@ func setResultProperties(result *sarif.Result, f *Finding) {
 	if ids := componentRuleIDs(f.ComponentSets); len(ids) > 0 {
 		result.Add("component_rule_ids", ids)
 	}
+	if comps := componentProperties(f.ComponentSets, targetPath); len(comps) > 0 {
+		result.Add("components", comps)
+	}
+}
+
+func addAnalysisProperties(result *sarif.Result, a *Analysis) {
+	if a.Status != "" {
+		result.Add("validation_status", a.Status)
+	}
+	if a.StatusReason != "" {
+		result.Add("validation_reason", a.StatusReason)
+	}
+	if len(a.StatusMetadata) > 0 {
+		result.Add("validation_metadata", a.StatusMetadata)
+	}
+}
+
+func componentProperties(sets []ComponentSet, targetPath string) []componentProperty {
+	var out []componentProperty
+	for i, set := range sets {
+		for _, c := range set.Components {
+			loc := c.Location
+			loc.Path = artifactURI(loc.Path, targetPath)
+			out = append(out, componentProperty{
+				Set:      i,
+				RuleID:   c.RuleID,
+				Optional: c.Optional,
+				Value:    c.Match.Value,
+				Full:     c.Match.Full,
+				Location: loc,
+			})
+		}
+	}
+	return out
 }
 
 func componentRuleIDs(sets []ComponentSet) []string {

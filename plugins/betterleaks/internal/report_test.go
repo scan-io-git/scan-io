@@ -329,15 +329,23 @@ func TestJSONToSarif_EncodingsDepthAndComponentRules(t *testing.T) {
 	})
 }
 
-func TestJSONToSarif_ValidationStatus(t *testing.T) {
+func TestJSONToSarif_ValidationStatusReasonAndMetadata(t *testing.T) {
 	report := parseJSONReport(t, `{"findings":[{"rule_id":"r","description":"d","confidence":"high","match":{"full":"x"},
 		"location":{"path":"a","start_line":1,"end_line":1,"start_column":1,"end_column":1},
-		"analysis":{"status":"valid","status_reason":"provider said so"}}],"scan":{"state":"complete"}}`)
+		"analysis":{"status":"valid","status_reason":"provider said so",
+			"status_metadata":{"account":"sample-account","scopes":"read,write"}}}],"scan":{"state":"complete"}}`)
 
 	props := asMap(t, resultByRule(t, toSarifDoc(t, report), "r")["properties"])
 
 	if props["validation_status"] != "valid" {
 		t.Errorf("validation_status: got %v", props["validation_status"])
+	}
+	if props["validation_reason"] != "provider said so" {
+		t.Errorf("validation_reason: got %v", props["validation_reason"])
+	}
+	meta := asMap(t, props["validation_metadata"])
+	if meta["account"] != "sample-account" || meta["scopes"] != "read,write" || len(meta) != 2 {
+		t.Errorf("validation_metadata: got %v", meta)
 	}
 }
 
@@ -375,35 +383,137 @@ func TestJSONToSarif_EmptyFindingsGiveEmptyResults(t *testing.T) {
 	}
 }
 
-func TestJSONToSarif_NeverLeaksSecretsOrIdentity(t *testing.T) {
-	const raw = `{"schema_version":"1","findings":[{
-		"rule_id":"r","description":"d","confidence":"high",
-		"match":{"full":"password: REDACTED","value":"SecretValue-111","fingerprint":"fp1",
-			"captures":{"name":"CaptureSecret-222"},"context":"ContextSecret-333"},
-		"attributes":{"resource":"git.patch_content","git.sha":"abc","git.date":"2026-01-01T00:00:00Z",
-			"git.author_email":"author-444@example.invalid","git.author_name":"Author Name 555",
-			"git.committer_email":"committer-666@example.invalid","git.committer_name":"Committer 777",
-			"git.message":"Message-888"},
-		"location":{"path":"a.yml","start_line":1,"end_line":1,"start_column":1,"end_column":5}}],
-		"scan":{"state":"complete"}}`
-	forbidden := []string{
-		"SecretValue-111", "CaptureSecret-222", "ContextSecret-333",
-		"author-444", "Author Name 555", "committer-666", "Committer 777", "Message-888",
+func TestJSONToSarif_SecretCapturesAndContext(t *testing.T) {
+	report := parseJSONReport(t, `{"findings":[{"rule_id":"r","description":"d","confidence":"high",
+		"match":{"full":"password: Sample-Value-1","value":"Sample-Value-1","fingerprint":"fp1",
+			"captures":{"scheme":"https","password":"Sample-Value-1"},
+			"context":"line before\npassword: Sample-Value-1\nline after"},
+		"location":{"path":"a.yml","start_line":2,"end_line":2,"start_column":1,"end_column":24}}],
+		"scan":{"state":"complete"}}`)
+
+	result := resultByRule(t, toSarifDoc(t, report), "r")
+
+	props := asMap(t, result["properties"])
+	if props["secret"] != "Sample-Value-1" {
+		t.Errorf("secret: got %v", props["secret"])
 	}
+	captures := asMap(t, props["captures"])
+	if captures["scheme"] != "https" || captures["password"] != "Sample-Value-1" || len(captures) != 2 {
+		t.Errorf("captures: got %v", captures)
+	}
+	physical := physicalOf(t, result)
+	ctx := asMap(t, asMap(t, physical["contextRegion"])["snippet"])
+	if ctx["text"] != "line before\npassword: Sample-Value-1\nline after" {
+		t.Errorf("contextRegion snippet: got %v", ctx["text"])
+	}
+	region := asMap(t, physical["region"])
+	if asMap(t, region["snippet"])["text"] != "password: Sample-Value-1" || region["startLine"] != float64(2) {
+		t.Errorf("region must stay unchanged, got %v", region)
+	}
+}
 
-	out := string(toSarifBytes(t, parseJSONReport(t, raw)))
+func TestJSONToSarif_OmitsEmptySecretCapturesAndContext(t *testing.T) {
+	doc := toSarifDoc(t, parseJSONReport(t, `{"findings":[{"rule_id":"r","description":"d","confidence":"high",
+		"match":{"full":"x"},"location":{"path":"a","start_line":1,"end_line":1,"start_column":1,"end_column":1}}],
+		"scan":{"state":"complete"}}`))
+	result := resultByRule(t, doc, "r")
 
-	for _, s := range forbidden {
-		if strings.Contains(out, s) {
-			t.Errorf("SARIF output contains %q", s)
+	props := asMap(t, result["properties"])
+	for _, key := range []string{"secret", "captures", "components", "git.message", "validation_reason", "validation_metadata"} {
+		if _, ok := props[key]; ok {
+			t.Errorf("property %q must be absent, got %v", key, props[key])
+		}
+	}
+	if _, ok := physicalOf(t, result)["contextRegion"]; ok {
+		t.Error("contextRegion must be absent without match.context")
+	}
+}
+
+func TestJSONToSarif_ComponentsFromSeveralSets(t *testing.T) {
+	report := parseJSONReport(t, `{"findings":[{"rule_id":"r","description":"d","confidence":"high",
+		"match":{"full":"pw=Sample-Value-2","value":"Sample-Value-2"},
+		"location":{"path":"a","start_line":3,"end_line":3,"start_column":1,"end_column":17},
+		"component_sets":[
+		 {"components":[{"rule_id":"user-rule","optional":false,
+		   "match":{"full":"user=sample-user","value":"sample-user"},
+		   "location":{"path":"a","start_line":2,"end_line":2,"start_column":1,"end_column":16}}]},
+		 {"components":[
+		   {"rule_id":"host-rule","optional":true,"match":{"full":" host.example.test","value":"host.example.test"},
+		    "location":{"path":"b","start_line":1,"end_line":1,"start_column":5,"end_column":22}},
+		   {"rule_id":"user-rule","match":{"value":"other-user"}}]}]}],
+		"scan":{"state":"complete"}}`)
+
+	props := asMap(t, resultByRule(t, toSarifDoc(t, report), "r")["properties"])
+
+	comps := asSlice(t, props["components"])
+	if len(comps) != 3 {
+		t.Fatalf("components: want 3, got %d (%v)", len(comps), comps)
+	}
+	first := asMap(t, comps[0])
+	if first["set"] != float64(0) || first["rule_id"] != "user-rule" || first["value"] != "sample-user" ||
+		first["full"] != "user=sample-user" || first["optional"] != false {
+		t.Errorf("first component: got %v", first)
+	}
+	if loc := asMap(t, first["location"]); loc["path"] != "a" || loc["start_line"] != float64(2) || loc["end_column"] != float64(16) {
+		t.Errorf("first component location: got %v", loc)
+	}
+	second := asMap(t, comps[1])
+	if second["set"] != float64(1) || second["rule_id"] != "host-rule" || second["optional"] != true {
+		t.Errorf("second component: got %v", second)
+	}
+	if third := asMap(t, comps[2]); third["set"] != float64(1) || third["value"] != "other-user" {
+		t.Errorf("third component: got %v", third)
+	}
+	ids := asSlice(t, props["component_rule_ids"])
+	if len(ids) != 2 || ids[0] != "user-rule" || ids[1] != "host-rule" {
+		t.Errorf("component_rule_ids: got %v", ids)
+	}
+}
+
+func TestJSONToSarif_ComponentsAndSecretOfEncodedFinding(t *testing.T) {
+	doc := toSarifDoc(t, loadFixture(t, "fs_components_encoded.json"))
+
+	for _, r := range resultsOf(t, doc) {
+		props := asMap(t, r["properties"])
+		if props["secret"] != "exk_Qm7ZpL2vXc9RtB4nYh8WdK3sGf6JaE1uNo5TiV0x" {
+			t.Errorf("secret: got %v", props["secret"])
+		}
+		if _, encoded := props["encodings"]; encoded {
+			if _, ok := props["components"]; ok {
+				t.Errorf("encoded finding has no components, got %v", props["components"])
+			}
+			continue
+		}
+		comps := asSlice(t, props["components"])
+		if len(comps) != 1 {
+			t.Fatalf("components: want 1, got %v", comps)
+		}
+		c := asMap(t, comps[0])
+		if c["rule_id"] != "example-api-host" || c["value"] != "api.example.com" ||
+			c["full"] != " api.example.com" || c["optional"] != true {
+			t.Errorf("component: got %v", c)
+		}
+		if loc := asMap(t, c["location"]); loc["path"] != "fs2/comp.txt" || loc["start_line"] != float64(1) {
+			t.Errorf("component location: got %v", loc)
 		}
 	}
 }
 
-func TestJSONToSarif_RealGitFixtureDoesNotLeakIdentityOrMessage(t *testing.T) {
+func TestJSONToSarif_GitMessage(t *testing.T) {
+	doc := toSarifDoc(t, loadFixture(t, "git.json"))
+
+	for _, rule := range []string{"generic-password", "example-api-key"} {
+		props := asMap(t, resultByRule(t, doc, rule)["properties"])
+		if props["git.message"] != "add config with exk_Qm7ZpL2vXc9RtB4nYh8WdK3sGf6JaE1uNo5TiV0x" {
+			t.Errorf("%s git.message: got %v", rule, props["git.message"])
+		}
+	}
+}
+
+func TestJSONToSarif_DoesNotCopyAuthorIdentity(t *testing.T) {
 	out := string(toSarifBytes(t, loadFixture(t, "git.json")))
 
-	for _, s := range []string{"dev@example.com", "Example Dev", "add config with"} {
+	for _, s := range []string{"dev@example.com", "Example Dev", "author_email", "committer"} {
 		if strings.Contains(out, s) {
 			t.Errorf("SARIF output contains %q", s)
 		}
@@ -507,5 +617,48 @@ func TestArtifactURI(t *testing.T) {
 				t.Errorf("artifactURI(%q, %q) = %q, want %q", tt.path, tt.target, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestJSONToSarif_ComponentPathIsRelativeToTarget(t *testing.T) {
+	report := parseJSONReport(t, `{"findings":[{"rule_id":"r","description":"d","confidence":"high",
+		"match":{"full":"x"},"location":{"path":"/src/a.txt","start_line":2,"end_line":2,"start_column":1,"end_column":1},
+		"component_sets":[{"components":[{"rule_id":"c","location":{"path":"/src/a.txt","start_line":1,"end_line":1,"start_column":1,"end_column":1}}]}]}],
+		"scan":{"state":"complete"}}`)
+	out, err := JSONToSarif(report, "/src")
+	if err != nil {
+		t.Fatalf("JSONToSarif: %v", err)
+	}
+	var buf bytes.Buffer
+	if err := out.PrettyWrite(&buf); err != nil {
+		t.Fatalf("PrettyWrite: %v", err)
+	}
+	var doc sarifDoc
+	if err := json.Unmarshal(buf.Bytes(), &doc); err != nil {
+		t.Fatalf("unmarshal sarif: %v", err)
+	}
+
+	props := asMap(t, resultByRule(t, doc, "r")["properties"])
+
+	loc := asMap(t, asMap(t, asSlice(t, props["components"])[0])["location"])
+	if loc["path"] != "a.txt" {
+		t.Errorf("component path: got %v", loc["path"])
+	}
+}
+
+func TestJSONToSarif_NonStringCaptureValuesAreKept(t *testing.T) {
+	report := parseJSONReport(t, `{"findings":[{"rule_id":"r","description":"d","confidence":"high",
+		"match":{"full":"x","captures":{"port":8080,"empty":null,"name":"sample"}},
+		"location":{"path":"a","start_line":1,"end_line":1,"start_column":1,"end_column":1}}],
+		"scan":{"state":"complete"}}`)
+
+	props := asMap(t, resultByRule(t, toSarifDoc(t, report), "r")["properties"])
+
+	captures := asMap(t, props["captures"])
+	if captures["port"] != float64(8080) || captures["name"] != "sample" {
+		t.Errorf("captures: got %v", captures)
+	}
+	if v, ok := captures["empty"]; !ok || v != nil {
+		t.Errorf("null capture must be kept, got %v (present=%v)", v, ok)
 	}
 }
