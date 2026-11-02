@@ -34,6 +34,9 @@ The scan counts as successful only when betterleaks exits with 0 (clean) or 2 (f
 - Driver `betterleaks`, version from `scan.betterleaks_version`.
 - `level` comes from a rule tag `severity:<critical|high|medium|low>` (error, error, warning, note). Without a tag it is `error`. Confidence never affects the level.
 - `properties.confidence` carries the betterleaks value. Other properties: `resource`, `git.sha`, `git.date`, `validation_status`, `encodings`, `decode_depth`, `component_rule_ids`.
+- Secret-bearing fields are copied as properties: `secret` (`match.value`), `captures` (`match.captures`, object of named groups), `git.message` (`attributes.git.message`, history scans), `validation_reason` and `validation_metadata` (`analysis.status_reason` and `status_metadata`). Each is omitted when empty.
+- `components` lists every `component_sets[].components[]` entry as `{set, rule_id, optional, value, full, location}`. `set` is the 0-based component set index and `location` keeps betterleaks coordinates (1-based, inclusive `end_column`, unlike `region`).
 - `partialFingerprints["betterleaks/v1"]` is `match.fingerprint`. `snippet.text` is `match.full`.
 - Findings without a path (commit messages) have no location.
-- `match.value`, `match.captures`, `match.context` and git author or committer fields are never copied.
+- `match.context` becomes `locations[0].physicalLocation.contextRegion.snippet.text`. betterleaks does not report the context's line range, so the region has no line numbers. Commit-message findings have no location, so their context is not emitted.
+- Git author and committer fields are never copied.
