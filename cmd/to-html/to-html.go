@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
@@ -195,21 +196,14 @@ var ToHtmlCmd = &cobra.Command{
 			)
 		}
 
+		// Git is the authority whenever it yields a repository URL. Without one
+		// (no checkout, or a checkout with no origin remote) the SARIF's own
+		// provenance supplies repository, commit and branch together.
 		var parsedURL *vcsurl.VCSURL
-		if repositoryMetadata.RepositoryFullName != nil {
-			vcsType := vcsurl.StringToVCSType(allToHTMLOptions.VCS)
-			if vcsType == vcsurl.UnknownVCS {
-				// No --vcs flag: run full detection chain including config host map.
-				parsedURL, err = vcsurl.ParseWithOptions(*repositoryMetadata.RepositoryFullName, vcsurl.ParseOptions{
-					HostMap: vcsHostMap(AppConfig),
-				})
-			} else {
-				// Explicit --vcs value: bypass detection.
-				parsedURL, err = vcsurl.ParseForVCSType(*repositoryMetadata.RepositoryFullName, vcsType)
-			}
-			if err != nil {
-				return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
-			}
+		if repositoryMetadata.RepositoryFullName == nil || strings.TrimSpace(*repositoryMetadata.RepositoryFullName) == "" {
+			parsedURL = applyProvenance(repositoryMetadata, reports)
+		} else if parsedURL, err = parseRepositoryURL(*repositoryMetadata.RepositoryFullName); err != nil {
+			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
 
 		if parsedURL != nil {
