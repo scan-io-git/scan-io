@@ -15,6 +15,7 @@ This section provides detailed technical documentation for Scanio’s commands, 
 - [SARIF Issues Command](cmd-sarif-issues.md): Explains how to create GitHub issues from SARIF findings with configurable severity levels, with automated lifecycle management.
 - [To-HTML Command](cmd-to-html.md): Explains conversion of SARIF reports to human-friendly HTML format, code snippet inclusion, and template customization options.
 - [Report Patch Command](cmd-report-patch.md): Details how to make structured modifications to SARIF reports, including different filtering capabilities and actions.
+- [SARIF Input Read by to-html](to-html-sarif-input.md): Input contract for tools that write SARIF for the HTML report: every field read, allowed values, effect in the report, behavior on invalid values, and a full example.
 
 ### Plugins
 - [Bitbucket Plugin](plugin-bitbucket.md): Plugin-specific usage instructions, authentication setup, supported actions, and URL formats for Bitbucket.

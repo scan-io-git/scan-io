@@ -7,6 +7,7 @@ The `to-html` command converts sarif, standard sast output format, to a human-fr
 - [Options](#options)
 - [Usage Examples](#usage-examples)
 - [Report features](#report-features)
+  - [Report layout](#report-layout)
   - [Security](#security)
   - [Required and Recommended](#required-and-recommended)
   - [Multiple scanners](#multiple-scanners)
@@ -164,6 +165,16 @@ When `--required` is absent, the report is identical to the default — no Requi
 
 The generated HTML file is fully self-contained and works offline.
 
+### Report layout
+
+From top to bottom:
+
+- **Header**: report title, then pills for the repository, branch, commit and, in PR mode, the pull request, each linking to the VCS when it is known. With one scanner its name and version follow; with several they are listed in the header menu.
+- **Summary bar**: filter pills `All` and one per severity (Critical, High, Medium, Low, Info), each with its count. With `--required` the `Required` and `Recommended` pills follow; when any finding is excluded by a PR decision an `Excluded` pill follows. A search box, a findings panel toggle and a collapse all button sit beside them.
+- **Scanner tabs**: `All scanners` plus one tab per scanner, only when the report merges several inputs with different scanner names.
+- **Findings**, in sections: `Required` (with `--required`), `Recommended` (with `--required`), `Excluded in this PR` (collapsed, only when a PR decision excluded a finding) and `Suppressed` (collapsed, only when suppressed findings exist). Without `--required` the active findings are one list, followed by the same collapsed sections.
+- **Findings panel**: the outline on the left, with three groupings: `By severity` (priority group, then severity, then file, then finding), `By finding` (rule, then file) and, with several scanners, `By scanner` (scanner, then severity, then file). Excluded and Suppressed findings have their own groups after the active ones in every grouping.
+
 ### Security
 
 Each report is hardened at render time:
@@ -296,40 +307,28 @@ enabled, for every severity. The panel and the classification notice never disag
 
 ### Repository links without a git checkout
 
-File permalinks, the commit and branch header pills and PR-diff links need to know the
-repository, commit and branch. They come from the `--source` folder's git metadata. When git
-gives no repository URL (the folder has no `.git`, the repository has no origin remote, or
-`--source` is not set), the report falls back to the first `runs[].versionControlProvenance[]`
-entry that has a `repositoryUri`: `repositoryUri` is the HTTPS web URL of the repository,
-`revisionId` the commit and `branch` the branch. All three are taken from provenance together;
-a local git commit is never combined with a repository URL from the SARIF. The repository URL
-goes through the same provider detection as a git remote (`--vcs` and the configured host map
-apply). When git supplies a repository URL it wins and provenance is ignored. With neither, or
-with a `repositoryUri` that cannot be parsed, no links are rendered and the report still builds.
+File permalinks, the commit and branch header pills and PR-diff links need the repository,
+commit and branch. They come from the `--source` folder's git metadata. When git gives no
+repository URL (the folder has no `.git`, the repository has no origin remote, or `--source`
+is not set), the report falls back to `runs[].versionControlProvenance[]` in the SARIF. All
+three values are taken from provenance together; a local git commit is never combined with a
+repository URL from the SARIF. When git supplies a repository URL it wins. With neither, or
+with a `repositoryUri` that cannot be parsed, no links are rendered and the report still
+builds. Fields and rules: [SARIF Input Read by to-html](to-html-sarif-input.md#run-level).
 
 ### Finding IDs
 
-When a result carries `properties.findingId` (for example `F-3f9a2c1d`, or `F-3f9a2c1d.81d0`
-for a duplicate), the ID replaces the positional `#n` in the card header, the findings panel
-rows and the chip strips. The ID is also searchable. Any string that is not empty after
-trimming is taken as given and escaped on output; anything else keeps the `#n`. IDs longer
-than 15 characters are cut with an ellipsis in the card header, the panel rows and the chips,
-and carry their full value in a hover title.
+When a result carries `properties.findingId` (for example `F-3f9a2c1d`), the ID replaces the
+positional `#n` in the card header, the findings panel rows and the chip strips, and is
+searchable. Long IDs are cut with an ellipsis and keep their full value in a hover title.
+Value rules: [properties.findingId](to-html-sarif-input.md#propertiesfindingid).
 
 ### PR decisions
 
-A result can carry `properties.triage`, written by an upstream tool that records decisions
-people made about findings in a pull request:
-
-```json
-{"decision": "false_positive", "status": "applied", "author": "alice", "reason": "text",
- "approver": "bob", "ticket": "TKT-1", "source": "https://example.com/...#comment",
- "requestSource": "https://example.com/...#request", "decidedAt": "2026-11-17T04:10:16Z"}
-```
-
-`decision` is `false_positive`, `accepted_risk` or `true_positive`; `status` is `applied` or
-`pending`. Anything else is treated as no triage. `approver`, `ticket`, `source`,
-`requestSource` and `decidedAt` are optional; only http and https URLs are linked.
+A result can carry `properties.triage`, written by a tool that records decisions people made
+about findings in a pull request. The fields and their rules are in
+[properties.triage](to-html-sarif-input.md#propertiestriage); to produce them, follow
+[How to Add Finding IDs and PR Decisions to the HTML Report](../how-to/add-pr-decisions-to-html-report.md).
 
 | decision and status | class | what the card shows |
 |---------------------|-------|---------------------|
@@ -341,11 +340,6 @@ Excluded findings get their own section after Recommended, collapsed by default,
 "Excluded" filter pill and an "Excluded in this PR" group in every findings panel grouping
 mode. They are not counted in "All", the severity pills or the scanner tab counts. Headers
 of cards carry no decision label; the section a card sits in names its class.
-
-The panel rows are: Excluded as / Marked as / Requested as; Decided by with a "comment" link
-(or Requested by with a "request" link and Approved by with an "approval" link when an
-approver is set); Ticket (excluded only); Status (pending only); Reason; Date. For a pending
-request the "request" link uses `requestSource` and falls back to `source`.
 
 Without `--required` the Excluded section, pill and panel group still appear, and confirmed
 and pending findings get their panel without a Required notice.
