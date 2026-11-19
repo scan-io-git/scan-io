@@ -10,6 +10,9 @@ The `to-html` command converts sarif, standard sast output format, to a human-fr
   - [Security](#security)
   - [Required and Recommended](#required-and-recommended)
   - [Multiple scanners](#multiple-scanners)
+  - [Repository links without a git checkout](#repository-links-without-a-git-checkout)
+  - [Finding IDs](#finding-ids)
+  - [PR decisions](#pr-decisions)
   - [False-positive review](#false-positive-review)
   - [References](#references)
   - [Filtering](#filtering)
@@ -25,7 +28,7 @@ scanio to-html --input/-i PATH [--input/-i PATH ...] --output/-o PATH [--source/
 |--------|------|----------|---------------|-------------|
 | `--input`, `-i` | string | Yes | `none` | Path to an input sarif report. Repeatable: pass `-i` once per report to merge several scanners into a single consolidated report. Findings are rendered in the order the inputs are given, so a caller iterating an unordered set of tools should sort it for a reproducible report. A missing or unparseable input fails the whole render rather than producing a partial report. |
 | `--output`, `-o` | string | Yes | `none` | Path to output file, html report |
-| `--source`, `-s` | string | No | `none` | Path to source code folder |
+| `--source`, `-s` | string | No | `none` | Path to source code folder. Repository, branch and commit come from its git metadata; when git gives no repository URL (no `.git`, or no origin remote) they come from the input's `versionControlProvenance` (see [Repository links without a git checkout](#repository-links-without-a-git-checkout)) |
 | `--templates-path`, `-t` | string | No | `none` | Path to templates folder |
 | `--pull-request` | string | No | `none` | Pull request ID. Enables PR-aware links: the header pill links to the PR and each finding's "Location in PR" links to the PR diff at the exact line, with a secondary commit-permalink link. When omitted, auto-detected from CI env vars: GITHUB_REF (refs/pull/N/merge), CI_MERGE_REQUEST_IID, BITBUCKET_PR_ID |
 | `--no-supressions` | bool | No | `false` | Enable removing results with suppressions properties |
@@ -191,7 +194,17 @@ different from a severity listed with no threshold at all, which is a deliberate
 no-threshold policy: every matching finding is Required regardless of confidence, not an
 error.
 
-Each finding is decided by four checks, in order. The first one that applies wins.
+Each finding is decided by the checks below, in order. The first one that applies wins.
+Checks 0a and 0b only fire for findings that carry a PR decision, see [PR decisions](#pr-decisions).
+
+**0a. Was the finding excluded by an applied PR decision?**
+An applied `false_positive` or `accepted_risk` decision makes the finding **Excluded**,
+whatever its severity, verdict or `--required` setting. This also applies without
+`--required`.
+
+**0b. Was the finding confirmed by an applied PR decision?**
+With `--required`, an applied `true_positive` decision makes the finding Required, whatever
+its severity or verdict.
 
 **1. Is the severity a blocker?**
 If the severity is not in the list you passed, the finding is Recommended and nothing
@@ -281,6 +294,62 @@ value is invented.
 A `Likely false positive` verdict always results in Recommended when classification is
 enabled, for every severity. The panel and the classification notice never disagree.
 
+### Repository links without a git checkout
+
+File permalinks, the commit and branch header pills and PR-diff links need to know the
+repository, commit and branch. They come from the `--source` folder's git metadata. When git
+gives no repository URL (the folder has no `.git`, the repository has no origin remote, or
+`--source` is not set), the report falls back to the first `runs[].versionControlProvenance[]`
+entry that has a `repositoryUri`: `repositoryUri` is the HTTPS web URL of the repository,
+`revisionId` the commit and `branch` the branch. All three are taken from provenance together;
+a local git commit is never combined with a repository URL from the SARIF. The repository URL
+goes through the same provider detection as a git remote (`--vcs` and the configured host map
+apply). When git supplies a repository URL it wins and provenance is ignored. With neither, or
+with a `repositoryUri` that cannot be parsed, no links are rendered and the report still builds.
+
+### Finding IDs
+
+When a result carries `properties.findingId` (for example `F-3f9a2c1d`, or `F-3f9a2c1d.81d0`
+for a duplicate), the ID replaces the positional `#n` in the card header, the findings panel
+rows and the chip strips. The ID is also searchable. Any string that is not empty after
+trimming is taken as given and escaped on output; anything else keeps the `#n`. IDs longer
+than 15 characters are cut with an ellipsis in the card header, the panel rows and the chips,
+and carry their full value in a hover title.
+
+### PR decisions
+
+A result can carry `properties.triage`, written by an upstream tool that records decisions
+people made about findings in a pull request:
+
+```json
+{"decision": "false_positive", "status": "applied", "author": "alice", "reason": "text",
+ "approver": "bob", "ticket": "TKT-1", "source": "https://example.com/...#comment",
+ "requestSource": "https://example.com/...#request", "decidedAt": "2026-11-17T04:10:16Z"}
+```
+
+`decision` is `false_positive`, `accepted_risk` or `true_positive`; `status` is `applied` or
+`pending`. Anything else is treated as no triage. `approver`, `ticket`, `source`,
+`requestSource` and `decidedAt` are optional; only http and https URLs are linked.
+
+| decision and status | class | what the card shows |
+|---------------------|-------|---------------------|
+| `false_positive` or `accepted_risk`, `applied` | Excluded | Notice "Excluded in this PR" and a collapsed PR decision panel |
+| `true_positive`, `applied` | Required (with `--required`) | Notice "confirmed real by a reviewer" (plus "overrides the false-positive review" when the verdict was `FALSE_POSITIVE`) and a collapsed PR decision panel |
+| `false_positive` or `accepted_risk`, `pending` | unchanged | The usual notice (with "An exclusion is waiting for approval" on a Required card) and a collapsed amber PR decision panel |
+
+Excluded findings get their own section after Recommended, collapsed by default, an
+"Excluded" filter pill and an "Excluded in this PR" group in every findings panel grouping
+mode. They are not counted in "All", the severity pills or the scanner tab counts. Headers
+of cards carry no decision label; the section a card sits in names its class.
+
+The panel rows are: Excluded as / Marked as / Requested as; Decided by with a "comment" link
+(or Requested by with a "request" link and Approved by with an "approval" link when an
+approver is set); Ticket (excluded only); Status (pending only); Reason; Date. For a pending
+request the "request" link uses `requestSource` and falls back to `source`.
+
+Without `--required` the Excluded section, pill and panel group still appear, and confirmed
+and pending findings get their panel without a Required notice.
+
 ### References
 
 A finding's References list shows the first three links, with a `Show all N references`
@@ -308,5 +377,5 @@ closes. The search box is not remembered.
 
 ### Suppressed findings
 
-Suppressions are shown in a collapsed section at the bottom. If the active filter matches no suppressed findings, the section is hidden entirely.
+Suppressions are shown in a collapsed section at the bottom. If the active filter matches no suppressed findings, the section is hidden entirely. In the findings panel the Suppressed group is split by severity, then file, like the active findings.
 
