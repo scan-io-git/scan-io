@@ -181,20 +181,6 @@ func (r Report) CollectRequiredInfo() map[string]int {
 	return counts
 }
 
-// CollectExcludedInfo returns the number of results excluded by an applied PR
-// decision. Reads Properties["Excluded"] set by EnrichResultsTriageProperty.
-func (r Report) CollectExcludedInfo() int {
-	n := 0
-	for _, run := range r.Runs {
-		for _, result := range run.Results {
-			if ResultClass(result) == ClassExcluded {
-				n++
-			}
-		}
-	}
-	return n
-}
-
 // SortResultsByRequiredThenSeverity orders results Required-first, then
 // Recommended, then PR-excluded, with the canonical severity order within each
 // group. Use instead of SortResultsBySeverity when classification is active so

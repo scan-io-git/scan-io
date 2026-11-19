@@ -221,8 +221,8 @@ func TestTriage_CountsAndOrdering(t *testing.T) {
 	if got := report.CollectRequiredInfo(); got["required"] != 1 || got["recommended"] != 1 {
 		t.Errorf("required info = %v, want required 1 recommended 1", got)
 	}
-	if got := report.CollectExcludedInfo(); got != 2 {
-		t.Errorf("excluded count = %d, want 2", got)
+	if got := report.CollectDecisionInfo(); got[DecisionExcluded] != 2 || len(got) != 1 {
+		t.Errorf("decision info = %v, want only excluded 2", got)
 	}
 
 	report.SortResultsByRequiredThenSeverity()

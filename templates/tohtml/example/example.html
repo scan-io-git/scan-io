@@ -2,8 +2,8 @@
 <html lang="en" data-report-state="1249f0f92c207aeb">
 
 <head>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-rsSmpSEN5mVg-eFFTeY8yA'; style-src 'nonce-rsSmpSEN5mVg-eFFTeY8yA'; img-src data:; base-uri 'none'; form-action 'none'">
-  <script nonce="rsSmpSEN5mVg-eFFTeY8yA">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-KCOPVuzVmtSoSTLG25gz-w'; style-src 'nonce-KCOPVuzVmtSoSTLG25gz-w'; img-src data:; base-uri 'none'; form-action 'none'">
+  <script nonce="KCOPVuzVmtSoSTLG25gz-w">
 (function(){
   var stored = localStorage.getItem('theme');
   var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -20,7 +20,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='4' fill='%230f7a51'/><text x='8' y='12' font-family='system-ui,sans-serif' font-size='11' font-weight='700' text-anchor='middle' fill='white'>S</text></svg>">
   <base target="_blank">
 
-  <style type="text/css" nonce="rsSmpSEN5mVg-eFFTeY8yA">
+  <style type="text/css" nonce="KCOPVuzVmtSoSTLG25gz-w">
     :root {
        
       --bg-canvas-light: #ffffff;
@@ -116,6 +116,7 @@
 
        
       --req-fg: #9a1313; --req-bg: #fff0f0; --req-border: #cf222e;
+      --exc-fg: #0f5c4f; --exc-bg: #e6f6f2; --exc-border: #1a7f6b;
       --rec-fg: #0550ae; --rec-bg: #ddf4ff; --rec-border: #0969da;
       --sup-fg: #3b4450; --sup-bg: #f0f3f6; --sup-border: #b0b9c3;
 
@@ -204,6 +205,7 @@
 
        
       --req-fg: #ff7b72; --req-bg: #490202; --req-border: #f85149;
+      --exc-fg: #56d4bc; --exc-bg: #04241e; --exc-border: #1a7f6b;
       --rec-fg: #79c0ff; --rec-bg: #051d4d; --rec-border: #1f6feb;
       --sup-fg: #9198a1; --sup-bg: #1c2128; --sup-border: #444c56;
 
@@ -392,6 +394,7 @@
     .req-notice { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); margin-bottom: var(--space-3); font-size: var(--text-sm); border: 1px solid; }
     .req-notice--required    { background: var(--req-bg); color: var(--req-fg); border-color: var(--req-border); }
     .req-notice--recommended { background: var(--rec-bg); color: var(--rec-fg); border-color: var(--rec-border); }
+    .req-notice--excluded    { background: var(--exc-bg); color: var(--exc-fg); border-color: var(--exc-border); }
     .req-notice__text strong { font-weight: 700; }
 
      
@@ -448,6 +451,7 @@
     .findings-section { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); margin: var(--space-3) 0 var(--space-2); border-radius: var(--radius-sm); font-size: var(--text-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; user-select: none; }
     .findings-section--required    { background: var(--req-bg); color: var(--req-fg); border-left: 3px solid var(--req-border); }
     .findings-section--recommended { background: var(--rec-bg); color: var(--rec-fg); border-left: 3px solid var(--rec-border); }
+    .findings-section--excluded    { background: var(--exc-bg); color: var(--exc-fg); border-left: 3px solid var(--exc-border); }
     .findings-section--suppressed  { background: var(--sup-bg); color: var(--sup-fg); border-left: 3px solid var(--sup-border); }
     .findings-section__count { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; margin-right: var(--space-1); }
     .findings-section__chevron { display: flex; align-items: center; flex-shrink: 0; }
@@ -469,6 +473,7 @@
     .tv-prio-hdr { display: flex; align-items: center; gap: var(--space-1); height: 24px; padding: 0 var(--space-2); border-radius: var(--radius-sm); margin: 4px var(--space-2) 1px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; user-select: none; }
     .tv-prio-hdr--required    { background: var(--req-bg); color: var(--req-fg); border-left: 2px solid var(--req-border); }
     .tv-prio-hdr--recommended { background: var(--rec-bg); color: var(--rec-fg); border-left: 2px solid var(--rec-border); }
+    .tv-prio-hdr--excluded    { background: var(--exc-bg); color: var(--exc-fg); border-left: 2px solid var(--exc-border); }
     .tv-prio-hdr--suppressed  { background: var(--sup-bg); color: var(--sup-fg); border-left: 2px solid var(--sup-border); }
     .tv-prio-hdr .tv-tc { margin-left: auto; }
 
@@ -995,6 +1000,8 @@
     .pill--required[aria-pressed="true"] { background: var(--req-fg); color: var(--req-bg); border-color: var(--req-fg); }
     .pill--recommended { border-color: var(--rec-border); color: var(--rec-fg); background: var(--rec-bg); }
     .pill--recommended[aria-pressed="true"] { background: var(--rec-fg); color: var(--rec-bg); border-color: var(--rec-fg); }
+    .pill--excluded { border-color: var(--exc-border); color: var(--exc-fg); background: var(--exc-bg); }
+    .pill--excluded[aria-pressed="true"] { background: var(--exc-fg); color: var(--exc-bg); border-color: var(--exc-fg); }
 
      
     .pill[aria-pressed="true"] .pill__n { color: currentColor; opacity: 0.7; }
@@ -1381,6 +1388,7 @@
     .tv-ls--id { max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .tv-ls--required    { color: var(--req-fg); }
     .tv-ls--recommended { color: var(--rec-fg); }
+    .tv-ls--excluded    { color: var(--exc-fg); }
 
      
     .tv-tc {
@@ -1456,6 +1464,8 @@
     .tv-chips a:focus-visible { outline: none; box-shadow: var(--focus-ring); }
     .tv-chips a.tv-chip--required    { border-color: var(--req-border); background: color-mix(in oklch, var(--req-bg) 60%, var(--bg-inset)); color: var(--req-fg); }
     .tv-chips a.tv-chip--recommended { border-color: var(--rec-border); background: color-mix(in oklch, var(--rec-bg) 60%, var(--bg-inset)); color: var(--rec-fg); }
+    .tv-chips a.tv-chip--excluded    { border-color: var(--exc-border); background: color-mix(in oklch, var(--exc-bg) 60%, var(--bg-inset)); color: var(--exc-fg); }
+    .tv-chips a.tv-chip--excluded:hover    { border-color: var(--exc-fg); }
     .tv-chips a.tv-chip--required:hover    { border-color: var(--req-fg); }
     .tv-chips a.tv-chip--recommended:hover { border-color: var(--rec-fg); }
 
@@ -4845,7 +4855,7 @@ if not safe_path.startswith(BASE_DIR):
   </div>
   </div>
 
-  <script nonce="rsSmpSEN5mVg-eFFTeY8yA">
+  <script nonce="KCOPVuzVmtSoSTLG25gz-w">
 window.Prism={manual:true};
 var _self="undefined"!=typeof window?window:"undefined"!=typeof WorkerGlobalScope&&self instanceof WorkerGlobalScope?self:{},Prism=function(e){var n=/(?:^|\s)lang(?:uage)?-([\w-]+)(?=\s|$)/i,t=0,r={},a={manual:e.Prism&&e.Prism.manual,disableWorkerMessageHandler:e.Prism&&e.Prism.disableWorkerMessageHandler,util:{encode:function e(n){return n instanceof i?new i(n.type,e(n.content),n.alias):Array.isArray(n)?n.map(e):n.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/\u00a0/g," ")},type:function(e){return Object.prototype.toString.call(e).slice(8,-1)},objId:function(e){return e.__id||Object.defineProperty(e,"__id",{value:++t}),e.__id},clone:function e(n,t){var r,i;switch(t=t||{},a.util.type(n)){case"Object":if(i=a.util.objId(n),t[i])return t[i];for(var l in r={},t[i]=r,n)n.hasOwnProperty(l)&&(r[l]=e(n[l],t));return r;case"Array":return i=a.util.objId(n),t[i]?t[i]:(r=[],t[i]=r,n.forEach((function(n,a){r[a]=e(n,t)})),r);default:return n}},getLanguage:function(e){for(;e;){var t=n.exec(e.className);if(t)return t[1].toLowerCase();e=e.parentElement}return"none"},setLanguage:function(e,t){e.className=e.className.replace(RegExp(n,"gi"),""),e.classList.add("language-"+t)},currentScript:function(){if("undefined"==typeof document)return null;if("currentScript"in document)return document.currentScript;try{throw new Error}catch(r){var e=(/at [^(\r\n]*\((.*):[^:]+:[^:]+\)$/i.exec(r.stack)||[])[1];if(e){var n=document.getElementsByTagName("script");for(var t in n)if(n[t].src==e)return n[t]}return null}},isActive:function(e,n,t){for(var r="no-"+n;e;){var a=e.classList;if(a.contains(n))return!0;if(a.contains(r))return!1;e=e.parentElement}return!!t}},languages:{plain:r,plaintext:r,text:r,txt:r,extend:function(e,n){var t=a.util.clone(a.languages[e]);for(var r in n)t[r]=n[r];return t},insertBefore:function(e,n,t,r){var i=(r=r||a.languages)[e],l={};for(var o in i)if(i.hasOwnProperty(o)){if(o==n)for(var s in t)t.hasOwnProperty(s)&&(l[s]=t[s]);t.hasOwnProperty(o)||(l[o]=i[o])}var u=r[e];return r[e]=l,a.languages.DFS(a.languages,(function(n,t){t===u&&n!=e&&(this[n]=l)})),l},DFS:function e(n,t,r,i){i=i||{};var l=a.util.objId;for(var o in n)if(n.hasOwnProperty(o)){t.call(n,o,n[o],r||o);var s=n[o],u=a.util.type(s);"Object"!==u||i[l(s)]?"Array"!==u||i[l(s)]||(i[l(s)]=!0,e(s,t,o,i)):(i[l(s)]=!0,e(s,t,null,i))}}},plugins:{},highlightAll:function(e,n){a.highlightAllUnder(document,e,n)},highlightAllUnder:function(e,n,t){var r={callback:t,container:e,selector:'code[class*="language-"], [class*="language-"] code, code[class*="lang-"], [class*="lang-"] code'};a.hooks.run("before-highlightall",r),r.elements=Array.prototype.slice.apply(r.container.querySelectorAll(r.selector)),a.hooks.run("before-all-elements-highlight",r);for(var i,l=0;i=r.elements[l++];)a.highlightElement(i,!0===n,r.callback)},highlightElement:function(n,t,r){var i=a.util.getLanguage(n),l=a.languages[i];a.util.setLanguage(n,i);var o=n.parentElement;o&&"pre"===o.nodeName.toLowerCase()&&a.util.setLanguage(o,i);var s={element:n,language:i,grammar:l,code:n.textContent};function u(e){s.highlightedCode=e,a.hooks.run("before-insert",s),s.element.innerHTML=s.highlightedCode,a.hooks.run("after-highlight",s),a.hooks.run("complete",s),r&&r.call(s.element)}if(a.hooks.run("before-sanity-check",s),(o=s.element.parentElement)&&"pre"===o.nodeName.toLowerCase()&&!o.hasAttribute("tabindex")&&o.setAttribute("tabindex","0"),!s.code)return a.hooks.run("complete",s),void(r&&r.call(s.element));if(a.hooks.run("before-highlight",s),s.grammar)if(t&&e.Worker){var c=new Worker(a.filename);c.onmessage=function(e){u(e.data)},c.postMessage(JSON.stringify({language:s.language,code:s.code,immediateClose:!0}))}else u(a.highlight(s.code,s.grammar,s.language));else u(a.util.encode(s.code))},highlight:function(e,n,t){var r={code:e,grammar:n,language:t};if(a.hooks.run("before-tokenize",r),!r.grammar)throw new Error('The language "'+r.language+'" has no grammar.');return r.tokens=a.tokenize(r.code,r.grammar),a.hooks.run("after-tokenize",r),i.stringify(a.util.encode(r.tokens),r.language)},tokenize:function(e,n){var t=n.rest;if(t){for(var r in t)n[r]=t[r];delete n.rest}var a=new s;return u(a,a.head,e),o(e,a,n,a.head,0),function(e){for(var n=[],t=e.head.next;t!==e.tail;)n.push(t.value),t=t.next;return n}(a)},hooks:{all:{},add:function(e,n){var t=a.hooks.all;t[e]=t[e]||[],t[e].push(n)},run:function(e,n){var t=a.hooks.all[e];if(t&&t.length)for(var r,i=0;r=t[i++];)r(n)}},Token:i};function i(e,n,t,r){this.type=e,this.content=n,this.alias=t,this.length=0|(r||"").length}function l(e,n,t,r){e.lastIndex=n;var a=e.exec(t);if(a&&r&&a[1]){var i=a[1].length;a.index+=i,a[0]=a[0].slice(i)}return a}function o(e,n,t,r,s,g){for(var f in t)if(t.hasOwnProperty(f)&&t[f]){var h=t[f];h=Array.isArray(h)?h:[h];for(var d=0;d<h.length;++d){if(g&&g.cause==f+","+d)return;var v=h[d],p=v.inside,m=!!v.lookbehind,y=!!v.greedy,k=v.alias;if(y&&!v.pattern.global){var x=v.pattern.toString().match(/[imsuy]*$/)[0];v.pattern=RegExp(v.pattern.source,x+"g")}for(var b=v.pattern||v,w=r.next,A=s;w!==n.tail&&!(g&&A>=g.reach);A+=w.value.length,w=w.next){var E=w.value;if(n.length>e.length)return;if(!(E instanceof i)){var P,L=1;if(y){if(!(P=l(b,A,e,m))||P.index>=e.length)break;var S=P.index,O=P.index+P[0].length,j=A;for(j+=w.value.length;S>=j;)j+=(w=w.next).value.length;if(A=j-=w.value.length,w.value instanceof i)continue;for(var C=w;C!==n.tail&&(j<O||"string"==typeof C.value);C=C.next)L++,j+=C.value.length;L--,E=e.slice(A,j),P.index-=A}else if(!(P=l(b,0,E,m)))continue;S=P.index;var N=P[0],_=E.slice(0,S),M=E.slice(S+N.length),W=A+E.length;g&&W>g.reach&&(g.reach=W);var z=w.prev;if(_&&(z=u(n,z,_),A+=_.length),c(n,z,L),w=u(n,z,new i(f,p?a.tokenize(N,p):N,k,N)),M&&u(n,w,M),L>1){var I={cause:f+","+d,reach:W};o(e,n,t,w.prev,A,I),g&&I.reach>g.reach&&(g.reach=I.reach)}}}}}}function s(){var e={value:null,prev:null,next:null},n={value:null,prev:e,next:null};e.next=n,this.head=e,this.tail=n,this.length=0}function u(e,n,t){var r=n.next,a={value:t,prev:n,next:r};return n.next=a,r.prev=a,e.length++,a}function c(e,n,t){for(var r=n.next,a=0;a<t&&r!==e.tail;a++)r=r.next;n.next=r,r.prev=n,e.length-=a}if(e.Prism=a,i.stringify=function e(n,t){if("string"==typeof n)return n;if(Array.isArray(n)){var r="";return n.forEach((function(n){r+=e(n,t)})),r}var i={type:n.type,content:e(n.content,t),tag:"span",classes:["token",n.type],attributes:{},language:t},l=n.alias;l&&(Array.isArray(l)?Array.prototype.push.apply(i.classes,l):i.classes.push(l)),a.hooks.run("wrap",i);var o="";for(var s in i.attributes)o+=" "+s+'="'+(i.attributes[s]||"").replace(/"/g,"&quot;")+'"';return"<"+i.tag+' class="'+i.classes.join(" ")+'"'+o+">"+i.content+"</"+i.tag+">"},!e.document)return e.addEventListener?(a.disableWorkerMessageHandler||e.addEventListener("message",(function(n){var t=JSON.parse(n.data),r=t.language,i=t.code,l=t.immediateClose;e.postMessage(a.highlight(i,a.languages[r],r)),l&&e.close()}),!1),a):a;var g=a.util.currentScript();function f(){a.manual||a.highlightAll()}if(g&&(a.filename=g.src,g.hasAttribute("data-manual")&&(a.manual=!0)),!a.manual){var h=document.readyState;"loading"===h||"interactive"===h&&g&&g.defer?document.addEventListener("DOMContentLoaded",f):window.requestAnimationFrame?window.requestAnimationFrame(f):window.setTimeout(f,16)}return a}(_self);"undefined"!=typeof module&&module.exports&&(module.exports=Prism),"undefined"!=typeof global&&(global.Prism=Prism);
 Prism.languages.clike={comment:[{pattern:/(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/(["'])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,greedy:!0},"class-name":{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i,lookbehind:!0,inside:{punctuation:/[.\\]/}},keyword:/\b(?:break|catch|continue|do|else|finally|for|function|if|in|instanceof|new|null|return|throw|try|while)\b/,boolean:/\b(?:false|true)\b/,function:/\b\w+(?=\()/,number:/\b0x[\da-f]+\b|(?:\b\d+(?:\.\d*)?|\B\.\d+)(?:e[+-]?\d+)?/i,operator:/[<>]=?|[!=]=?=?|--?|\+\+?|&&?|\|\|?|[?*/~^%]/,punctuation:/[{}[\];(),.:]/};
@@ -4860,7 +4870,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
 !function(e){var t="\\b(?:BASH|BASHOPTS|BASH_ALIASES|BASH_ARGC|BASH_ARGV|BASH_CMDS|BASH_COMPLETION_COMPAT_DIR|BASH_LINENO|BASH_REMATCH|BASH_SOURCE|BASH_VERSINFO|BASH_VERSION|COLORTERM|COLUMNS|COMP_WORDBREAKS|DBUS_SESSION_BUS_ADDRESS|DEFAULTS_PATH|DESKTOP_SESSION|DIRSTACK|DISPLAY|EUID|GDMSESSION|GDM_LANG|GNOME_KEYRING_CONTROL|GNOME_KEYRING_PID|GPG_AGENT_INFO|GROUPS|HISTCONTROL|HISTFILE|HISTFILESIZE|HISTSIZE|HOME|HOSTNAME|HOSTTYPE|IFS|INSTANCE|JOB|LANG|LANGUAGE|LC_ADDRESS|LC_ALL|LC_IDENTIFICATION|LC_MEASUREMENT|LC_MONETARY|LC_NAME|LC_NUMERIC|LC_PAPER|LC_TELEPHONE|LC_TIME|LESSCLOSE|LESSOPEN|LINES|LOGNAME|LS_COLORS|MACHTYPE|MAILCHECK|MANDATORY_PATH|NO_AT_BRIDGE|OLDPWD|OPTERR|OPTIND|ORBIT_SOCKETDIR|OSTYPE|PAPERSIZE|PATH|PIPESTATUS|PPID|PS1|PS2|PS3|PS4|PWD|RANDOM|REPLY|SECONDS|SELINUX_INIT|SESSION|SESSIONTYPE|SESSION_MANAGER|SHELL|SHELLOPTS|SHLVL|SSH_AUTH_SOCK|TERM|UID|UPSTART_EVENTS|UPSTART_INSTANCE|UPSTART_JOB|UPSTART_SESSION|USER|WINDOWID|XAUTHORITY|XDG_CONFIG_DIRS|XDG_CURRENT_DESKTOP|XDG_DATA_DIRS|XDG_GREETER_DATA_DIR|XDG_MENU_PREFIX|XDG_RUNTIME_DIR|XDG_SEAT|XDG_SEAT_PATH|XDG_SESSION_DESKTOP|XDG_SESSION_ID|XDG_SESSION_PATH|XDG_SESSION_TYPE|XDG_VTNR|XMODIFIERS)\\b",a={pattern:/(^(["']?)\w+\2)[ \t]+\S.*/,lookbehind:!0,alias:"punctuation",inside:null},n={bash:a,environment:{pattern:RegExp("\\$"+t),alias:"constant"},variable:[{pattern:/\$?\(\([\s\S]+?\)\)/,greedy:!0,inside:{variable:[{pattern:/(^\$\(\([\s\S]+)\)\)/,lookbehind:!0},/^\$\(\(/],number:/\b0x[\dA-Fa-f]+\b|(?:\b\d+(?:\.\d*)?|\B\.\d+)(?:[Ee]-?\d+)?/,operator:/--|\+\+|\*\*=?|<<=?|>>=?|&&|\|\||[=!+\-*/%<>^&|]=?|[?~:]/,punctuation:/\(\(?|\)\)?|,|;/}},{pattern:/\$\((?:\([^)]+\)|[^()])+\)|`[^`]+`/,greedy:!0,inside:{variable:/^\$\(|^`|\)$|`$/}},{pattern:/\$\{[^}]+\}/,greedy:!0,inside:{operator:/:[-=?+]?|[!\/]|##?|%%?|\^\^?|,,?/,punctuation:/[\[\]]/,environment:{pattern:RegExp("(\\{)"+t),lookbehind:!0,alias:"constant"}}},/\$(?:\w+|[#?*!@$])/],entity:/\\(?:[abceEfnrtv\\"]|O?[0-7]{1,3}|U[0-9a-fA-F]{8}|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{1,2})/};e.languages.bash={shebang:{pattern:/^#!\s*\/.*/,alias:"important"},comment:{pattern:/(^|[^"{\\$])#.*/,lookbehind:!0},"function-name":[{pattern:/(\bfunction\s+)[\w-]+(?=(?:\s*\(?:\s*\))?\s*\{)/,lookbehind:!0,alias:"function"},{pattern:/\b[\w-]+(?=\s*\(\s*\)\s*\{)/,alias:"function"}],"for-or-select":{pattern:/(\b(?:for|select)\s+)\w+(?=\s+in\s)/,alias:"variable",lookbehind:!0},"assign-left":{pattern:/(^|[\s;|&]|[<>]\()\w+(?:\.\w+)*(?=\+?=)/,inside:{environment:{pattern:RegExp("(^|[\\s;|&]|[<>]\\()"+t),lookbehind:!0,alias:"constant"}},alias:"variable",lookbehind:!0},parameter:{pattern:/(^|\s)-{1,2}(?:\w+:[+-]?)?\w+(?:\.\w+)*(?=[=\s]|$)/,alias:"variable",lookbehind:!0},string:[{pattern:/((?:^|[^<])<<-?\s*)(\w+)\s[\s\S]*?(?:\r?\n|\r)\2/,lookbehind:!0,greedy:!0,inside:n},{pattern:/((?:^|[^<])<<-?\s*)(["'])(\w+)\2\s[\s\S]*?(?:\r?\n|\r)\3/,lookbehind:!0,greedy:!0,inside:{bash:a}},{pattern:/(^|[^\\](?:\\\\)*)"(?:\\[\s\S]|\$\([^)]+\)|\$(?!\()|`[^`]+`|[^"\\`$])*"/,lookbehind:!0,greedy:!0,inside:n},{pattern:/(^|[^$\\])'[^']*'/,lookbehind:!0,greedy:!0},{pattern:/\$'(?:[^'\\]|\\[\s\S])*'/,greedy:!0,inside:{entity:n.entity}}],environment:{pattern:RegExp("\\$?"+t),alias:"constant"},variable:n.variable,function:{pattern:/(^|[\s;|&]|[<>]\()(?:add|apropos|apt|apt-cache|apt-get|aptitude|aspell|automysqlbackup|awk|basename|bash|bc|bconsole|bg|bzip2|cal|cargo|cat|cfdisk|chgrp|chkconfig|chmod|chown|chroot|cksum|clear|cmp|column|comm|composer|cp|cron|crontab|csplit|curl|cut|date|dc|dd|ddrescue|debootstrap|df|diff|diff3|dig|dir|dircolors|dirname|dirs|dmesg|docker|docker-compose|du|egrep|eject|env|ethtool|expand|expect|expr|fdformat|fdisk|fg|fgrep|file|find|fmt|fold|format|free|fsck|ftp|fuser|gawk|git|gparted|grep|groupadd|groupdel|groupmod|groups|grub-mkconfig|gzip|halt|head|hg|history|host|hostname|htop|iconv|id|ifconfig|ifdown|ifup|import|install|ip|java|jobs|join|kill|killall|less|link|ln|locate|logname|logrotate|look|lpc|lpr|lprint|lprintd|lprintq|lprm|ls|lsof|lynx|make|man|mc|mdadm|mkconfig|mkdir|mke2fs|mkfifo|mkfs|mkisofs|mknod|mkswap|mmv|more|most|mount|mtools|mtr|mutt|mv|nano|nc|netstat|nice|nl|node|nohup|notify-send|npm|nslookup|op|open|parted|passwd|paste|pathchk|ping|pkill|pnpm|podman|podman-compose|popd|pr|printcap|printenv|ps|pushd|pv|quota|quotacheck|quotactl|ram|rar|rcp|reboot|remsync|rename|renice|rev|rm|rmdir|rpm|rsync|scp|screen|sdiff|sed|sendmail|seq|service|sftp|sh|shellcheck|shuf|shutdown|sleep|slocate|sort|split|ssh|stat|strace|su|sudo|sum|suspend|swapon|sync|sysctl|tac|tail|tar|tee|time|timeout|top|touch|tr|traceroute|tsort|tty|umount|uname|unexpand|uniq|units|unrar|unshar|unzip|update-grub|uptime|useradd|userdel|usermod|users|uudecode|uuencode|v|vcpkg|vdir|vi|vim|virsh|vmstat|wait|watch|wc|wget|whereis|which|who|whoami|write|xargs|xdg-open|yarn|yes|zenity|zip|zsh|zypper)(?=$|[)\s;|&])/,lookbehind:!0},keyword:{pattern:/(^|[\s;|&]|[<>]\()(?:case|do|done|elif|else|esac|fi|for|function|if|in|select|then|until|while)(?=$|[)\s;|&])/,lookbehind:!0},builtin:{pattern:/(^|[\s;|&]|[<>]\()(?:\.|:|alias|bind|break|builtin|caller|cd|command|continue|declare|echo|enable|eval|exec|exit|export|getopts|hash|help|let|local|logout|mapfile|printf|pwd|read|readarray|readonly|return|set|shift|shopt|source|test|times|trap|type|typeset|ulimit|umask|unalias|unset)(?=$|[)\s;|&])/,lookbehind:!0,alias:"class-name"},boolean:{pattern:/(^|[\s;|&]|[<>]\()(?:false|true)(?=$|[)\s;|&])/,lookbehind:!0},"file-descriptor":{pattern:/\B&\d\b/,alias:"important"},operator:{pattern:/\d?<>|>\||\+=|=[=~]?|!=?|<<[<-]?|[&\d]?>>|\d[<>]&?|[<>][&=]?|&[>&]?|\|[&|]?/,inside:{"file-descriptor":{pattern:/^\d/,alias:"important"}}},punctuation:/\$?\(\(?|\)\)?|\.\.|[{}[\];\\]/,number:{pattern:/(^|\s)(?:[1-9]\d*|0)(?:[.,]\d+)?\b/,lookbehind:!0}},a.inside=e.languages.bash;for(var s=["comment","function-name","for-or-select","assign-left","parameter","string","environment","function","keyword","builtin","boolean","file-descriptor","operator","punctuation","number"],o=n.variable[1].inside,i=0;i<s.length;i++)o[s[i]]=e.languages.bash[s[i]];e.languages.sh=e.languages.bash,e.languages.shell=e.languages.bash}(Prism);
 !function(e){var n=/\$(?:\w[a-z\d]*(?:_[^\x00-\x1F\s"'\\()$]*)?|\{[^}\s"'\\]+\})/i;e.languages.nginx={comment:{pattern:/(^|[\s{};])#.*/,lookbehind:!0,greedy:!0},directive:{pattern:/(^|\s)\w(?:[^;{}"'\\\s]|\\.|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\s+(?:#.*(?!.)|(?![#\s])))*?(?=\s*[;{])/,lookbehind:!0,greedy:!0,inside:{string:{pattern:/((?:^|[^\\])(?:\\\\)*)(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/,lookbehind:!0,greedy:!0,inside:{escape:{pattern:/\\["'\\nrt]/,alias:"entity"},variable:n}},comment:{pattern:/(\s)#.*/,lookbehind:!0,greedy:!0},keyword:{pattern:/^\S+/,greedy:!0},boolean:{pattern:/(\s)(?:off|on)(?!\S)/,lookbehind:!0},number:{pattern:/(\s)\d+[a-z]*(?!\S)/i,lookbehind:!0},variable:n}},punctuation:/[{};]/}}(Prism);
   </script>
-  <script nonce="rsSmpSEN5mVg-eFFTeY8yA">
+  <script nonce="KCOPVuzVmtSoSTLG25gz-w">
     document.addEventListener("DOMContentLoaded", function () {
       const body = document.body;
       const findings = Array.from(document.querySelectorAll('.finding'));
@@ -4886,7 +4896,14 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       let activeSearch = '';
       let requiredOnly    = false;
       let recommendedOnly = false;
+      let excludedOnly    = false;
       let activeScanner   = '';  
+
+      
+      
+      function isActive(f) {
+        return f.dataset.suppressed !== 'true' && f.dataset.classification !== 'excluded';
+      }
 
       function isVisible(f) {
         if (activeSeverities.size > 0) {
@@ -4894,6 +4911,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         }
         if (requiredOnly    && f.dataset.classification !== 'required')    return false;
         if (recommendedOnly && f.dataset.classification !== 'recommended') return false;
+        if (excludedOnly    && f.dataset.classification !== 'excluded')    return false;
         if (activeScanner && f.dataset.scanner !== activeScanner) return false;
         if (activeSearch) {
           const tokens = activeSearch.toLowerCase().split(/\s+/).filter(Boolean);
@@ -5086,8 +5104,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         syncPillState = function() {
           pills.forEach(p => {
             const sev = p.dataset.filter;
-            const pressed = sev === 'all' ? activeSeverities.size === 0 : activeSeverities.has(sev);
-            p.setAttribute('aria-pressed', String(pressed));
+            p.setAttribute('aria-pressed', String(sev === 'all' ? activeSeverities.size === 0 : activeSeverities.has(sev)));
           });
         };
         pills.forEach(p => p.addEventListener('click', () => {
@@ -5105,6 +5122,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             applyVisibility();
             return;
           }
+          if (sev === 'excluded') { toggleExcludedFilter(p); return; }
           if (sev === 'all') {
             activeSeverities.clear();
             if (requiredOnly) {
@@ -5117,6 +5135,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
               const recPill = document.querySelector('.pill[data-filter="recommended"]');
               if (recPill) recPill.setAttribute('aria-pressed', 'false');
             }
+            resetExcludedFilter();
           } else {
             if (activeSeverities.has(sev)) activeSeverities.delete(sev);
             else activeSeverities.add(sev);
@@ -5164,11 +5183,14 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         const countEl   = document.getElementById('search-count');
         if (!noResults) return;
         const inScope = f => !activeScanner || f.dataset.scanner === activeScanner;
-        const visible = findings.filter(f => !f.hidden && f.dataset.suppressed !== 'true').length;
+        
+        
+        const inPool = f => excludedOnly ? f.dataset.classification === 'excluded' : isActive(f);
+        const visible = findings.filter(f => !f.hidden && inPool(f)).length;
         noResults.hidden = visible > 0;
         if (countEl) {
-          const isFiltered = activeSeverities.size > 0 || activeSearch !== '' || requiredOnly || recommendedOnly;
-          const scopeTotal = findings.filter(f => f.dataset.suppressed !== 'true' && inScope(f)).length;
+          const isFiltered = activeSeverities.size > 0 || activeSearch !== '' || requiredOnly || recommendedOnly || excludedOnly;
+          const scopeTotal = findings.filter(f => inPool(f) && inScope(f)).length;
           countEl.textContent = isFiltered ? `${visible} of ${scopeTotal} shown` : '';
         }
       }
@@ -5184,6 +5206,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           if (reqPill) reqPill.setAttribute('aria-pressed', 'false');
           const recPill = document.querySelector('.pill[data-filter="recommended"]');
           if (recPill) recPill.setAttribute('aria-pressed', 'false');
+          resetExcludedFilter();
           activeSearch = '';
           if (searchInput) searchInput.value = '';
           if (syncPillState) syncPillState();
@@ -5263,9 +5286,32 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         });
       }
 
+      
+      function resetExcludedFilter() {
+        excludedOnly = false;
+        const excPill = document.querySelector('.pill[data-filter="excluded"]');
+        if (excPill) excPill.setAttribute('aria-pressed', 'false');
+      }
+
+      
+      
+      function toggleExcludedFilter(pill) {
+        excludedOnly = !excludedOnly;
+        pill.setAttribute('aria-pressed', String(excludedOnly));
+        applyVisibility();
+        if (excludedOnly) openSection('excluded');
+      }
+
+      
+      
+      function openSection(name) {
+        const hdr = document.querySelector('.findings-section[data-section="' + name + '"]');
+        if (hdr && hdr.getAttribute('aria-expanded') === 'false') hdr.click();
+      }
+
       function initSmartDefaults() {
         const SMART_OPEN_CAP = 25;
-        findings.filter(f => f.dataset.suppressed !== 'true').slice(0, SMART_OPEN_CAP).forEach(f => { f.open = true; });
+        findings.filter(isActive).slice(0, SMART_OPEN_CAP).forEach(f => { f.open = true; });
       }
 
       function initToggleAll() {
@@ -5312,7 +5358,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             label: f.dataset.findingId || ('#' + (f.dataset.issueNum || String(i + 1))),
             classification: f.dataset.classification || '',
             scanner: f.dataset.scanner || '',
-            suppressed: f.dataset.suppressed === 'true'
+            suppressed: f.dataset.suppressed === 'true',
+            excluded: f.dataset.classification === 'excluded'
           };
         });
 
@@ -5320,6 +5367,14 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
 
         const fileLabels = buildFileLabels(data);
         const SEV_ORDER = ['critical','high','medium','low','info','unknown'];
+        
+        const CLASS_STYLES = {
+          required:    { ls: ' tv-ls--required',    chip: 'tv-chip--required' },
+          recommended: { ls: ' tv-ls--recommended', chip: 'tv-chip--recommended' },
+          excluded:    { ls: ' tv-ls--excluded',    chip: 'tv-chip--excluded' },
+        };
+        function lsClassOf(d) { return d.classification in CLASS_STYLES ? CLASS_STYLES[d.classification].ls : ''; }
+        function chipClassOf(d) { return d.classification in CLASS_STYLES ? CLASS_STYLES[d.classification].chip : ''; }
         const chev = '<span class="tv-ch"><svg aria-hidden="true"><use href="#tb-chevron-right"/></svg></span>';
         const chevLeaf = '<span class="tv-ch tv-ch--leaf" aria-hidden="true"></span>';
         const fileIcon = '<span class="tv-ti"><svg aria-hidden="true"><use href="#tb-file"/></svg></span>';
@@ -5485,11 +5540,9 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         
         
         
-        function renderSevGroups(items, idSuffix, parentId, showClassification) {
-          const lsClassFor = d => d.classification === 'required' ? ' tv-ls--required'
-            : d.classification === 'recommended' ? ' tv-ls--recommended' : '';
-          const chipClassFor = d => d.classification === 'required' ? 'tv-chip--required'
-            : d.classification === 'recommended' ? 'tv-chip--recommended' : '';
+        
+        function renderSevGroups(items, idSuffix, parentId, showClassification, baseDepth) {
+          const depth = baseDepth || 0;
           let html = '', rendered = 0;
           const pSuffix = parentId ? ' ' + parentId : '';
           const sevParent = parentId ? ' data-grp-parent="' + parentId + '"' : '';
@@ -5502,7 +5555,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             
             if (rendered > 0) html += '<div class="tv-sep"' + sevParent + '></div>';
             rendered++;
-            html += '<div class="tv-tr tv-d0" data-grp-id="' + sevId + '"' + sevParent + '>' +
+            html += '<div class="tv-tr tv-d' + depth + '" data-grp-id="' + sevId + '"' + sevParent + '>' +
               chev + dot(sev) +
               '<span class="tv-tl">' + capSev + '</span>' +
               '<span class="tv-tc">' + sevItems.length + '</span></div>';
@@ -5511,18 +5564,18 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             for (const [file, fileItems] of byFile) {
               const basename = fileLabels.get(file) || '(unknown)';
               const fileId = sevId + '-f' + fi++;
-              html += '<div class="tv-tr tv-d1" data-grp-parent="' + sevId + pSuffix + '" data-grp-id="' + fileId + '">' +
+              html += '<div class="tv-tr tv-d' + (depth + 1) + '" data-grp-parent="' + sevId + pSuffix + '" data-grp-id="' + fileId + '">' +
                 chev + fileIcon +
                 '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
                 '<span class="tv-tc">' + fileItems.length + '</span></div>';
               const byRule = groupBy(fileItems, ruleKey);
               for (const ruleItems of byRule.values()) {
                 html += renderRuleCluster(ruleItems, {
-                  leafDepth: 'tv-d2',
+                  leafDepth: 'tv-d' + (depth + 2),
                   parents: fileId + ' ' + sevId + pSuffix,
                   chipClass: '',
-                  lsClassFor: showClassification ? lsClassFor : null,
-                  classFor: showClassification ? chipClassFor : null
+                  lsClassFor: showClassification ? lsClassOf : null,
+                  classFor: showClassification ? chipClassOf : null
                 });
               }
             }
@@ -5580,8 +5633,17 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           return html;
         }
 
+        
+        
+        function excludedHeader(grpId, count) {
+          return '<div class="tv-prio-hdr tv-prio-hdr--excluded" data-grp-id="' + grpId + '">' +
+            '<svg width="9" height="9" aria-hidden="true"><use href="#tb-circle-off"/></svg>' +
+            '<span>Excluded in this PR</span><span class="tv-tc">' + count + '</span></div>';
+        }
+
         function buildSevTree(dataset, fileLabels) {
-          const activeItems = dataset.filter(d => !d.suppressed);
+          const activeItems = dataset.filter(d => !d.suppressed && !d.excluded);
+          const excItems    = dataset.filter(d => d.excluded);
           const suppItems   = dataset.filter(d => d.suppressed);
 
           let html = '';
@@ -5604,6 +5666,11 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             html += renderSevGroups(activeItems, '');
           }
 
+          if (excItems.length) {
+            html += excludedHeader('pg-excluded', excItems.length);
+            html += renderSevGroups(excItems, 'exc', 'pg-excluded');
+          }
+
           if (suppItems.length) {
             html += '<div class="tv-sep"></div>';
             html += renderSuppressedGroup(suppItems, 'sg-suppressed');
@@ -5612,7 +5679,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         }
 
         function buildScannerTree(dataset, fileLabels, scannerOrder) {
-          const activeItems = dataset.filter(d => !d.suppressed);
+          const activeItems = dataset.filter(d => !d.suppressed && !d.excluded);
+          const excItems    = dataset.filter(d => d.excluded);
           const suppItems   = dataset.filter(d => d.suppressed);
           const byScanner = groupBy(activeItems, d => d.scanner);
 
@@ -5629,6 +5697,24 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             html += renderSevGroups(items, grpId, grpId, requiredEnabled);
           });
 
+          if (excItems.length) {
+            html += '<div class="tv-sep"></div>';
+            html += excludedHeader('scg-excluded', excItems.length);
+            const excByScanner = groupBy(excItems, d => d.scanner);
+            let si = 0;
+            scannerOrder.forEach(scanner => {
+              const items = excByScanner.get(scanner);
+              if (!items || !items.length) return;
+              const scanId = 'scg-excluded-s' + si;
+              if (si > 0) html += '<div class="tv-sep" data-grp-parent="scg-excluded"></div>';
+              si++;
+              html += '<div class="tv-tr tv-d1" data-grp-parent="scg-excluded" data-grp-id="' + scanId + '">' +
+                chev + '<span class="tv-tl">' + esc(scanner) + '</span>' +
+                '<span class="tv-tc">' + items.length + '</span></div>';
+              html += renderSevGroups(items, scanId, scanId + ' scg-excluded', true, 2);
+            });
+          }
+
           if (suppItems.length) {
             html += '<div class="tv-sep"></div>';
             html += renderSuppressedGroup(suppItems, 'scg-suppressed', scannerOrder);
@@ -5638,7 +5724,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
 
         function buildRuleTree(dataset, fileLabels) {
           let html = '';
-          const activeItems = dataset.filter(d => !d.suppressed);
+          const activeItems = dataset.filter(d => !d.suppressed && !d.excluded);
+          const excItems    = dataset.filter(d => d.excluded);
           const suppItems   = dataset.filter(d => d.suppressed);
 
           function renderRuleEntries(items, riOffset, dimmed, parentChain) {
@@ -5670,7 +5757,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
                 const basename = fileLabels.get(file) || '(unknown)';
                 if (fileItems.length === 1) {
                   const d = fileItems[0];
-                  const lsCls = d.classification === 'required' ? ' tv-ls--required' : d.classification === 'recommended' ? ' tv-ls--recommended' : '';
+                  const lsCls = lsClassOf(d);
                   html += '<a class="tv-tr tv-d1' + dimClass + '" href="#' + d.id + '" target="_self" title="' + esc(file) + ':' + esc(d.line) + '" data-grp-parent="' + ruleNodeId + chain + '">' +
                     chevLeaf + fileIcon +
                     '<span class="tv-tl">' + esc(basename) + '</span>' + idLabel(d, lsCls) + '</a>';
@@ -5684,7 +5771,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
                     parents: fileNodeId + ' ' + ruleNodeId + chain,
                     chipClass: dimmed ? 'tv-grp--suppressed' : '',
                     titleFor: d => esc(file) + ':' + esc(d.line),
-                    classFor: d => d.classification === 'required' ? 'tv-chip--required' : d.classification === 'recommended' ? 'tv-chip--recommended' : ''
+                    classFor: chipClassOf
                   });
                 }
               }
@@ -5694,12 +5781,19 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
 
           
           const activeCount = renderRuleEntries(activeItems, 0, false);
+          let excCount = 0;
+          if (excItems.length) {
+            const excGrpId = 'rg-excluded';
+            if (activeCount > 0) html += '<div class="tv-sep"></div>';
+            html += excludedHeader(excGrpId, excItems.length);
+            excCount = renderRuleEntries(excItems, activeCount, false, excGrpId);
+          }
           if (suppItems.length) {
             const supGrpId = 'rg-suppressed';
-            if (activeCount > 0) html += '<div class="tv-sep"></div>';
+            if (activeCount + excCount > 0) html += '<div class="tv-sep"></div>';
             html += '<div class="tv-prio-hdr tv-prio-hdr--suppressed" data-grp-id="' + supGrpId + '">' +
               '&#8856; <span>Suppressed</span><span class="tv-tc">' + suppItems.length + '</span></div>';
-            renderRuleEntries(suppItems, activeCount, true, supGrpId);
+            renderRuleEntries(suppItems, activeCount + excCount, true, supGrpId);
           }
           return html;
         }
@@ -5817,7 +5911,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           if (treeScanner) {
             treeScanner.innerHTML = filtered.length ? buildScannerTree(filtered, fileLabels, scannerOrder) : empty;
           }
-          if (tocCountEl) tocCountEl.textContent = String(filtered.filter(d => !d.suppressed).length);
+          if (tocCountEl) tocCountEl.textContent = String(filtered.filter(d => excludedOnly ? d.excluded : !d.suppressed && !d.excluded).length);
           collapseSupGroupIfAll();
           initTocScrollSpy();
         };
@@ -5987,7 +6081,19 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             if (supHeader) supHeader.setAttribute('aria-expanded', 'true');
           }
           target.open = true;
-          requestAnimationFrame(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+          
+          
+          
+          
+          const holder = target.closest('.findings-section-content');
+          let scrollDelay = 0;
+          if (holder && holder.classList.contains('section-collapsed') &&
+              (holder.id === 'excluded-section-content' || holder.id === 'suppressed-section-content')) {
+            const hdr = document.querySelector('.findings-section[aria-controls="' + holder.id + '"]');
+            if (hdr) { hdr.click(); scrollDelay = 260; }
+          }
+          const scrollToTarget = () => requestAnimationFrame(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+          if (scrollDelay) setTimeout(scrollToTarget, scrollDelay); else scrollToTarget();
           setTocActive(id);
           pauseSpy();
         });
@@ -6011,7 +6117,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         const GAP = 6;
 
         function countFor(scanner) {
-          return findings.filter(f => f.dataset.suppressed !== 'true' &&
+          return findings.filter(f => isActive(f) &&
             (scanner === '' || f.dataset.scanner === scanner)).length;
         }
 
@@ -6034,10 +6140,11 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         
         
         function updateSummaryPillCounts() {
-          const scoped = findings.filter(f => f.dataset.suppressed !== 'true' &&
-            (!activeScanner || f.dataset.scanner === activeScanner));
+          const inTab = f => !activeScanner || f.dataset.scanner === activeScanner;
+          const scoped = findings.filter(f => isActive(f) && inTab(f));
           const sev = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
           let required = 0, recommended = 0;
+          const excluded = findings.filter(f => f.dataset.classification === 'excluded' && inTab(f)).length;
           scoped.forEach(f => {
             const s = f.dataset.severity;
             if (s && s in sev) sev[s]++;
@@ -6048,6 +6155,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           Object.keys(sev).forEach(s => setPillCount(s, sev[s]));
           setPillCount('required', required);
           setPillCount('recommended', recommended);
+          setPillCount('excluded', excluded);
         }
 
         function closeMenu() {
@@ -6272,6 +6380,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             if (reqPill) reqPill.setAttribute('aria-pressed', 'false');
             const recPill2 = document.querySelector('.pill[data-filter="recommended"]');
             if (recPill2) recPill2.setAttribute('aria-pressed', 'false');
+            resetExcludedFilter();
             activeSearch = '';
             if (searchInput) searchInput.value = '';
             if (syncPillState) syncPillState();
@@ -6569,7 +6678,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
   <div class="report-footer__accent" aria-hidden="true"></div>
   <div class="report-footer__inner">
     <div class="report-footer__left">
-      <span>Generated 19th November 2026 5:54:08 am UTC</span>
+      <span>Generated 19th November 2026 8:24:34 am UTC</span>
     </div>
     <div class="report-footer__right">
       <a href="https://github.com/scan-io-git/scan-io" target="_blank" rel="noopener">scan-io-git/scan-io</a>

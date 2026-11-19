@@ -196,3 +196,19 @@ func ResultDecisionKind(result *sarif.Result) string {
 	k, _ := result.Properties["DecisionKind"].(string)
 	return k
 }
+
+// CollectDecisionInfo returns how many non-suppressed results carry each PR
+// decision kind ("excluded", "confirmed", "pending"). Kinds nobody used are
+// absent from the map. Reads Properties["DecisionKind"] set by
+// EnrichResultsTriageProperty.
+func (r Report) CollectDecisionInfo() map[string]int {
+	counts := map[string]int{}
+	for _, run := range r.Runs {
+		for _, result := range run.Results {
+			if k := ResultDecisionKind(result); k != "" {
+				counts[k]++
+			}
+		}
+	}
+	return counts
+}

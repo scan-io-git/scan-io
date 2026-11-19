@@ -71,6 +71,9 @@ type ReportMetadata struct {
 	RequiredInfo    map[string]int
 	// ExcludedCount is the number of results excluded by an applied PR decision.
 	ExcludedCount int
+	// HasDecisions is true when any result carries a PR decision (excluded,
+	// confirmed or pending); it gates the icons only those panels use.
+	HasDecisions bool
 	// ReportStateID scopes the reader's filter state to this report; empty means
 	// the report is unidentifiable and filters must not be persisted at all.
 	ReportStateID string
@@ -296,7 +299,7 @@ var ToHtmlCmd = &cobra.Command{
 
 		severityInfo := sarifReport.CollectSeverityInfo()
 		suppressionInfo := sarifReport.CollectSuppressionInfo()
-		excludedCount := sarifReport.CollectExcludedInfo()
+		decisionInfo := sarifReport.CollectDecisionInfo()
 		requiredInfo := map[string]int{"required": 0, "recommended": 0}
 		if requiredEnabled {
 			requiredInfo = sarifReport.CollectRequiredInfo()
@@ -318,7 +321,8 @@ var ToHtmlCmd = &cobra.Command{
 			SuppressionInfo:    suppressionInfo,
 			RequiredEnabled:    requiredEnabled,
 			RequiredInfo:       requiredInfo,
-			ExcludedCount:      excludedCount,
+			ExcludedCount:      decisionInfo[scaniosarif.DecisionExcluded],
+			HasDecisions:       len(decisionInfo) > 0,
 		}
 		metadata.ReportStateID = resolveReportStateID(repositoryMetadata, parsedURL, commitHash, scanners, allToHTMLOptions.NoSuppressions)
 		if parsedURL != nil {

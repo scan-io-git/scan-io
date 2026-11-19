@@ -118,6 +118,7 @@
 
       /* Required / Recommended / Suppressed palette — light */
       --req-fg: #9a1313; --req-bg: #fff0f0; --req-border: #cf222e;
+      --exc-fg: #0f5c4f; --exc-bg: #e6f6f2; --exc-border: #1a7f6b;
       --rec-fg: #0550ae; --rec-bg: #ddf4ff; --rec-border: #0969da;
       --sup-fg: #3b4450; --sup-bg: #f0f3f6; --sup-border: #b0b9c3;
 
@@ -207,6 +208,7 @@
 
       /* Required / Recommended / Suppressed palette — dark */
       --req-fg: #ff7b72; --req-bg: #490202; --req-border: #f85149;
+      --exc-fg: #56d4bc; --exc-bg: #04241e; --exc-border: #1a7f6b;
       --rec-fg: #79c0ff; --rec-bg: #051d4d; --rec-border: #1f6feb;
       --sup-fg: #9198a1; --sup-bg: #1c2128; --sup-border: #444c56;
 
@@ -403,6 +405,7 @@
     .req-notice { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); margin-bottom: var(--space-3); font-size: var(--text-sm); border: 1px solid; }
     .req-notice--required    { background: var(--req-bg); color: var(--req-fg); border-color: var(--req-border); }
     .req-notice--recommended { background: var(--rec-bg); color: var(--rec-fg); border-color: var(--rec-border); }
+    .req-notice--excluded    { background: var(--exc-bg); color: var(--exc-fg); border-color: var(--exc-border); }
     .req-notice__text strong { font-weight: 700; }
 
     /* False-positive review panel. Colour is fixed and independent of the
@@ -463,6 +466,7 @@
     .findings-section { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); margin: var(--space-3) 0 var(--space-2); border-radius: var(--radius-sm); font-size: var(--text-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; user-select: none; }
     .findings-section--required    { background: var(--req-bg); color: var(--req-fg); border-left: 3px solid var(--req-border); }
     .findings-section--recommended { background: var(--rec-bg); color: var(--rec-fg); border-left: 3px solid var(--rec-border); }
+    .findings-section--excluded    { background: var(--exc-bg); color: var(--exc-fg); border-left: 3px solid var(--exc-border); }
     .findings-section--suppressed  { background: var(--sup-bg); color: var(--sup-fg); border-left: 3px solid var(--sup-border); }
     .findings-section__count { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; margin-right: var(--space-1); }
     .findings-section__chevron { display: flex; align-items: center; flex-shrink: 0; }
@@ -488,6 +492,7 @@
     .tv-prio-hdr { display: flex; align-items: center; gap: var(--space-1); height: 24px; padding: 0 var(--space-2); border-radius: var(--radius-sm); margin: 4px var(--space-2) 1px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; user-select: none; }
     .tv-prio-hdr--required    { background: var(--req-bg); color: var(--req-fg); border-left: 2px solid var(--req-border); }
     .tv-prio-hdr--recommended { background: var(--rec-bg); color: var(--rec-fg); border-left: 2px solid var(--rec-border); }
+    .tv-prio-hdr--excluded    { background: var(--exc-bg); color: var(--exc-fg); border-left: 2px solid var(--exc-border); }
     .tv-prio-hdr--suppressed  { background: var(--sup-bg); color: var(--sup-fg); border-left: 2px solid var(--sup-border); }
     .tv-prio-hdr .tv-tc { margin-left: auto; }
 
@@ -1022,6 +1027,8 @@
     .pill--required[aria-pressed="true"] { background: var(--req-fg); color: var(--req-bg); border-color: var(--req-fg); }
     .pill--recommended { border-color: var(--rec-border); color: var(--rec-fg); background: var(--rec-bg); }
     .pill--recommended[aria-pressed="true"] { background: var(--rec-fg); color: var(--rec-bg); border-color: var(--rec-fg); }
+    .pill--excluded { border-color: var(--exc-border); color: var(--exc-fg); background: var(--exc-bg); }
+    .pill--excluded[aria-pressed="true"] { background: var(--exc-fg); color: var(--exc-bg); border-color: var(--exc-fg); }
 
     /* Count inherits pill color when active */
     .pill[aria-pressed="true"] .pill__n { color: currentColor; opacity: 0.7; }
@@ -1414,6 +1421,7 @@
     .tv-ls--id { max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .tv-ls--required    { color: var(--req-fg); }
     .tv-ls--recommended { color: var(--rec-fg); }
+    .tv-ls--excluded    { color: var(--exc-fg); }
 
     /* Count badge */
     .tv-tc {
@@ -1489,6 +1497,8 @@
     .tv-chips a:focus-visible { outline: none; box-shadow: var(--focus-ring); }
     .tv-chips a.tv-chip--required    { border-color: var(--req-border); background: color-mix(in oklch, var(--req-bg) 60%, var(--bg-inset)); color: var(--req-fg); }
     .tv-chips a.tv-chip--recommended { border-color: var(--rec-border); background: color-mix(in oklch, var(--rec-bg) 60%, var(--bg-inset)); color: var(--rec-fg); }
+    .tv-chips a.tv-chip--excluded    { border-color: var(--exc-border); background: color-mix(in oklch, var(--exc-bg) 60%, var(--bg-inset)); color: var(--exc-fg); }
+    .tv-chips a.tv-chip--excluded:hover    { border-color: var(--exc-fg); }
     .tv-chips a.tv-chip--required:hover    { border-color: var(--req-fg); }
     .tv-chips a.tv-chip--recommended:hover { border-color: var(--rec-fg); }
 
@@ -2470,6 +2480,18 @@
       <path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.871l-8.106 -13.534a1.914 1.914 0 0 0 -3.274 0z"/>
       <path d="M12 17l0 .01"/>
     </symbol>
+    {{- if .Metadata.HasDecisions}}
+    <symbol id="tb-circle-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <path d="M20.042 16.045a9 9 0 0 0 -12.087 -12.087m-2.318 1.677a9 9 0 1 0 12.725 12.73"/>
+      <path d="M3 3l18 18"/>
+    </symbol>
+    <symbol id="tb-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/>
+      <path d="M12 7v5l3 3"/>
+    </symbol>
+    {{- end}}
     <symbol id="tb-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <circle cx="12" cy="12" r="9"/>
@@ -2599,7 +2621,7 @@
 
   <div id="summary-bar-sentinel" aria-hidden="true" class="u-sentinel"></div>
   <div id="summary-bar" class="summary-bar">
-    <div class="summary-bar__inner{{if .Metadata.RequiredEnabled}} summary-bar__inner--policy{{end}}">
+    <div class="summary-bar__inner{{if or .Metadata.RequiredEnabled (gt .Metadata.ExcludedCount 0)}} summary-bar__inner--policy{{end}}">
       <div class="summary-bar__pills" role="group" aria-label="Filter by severity">
         <button class="pill" data-filter="all" aria-pressed="true">All <span class="pill__n">{{index .Metadata.SeverityInfo "total"}}</span></button>
         <button class="pill pill--critical" data-filter="critical" aria-pressed="false"><span class="pill__dot"></span>Critical <span class="pill__n">{{index .Metadata.SeverityInfo "critical"}}</span></button>
@@ -2607,10 +2629,15 @@
         <button class="pill pill--medium"   data-filter="medium"   aria-pressed="false"><span class="pill__dot"></span>Medium <span class="pill__n">{{index .Metadata.SeverityInfo "medium"}}</span></button>
         <button class="pill pill--low"      data-filter="low"      aria-pressed="false"><span class="pill__dot"></span>Low <span class="pill__n">{{index .Metadata.SeverityInfo "low"}}</span></button>
         <button class="pill pill--info"     data-filter="info"     aria-pressed="false"><span class="pill__dot"></span>Info <span class="pill__n">{{index .Metadata.SeverityInfo "info"}}</span></button>
-        {{- if .Metadata.RequiredEnabled}}
+        {{- if or .Metadata.RequiredEnabled (gt .Metadata.ExcludedCount 0)}}
         <span class="pill-sep" aria-hidden="true"></span>
+        {{- if .Metadata.RequiredEnabled}}
         <button class="pill pill--required"    data-filter="required"    aria-pressed="false"><svg aria-hidden="true" width="12" height="12"><use href="#tb-alert-triangle"/></svg> Required <span class="pill__n">{{index .Metadata.RequiredInfo "required"}}</span></button>
         <button class="pill pill--recommended" data-filter="recommended" aria-pressed="false"><svg aria-hidden="true" width="12" height="12"><use href="#tb-info"/></svg> Recommended <span class="pill__n">{{index .Metadata.RequiredInfo "recommended"}}</span></button>
+        {{- end}}
+        {{- if gt .Metadata.ExcludedCount 0}}
+        <button class="pill pill--excluded"    data-filter="excluded"    aria-pressed="false"><svg aria-hidden="true" width="12" height="12"><use href="#tb-circle-off"/></svg> Excluded <span class="pill__n">{{.Metadata.ExcludedCount}}</span></button>
+        {{- end}}
         {{- end}}
       </div>
       <div class="summary-bar__tools">
@@ -2680,16 +2707,17 @@
       <div class="findings">
         {{range .Results}}
         {{- if ne (index .Properties "Suppressed") "true"}}
-        {{- if $.Metadata.RequiredEnabled}}
-        {{- $sec := "recommended"}}{{if eq (index .Properties "Required") "true"}}{{$sec = "required"}}{{end}}
+        {{- $isExcluded := eq (index .Properties "Excluded") "true"}}
+        {{- if or $.Metadata.RequiredEnabled $isExcluded}}
+        {{- $sec := "recommended"}}{{if $isExcluded}}{{$sec = "excluded"}}{{else if eq (index .Properties "Required") "true"}}{{$sec = "required"}}{{end}}
         {{- if ne $sec $lastSection}}
         {{- if ne $lastSection ""}}</div></div>{{end}}
-        <div class="findings-section findings-section--{{$sec}}" data-section="{{$sec}}" role="button" tabindex="0" aria-expanded="true" aria-controls="{{$sec}}-section-content">
-          {{if eq $sec "required"}}<svg aria-hidden="true" width="13" height="13"><use href="#tb-alert-triangle"/></svg> Required{{else}}<svg aria-hidden="true" width="13" height="13"><use href="#tb-info"/></svg> Recommended{{end}}
-          <span class="findings-section__count">{{if eq $sec "required"}}{{index $.Metadata.RequiredInfo "required"}}{{else}}{{index $.Metadata.RequiredInfo "recommended"}}{{end}}</span>
+        <div class="findings-section findings-section--{{$sec}}" data-section="{{$sec}}" role="button" tabindex="0" aria-expanded="{{if eq $sec "excluded"}}false{{else}}true{{end}}" aria-controls="{{$sec}}-section-content">
+          {{if eq $sec "required"}}<svg aria-hidden="true" width="13" height="13"><use href="#tb-alert-triangle"/></svg> Required{{else if eq $sec "excluded"}}<svg aria-hidden="true" width="13" height="13"><use href="#tb-circle-off"/></svg> Excluded in this PR{{else}}<svg aria-hidden="true" width="13" height="13"><use href="#tb-info"/></svg> Recommended{{end}}
+          <span class="findings-section__count">{{if eq $sec "required"}}{{index $.Metadata.RequiredInfo "required"}}{{else if eq $sec "excluded"}}{{$.Metadata.ExcludedCount}}{{else}}{{index $.Metadata.RequiredInfo "recommended"}}{{end}}</span>
           <span class="findings-section__chevron" aria-hidden="true"><svg width="13" height="13" aria-hidden="true"><use href="#tb-chevron-right"/></svg></span>
         </div>
-        <div id="{{$sec}}-section-content" class="findings-section-content"><div class="section-content-inner">
+        <div id="{{$sec}}-section-content" class="findings-section-content{{if eq $sec "excluded"}} section-collapsed{{end}}"><div class="section-content-inner">
         {{- $lastSection = $sec}}
         {{- end}}
         {{- end}}
@@ -2699,7 +2727,7 @@
         {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
         {{ $locationWebURL := index $location.Properties "WebURL"}}
         {{ $locationPRWebURL := index $location.Properties "PRWebURL"}}
-        <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-classification="{{if $.Metadata.RequiredEnabled}}{{if eq (index .Properties "Required") "true"}}required{{else}}recommended{{end}}{{end}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}"{{if $multiScanner}} data-scanner="{{index .Properties "Scanner"}}"{{end}}{{with index .Properties "FindingID"}} data-finding-id="{{.}}"{{end}}>
+        <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-classification="{{if $isExcluded}}excluded{{else if $.Metadata.RequiredEnabled}}{{if eq (index .Properties "Required") "true"}}required{{else}}recommended{{end}}{{end}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}"{{if $multiScanner}} data-scanner="{{index .Properties "Scanner"}}"{{end}}{{with index .Properties "FindingID"}} data-finding-id="{{.}}"{{end}}>
           <summary class="finding__head{{with index .Properties "FindingID"}} finding__head--id{{end}}">
             <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
             {{with index .Properties "FindingID"}}<span class="finding__num finding__num--id" title="{{.}}">{{.}}</span>{{else}}<span class="finding__num">#{{add $n 1}}</span>{{end}}<span class="finding__title" role="heading" aria-level="2" title="{{index .Properties "Title"}}">{{index .Properties "Title"}}</span>
@@ -2708,11 +2736,13 @@
             </span>
           </summary>
           <div class="finding__body">
+            {{- if not $isExcluded}}
             {{- if $.Metadata.RequiredEnabled}}
             {{- $req := eq (index .Properties "Required") "true"}}
             <div class="req-notice req-notice--{{if $req}}required{{else}}recommended{{end}}">
               <span class="req-notice__text">{{if $req}}<svg aria-hidden="true" width="12" height="12"><use href="#tb-alert-triangle"/></svg> <strong>Required</strong>{{else}}<svg aria-hidden="true" width="12" height="12"><use href="#tb-info"/></svg> <strong>Recommended</strong>{{end}}{{with index .Properties "RequiredReason"}} &mdash; {{.}}{{end}}</span>
             </div>
+            {{- end}}
             {{- end}}
             {{- $fpVerdict := index .Properties "FPVerdict" -}}
             {{- if $fpVerdict}}
@@ -3052,7 +3082,14 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       let activeSearch = '';
       let requiredOnly    = false;
       let recommendedOnly = false;
+      let excludedOnly    = false;
       let activeScanner   = '';  // '' = all scanners; set by initScannerTabs()
+
+      // Suppressed and PR-excluded findings sit in their own sections and are not
+      // part of the "All" count, the scanner tab counts or the "N of M shown" text.
+      function isActive(f) {
+        return f.dataset.suppressed !== 'true' && f.dataset.classification !== 'excluded';
+      }
 
       function isVisible(f) {
         if (activeSeverities.size > 0) {
@@ -3060,6 +3097,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         }
         if (requiredOnly    && f.dataset.classification !== 'required')    return false;
         if (recommendedOnly && f.dataset.classification !== 'recommended') return false;
+        if (excludedOnly    && f.dataset.classification !== 'excluded')    return false;
         if (activeScanner && f.dataset.scanner !== activeScanner) return false;
         if (activeSearch) {
           const tokens = activeSearch.toLowerCase().split(/\s+/).filter(Boolean);
@@ -3252,8 +3290,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         syncPillState = function() {
           pills.forEach(p => {
             const sev = p.dataset.filter;
-            const pressed = sev === 'all' ? activeSeverities.size === 0 : activeSeverities.has(sev);
-            p.setAttribute('aria-pressed', String(pressed));
+            p.setAttribute('aria-pressed', String(sev === 'all' ? activeSeverities.size === 0 : activeSeverities.has(sev)));
           });
         };
         pills.forEach(p => p.addEventListener('click', () => {
@@ -3271,6 +3308,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             applyVisibility();
             return;
           }
+          if (sev === 'excluded') { toggleExcludedFilter(p); return; }
           if (sev === 'all') {
             activeSeverities.clear();
             if (requiredOnly) {
@@ -3283,6 +3321,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
               const recPill = document.querySelector('.pill[data-filter="recommended"]');
               if (recPill) recPill.setAttribute('aria-pressed', 'false');
             }
+            resetExcludedFilter();
           } else {
             if (activeSeverities.has(sev)) activeSeverities.delete(sev);
             else activeSeverities.add(sev);
@@ -3330,11 +3369,14 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         const countEl   = document.getElementById('search-count');
         if (!noResults) return;
         const inScope = f => !activeScanner || f.dataset.scanner === activeScanner;
-        const visible = findings.filter(f => !f.hidden && f.dataset.suppressed !== 'true').length;
+        // The Excluded pill asks for the excluded findings themselves, so they are
+        // the pool being counted; otherwise only active findings are.
+        const inPool = f => excludedOnly ? f.dataset.classification === 'excluded' : isActive(f);
+        const visible = findings.filter(f => !f.hidden && inPool(f)).length;
         noResults.hidden = visible > 0;
         if (countEl) {
-          const isFiltered = activeSeverities.size > 0 || activeSearch !== '' || requiredOnly || recommendedOnly;
-          const scopeTotal = findings.filter(f => f.dataset.suppressed !== 'true' && inScope(f)).length;
+          const isFiltered = activeSeverities.size > 0 || activeSearch !== '' || requiredOnly || recommendedOnly || excludedOnly;
+          const scopeTotal = findings.filter(f => inPool(f) && inScope(f)).length;
           countEl.textContent = isFiltered ? `${visible} of ${scopeTotal} shown` : '';
         }
       }
@@ -3350,6 +3392,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           if (reqPill) reqPill.setAttribute('aria-pressed', 'false');
           const recPill = document.querySelector('.pill[data-filter="recommended"]');
           if (recPill) recPill.setAttribute('aria-pressed', 'false');
+          resetExcludedFilter();
           activeSearch = '';
           if (searchInput) searchInput.value = '';
           if (syncPillState) syncPillState();
@@ -3429,9 +3472,32 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         });
       }
 
+      // Clears the Excluded pill filter and its pressed state.
+      function resetExcludedFilter() {
+        excludedOnly = false;
+        const excPill = document.querySelector('.pill[data-filter="excluded"]');
+        if (excPill) excPill.setAttribute('aria-pressed', 'false');
+      }
+
+      // Toggles the Excluded pill filter; showing only excluded findings opens
+      // their collapsed section so the result is visible.
+      function toggleExcludedFilter(pill) {
+        excludedOnly = !excludedOnly;
+        pill.setAttribute('aria-pressed', String(excludedOnly));
+        applyVisibility();
+        if (excludedOnly) openSection('excluded');
+      }
+
+      // Opens the collapsible section named by data-section, if it is closed.
+      // Clicking the header reuses the section's own animated toggle.
+      function openSection(name) {
+        const hdr = document.querySelector('.findings-section[data-section="' + name + '"]');
+        if (hdr && hdr.getAttribute('aria-expanded') === 'false') hdr.click();
+      }
+
       function initSmartDefaults() {
         const SMART_OPEN_CAP = 25;
-        findings.filter(f => f.dataset.suppressed !== 'true').slice(0, SMART_OPEN_CAP).forEach(f => { f.open = true; });
+        findings.filter(isActive).slice(0, SMART_OPEN_CAP).forEach(f => { f.open = true; });
       }
 
       function initToggleAll() {
@@ -3478,7 +3544,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             label: f.dataset.findingId || ('#' + (f.dataset.issueNum || String(i + 1))),
             classification: f.dataset.classification || '',
             scanner: f.dataset.scanner || '',
-            suppressed: f.dataset.suppressed === 'true'
+            suppressed: f.dataset.suppressed === 'true',
+            excluded: f.dataset.classification === 'excluded'
           };
         });
 
@@ -3486,6 +3553,14 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
 
         const fileLabels = buildFileLabels(data);
         const SEV_ORDER = ['critical','high','medium','low','info','unknown'];
+        // Colors a finding's label and chip by its class; unclassified findings get none.
+        const CLASS_STYLES = {
+          required:    { ls: ' tv-ls--required',    chip: 'tv-chip--required' },
+          recommended: { ls: ' tv-ls--recommended', chip: 'tv-chip--recommended' },
+          excluded:    { ls: ' tv-ls--excluded',    chip: 'tv-chip--excluded' },
+        };
+        function lsClassOf(d) { return d.classification in CLASS_STYLES ? CLASS_STYLES[d.classification].ls : ''; }
+        function chipClassOf(d) { return d.classification in CLASS_STYLES ? CLASS_STYLES[d.classification].chip : ''; }
         const chev = '<span class="tv-ch"><svg aria-hidden="true"><use href="#tb-chevron-right"/></svg></span>';
         const chevLeaf = '<span class="tv-ch tv-ch--leaf" aria-hidden="true"></span>';
         const fileIcon = '<span class="tv-ti"><svg aria-hidden="true"><use href="#tb-file"/></svg></span>';
@@ -3651,11 +3726,9 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         // showClassification: colour each finding's #N by Required/Recommended, the way
         // buildRuleTree does. buildSevTree leaves it off because it already groups under
         // Required/Recommended headers; buildScannerTree turns it on because it does not.
-        function renderSevGroups(items, idSuffix, parentId, showClassification) {
-          const lsClassFor = d => d.classification === 'required' ? ' tv-ls--required'
-            : d.classification === 'recommended' ? ' tv-ls--recommended' : '';
-          const chipClassFor = d => d.classification === 'required' ? 'tv-chip--required'
-            : d.classification === 'recommended' ? 'tv-chip--recommended' : '';
+        // baseDepth indents the whole tree for callers that nest it under extra rows.
+        function renderSevGroups(items, idSuffix, parentId, showClassification, baseDepth) {
+          const depth = baseDepth || 0;
           let html = '', rendered = 0;
           const pSuffix = parentId ? ' ' + parentId : '';
           const sevParent = parentId ? ' data-grp-parent="' + parentId + '"' : '';
@@ -3668,7 +3741,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             // must carry the parent chain or it survives collapse as a blank line.
             if (rendered > 0) html += '<div class="tv-sep"' + sevParent + '></div>';
             rendered++;
-            html += '<div class="tv-tr tv-d0" data-grp-id="' + sevId + '"' + sevParent + '>' +
+            html += '<div class="tv-tr tv-d' + depth + '" data-grp-id="' + sevId + '"' + sevParent + '>' +
               chev + dot(sev) +
               '<span class="tv-tl">' + capSev + '</span>' +
               '<span class="tv-tc">' + sevItems.length + '</span></div>';
@@ -3677,18 +3750,18 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             for (const [file, fileItems] of byFile) {
               const basename = fileLabels.get(file) || '(unknown)';
               const fileId = sevId + '-f' + fi++;
-              html += '<div class="tv-tr tv-d1" data-grp-parent="' + sevId + pSuffix + '" data-grp-id="' + fileId + '">' +
+              html += '<div class="tv-tr tv-d' + (depth + 1) + '" data-grp-parent="' + sevId + pSuffix + '" data-grp-id="' + fileId + '">' +
                 chev + fileIcon +
                 '<span class="tv-tl" title="' + esc(file) + '">' + esc(basename) + '</span>' +
                 '<span class="tv-tc">' + fileItems.length + '</span></div>';
               const byRule = groupBy(fileItems, ruleKey);
               for (const ruleItems of byRule.values()) {
                 html += renderRuleCluster(ruleItems, {
-                  leafDepth: 'tv-d2',
+                  leafDepth: 'tv-d' + (depth + 2),
                   parents: fileId + ' ' + sevId + pSuffix,
                   chipClass: '',
-                  lsClassFor: showClassification ? lsClassFor : null,
-                  classFor: showClassification ? chipClassFor : null
+                  lsClassFor: showClassification ? lsClassOf : null,
+                  classFor: showClassification ? chipClassOf : null
                 });
               }
             }
@@ -3746,8 +3819,17 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           return html;
         }
 
+        // The "Excluded in this PR" prio-header. Excluded findings never appear in
+        // the active groups, so every grouping mode renders them under this header.
+        function excludedHeader(grpId, count) {
+          return '<div class="tv-prio-hdr tv-prio-hdr--excluded" data-grp-id="' + grpId + '">' +
+            '<svg width="9" height="9" aria-hidden="true"><use href="#tb-circle-off"/></svg>' +
+            '<span>Excluded in this PR</span><span class="tv-tc">' + count + '</span></div>';
+        }
+
         function buildSevTree(dataset, fileLabels) {
-          const activeItems = dataset.filter(d => !d.suppressed);
+          const activeItems = dataset.filter(d => !d.suppressed && !d.excluded);
+          const excItems    = dataset.filter(d => d.excluded);
           const suppItems   = dataset.filter(d => d.suppressed);
 
           let html = '';
@@ -3770,6 +3852,11 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             html += renderSevGroups(activeItems, '');
           }
 
+          if (excItems.length) {
+            html += excludedHeader('pg-excluded', excItems.length);
+            html += renderSevGroups(excItems, 'exc', 'pg-excluded');
+          }
+
           if (suppItems.length) {
             html += '<div class="tv-sep"></div>';
             html += renderSuppressedGroup(suppItems, 'sg-suppressed');
@@ -3778,7 +3865,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         }
 
         function buildScannerTree(dataset, fileLabels, scannerOrder) {
-          const activeItems = dataset.filter(d => !d.suppressed);
+          const activeItems = dataset.filter(d => !d.suppressed && !d.excluded);
+          const excItems    = dataset.filter(d => d.excluded);
           const suppItems   = dataset.filter(d => d.suppressed);
           const byScanner = groupBy(activeItems, d => d.scanner);
 
@@ -3795,6 +3883,24 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             html += renderSevGroups(items, grpId, grpId, requiredEnabled);
           });
 
+          if (excItems.length) {
+            html += '<div class="tv-sep"></div>';
+            html += excludedHeader('scg-excluded', excItems.length);
+            const excByScanner = groupBy(excItems, d => d.scanner);
+            let si = 0;
+            scannerOrder.forEach(scanner => {
+              const items = excByScanner.get(scanner);
+              if (!items || !items.length) return;
+              const scanId = 'scg-excluded-s' + si;
+              if (si > 0) html += '<div class="tv-sep" data-grp-parent="scg-excluded"></div>';
+              si++;
+              html += '<div class="tv-tr tv-d1" data-grp-parent="scg-excluded" data-grp-id="' + scanId + '">' +
+                chev + '<span class="tv-tl">' + esc(scanner) + '</span>' +
+                '<span class="tv-tc">' + items.length + '</span></div>';
+              html += renderSevGroups(items, scanId, scanId + ' scg-excluded', true, 2);
+            });
+          }
+
           if (suppItems.length) {
             html += '<div class="tv-sep"></div>';
             html += renderSuppressedGroup(suppItems, 'scg-suppressed', scannerOrder);
@@ -3804,7 +3910,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
 
         function buildRuleTree(dataset, fileLabels) {
           let html = '';
-          const activeItems = dataset.filter(d => !d.suppressed);
+          const activeItems = dataset.filter(d => !d.suppressed && !d.excluded);
+          const excItems    = dataset.filter(d => d.excluded);
           const suppItems   = dataset.filter(d => d.suppressed);
 
           function renderRuleEntries(items, riOffset, dimmed, parentChain) {
@@ -3836,7 +3943,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
                 const basename = fileLabels.get(file) || '(unknown)';
                 if (fileItems.length === 1) {
                   const d = fileItems[0];
-                  const lsCls = d.classification === 'required' ? ' tv-ls--required' : d.classification === 'recommended' ? ' tv-ls--recommended' : '';
+                  const lsCls = lsClassOf(d);
                   html += '<a class="tv-tr tv-d1' + dimClass + '" href="#' + d.id + '" target="_self" title="' + esc(file) + ':' + esc(d.line) + '" data-grp-parent="' + ruleNodeId + chain + '">' +
                     chevLeaf + fileIcon +
                     '<span class="tv-tl">' + esc(basename) + '</span>' + idLabel(d, lsCls) + '</a>';
@@ -3850,7 +3957,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
                     parents: fileNodeId + ' ' + ruleNodeId + chain,
                     chipClass: dimmed ? 'tv-grp--suppressed' : '',
                     titleFor: d => esc(file) + ':' + esc(d.line),
-                    classFor: d => d.classification === 'required' ? 'tv-chip--required' : d.classification === 'recommended' ? 'tv-chip--recommended' : ''
+                    classFor: chipClassOf
                   });
                 }
               }
@@ -3860,12 +3967,19 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
 
           // Top-level: one row per unique ruleId (fallback: title). Sorted by severity then label.
           const activeCount = renderRuleEntries(activeItems, 0, false);
+          let excCount = 0;
+          if (excItems.length) {
+            const excGrpId = 'rg-excluded';
+            if (activeCount > 0) html += '<div class="tv-sep"></div>';
+            html += excludedHeader(excGrpId, excItems.length);
+            excCount = renderRuleEntries(excItems, activeCount, false, excGrpId);
+          }
           if (suppItems.length) {
             const supGrpId = 'rg-suppressed';
-            if (activeCount > 0) html += '<div class="tv-sep"></div>';
+            if (activeCount + excCount > 0) html += '<div class="tv-sep"></div>';
             html += '<div class="tv-prio-hdr tv-prio-hdr--suppressed" data-grp-id="' + supGrpId + '">' +
               '&#8856; <span>Suppressed</span><span class="tv-tc">' + suppItems.length + '</span></div>';
-            renderRuleEntries(suppItems, activeCount, true, supGrpId);
+            renderRuleEntries(suppItems, activeCount + excCount, true, supGrpId);
           }
           return html;
         }
@@ -3983,7 +4097,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           if (treeScanner) {
             treeScanner.innerHTML = filtered.length ? buildScannerTree(filtered, fileLabels, scannerOrder) : empty;
           }
-          if (tocCountEl) tocCountEl.textContent = String(filtered.filter(d => !d.suppressed).length);
+          if (tocCountEl) tocCountEl.textContent = String(filtered.filter(d => excludedOnly ? d.excluded : !d.suppressed && !d.excluded).length);
           collapseSupGroupIfAll();
           initTocScrollSpy();
         };
@@ -4153,7 +4267,19 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             if (supHeader) supHeader.setAttribute('aria-expanded', 'true');
           }
           target.open = true;
-          requestAnimationFrame(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+          // A card inside the collapsed Excluded or Suppressed section is unreachable
+          // until that section opens; scrolling waits out the section's height
+          // transition so the target position is measured after it settles. A
+          // Required or Recommended section the reader collapsed stays collapsed.
+          const holder = target.closest('.findings-section-content');
+          let scrollDelay = 0;
+          if (holder && holder.classList.contains('section-collapsed') &&
+              (holder.id === 'excluded-section-content' || holder.id === 'suppressed-section-content')) {
+            const hdr = document.querySelector('.findings-section[aria-controls="' + holder.id + '"]');
+            if (hdr) { hdr.click(); scrollDelay = 260; }
+          }
+          const scrollToTarget = () => requestAnimationFrame(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+          if (scrollDelay) setTimeout(scrollToTarget, scrollDelay); else scrollToTarget();
           setTocActive(id);
           pauseSpy();
         });
@@ -4177,7 +4303,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         const GAP = 6;
 
         function countFor(scanner) {
-          return findings.filter(f => f.dataset.suppressed !== 'true' &&
+          return findings.filter(f => isActive(f) &&
             (scanner === '' || f.dataset.scanner === scanner)).length;
         }
 
@@ -4200,10 +4326,11 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         // Recomputes the severity and Required/Recommended pill counts against the
         // active tab, so numbers next to a filter always describe what's on screen.
         function updateSummaryPillCounts() {
-          const scoped = findings.filter(f => f.dataset.suppressed !== 'true' &&
-            (!activeScanner || f.dataset.scanner === activeScanner));
+          const inTab = f => !activeScanner || f.dataset.scanner === activeScanner;
+          const scoped = findings.filter(f => isActive(f) && inTab(f));
           const sev = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
           let required = 0, recommended = 0;
+          const excluded = findings.filter(f => f.dataset.classification === 'excluded' && inTab(f)).length;
           scoped.forEach(f => {
             const s = f.dataset.severity;
             if (s && s in sev) sev[s]++;
@@ -4214,6 +4341,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           Object.keys(sev).forEach(s => setPillCount(s, sev[s]));
           setPillCount('required', required);
           setPillCount('recommended', recommended);
+          setPillCount('excluded', excluded);
         }
 
         function closeMenu() {
@@ -4438,6 +4566,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             if (reqPill) reqPill.setAttribute('aria-pressed', 'false');
             const recPill2 = document.querySelector('.pill[data-filter="recommended"]');
             if (recPill2) recPill2.setAttribute('aria-pressed', 'false');
+            resetExcludedFilter();
             activeSearch = '';
             if (searchInput) searchInput.value = '';
             if (syncPillState) syncPillState();
