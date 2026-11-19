@@ -2769,17 +2769,17 @@
         {{- end}}
         {{- end}}
         {{ $severity := index .Properties "Severity"}}
-        {{ $location := index .Locations 0}}
-        {{ $locationURI := index $location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
-        {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
-        {{ $locationWebURL := index $location.Properties "WebURL"}}
-        {{ $locationPRWebURL := index $location.Properties "PRWebURL"}}
+        {{ $locationURI := index .Properties "LocationURI"}}
+        {{ $locationStartLine := index .Properties "LocationLine" }}
+        {{ $locationWebURL := index .Properties "LocationWebURL"}}
+        {{ $locationPRWebURL := index .Properties "LocationPRWebURL"}}
+        {{ $locationLabel := $locationURI }}{{ if $locationStartLine }}{{ $locationLabel = printf "%s (line %d)" $locationURI $locationStartLine }}{{ end }}
         <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-classification="{{if $isExcluded}}excluded{{else if $.Metadata.RequiredEnabled}}{{if eq (index .Properties "Required") "true"}}required{{else}}recommended{{end}}{{end}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}"{{if $multiScanner}} data-scanner="{{index .Properties "Scanner"}}"{{end}}{{with index .Properties "FindingID"}} data-finding-id="{{.}}"{{end}}>
           <summary class="finding__head{{with index .Properties "FindingID"}} finding__head--id{{end}}">
             <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
             {{with index .Properties "FindingID"}}<span class="finding__num finding__num--id" title="{{.}}">{{.}}</span>{{else}}<span class="finding__num">#{{add $n 1}}</span>{{end}}<span class="finding__title" role="heading" aria-level="2" title="{{index .Properties "Title"}}">{{index .Properties "Title"}}</span>
             <span class="finding__meta">
-              <span class="finding__path">{{$locationURI}}</span><span class="finding__line">:{{$locationStartLine}}</span>
+              {{if $locationURI}}<span class="finding__path">{{$locationURI}}</span>{{if $locationStartLine}}<span class="finding__line">:{{$locationStartLine}}</span>{{end}}{{end}}
             </span>
           </summary>
           <div class="finding__body">
@@ -2874,10 +2874,10 @@
             </dl>
             {{end -}}
             <p class="finding__description">{{index .Properties "Description"}}</p>
-            <div class="finding__location">
-              {{if $locationPRWebURL}}Location in PR: <strong><a href="{{- $locationPRWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationURI}} (line {{$locationStartLine}})</a></strong>{{if $locationWebURL}}<span class="finding__location-secondary">at commit <a href="{{- $locationWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationURI}} (line {{$locationStartLine}})</a></span>{{end}}{{else}}Location: <strong>{{if $locationWebURL}}<a href="{{- $locationWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationURI}} (line {{$locationStartLine}})</a>{{else}}{{$locationURI}} (line {{$locationStartLine}}){{end}}</strong>{{end}}
-            </div>
-            <div class="finding__df-block">
+            {{if $locationURI}}<div class="finding__location">
+              {{if $locationPRWebURL}}Location in PR: <strong><a href="{{- $locationPRWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationLabel}}</a></strong>{{if $locationWebURL}}<span class="finding__location-secondary">at commit <a href="{{- $locationWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationLabel}}</a></span>{{end}}{{else}}Location: <strong>{{if $locationWebURL}}<a href="{{- $locationWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationLabel}}</a>{{else}}{{$locationLabel}}{{end}}</strong>{{end}}
+            </div>{{end}}
+            {{if .CodeFlows}}<div class="finding__df-block">
               <header class="finding__df-header">
                 {{index .Properties "CodeSectionLabel"}}:
                 {{$totalDataFlows := 0}}
@@ -2922,7 +2922,7 @@
                           {{ $lineNum := add $startLine $idx -}}
                           {{ $lineIsHl := false -}}
                           {{ if $isSingleLine }}{{ if or (gt $endColumn $startColumn) (and (eq $startColumn 0) (eq $endColumn 0)) }}{{ $lineIsHl = true }}{{ end }}{{ else if eq $idx 0 }}{{ $lineIsHl = true }}{{ else if eq $lineNum $endLine }}{{ if gt $endColumn 0 }}{{ $lineIsHl = true }}{{ end }}{{ else }}{{ $lineIsHl = true }}{{ end -}}
-                          <div class="finding__df-codeline{{if $lineIsHl}} finding__df-codeline--hl{{end}}"><span class="finding__df-linecol">{{if $locationWebURL}}<a href="{{printf "%s%s" (stripFragment $locationWebURL) (lineAnchor $vcsType $lineNum)}}" target="_blank" rel="noopener noreferrer">{{$lineNum}}</a>{{else}}{{$lineNum}}{{end}}</span><div class="finding__df-code">{{if $isSingleLine}}{{if gt $endColumn $startColumn}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else if and (eq $startColumn 0) (eq $endColumn 0)}}<span class="finding__df-highlight">{{- $lineText -}}</span>{{else}}{{- $lineText -}}{{end}}{{else if eq $idx 0}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn -}}</span>{{else if eq $lineNum $endLine}}{{if gt $endColumn 0}}<span class="finding__df-highlight">{{- slice $lineText 0 $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}{{- $lineText -}}{{end}}{{else}}<span class="finding__df-highlight">{{- $lineText -}}</span>{{end}}</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
+                          <div class="finding__df-codeline{{if $lineIsHl}} finding__df-codeline--hl{{end}}"><span class="finding__df-linecol">{{if gt $startLine 0}}{{if $locationWebURL}}<a href="{{printf "%s%s" (stripFragment $locationWebURL) (lineAnchor $vcsType $lineNum)}}" target="_blank" rel="noopener noreferrer">{{$lineNum}}</a>{{else}}{{$lineNum}}{{end}}{{end}}</span><div class="finding__df-code">{{if $isSingleLine}}{{if gt $endColumn $startColumn}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else if and (eq $startColumn 0) (eq $endColumn 0)}}<span class="finding__df-highlight">{{- $lineText -}}</span>{{else}}{{- $lineText -}}{{end}}{{else if eq $idx 0}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn -}}</span>{{else if eq $lineNum $endLine}}{{if gt $endColumn 0}}<span class="finding__df-highlight">{{- slice $lineText 0 $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}{{- $lineText -}}{{end}}{{else}}<span class="finding__df-highlight">{{- $lineText -}}</span>{{end}}</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
                         {{end}}
 
                       {{end}}
@@ -2931,7 +2931,7 @@
                   {{end}}
                 {{end}}
               {{end}}
-            </div>
+            </div>{{end}}
             {{- with index .Properties "FixParts"}}
             <aside class="finding__fix">
               <div class="finding__fix-header"><svg width="13" height="13" aria-hidden="true"><use href="#tb-wrench"/></svg>Suggested fix</div>
@@ -2984,17 +2984,17 @@
           {{range .Results}}
           {{- if eq (index .Properties "Suppressed") "true"}}
           {{ $severity := index .Properties "Severity"}}
-          {{ $location := index .Locations 0}}
-          {{ $locationURI := index $location.PhysicalLocation.ArtifactLocation.Properties "URI"}}
-          {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
-          {{ $locationWebURL := index $location.Properties "WebURL"}}
-          {{ $locationPRWebURL := index $location.Properties "PRWebURL"}}
+          {{ $locationURI := index .Properties "LocationURI"}}
+          {{ $locationStartLine := index .Properties "LocationLine" }}
+          {{ $locationWebURL := index .Properties "LocationWebURL"}}
+          {{ $locationPRWebURL := index .Properties "LocationPRWebURL"}}
+          {{ $locationLabel := $locationURI }}{{ if $locationStartLine }}{{ $locationLabel = printf "%s (line %d)" $locationURI $locationStartLine }}{{ end }}
           <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}} finding--suppressed" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}" data-suppressed="true"{{if $multiScanner}} data-scanner="{{index .Properties "Scanner"}}"{{end}}{{with index .Properties "FindingID"}} data-finding-id="{{.}}"{{end}}>
             <summary class="finding__head{{with index .Properties "FindingID"}} finding__head--id{{end}}">
               <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
               {{with index .Properties "FindingID"}}<span class="finding__num finding__num--id" title="{{.}}">{{.}}</span>{{else}}<span class="finding__num">#{{add $n 1}}</span>{{end}}<span class="finding__title" role="heading" aria-level="2" title="{{index .Properties "Title"}}">{{index .Properties "Title"}}</span>
               <span class="finding__meta">
-                <span class="finding__path">{{$locationURI}}</span><span class="finding__line">:{{$locationStartLine}}</span>
+                {{if $locationURI}}<span class="finding__path">{{$locationURI}}</span>{{if $locationStartLine}}<span class="finding__line">:{{$locationStartLine}}</span>{{end}}{{end}}
               </span>
             </summary>
             <div class="finding__body">
@@ -3034,10 +3034,10 @@
               </dl>
               {{end -}}
               <p class="finding__description">{{index .Properties "Description"}}</p>
-              <div class="finding__location">
-                {{if $locationPRWebURL}}Location in PR: <strong><a href="{{- $locationPRWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationURI}} (line {{$locationStartLine}})</a></strong>{{if $locationWebURL}}<span class="finding__location-secondary">at commit <a href="{{- $locationWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationURI}} (line {{$locationStartLine}})</a></span>{{end}}{{else}}Location: <strong>{{if $locationWebURL}}<a href="{{- $locationWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationURI}} (line {{$locationStartLine}})</a>{{else}}{{$locationURI}} (line {{$locationStartLine}}){{end}}</strong>{{end}}
-              </div>
-              <div class="finding__df-block">
+              {{if $locationURI}}<div class="finding__location">
+                {{if $locationPRWebURL}}Location in PR: <strong><a href="{{- $locationPRWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationLabel}}</a></strong>{{if $locationWebURL}}<span class="finding__location-secondary">at commit <a href="{{- $locationWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationLabel}}</a></span>{{end}}{{else}}Location: <strong>{{if $locationWebURL}}<a href="{{- $locationWebURL -}}" target="_blank" rel="noopener noreferrer">{{$locationLabel}}</a>{{else}}{{$locationLabel}}{{end}}</strong>{{end}}
+              </div>{{end}}
+              {{if .CodeFlows}}<div class="finding__df-block">
                 <header class="finding__df-header">
                   {{index .Properties "CodeSectionLabel"}}:
                   {{$totalDataFlows := 0}}
@@ -3082,7 +3082,7 @@
                             {{ $lineNum := add $startLine $idx -}}
                             {{ $lineIsHl := false -}}
                             {{ if $isSingleLine }}{{ if or (gt $endColumn $startColumn) (and (eq $startColumn 0) (eq $endColumn 0)) }}{{ $lineIsHl = true }}{{ end }}{{ else if eq $idx 0 }}{{ $lineIsHl = true }}{{ else if eq $lineNum $endLine }}{{ if gt $endColumn 0 }}{{ $lineIsHl = true }}{{ end }}{{ else }}{{ $lineIsHl = true }}{{ end -}}
-                            <div class="finding__df-codeline{{if $lineIsHl}} finding__df-codeline--hl{{end}}"><span class="finding__df-linecol">{{if $locationWebURL}}<a href="{{printf "%s%s" (stripFragment $locationWebURL) (lineAnchor $vcsType $lineNum)}}" target="_blank" rel="noopener noreferrer">{{$lineNum}}</a>{{else}}{{$lineNum}}{{end}}</span><div class="finding__df-code">{{if $isSingleLine}}{{if gt $endColumn $startColumn}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else if and (eq $startColumn 0) (eq $endColumn 0)}}<span class="finding__df-highlight">{{- $lineText -}}</span>{{else}}{{- $lineText -}}{{end}}{{else if eq $idx 0}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn -}}</span>{{else if eq $lineNum $endLine}}{{if gt $endColumn 0}}<span class="finding__df-highlight">{{- slice $lineText 0 $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}{{- $lineText -}}{{end}}{{else}}<span class="finding__df-highlight">{{- $lineText -}}</span>{{end}}</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
+                            <div class="finding__df-codeline{{if $lineIsHl}} finding__df-codeline--hl{{end}}"><span class="finding__df-linecol">{{if gt $startLine 0}}{{if $locationWebURL}}<a href="{{printf "%s%s" (stripFragment $locationWebURL) (lineAnchor $vcsType $lineNum)}}" target="_blank" rel="noopener noreferrer">{{$lineNum}}</a>{{else}}{{$lineNum}}{{end}}{{end}}</span><div class="finding__df-code">{{if $isSingleLine}}{{if gt $endColumn $startColumn}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else if and (eq $startColumn 0) (eq $endColumn 0)}}<span class="finding__df-highlight">{{- $lineText -}}</span>{{else}}{{- $lineText -}}{{end}}{{else if eq $idx 0}}{{- slice $lineText 0 $startColumn -}}<span class="finding__df-highlight">{{- slice $lineText $startColumn -}}</span>{{else if eq $lineNum $endLine}}{{if gt $endColumn 0}}<span class="finding__df-highlight">{{- slice $lineText 0 $endColumn -}}</span>{{- slice $lineText $endColumn -}}{{else}}{{- $lineText -}}{{end}}{{else}}<span class="finding__df-highlight">{{- $lineText -}}</span>{{end}}</div><button class="copy-btn" type="button" aria-label="Copy line" title="Copy"><svg width="12" height="12" aria-hidden="true"><use href="#tb-copy"/></svg></button></div>
                           {{end}}
 
                         {{end}}
@@ -3091,7 +3091,7 @@
                     {{end}}
                   {{end}}
                 {{end}}
-              </div>
+              </div>{{end}}
               {{- with index .Properties "FixParts"}}
               <aside class="finding__fix">
                 <div class="finding__fix-header"><svg width="13" height="13" aria-hidden="true"><use href="#tb-wrench"/></svg>Suggested fix</div>

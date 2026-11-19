@@ -1,6 +1,7 @@
 package tohtml
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -384,14 +385,12 @@ var ToHtmlCmd = &cobra.Command{
 			},
 		}
 
-		file, err := os.Create(allToHTMLOptions.OutputFile)
-		if err != nil {
+		// Render in memory so a template error never leaves a partial report on disk.
+		var rendered bytes.Buffer
+		if err := tmpl.Execute(&rendered, data); err != nil {
 			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
-		defer file.Close()
-
-		err = tmpl.Execute(file, data)
-		if err != nil {
+		if err := os.WriteFile(allToHTMLOptions.OutputFile, rendered.Bytes(), 0o666); err != nil {
 			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
 
