@@ -3176,11 +3176,36 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
       let excludedOnly    = false;
       let activeScanner   = '';  // '' = all scanners; set by initScannerTabs()
 
+      // === activeCounts:start (extracted verbatim by cmd/to-html/toc_active_test.go) ===
       // Suppressed and PR-excluded findings sit in their own sections and are not
       // part of the "All" count, the scanner tab counts or the "N of M shown" text.
       function isActive(f) {
         return f.dataset.suppressed !== 'true' && f.dataset.classification !== 'excluded';
       }
+
+      // Number of active findings in one scanner tab ('' = all scanners).
+      function scannerCount(list, scanner) {
+        return list.filter(f => isActive(f) && (scanner === '' || f.dataset.scanner === scanner)).length;
+      }
+
+      // Counts behind the summary pills for the active tab: severity and
+      // Required/Recommended count active findings only; Excluded counts the
+      // excluded ones, which are not part of "all".
+      function summaryCounts(list, scanner) {
+        const inTab = f => !scanner || f.dataset.scanner === scanner;
+        const scoped = list.filter(f => isActive(f) && inTab(f));
+        const sev = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+        let required = 0, recommended = 0;
+        scoped.forEach(f => {
+          const s = f.dataset.severity;
+          if (s && s in sev) sev[s]++;
+          if (f.dataset.classification === 'required') required++;
+          else if (f.dataset.classification === 'recommended') recommended++;
+        });
+        const excluded = list.filter(f => f.dataset.classification === 'excluded' && inTab(f)).length;
+        return { all: scoped.length, sev: sev, required: required, recommended: recommended, excluded: excluded };
+      }
+      // === activeCounts:end ===
 
       function isVisible(f) {
         if (activeSeverities.size > 0) {
@@ -3643,6 +3668,9 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         const requiredEnabled = data.some(d => d.classification === 'required' || d.classification === 'recommended');
 
         const fileLabels = buildFileLabels(data);
+        // === tocTrees:start (extracted verbatim by cmd/to-html/toc_trees_test.go) ===
+        // Everything that turns the findings dataset into the three TOC trees.
+        // Reads fileLabels and requiredEnabled from the enclosing scope.
         const SEV_ORDER = ['critical','high','medium','low','info','unknown'];
         // Colors a finding's label and chip by its class; unclassified findings get none.
         const CLASS_STYLES = {
@@ -4095,6 +4123,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           return html;
         }
 
+        // === tocTrees:end ===
+
         function initResize() {
           if (!resizeHandle) return;
           const MIN = 240, MAX = 480;
@@ -4414,8 +4444,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         const GAP = 6;
 
         function countFor(scanner) {
-          return findings.filter(f => isActive(f) &&
-            (scanner === '' || f.dataset.scanner === scanner)).length;
+          return scannerCount(findings, scanner);
         }
 
         function updateTabCounts() {
@@ -4437,22 +4466,13 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         // Recomputes the severity and Required/Recommended pill counts against the
         // active tab, so numbers next to a filter always describe what's on screen.
         function updateSummaryPillCounts() {
-          const inTab = f => !activeScanner || f.dataset.scanner === activeScanner;
-          const scoped = findings.filter(f => isActive(f) && inTab(f));
-          const sev = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
-          let required = 0, recommended = 0;
-          const excluded = findings.filter(f => f.dataset.classification === 'excluded' && inTab(f)).length;
-          scoped.forEach(f => {
-            const s = f.dataset.severity;
-            if (s && s in sev) sev[s]++;
-            if (f.dataset.classification === 'required') required++;
-            else if (f.dataset.classification === 'recommended') recommended++;
-          });
-          setPillCount('all', scoped.length);
+          const c = summaryCounts(findings, activeScanner);
+          const sev = c.sev;
+          setPillCount('all', c.all);
           Object.keys(sev).forEach(s => setPillCount(s, sev[s]));
-          setPillCount('required', required);
-          setPillCount('recommended', recommended);
-          setPillCount('excluded', excluded);
+          setPillCount('required', c.required);
+          setPillCount('recommended', c.recommended);
+          setPillCount('excluded', c.excluded);
         }
 
         function closeMenu() {
