@@ -294,6 +294,33 @@
       align-self: center;
     }
 
+    /* A finding ID is wider than "#n" and must stay on one line. 16ch holds the
+       longest normal ID ("F-3f9a2c1d.81d0", 15 characters) whole; anything
+       longer is cut with an ellipsis and carries its full value in the title
+       attribute. It is pinned to the top of the row at the severity badge's
+       height, so its center matches the badge and the title's first line when a
+       long title wraps; the default centering would float it between the lines. */
+    .finding__num--id {
+      display: block;
+      align-self: flex-start;
+      max-width: 16ch;
+      height: 26px;
+      line-height: 26px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* On a phone the badge, a finding ID, the title and the path cannot share one
+       row (the title would be squeezed to a few characters). Cards with an ID put
+       the badge and ID first, then the title and the path on rows of their own. */
+    @media (max-width: 639px) {
+      .finding__head--id { flex-wrap: wrap; row-gap: var(--space-1); }
+      .finding__head--id::after { order: 1; }
+      .finding__head--id .finding__title { order: 2; flex: 1 1 100%; }
+      .finding__head--id .finding__meta { order: 3; flex: 1 1 100%; }
+    }
+
     .finding__title {
       font-size: var(--text-lg);
       font-weight: 600;
@@ -1384,6 +1411,7 @@
       margin-left: 2px;
       flex: 0 0 auto;
     }
+    .tv-ls--id { max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .tv-ls--required    { color: var(--req-fg); }
     .tv-ls--recommended { color: var(--rec-fg); }
 
@@ -1443,6 +1471,16 @@
       text-decoration: none;
       transition: border-color var(--motion-fast), background var(--motion-fast);
     }
+    .tv-chips a.tv-chip--id {
+      display: inline-block;
+      max-width: 100%;
+      box-sizing: border-box;
+      line-height: 16px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .tv-chips a:hover { border-color: var(--accent-brand); }
     .tv-chips a[aria-current="true"] {
       border-color: var(--accent-brand);
@@ -1457,6 +1495,7 @@
     /* Chips past CHIP_CAP stay hidden until the "+N more" button expands the strip */
     .tv-chips a.tv-chip--overflow { display: none; }
     .tv-chips.is-expanded a.tv-chip--overflow { display: inline-flex; }
+    .tv-chips.is-expanded a.tv-chip--overflow.tv-chip--id { display: inline-block; }
     .tv-chips__more {
       min-width: 24px;
       height: 18px;
@@ -2660,10 +2699,10 @@
         {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
         {{ $locationWebURL := index $location.Properties "WebURL"}}
         {{ $locationPRWebURL := index $location.Properties "PRWebURL"}}
-        <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-classification="{{if $.Metadata.RequiredEnabled}}{{if eq (index .Properties "Required") "true"}}required{{else}}recommended{{end}}{{end}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}"{{if $multiScanner}} data-scanner="{{index .Properties "Scanner"}}"{{end}}>
-          <summary class="finding__head">
+        <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}}" data-severity="{{$severity}}" data-classification="{{if $.Metadata.RequiredEnabled}}{{if eq (index .Properties "Required") "true"}}required{{else}}recommended{{end}}{{end}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}"{{if $multiScanner}} data-scanner="{{index .Properties "Scanner"}}"{{end}}{{with index .Properties "FindingID"}} data-finding-id="{{.}}"{{end}}>
+          <summary class="finding__head{{with index .Properties "FindingID"}} finding__head--id{{end}}">
             <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
-            <span class="finding__num">#{{add $n 1}}</span><span class="finding__title" role="heading" aria-level="2" title="{{index .Properties "Title"}}">{{index .Properties "Title"}}</span>
+            {{with index .Properties "FindingID"}}<span class="finding__num finding__num--id" title="{{.}}">{{.}}</span>{{else}}<span class="finding__num">#{{add $n 1}}</span>{{end}}<span class="finding__title" role="heading" aria-level="2" title="{{index .Properties "Title"}}">{{index .Properties "Title"}}</span>
             <span class="finding__meta">
               <span class="finding__path">{{$locationURI}}</span><span class="finding__line">:{{$locationStartLine}}</span>
             </span>
@@ -2828,10 +2867,10 @@
           {{ $locationStartLine := $location.PhysicalLocation.Region.StartLine }}
           {{ $locationWebURL := index $location.Properties "WebURL"}}
           {{ $locationPRWebURL := index $location.Properties "PRWebURL"}}
-          <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}} finding--suppressed" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}" data-suppressed="true"{{if $multiScanner}} data-scanner="{{index .Properties "Scanner"}}"{{end}}>
-            <summary class="finding__head">
+          <details id="issue-{{$n}}" data-issue-num="{{add $n 1}}" class="finding finding--{{$severity}} finding--suppressed" data-severity="{{$severity}}" data-rule-id="{{if .RuleID}}{{.RuleID}}{{end}}" data-suppressed="true"{{if $multiScanner}} data-scanner="{{index .Properties "Scanner"}}"{{end}}{{with index .Properties "FindingID"}} data-finding-id="{{.}}"{{end}}>
+            <summary class="finding__head{{with index .Properties "FindingID"}} finding__head--id{{end}}">
               <span class="finding__badge finding__badge--{{$severity}}"><span class="sev-dot" aria-hidden="true"></span>{{$severity}}</span>
-              <span class="finding__num">#{{add $n 1}}</span><span class="finding__title" role="heading" aria-level="2" title="{{index .Properties "Title"}}">{{index .Properties "Title"}}</span>
+              {{with index .Properties "FindingID"}}<span class="finding__num finding__num--id" title="{{.}}">{{.}}</span>{{else}}<span class="finding__num">#{{add $n 1}}</span>{{end}}<span class="finding__title" role="heading" aria-level="2" title="{{index .Properties "Title"}}">{{index .Properties "Title"}}</span>
               <span class="finding__meta">
                 <span class="finding__path">{{$locationURI}}</span><span class="finding__line">:{{$locationStartLine}}</span>
               </span>
@@ -3001,7 +3040,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         const sev    = f.dataset.severity || '';
         const ruleId = f.dataset.ruleId || '';
         const meta   = Array.from(f.querySelectorAll('.finding__meta-dl dd')).map(dd => dd.textContent).join(' ');
-        f.dataset.searchText = (title + ' ' + desc + ' ' + path + ' ' + sev + ' ' + ruleId + ' ' + meta).toLowerCase();
+        f.dataset.searchText = (title + ' ' + desc + ' ' + path + ' ' + sev + ' ' + ruleId + ' ' + meta + ' ' + (f.dataset.findingId || '')).toLowerCase();
       });
 
       // Shared state exposed to cross-cutting handlers
@@ -3035,6 +3074,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         '.finding__path',
         '.finding__description',
         '.finding__meta-dl dd',
+        '.finding__num--id',
       ];
 
       function clearHighlights() {
@@ -3434,6 +3474,8 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             ruleShort: shortRule(ruleId),
             file: f.querySelector('.finding__path')?.textContent.trim() || '',
             line: (f.querySelector('.finding__line')?.textContent || '').replace(/^:/, ''),
+            findingId: f.dataset.findingId || '',
+            label: f.dataset.findingId || ('#' + (f.dataset.issueNum || String(i + 1))),
             classification: f.dataset.classification || '',
             scanner: f.dataset.scanner || '',
             suppressed: f.dataset.suppressed === 'true'
@@ -3459,6 +3501,12 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
           if (!id) return '';
           const seg = id.split('.').pop();
           return seg || id;
+        }
+        // The right-hand label of a leaf row: "#n", or the finding ID, which is
+        // truncated by CSS and keeps its full value in a title.
+        function idLabel(d, extraClass) {
+          return '<span class="tv-ls' + extraClass + (d.findingId ? ' tv-ls--id' : '') + '"' +
+            (d.findingId ? ' title="' + esc(d.findingId) + '"' : '') + '>' + esc(d.label) + '</span>';
         }
         // Stable key per (ruleId,title): falls back to title when RuleID is absent
         function ruleKey(d) { return d.ruleId || d.title || '(unknown)'; }
@@ -3534,8 +3582,13 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
         // tv-chip--overflow (hidden by CSS) behind a "+N more" button: the strip has a
         // bounded max-height, so an uncapped cluster of hundreds would render chips
         // that are clipped out of view and unreachable.
+        // Chips that carry a finding ID are far wider than "#N" (a normal ID with a
+        // duplicate suffix fills a 240px drawer's row on its own), so a strip of them
+        // uses CHIP_CAP_ID: 20 rows of 22px plus padding is 448px, under the 480px
+        // strip bound with margin, where 48 would not fit.
         // Depends on esc(); opts.titleFor and opts.classFor are per-tree callbacks.
         const CHIP_CAP = 48;
+        const CHIP_CAP_ID = 20;
         function renderChipStrip(items, opts) {
           const parentAttr = opts.parents ? ' data-grp-parent="' + opts.parents + '"' : '';
           const sorted = items.slice().sort((a, b) => {
@@ -3543,14 +3596,16 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
             return String(a.num).localeCompare(String(b.num));
           });
+          const cap = sorted.some(d => d.findingId) ? CHIP_CAP_ID : CHIP_CAP;
           let html = '<div class="tv-chips' + (opts.chipClass ? ' ' + opts.chipClass : '') + '"' + parentAttr + '>';
           sorted.forEach((d, i) => {
-            const cls = ((opts.classFor ? opts.classFor(d) : '') + (i >= CHIP_CAP ? ' tv-chip--overflow' : '')).trim();
-            html += '<a href="#' + d.id + '" target="_self" title="' + opts.titleFor(d) + '"' +
-              (cls ? ' class="' + cls + '"' : '') + '>#' + esc(d.num) + '</a>';
+            const cls = ((opts.classFor ? opts.classFor(d) : '') + (d.findingId ? ' tv-chip--id' : '') + (i >= cap ? ' tv-chip--overflow' : '')).trim();
+            const title = (d.findingId ? esc(d.findingId) + ' ' : '') + opts.titleFor(d);
+            html += '<a href="#' + d.id + '" target="_self" title="' + title + '"' +
+              (cls ? ' class="' + cls + '"' : '') + '>' + esc(d.label || '#' + d.num) + '</a>';
           });
-          if (sorted.length > CHIP_CAP) {
-            const hidden = sorted.length - CHIP_CAP;
+          if (sorted.length > cap) {
+            const hidden = sorted.length - cap;
             html += '<button type="button" class="tv-chips__more" aria-expanded="false" data-more="' + hidden + '">' +
               '+ ' + hidden + ' more</button>';
           }
@@ -3573,7 +3628,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
             return '<a class="tv-tr ' + opts.leafDepth + '" href="#' + d.id + '" target="_self" title="' + titleAttr + ' (' + esc(d.file || d.id) + ':' + esc(d.line) + ')"' + parentAttr + '>' +
               chevLeaf + dot(d.sev) +
               '<span class="tv-tl">' + esc(cap60(label)) + '</span>' +
-              '<span class="tv-ls' + (opts.lsClassFor ? opts.lsClassFor(d) : '') + '">#' + esc(d.num) + '</span></a>';
+              idLabel(d, opts.lsClassFor ? opts.lsClassFor(d) : '') + '</a>';
           }
           // Collapsed row + chip strip. The row anchors to the first finding so a row-click still jumps somewhere sensible.
           const firstId = items[0].id;
@@ -3784,7 +3839,7 @@ Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#
                   const lsCls = d.classification === 'required' ? ' tv-ls--required' : d.classification === 'recommended' ? ' tv-ls--recommended' : '';
                   html += '<a class="tv-tr tv-d1' + dimClass + '" href="#' + d.id + '" target="_self" title="' + esc(file) + ':' + esc(d.line) + '" data-grp-parent="' + ruleNodeId + chain + '">' +
                     chevLeaf + fileIcon +
-                    '<span class="tv-tl">' + esc(basename) + '</span><span class="tv-ls' + lsCls + '">#' + esc(d.num) + '</span></a>';
+                    '<span class="tv-tl">' + esc(basename) + '</span>' + idLabel(d, lsCls) + '</a>';
                 } else {
                   const fileNodeId = ruleNodeId + '-f' + fi++;
                   html += '<div class="tv-tr tv-d1' + dimClass + '" data-grp-id="' + fileNodeId + '" data-grp-parent="' + ruleNodeId + chain + '">' +

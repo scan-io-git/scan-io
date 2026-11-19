@@ -266,6 +266,7 @@ var ToHtmlCmd = &cobra.Command{
 			report.EnrichResultsFPProperty()
 			report.EnrichResultsLocationURIProperty(locationURLCallback, prDiffURLCallback)
 			report.EnrichResultsSuppressionProperty()
+			report.EnrichResultsFindingIDProperty()
 			report.EnrichResultsTriageProperty()
 			if requiredEnabled {
 				report.EnrichResultsRequiredProperty(requiredPolicy)
