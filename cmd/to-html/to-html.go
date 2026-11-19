@@ -69,6 +69,8 @@ type ReportMetadata struct {
 	SuppressionInfo map[string]int
 	RequiredEnabled bool
 	RequiredInfo    map[string]int
+	// ExcludedCount is the number of results excluded by an applied PR decision.
+	ExcludedCount int
 	// ReportStateID scopes the reader's filter state to this report; empty means
 	// the report is unidentifiable and filters must not be persisted at all.
 	ReportStateID string
@@ -264,6 +266,7 @@ var ToHtmlCmd = &cobra.Command{
 			report.EnrichResultsFPProperty()
 			report.EnrichResultsLocationURIProperty(locationURLCallback, prDiffURLCallback)
 			report.EnrichResultsSuppressionProperty()
+			report.EnrichResultsTriageProperty()
 			if requiredEnabled {
 				report.EnrichResultsRequiredProperty(requiredPolicy)
 			}
@@ -292,6 +295,7 @@ var ToHtmlCmd = &cobra.Command{
 
 		severityInfo := sarifReport.CollectSeverityInfo()
 		suppressionInfo := sarifReport.CollectSuppressionInfo()
+		excludedCount := sarifReport.CollectExcludedInfo()
 		requiredInfo := map[string]int{"required": 0, "recommended": 0}
 		if requiredEnabled {
 			requiredInfo = sarifReport.CollectRequiredInfo()
@@ -313,6 +317,7 @@ var ToHtmlCmd = &cobra.Command{
 			SuppressionInfo:    suppressionInfo,
 			RequiredEnabled:    requiredEnabled,
 			RequiredInfo:       requiredInfo,
+			ExcludedCount:      excludedCount,
 		}
 		metadata.ReportStateID = resolveReportStateID(repositoryMetadata, parsedURL, commitHash, scanners, allToHTMLOptions.NoSuppressions)
 		if parsedURL != nil {

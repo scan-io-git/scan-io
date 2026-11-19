@@ -104,9 +104,11 @@ func (r Report) ExtractToolNameAndVersion() (*ToolMetadata, error) {
 }
 
 // CollectSeverityInfo returns counts per severity bucket (critical/high/medium/low/info/unknown)
-// and a total. Suppressed results are excluded — only active findings are counted.
-// It reads Properties["Severity"] set by EnrichResultsLevelProperty and
-// Properties["Suppressed"] set by EnrichResultsSuppressionProperty.
+// and a total. Suppressed results and results excluded by an applied PR decision
+// are not counted; only active findings are.
+// It reads Properties["Severity"] set by EnrichResultsLevelProperty,
+// Properties["Suppressed"] set by EnrichResultsSuppressionProperty and
+// Properties["Excluded"] set by EnrichResultsTriageProperty.
 func (r Report) CollectSeverityInfo() map[string]int {
 	counts := map[string]int{
 		"critical": 0,
@@ -120,7 +122,7 @@ func (r Report) CollectSeverityInfo() map[string]int {
 
 	for _, run := range r.Runs {
 		for _, result := range run.Results {
-			if result.Properties["Suppressed"] == "true" {
+			if result.Properties["Suppressed"] == "true" || result.Properties["Excluded"] == "true" {
 				continue
 			}
 			sev, _ := result.Properties["Severity"].(string)
@@ -681,6 +683,7 @@ func (r Report) EnrichResultsLocationURIProperty(
 }
 
 // SortResultsBySeverity sorts results by Severity bucket: critical < high < medium < low < info < unknown.
+// Results excluded by a PR decision come after all others so they render as one trailing section.
 func (r Report) SortResultsBySeverity() {
 	severityOrder := map[string]int{
 		"critical": 0,
@@ -693,6 +696,11 @@ func (r Report) SortResultsBySeverity() {
 
 	for _, run := range r.Runs {
 		sort.Slice(run.Results, func(i, j int) bool {
+			ei := run.Results[i].Properties["Excluded"] == "true"
+			ej := run.Results[j].Properties["Excluded"] == "true"
+			if ei != ej {
+				return ej
+			}
 			si, _ := run.Results[i].Properties["Severity"].(string)
 			sj, _ := run.Results[j].Properties["Severity"].(string)
 			oi, ok := severityOrder[si]
