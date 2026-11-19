@@ -18,8 +18,9 @@ This page is the input contract for any tool that writes SARIF for [`scanio to-h
 
 ## Scope
 
-- Only `runs[0]` of each input file is rendered: its results, rules and tool. Further runs are ignored. The exception is `versionControlProvenance`, which is searched in every run of every input.
+- Only `runs[0]` of each input file is rendered: its results, rules and tool. Further runs are ignored. An input with no `runs`, or a first run without `tool` or `results`, renders a valid report with no findings. `null` entries in `results` and `rules` are skipped. The exception is `versionControlProvenance`, which is searched in every run of every input.
 - Several `--input` files are merged into one report; each file contributes its first run.
+- The output file is written only after the whole report rendered. A failed render creates no file and leaves an existing one unchanged.
 - Property keys that start with an uppercase letter (`Severity`, `Title`, `Required`, `Excluded` and similar) are set by to-html while it renders. Do not write them.
 
 ## Run level
@@ -41,7 +42,7 @@ A rule is matched to a result by `rules[].id` equal to `results[].ruleId`.
 
 | Path (under `runs[0].tool.driver.rules[]`) | Type | Optional | Allowed values | Effect | Missing or invalid |
 |------|------|----------|----------------|--------|--------------------|
-| `id` | string | no | the `ruleId` of its results | Links the rule to its results; shown as the `Rule` metadata row. | A result whose rule is not listed renders with an empty title and an empty description. |
+| `id` | string | yes | the `ruleId` of its results | Links the rule to its results; shown as the `Rule` metadata row. | A result whose rule is not listed renders as a result without a rule: the title comes from `message.text` and there are no rule-derived references, fix or severity. |
 | `shortDescription.text` | string | yes | any | First choice for the finding title. | Next candidate. |
 | `name` | string | yes | any | Second choice for the title. | Next candidate. |
 | `fullDescription.text` | string | yes | any | Description when the result has no `message.text`. | No description. |
@@ -53,7 +54,7 @@ A rule is matched to a result by `rules[].id` equal to `results[].ruleId`.
 | `properties["security-severity"]` | number or numeric string | yes | 0.0 to 10.0 | Severity bucket, first choice. | Next source. |
 | `properties["problem.severity"]` | string | yes | see [severity](#severity) | Severity bucket, second choice. | Next source. |
 
-The title is the first non-empty candidate of: `shortDescription.text`, `name`, the first sentence of `message.text`, the first line of `message.text`. A candidate that contains the rule ID is replaced by the humanized rule ID (last dot segment, dashes and underscores turned into spaces). When every candidate is empty the title is the humanized rule ID, or `Finding`. Titles are cut at 120 characters.
+The title is the first non-empty candidate of: `shortDescription.text`, `name`, the first sentence of `message.text`, the first line of `message.text`. A candidate that contains the rule ID is replaced by the humanized rule ID (last dot segment, dashes and underscores turned into spaces). A result with no `ruleId`, or whose rule is not in `tool.driver.rules`, has no `shortDescription` and no `name`, so its title is the first sentence or line of `message.text`. When every candidate is empty the title is the humanized rule ID, or `Finding`. Titles are cut at 120 characters.
 
 ### Severity
 
@@ -70,14 +71,14 @@ String values are matched case-insensitively: `critical`; `high` or `error`; `me
 
 | Path (under `runs[0].results[]`) | Type | Optional | Allowed values | Effect | Missing or invalid |
 |------|------|----------|----------------|--------|--------------------|
-| `ruleId` | string | no | an `id` from `tool.driver.rules` | Links to the rule. | Rendering crashes with a nil pointer error. |
+| `ruleId` | string | yes | an `id` from `tool.driver.rules` | Links to the rule. | The finding renders without a rule: no `Rule` row, and the title falls back to `message.text` as described under [Rule level](#rule-level). |
 | `level` | string | yes | see [severity](#severity) | Severity when the rule gives none. | Next source. |
-| `message.text` | string | yes | any | Finding description; also a title candidate. | Falls back to the rule's `fullDescription.text`. |
-| `locations[0].physicalLocation.artifactLocation.uri` | string | no | relative path, or absolute path under `--source` | File shown in the card header and the Location link. Absolute paths have the `--source` prefix removed. | Rendering crashes with a nil pointer error. |
-| `locations[0].physicalLocation.region` | object | no | `startLine`, `endLine`, `startColumn`, `endColumn` (1-based), `snippet.text` | Line number, column highlight and the code block. A missing `endLine` equals `startLine`; missing columns highlight the whole line. Always set `startLine`. | A missing `region` crashes rendering with a nil pointer error. |
-| `locations` | array | no | at least one | The first location is the card's primary location. | An empty array stops the render with a template error and leaves a partial output file. |
+| `message.text` | string | yes | any | Finding description; also a title candidate. | Falls back to the rule's `fullDescription.text`; without a rule the description is empty. |
+| `locations[0].physicalLocation.artifactLocation.uri` | string | yes | relative path, or absolute path under `--source` | File shown in the card header and the Location link. Absolute paths have the `--source` prefix removed. | The location is left out: no file in the card header, no `Location` line, no permalink and no code block. |
+| `locations[0].physicalLocation.region` | object | yes | `startLine`, `endLine`, `startColumn`, `endColumn` (1-based), `snippet.text` | Line number, column highlight and the code block. A missing `endLine` equals `startLine`; missing columns highlight the whole line. | The location is left out, as for a missing `uri`. A region without `startLine` keeps the file but drops the line: the header shows the path only, the Location line and the permalink or PR diff link point to the file without a line anchor, and a code block from `snippet.text` has no line numbers. Source lines cannot be read from `--source` without `startLine`. |
+| `locations` | array | yes | at least one | The first location is the card's primary location. | Missing or empty: the finding renders without a location, as for a missing `uri`. |
 | `region.snippet.text` | string | yes | source text | Code shown as is, including its line count. | The lines are read from `--source`, confined to that folder. If the file cannot be read the card has no code block. |
-| `codeFlows[].threadFlows[].locations[].location` | object | yes | same shape as `locations[]` entries | Data flow steps. With more than one step in the first flow the section is labeled `Data flow`, otherwise `Affected code`. Duplicate thread flows are removed. | Without code flows each location becomes its own flow. |
+| `codeFlows[].threadFlows[].locations[].location` | object | yes | same shape as `locations[]` entries | Data flow steps. With more than one step in the first flow the section is labeled `Data flow`, otherwise `Affected code`. Duplicate thread flows are removed. | Without code flows each location becomes its own flow. A step without `uri` or `region` is dropped. A result left with no steps has no code block. |
 | `suppressions[0].kind` | string | yes | `inSource`, `external` | Shown on the suppression banner. | Empty. |
 | `suppressions[0].status` | string | yes | `accepted`, `underReview`, `rejected` | Banner `Suppressed`, `Suppression under review`, `Suppression rejected`. Any other value shows `Suppressed`. | Treated as accepted. |
 | `suppressions[0].justification` | string | yes | any | Shown on the banner. | Omitted. |
