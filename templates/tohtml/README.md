@@ -38,11 +38,13 @@ Type steps are distinct (no aliases): `xs` 11, `sm` 12, `base` 14, `lg` 16, `xl`
 
 ## Example report
 
-`templates/tohtml/example/` contains a synthetic SARIF (`example.sarif`) and three rendered HTML reports:
+`templates/tohtml/example/` contains synthetic SARIF fixtures and the rendered HTML reports:
 
 - `example.html` — baseline report (no classification)
 - `example-pr.html` — PR mode with `--pull-request 42`
 - `example-required.html` — Required/Recommended mode with `--required "critical,high"`
+- `example-consolidated.html`: two scanners (`example.sarif` plus `example-ai-scan.sarif`) with `--required`
+- `example-pr-decisions.html`: two synthetic scanners with finding IDs, PR decisions (excluded, confirmed, pending) and a repository taken from `versionControlProvenance` because the source folder has no `.git`
 
 The SARIF embeds `region.snippet.text` on every code location, so no source checkout is needed to render it.
 

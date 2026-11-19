@@ -56,4 +56,21 @@ go run . to-html \
   --templates-path "$SCRIPT_DIR/.." \
   --title    "Scanio Demo Report (Consolidated)"
 
-echo "Reports written to templates/tohtml/example/example.html, example-pr.html, example-required.html and example-consolidated.html"
+# PR decisions and finding IDs. The source folder has no .git on purpose: repository,
+# commit, branch and every link come from the SARIF's versionControlProvenance, and
+# the code snippets come from the SARIF itself.
+NOGIT="$(mktemp -d)"
+trap 'cleanup; rm -rf "$NOGIT"' EXIT
+go run . to-html \
+  --input        "$SCRIPT_DIR/example-pr-decisions.sarif" \
+  --input        "$SCRIPT_DIR/example-pr-decisions-ai.sarif" \
+  --output       "$SCRIPT_DIR/example-pr-decisions.html" \
+  --source       "$NOGIT" \
+  --vcs          github \
+  --pull-request 7 \
+  --required     "critical,high,medium" \
+  --never-demote "critical" \
+  --templates-path "$SCRIPT_DIR/.." \
+  --title        "Scanio Demo Report (PR decisions)"
+
+echo "Reports written to templates/tohtml/example/example.html, example-pr.html, example-required.html, example-consolidated.html and example-pr-decisions.html"
