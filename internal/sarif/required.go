@@ -29,10 +29,14 @@ type RequiredPolicy struct {
 // EnrichResultsRequiredProperty classifies every non-suppressed result as
 // Required or Recommended per the policy, writing Properties["Required"]
 // ("true"/"false") and Properties["RequiredReason"] (human-readable rationale).
-// Suppressed results are left untouched. In-memory only; never written to disk.
+// Suppressed results are left untouched, and so are results excluded by an
+// applied PR decision: EnrichResultsTriageProperty must run first so both are
+// known. In-memory only; never written to disk.
 //
 // Gate order. Every severity is treated the same way: what you list in
 // BlockerSeverities is what can block, and nothing is special-cased.
+//  0. An applied reviewer confirmation (triage true_positive) → Required, whatever
+//     the severity or verdict. An applied exclusion never reaches this function.
 //  1. Severity not in BlockerSeverities → Recommended. NeverDemoteSeverities does
 //     not promote: a severity nobody asked to block stays Recommended.
 //  2. Severity in NeverDemoteSeverities → Required, skipping both the verdict and
@@ -56,6 +60,9 @@ func (r Report) EnrichResultsRequiredProperty(policy RequiredPolicy) {
 		if s, _ := result.Properties["Suppressed"].(string); s == "true" {
 			continue
 		}
+		if ResultClass(result) == ClassExcluded {
+			continue
+		}
 
 		sev, _ := result.Properties["Severity"].(string)
 		sev = strings.ToLower(strings.TrimSpace(sev))
@@ -71,6 +78,9 @@ func (r Report) EnrichResultsRequiredProperty(policy RequiredPolicy) {
 		verdict, hasVerdict := fpVerdict(result)
 
 		switch {
+		case ResultDecisionKind(result) == DecisionConfirmed:
+			required = true
+			reason = confirmedReason(verdict, hasVerdict)
 		case !policy.BlockerSeverities[sev]:
 			reason = fmt.Sprintf("%s severity is not required", capSev)
 		case policy.NeverDemoteSeverities[sev]:
@@ -124,6 +134,16 @@ func fpReasonPhrase(capSev, verdict string, hasVerdict bool) string {
 	return fmt.Sprintf("%s severity, not FP-assessed", capSev)
 }
 
+// confirmedReason explains a Required class that comes from a reviewer's
+// decision. The extra clause is for the verdict that the decision overrides, so
+// the banner does not read as self-contradictory above a false-positive panel.
+func confirmedReason(verdict string, hasVerdict bool) string {
+	if hasVerdict && verdict == FPVerdictFalsePositive {
+		return "confirmed real by a reviewer, overrides the false-positive review"
+	}
+	return "confirmed real by a reviewer"
+}
+
 // neverDemoteReason states policy as the reason, because policy is what decided
 // it: a pinned severity is Required whether or not a verdict exists and whatever
 // the verdict says. The extra clause is for the one case where the verdict
@@ -139,13 +159,16 @@ func neverDemoteReason(capSev, verdict string, hasVerdict bool) string {
 func pct(f float64) int { return int(math.Round(f * 100)) }
 
 // CollectRequiredInfo returns counts of required and recommended active findings.
-// Suppressed results are excluded. Reads Properties["Required"] set by
+// Suppressed and PR-excluded results are not counted. Reads Properties["Required"] set by
 // EnrichResultsRequiredProperty.
 func (r Report) CollectRequiredInfo() map[string]int {
 	counts := map[string]int{"required": 0, "recommended": 0}
 	for _, run := range r.Runs {
 		for _, result := range run.Results {
 			if s, _ := result.Properties["Suppressed"].(string); s == "true" {
+				continue
+			}
+			if ResultClass(result) == ClassExcluded {
 				continue
 			}
 			if v, _ := result.Properties["Required"].(string); v == "true" {
@@ -158,17 +181,21 @@ func (r Report) CollectRequiredInfo() map[string]int {
 	return counts
 }
 
-// SortResultsByRequiredThenSeverity orders results Required-first, then by the
-// canonical severity order within each group. Use instead of SortResultsBySeverity
-// when classification is active so the two content sections render contiguously.
+// SortResultsByRequiredThenSeverity orders results Required-first, then
+// Recommended, then PR-excluded, with the canonical severity order within each
+// group. Use instead of SortResultsBySeverity when classification is active so
+// the content sections render contiguously.
 func (r Report) SortResultsByRequiredThenSeverity() {
 	severityOrder := map[string]int{
 		"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4, "unknown": 5,
 	}
 	rank := func(res *sarif.Result) (int, int) {
 		reqRank := 1
-		if v, _ := res.Properties["Required"].(string); v == "true" {
+		switch ResultClass(res) {
+		case ClassRequired:
 			reqRank = 0
+		case ClassExcluded:
+			reqRank = 2
 		}
 		sev, _ := res.Properties["Severity"].(string)
 		sevRank, ok := severityOrder[sev]

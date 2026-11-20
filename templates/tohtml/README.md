@@ -25,6 +25,7 @@ All tokens live in the `:root` block in `report.html`. The design kit mirrors th
 | Severity | `--sev-{level}-{fg/bg}` | per severity, per theme |
 | Required | `--req-fg/bg/border` | amber palette, per theme |
 | Recommended | `--rec-fg/bg/border` | green palette, per theme |
+| Excluded | `--exc-fg/bg/border` | teal palette, per theme; PR-excluded section, pill, TOC group, notice |
 | Type | `--text-xs` .. `--text-2xl` | 11px .. 20px |
 | Shadow | `--shadow-xs` .. `--shadow-lg` | |
 | Z-index | `--z-sticky` .. `--z-dialog` | 20 .. 1000 |
@@ -37,11 +38,13 @@ Type steps are distinct (no aliases): `xs` 11, `sm` 12, `base` 14, `lg` 16, `xl`
 
 ## Example report
 
-`templates/tohtml/example/` contains a synthetic SARIF (`example.sarif`) and three rendered HTML reports:
+`templates/tohtml/example/` contains synthetic SARIF fixtures and the rendered HTML reports:
 
 - `example.html` — baseline report (no classification)
 - `example-pr.html` — PR mode with `--pull-request 42`
 - `example-required.html` — Required/Recommended mode with `--required "critical,high"`
+- `example-consolidated.html`: two scanners (`example.sarif` plus `example-ai-scan.sarif`) with `--required`
+- `example-pr-decisions.html`: two synthetic scanners with finding IDs, PR decisions (excluded, confirmed, pending) and a repository taken from `versionControlProvenance` because the source folder has no `.git`
 
 The SARIF embeds `region.snippet.text` on every code location, so no source checkout is needed to render it.
 
@@ -77,6 +80,8 @@ The cap exists because the strip has a bounded `max-height` to drive the collaps
 - `overflow-y: auto` on any strip that is not collapsed, as a backstop: if a strip ever exceeds the bound anyway, it scrolls instead of stranding chips.
 
 Raising `CHIP_CAP` means re-checking both, since a taller strip has to keep fitting under `max-height`.
+
+Chips that carry a finding ID are far wider than `#N`: 78px for `F-3f9a2c1d`, 111px for `F-3f9a2c1d.81d0`, and at most the strip width for anything longer (the label is truncated). In a 240px drawer a duplicate-suffix chip fills a row on its own, so a strip with any ID chip uses `CHIP_CAP_ID` (20) instead: 20 rows of 22px plus padding measured 444px in the worst case, under the 480px bound with margin. The rest go behind `+N more` as before. `toc_chips_test.go` pins both caps.
 
 ## Scanner tab strip
 
@@ -138,6 +143,12 @@ It is checked before both, so a pinned severity never reaches the verdict or thr
 - TOC `buildSevTree` splits active items into Required/Recommended bands under `.tv-prio-hdr` banner headers when `requiredEnabled` is derived from the dataset.
 
 **Design tokens:** `--req-fg/bg/border` (amber) and `--rec-fg/bg/border` (green), both themes.
+
+## PR decisions and finding IDs
+
+`properties.findingId` becomes `Properties["FindingID"]` and replaces `#n` in the card header (`.finding__num--id`), the TOC rows and the chips. `properties.triage` becomes `Properties["DecisionKind"]` (`excluded`, `confirmed`, `pending`), `Properties["Excluded"]` and the display map `Properties["PRDecision"]`; see `internal/sarif/triage.go`. Classification is shared with the upstream producer through `internal/sarif/testdata/triage-classification-cases.json`, which both repositories keep byte-identical.
+
+Excluded cards render inside the active findings loop (they keep the full card) under a collapsed `.findings-section--excluded`, sorted after Recommended; `data-classification="excluded"` is what the JS filters, counts and TOC read. `isActive()` in the script is the single definition of "counts toward All": not suppressed and not excluded. The PR decision panel (`.finding__decision`) is a `<details>` collapsed by default, colored through `--dec-*` variables set per kind. `tb-circle-off` and `tb-clock` are emitted in the icon sprite only when a report has decisions, so reports without them stay byte-identical.
 
 ## References
 

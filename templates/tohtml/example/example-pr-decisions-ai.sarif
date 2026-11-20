@@ -1,0 +1,256 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Example AI Reviewer",
+          "semanticVersion": "2.1.0",
+          "rules": [
+            {
+              "id": "ai.order-access",
+              "name": "order-access",
+              "shortDescription": {
+                "text": "Order endpoint returns records without checking the requesting account, so any signed-in user can read orders placed by others"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "ai.mass-assignment",
+              "name": "mass-assignment",
+              "shortDescription": {
+                "text": "Mass assignment via unvalidated model binding"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "ai.authz-pending",
+              "name": "authz-pending",
+              "shortDescription": {
+                "text": "Privilege escalation via missing authorization check"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "ai.legacy-xml",
+              "name": "legacy-xml",
+              "shortDescription": {
+                "text": "XML external entity expansion"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "ai.debug-flag",
+              "name": "debug-flag",
+              "shortDescription": {
+                "text": "Debug flag enabled"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            }
+          ]
+        }
+      },
+      "versionControlProvenance": [
+        {
+          "repositoryUri": "https://github.com/scan-io-git/scanio-demo",
+          "revisionId": "0123456789abcdef0123456789abcdef01234567",
+          "branch": "feature/example"
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "ai.order-access",
+          "level": "high",
+          "message": {
+            "text": "Synthetic finding: Order endpoint returns records without checking the requesting account, so any signed-in user can read orders placed by others. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "api/server/orders.go"
+                },
+                "region": {
+                  "startLine": 24,
+                  "endLine": 24,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-dbc0f004",
+            "fp": {
+              "verdict": "TRUE_POSITIVE",
+              "reasoning": "The query selects the order by its number only; the account is never part of the filter."
+            }
+          }
+        },
+        {
+          "ruleId": "ai.mass-assignment",
+          "level": "medium",
+          "message": {
+            "text": "Synthetic finding: Mass assignment via unvalidated model binding. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "api/server/profile.go"
+                },
+                "region": {
+                  "startLine": 41,
+                  "endLine": 41,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-c8306ae1"
+          }
+        },
+        {
+          "ruleId": "ai.authz-pending",
+          "level": "high",
+          "message": {
+            "text": "Synthetic finding: Privilege escalation via missing authorization check. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "api/server/admin.go"
+                },
+                "region": {
+                  "startLine": 12,
+                  "endLine": 12,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-934385f5",
+            "fp": {
+              "verdict": "TRUE_POSITIVE",
+              "reasoning": "Synthetic review reasoning."
+            },
+            "triage": {
+              "decision": "false_positive",
+              "status": "pending",
+              "author": "alice",
+              "reason": "the admin route is blocked at the network edge",
+              "approver": null,
+              "ticket": null,
+              "source": null,
+              "requestSource": "https://github.com/scan-io-git/scanio-demo/pull/7#issuecomment-140",
+              "decidedAt": "2026-11-17T04:10:16Z"
+            }
+          }
+        },
+        {
+          "ruleId": "ai.legacy-xml",
+          "level": "high",
+          "message": {
+            "text": "Synthetic finding: XML external entity expansion. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "legacy/xml_parser.py"
+                },
+                "region": {
+                  "startLine": 77,
+                  "endLine": 77,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-78a8efcb",
+            "triage": {
+              "decision": "accepted_risk",
+              "status": "applied",
+              "author": "bob",
+              "reason": "legacy parser is being retired",
+              "approver": null,
+              "ticket": "TKT-4821",
+              "source": "https://github.com/scan-io-git/scanio-demo/pull/7#issuecomment-141",
+              "requestSource": null,
+              "decidedAt": "2026-11-17T04:10:16Z"
+            }
+          }
+        },
+        {
+          "ruleId": "ai.debug-flag",
+          "level": "low",
+          "message": {
+            "text": "Synthetic finding: Debug flag enabled. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/config.py"
+                },
+                "region": {
+                  "startLine": 60,
+                  "endLine": 60,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-e114c448",
+            "triage": {
+              "decision": "false_positive",
+              "status": "applied",
+              "author": "alice",
+              "reason": "development only",
+              "approver": null,
+              "ticket": null,
+              "source": "https://github.com/scan-io-git/scanio-demo/pull/7#issuecomment-142",
+              "requestSource": null,
+              "decidedAt": "2026-11-17T04:10:16Z"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

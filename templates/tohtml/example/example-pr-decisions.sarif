@@ -1,0 +1,1100 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Example SAST",
+          "semanticVersion": "1.0.0",
+          "rules": [
+            {
+              "id": "app.sql-injection",
+              "name": "sql-injection",
+              "shortDescription": {
+                "text": "SQL injection in order search"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "app.never-demoted",
+              "name": "never-demoted",
+              "shortDescription": {
+                "text": "Hardcoded credential in settings"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "app.weak-hash",
+              "name": "weak-hash",
+              "shortDescription": {
+                "text": "Use of a weak hash for cache keys"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "app.long-title",
+              "name": "long-title",
+              "shortDescription": {
+                "text": "Order endpoint returns records without checking the requesting account, so any signed-in user can read orders placed by others"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "app.no-id",
+              "name": "no-id",
+              "shortDescription": {
+                "text": "Finding without a stable ID"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "app.duplicate",
+              "name": "duplicate",
+              "shortDescription": {
+                "text": "Duplicate of the SQL injection finding"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "app.low-nonblocker",
+              "name": "low-nonblocker",
+              "shortDescription": {
+                "text": "Verbose error message"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "app.tmp-file",
+              "name": "tmp-file",
+              "shortDescription": {
+                "text": "Insecure temporary file"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "app.legacy-xml",
+              "name": "legacy-xml",
+              "shortDescription": {
+                "text": "XML external entity expansion"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "app.open-redirect",
+              "name": "open-redirect",
+              "shortDescription": {
+                "text": "Open redirect"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "app.debug-flag",
+              "name": "debug-flag",
+              "shortDescription": {
+                "text": "Debug flag enabled"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "app.no-links",
+              "name": "no-links",
+              "shortDescription": {
+                "text": "Excluded without links"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "app.confirmed-over-fp",
+              "name": "confirmed-over-fp",
+              "shortDescription": {
+                "text": "Predictable session identifier"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "app.confirmed-plain",
+              "name": "confirmed-plain",
+              "shortDescription": {
+                "text": "Missing authorization check"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "app.pending-required",
+              "name": "pending-required",
+              "shortDescription": {
+                "text": "Path traversal in upload handler"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "app.pending-recommended",
+              "name": "pending-recommended",
+              "shortDescription": {
+                "text": "Weak random number generator"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "app.cluster",
+              "name": "cluster",
+              "shortDescription": {
+                "text": "Cluster rule"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "app.suppressed-a",
+              "name": "suppressed-a",
+              "shortDescription": {
+                "text": "Suppressed finding A"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            },
+            {
+              "id": "app.suppressed-b",
+              "name": "suppressed-b",
+              "shortDescription": {
+                "text": "Suppressed under review"
+              },
+              "fullDescription": {
+                "text": "Synthetic rule description."
+              }
+            }
+          ]
+        }
+      },
+      "versionControlProvenance": [
+        {
+          "repositoryUri": "https://github.com/scan-io-git/scanio-demo",
+          "revisionId": "0123456789abcdef0123456789abcdef01234567",
+          "branch": "feature/example"
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "app.sql-injection",
+          "level": "high",
+          "message": {
+            "text": "Synthetic finding: SQL injection in order search. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/db.py"
+                },
+                "region": {
+                  "startLine": 12,
+                  "endLine": 12,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-356a192b",
+            "fp": {
+              "verdict": "TRUE_POSITIVE",
+              "reasoning": "Synthetic review reasoning."
+            }
+          }
+        },
+        {
+          "ruleId": "app.never-demoted",
+          "level": "critical",
+          "message": {
+            "text": "Synthetic finding: Hardcoded credential in settings. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "config/settings.py"
+                },
+                "region": {
+                  "startLine": 8,
+                  "endLine": 8,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-da4b9237",
+            "fp": {
+              "verdict": "FALSE_POSITIVE",
+              "reasoning": "Synthetic review reasoning."
+            }
+          }
+        },
+        {
+          "ruleId": "app.weak-hash",
+          "level": "medium",
+          "message": {
+            "text": "Synthetic finding: Use of a weak hash for cache keys. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/cache.py"
+                },
+                "region": {
+                  "startLine": 30,
+                  "endLine": 30,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-77de68da",
+            "fp": {
+              "verdict": "FALSE_POSITIVE",
+              "reasoning": "Synthetic review reasoning."
+            }
+          }
+        },
+        {
+          "ruleId": "app.long-title",
+          "level": "high",
+          "message": {
+            "text": "Synthetic finding: Order endpoint returns records without checking the requesting account, so any signed-in user can read orders placed by others. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "api/server/orders.go"
+                },
+                "region": {
+                  "startLine": 24,
+                  "endLine": 24,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-1b645389",
+            "fp": {
+              "verdict": "TRUE_POSITIVE",
+              "reasoning": "Synthetic review reasoning."
+            }
+          }
+        },
+        {
+          "ruleId": "app.no-id",
+          "level": "medium",
+          "message": {
+            "text": "Synthetic finding: Finding without a stable ID. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/misc.py"
+                },
+                "region": {
+                  "startLine": 5,
+                  "endLine": 5,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "app.duplicate",
+          "level": "high",
+          "message": {
+            "text": "Synthetic finding: Duplicate of the SQL injection finding. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/db_copy.py"
+                },
+                "region": {
+                  "startLine": 12,
+                  "endLine": 12,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-356a192b.81d0"
+          }
+        },
+        {
+          "ruleId": "app.low-nonblocker",
+          "level": "low",
+          "message": {
+            "text": "Synthetic finding: Verbose error message. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/errors.py"
+                },
+                "region": {
+                  "startLine": 3,
+                  "endLine": 3,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-ac3478d6"
+          }
+        },
+        {
+          "ruleId": "app.tmp-file",
+          "level": "medium",
+          "message": {
+            "text": "Synthetic finding: Insecure temporary file. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/tmp.py"
+                },
+                "region": {
+                  "startLine": 40,
+                  "endLine": 40,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-c1dfd96e",
+            "fp": {
+              "verdict": "FALSE_POSITIVE",
+              "reasoning": "Synthetic review reasoning."
+            },
+            "triage": {
+              "decision": "false_positive",
+              "status": "applied",
+              "author": "alice",
+              "reason": "only used by the local demo script",
+              "approver": null,
+              "ticket": null,
+              "source": "https://github.com/scan-io-git/scanio-demo/pull/7#issuecomment-101",
+              "requestSource": null,
+              "decidedAt": "2026-11-17T04:10:16Z"
+            }
+          }
+        },
+        {
+          "ruleId": "app.legacy-xml",
+          "level": "high",
+          "message": {
+            "text": "Synthetic finding: XML external entity expansion. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "legacy/xml_parser.py"
+                },
+                "region": {
+                  "startLine": 77,
+                  "endLine": 77,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-902ba3cd",
+            "triage": {
+              "decision": "accepted_risk",
+              "status": "applied",
+              "author": "bob",
+              "reason": "legacy parser is being retired",
+              "approver": null,
+              "ticket": "TKT-4821",
+              "source": "https://github.com/scan-io-git/scanio-demo/pull/7#issuecomment-102",
+              "requestSource": null,
+              "decidedAt": "2026-11-17T04:10:16Z"
+            }
+          }
+        },
+        {
+          "ruleId": "app.open-redirect",
+          "level": "critical",
+          "message": {
+            "text": "Synthetic finding: Open redirect. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/redirect.py"
+                },
+                "region": {
+                  "startLine": 19,
+                  "endLine": 19,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-fe5dbbce",
+            "fp": {
+              "verdict": "TRUE_POSITIVE",
+              "reasoning": "Synthetic review reasoning."
+            },
+            "triage": {
+              "decision": "false_positive",
+              "status": "applied",
+              "author": "alice",
+              "reason": "the redirect target is checked against an allow list",
+              "approver": "bob",
+              "ticket": null,
+              "source": "https://github.com/scan-io-git/scanio-demo/pull/7#issuecomment-104",
+              "requestSource": "https://github.com/scan-io-git/scanio-demo/pull/7#issuecomment-103",
+              "decidedAt": "2026-11-18T09:00:00Z"
+            }
+          }
+        },
+        {
+          "ruleId": "app.debug-flag",
+          "level": "low",
+          "message": {
+            "text": "Synthetic finding: Debug flag enabled. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/config.py"
+                },
+                "region": {
+                  "startLine": 50,
+                  "endLine": 50,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-0ade7c2c",
+            "triage": {
+              "decision": "false_positive",
+              "status": "applied",
+              "author": "alice",
+              "reason": "dev only",
+              "approver": null,
+              "ticket": null,
+              "source": "https://github.com/scan-io-git/scanio-demo/pull/7#issuecomment-110",
+              "requestSource": null,
+              "decidedAt": "2026-11-17T04:10:16Z"
+            }
+          }
+        },
+        {
+          "ruleId": "app.debug-flag",
+          "level": "low",
+          "message": {
+            "text": "Synthetic finding: Debug flag enabled. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/config.py"
+                },
+                "region": {
+                  "startLine": 51,
+                  "endLine": 51,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-b1d57811",
+            "triage": {
+              "decision": "false_positive",
+              "status": "applied",
+              "author": "alice",
+              "reason": "dev only",
+              "approver": null,
+              "ticket": null,
+              "source": "https://github.com/scan-io-git/scanio-demo/pull/7#issuecomment-111",
+              "requestSource": null,
+              "decidedAt": "2026-11-17T04:10:16Z"
+            }
+          }
+        },
+        {
+          "ruleId": "app.debug-flag",
+          "level": "low",
+          "message": {
+            "text": "Synthetic finding: Debug flag enabled. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/config.py"
+                },
+                "region": {
+                  "startLine": 52,
+                  "endLine": 52,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-17ba0791",
+            "triage": {
+              "decision": "false_positive",
+              "status": "applied",
+              "author": "alice",
+              "reason": "dev only",
+              "approver": null,
+              "ticket": null,
+              "source": "https://github.com/scan-io-git/scanio-demo/pull/7#issuecomment-112",
+              "requestSource": null,
+              "decidedAt": "2026-11-17T04:10:16Z"
+            }
+          }
+        },
+        {
+          "ruleId": "app.no-links",
+          "level": "medium",
+          "message": {
+            "text": "Synthetic finding: Excluded without links. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/nolinks.py"
+                },
+                "region": {
+                  "startLine": 9,
+                  "endLine": 9,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-7b52009b",
+            "triage": {
+              "decision": "false_positive",
+              "status": "applied",
+              "author": "alice",
+              "reason": "no links available",
+              "approver": null,
+              "ticket": null,
+              "source": null,
+              "requestSource": null,
+              "decidedAt": null
+            }
+          }
+        },
+        {
+          "ruleId": "app.confirmed-over-fp",
+          "level": "low",
+          "message": {
+            "text": "Synthetic finding: Predictable session identifier. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/session.py"
+                },
+                "region": {
+                  "startLine": 22,
+                  "endLine": 22,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-bd307a3e",
+            "fp": {
+              "verdict": "FALSE_POSITIVE",
+              "reasoning": "Synthetic review reasoning."
+            },
+            "triage": {
+              "decision": "true_positive",
+              "status": "applied",
+              "author": "bob",
+              "reason": "two accounts received the same session token on staging",
+              "approver": null,
+              "ticket": null,
+              "source": "https://github.com/scan-io-git/scanio-demo/pull/7#issuecomment-120",
+              "requestSource": null,
+              "decidedAt": "2026-11-17T04:10:16Z"
+            }
+          }
+        },
+        {
+          "ruleId": "app.confirmed-plain",
+          "level": "medium",
+          "message": {
+            "text": "Synthetic finding: Missing authorization check. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/authz.py"
+                },
+                "region": {
+                  "startLine": 61,
+                  "endLine": 61,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-fa35e192",
+            "triage": {
+              "decision": "true_positive",
+              "status": "applied",
+              "author": "bob",
+              "reason": "reproduced locally",
+              "approver": null,
+              "ticket": null,
+              "source": "https://github.com/scan-io-git/scanio-demo/pull/7#issuecomment-121",
+              "requestSource": null,
+              "decidedAt": "2026-11-17T04:10:16Z"
+            }
+          }
+        },
+        {
+          "ruleId": "app.pending-required",
+          "level": "high",
+          "message": {
+            "text": "Synthetic finding: Path traversal in upload handler. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/upload.py"
+                },
+                "region": {
+                  "startLine": 33,
+                  "endLine": 33,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-f1abd670",
+            "fp": {
+              "verdict": "TRUE_POSITIVE",
+              "reasoning": "Synthetic review reasoning."
+            },
+            "triage": {
+              "decision": "false_positive",
+              "status": "pending",
+              "author": "alice",
+              "reason": "the upload directory is a sandboxed temp mount",
+              "approver": null,
+              "ticket": null,
+              "source": null,
+              "requestSource": "https://github.com/scan-io-git/scanio-demo/pull/7#issuecomment-130",
+              "decidedAt": "2026-11-17T04:10:16Z"
+            }
+          }
+        },
+        {
+          "ruleId": "app.pending-recommended",
+          "level": "medium",
+          "message": {
+            "text": "Synthetic finding: Weak random number generator. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/rand.py"
+                },
+                "region": {
+                  "startLine": 15,
+                  "endLine": 15,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-1574bddb",
+            "fp": {
+              "verdict": "FALSE_POSITIVE",
+              "reasoning": "Synthetic review reasoning."
+            },
+            "triage": {
+              "decision": "accepted_risk",
+              "status": "pending",
+              "author": "alice",
+              "reason": "not used for secrets",
+              "approver": null,
+              "ticket": null,
+              "source": null,
+              "requestSource": "https://github.com/scan-io-git/scanio-demo/pull/7#issuecomment-131",
+              "decidedAt": "2026-11-17T04:10:16Z"
+            }
+          }
+        },
+        {
+          "ruleId": "app.cluster",
+          "level": "medium",
+          "message": {
+            "text": "Synthetic finding: Cluster rule. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/cluster.py"
+                },
+                "region": {
+                  "startLine": 100,
+                  "endLine": 100,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-0716d970",
+            "fp": {
+              "verdict": "FALSE_POSITIVE",
+              "reasoning": "Synthetic review reasoning."
+            }
+          }
+        },
+        {
+          "ruleId": "app.cluster",
+          "level": "medium",
+          "message": {
+            "text": "Synthetic finding: Cluster rule. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/cluster.py"
+                },
+                "region": {
+                  "startLine": 101,
+                  "endLine": 101,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-9e6a55b6",
+            "fp": {
+              "verdict": "FALSE_POSITIVE",
+              "reasoning": "Synthetic review reasoning."
+            }
+          }
+        },
+        {
+          "ruleId": "app.cluster",
+          "level": "medium",
+          "message": {
+            "text": "Synthetic finding: Cluster rule. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/cluster.py"
+                },
+                "region": {
+                  "startLine": 102,
+                  "endLine": 102,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-b3f0c7f6",
+            "fp": {
+              "verdict": "FALSE_POSITIVE",
+              "reasoning": "Synthetic review reasoning."
+            }
+          }
+        },
+        {
+          "ruleId": "app.cluster",
+          "level": "medium",
+          "message": {
+            "text": "Synthetic finding: Cluster rule. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/cluster.py"
+                },
+                "region": {
+                  "startLine": 103,
+                  "endLine": 103,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-91032ad7",
+            "fp": {
+              "verdict": "FALSE_POSITIVE",
+              "reasoning": "Synthetic review reasoning."
+            }
+          }
+        },
+        {
+          "ruleId": "app.cluster",
+          "level": "medium",
+          "message": {
+            "text": "Synthetic finding: Cluster rule. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/cluster.py"
+                },
+                "region": {
+                  "startLine": 104,
+                  "endLine": 104,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-472b07b9",
+            "fp": {
+              "verdict": "FALSE_POSITIVE",
+              "reasoning": "Synthetic review reasoning."
+            }
+          }
+        },
+        {
+          "ruleId": "app.suppressed-a",
+          "level": "medium",
+          "message": {
+            "text": "Synthetic finding: Suppressed finding A. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/sup.py"
+                },
+                "region": {
+                  "startLine": 4,
+                  "endLine": 4,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "findingId": "F-12c6fc06"
+          },
+          "suppressions": [
+            {
+              "kind": "inSource",
+              "status": "accepted",
+              "justification": "reviewed"
+            }
+          ]
+        },
+        {
+          "ruleId": "app.suppressed-b",
+          "level": "low",
+          "message": {
+            "text": "Synthetic finding: Suppressed under review. User input reaches a sensitive sink without validation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app/sup.py"
+                },
+                "region": {
+                  "startLine": 8,
+                  "endLine": 8,
+                  "startColumn": 5,
+                  "endColumn": 30,
+                  "snippet": {
+                    "text": "    run_query(request.args['id'])"
+                  }
+                }
+              }
+            }
+          ],
+          "suppressions": [
+            {
+              "kind": "external",
+              "status": "underReview",
+              "justification": "pending review"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

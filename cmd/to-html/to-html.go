@@ -1,11 +1,13 @@
 package tohtml
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
@@ -68,6 +70,11 @@ type ReportMetadata struct {
 	SuppressionInfo map[string]int
 	RequiredEnabled bool
 	RequiredInfo    map[string]int
+	// ExcludedCount is the number of results excluded by an applied PR decision.
+	ExcludedCount int
+	// HasDecisions is true when any result carries a PR decision (excluded,
+	// confirmed or pending); it gates the icons only those panels use.
+	HasDecisions bool
 	// ReportStateID scopes the reader's filter state to this report; empty means
 	// the report is unidentifiable and filters must not be persisted at all.
 	ReportStateID string
@@ -195,21 +202,14 @@ var ToHtmlCmd = &cobra.Command{
 			)
 		}
 
+		// Git is the authority whenever it yields a repository URL. Without one
+		// (no checkout, or a checkout with no origin remote) the SARIF's own
+		// provenance supplies repository, commit and branch together.
 		var parsedURL *vcsurl.VCSURL
-		if repositoryMetadata.RepositoryFullName != nil {
-			vcsType := vcsurl.StringToVCSType(allToHTMLOptions.VCS)
-			if vcsType == vcsurl.UnknownVCS {
-				// No --vcs flag: run full detection chain including config host map.
-				parsedURL, err = vcsurl.ParseWithOptions(*repositoryMetadata.RepositoryFullName, vcsurl.ParseOptions{
-					HostMap: vcsHostMap(AppConfig),
-				})
-			} else {
-				// Explicit --vcs value: bypass detection.
-				parsedURL, err = vcsurl.ParseForVCSType(*repositoryMetadata.RepositoryFullName, vcsType)
-			}
-			if err != nil {
-				return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
-			}
+		if repositoryMetadata.RepositoryFullName == nil || strings.TrimSpace(*repositoryMetadata.RepositoryFullName) == "" {
+			parsedURL = applyProvenance(repositoryMetadata, reports)
+		} else if parsedURL, err = parseRepositoryURL(*repositoryMetadata.RepositoryFullName); err != nil {
+			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
 
 		if parsedURL != nil {
@@ -270,6 +270,8 @@ var ToHtmlCmd = &cobra.Command{
 			report.EnrichResultsFPProperty()
 			report.EnrichResultsLocationURIProperty(locationURLCallback, prDiffURLCallback)
 			report.EnrichResultsSuppressionProperty()
+			report.EnrichResultsFindingIDProperty()
+			report.EnrichResultsTriageProperty()
 			if requiredEnabled {
 				report.EnrichResultsRequiredProperty(requiredPolicy)
 			}
@@ -298,6 +300,7 @@ var ToHtmlCmd = &cobra.Command{
 
 		severityInfo := sarifReport.CollectSeverityInfo()
 		suppressionInfo := sarifReport.CollectSuppressionInfo()
+		decisionInfo := sarifReport.CollectDecisionInfo()
 		requiredInfo := map[string]int{"required": 0, "recommended": 0}
 		if requiredEnabled {
 			requiredInfo = sarifReport.CollectRequiredInfo()
@@ -319,6 +322,8 @@ var ToHtmlCmd = &cobra.Command{
 			SuppressionInfo:    suppressionInfo,
 			RequiredEnabled:    requiredEnabled,
 			RequiredInfo:       requiredInfo,
+			ExcludedCount:      decisionInfo[scaniosarif.DecisionExcluded],
+			HasDecisions:       len(decisionInfo) > 0,
 		}
 		metadata.ReportStateID = resolveReportStateID(repositoryMetadata, parsedURL, commitHash, scanners, allToHTMLOptions.NoSuppressions)
 		if parsedURL != nil {
@@ -380,14 +385,12 @@ var ToHtmlCmd = &cobra.Command{
 			},
 		}
 
-		file, err := os.Create(allToHTMLOptions.OutputFile)
-		if err != nil {
+		// Render in memory so a template error never leaves a partial report on disk.
+		var rendered bytes.Buffer
+		if err := tmpl.Execute(&rendered, data); err != nil {
 			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
-		defer file.Close()
-
-		err = tmpl.Execute(file, data)
-		if err != nil {
+		if err := os.WriteFile(allToHTMLOptions.OutputFile, rendered.Bytes(), 0o666); err != nil {
 			return errors.NewCommandError(allToHTMLOptions, nil, err, 1)
 		}
 

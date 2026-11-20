@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "description": "Expected class of one SARIF result from its severity, FP verdict (properties.fp.verdict) and PR triage (properties.triage). Every tool that classifies results from properties.triage, scan-io to-html included, must produce the same class for every case. 'required' false means there is no Required/Recommended split (to-html without --required, or a producer in advisory mode).",
+  "blockerSeverities": ["critical", "high", "medium"],
+  "neverDemoteSeverities": ["critical"],
+  "cases": [
+    {"name": "blocker, not FP-assessed", "required": true, "severity": "high", "fpVerdict": null, "triage": null, "expected": {"class": "required", "decision": null}},
+    {"name": "blocker, FP review says false positive", "required": true, "severity": "high", "fpVerdict": "FALSE_POSITIVE", "triage": null, "expected": {"class": "recommended", "decision": null}},
+    {"name": "blocker, FP review says true positive", "required": true, "severity": "high", "fpVerdict": "TRUE_POSITIVE", "triage": null, "expected": {"class": "required", "decision": null}},
+    {"name": "blocker, FP review needs verification", "required": true, "severity": "high", "fpVerdict": "NEEDS_VERIFICATION", "triage": null, "expected": {"class": "required", "decision": null}},
+    {"name": "never-demote severity beats a false-positive verdict", "required": true, "severity": "critical", "fpVerdict": "FALSE_POSITIVE", "triage": null, "expected": {"class": "required", "decision": null}},
+    {"name": "severity outside the blocker list", "required": true, "severity": "low", "fpVerdict": null, "triage": null, "expected": {"class": "recommended", "decision": null}},
+    {"name": "confirmed real promotes a non-blocker severity", "required": true, "severity": "low", "fpVerdict": null, "triage": {"decision": "true_positive", "status": "applied"}, "expected": {"class": "required", "decision": "confirmed"}},
+    {"name": "confirmed real overrides a false-positive verdict", "required": true, "severity": "medium", "fpVerdict": "FALSE_POSITIVE", "triage": {"decision": "true_positive", "status": "applied"}, "expected": {"class": "required", "decision": "confirmed"}},
+    {"name": "applied false positive excludes a confirmed finding", "required": true, "severity": "high", "fpVerdict": "TRUE_POSITIVE", "triage": {"decision": "false_positive", "status": "applied"}, "expected": {"class": "excluded", "decision": "excluded"}},
+    {"name": "applied accepted risk excludes a never-demote severity", "required": true, "severity": "critical", "fpVerdict": null, "triage": {"decision": "accepted_risk", "status": "applied"}, "expected": {"class": "excluded", "decision": "excluded"}},
+    {"name": "pending false positive keeps a Required finding Required", "required": true, "severity": "high", "fpVerdict": "TRUE_POSITIVE", "triage": {"decision": "false_positive", "status": "pending"}, "expected": {"class": "required", "decision": "pending"}},
+    {"name": "pending accepted risk keeps a Required finding Required", "required": true, "severity": "high", "fpVerdict": null, "triage": {"decision": "accepted_risk", "status": "pending"}, "expected": {"class": "required", "decision": "pending"}},
+    {"name": "pending request on a Recommended finding keeps it Recommended", "required": true, "severity": "medium", "fpVerdict": "FALSE_POSITIVE", "triage": {"decision": "false_positive", "status": "pending"}, "expected": {"class": "recommended", "decision": "pending"}},
+    {"name": "no split: an untriaged finding has no class", "required": false, "severity": "high", "fpVerdict": null, "triage": null, "expected": {"class": "none", "decision": null}},
+    {"name": "no split: an applied false positive is still excluded", "required": false, "severity": "high", "fpVerdict": null, "triage": {"decision": "false_positive", "status": "applied"}, "expected": {"class": "excluded", "decision": "excluded"}},
+    {"name": "no split: confirmed real shows its decision without a class", "required": false, "severity": "medium", "fpVerdict": "FALSE_POSITIVE", "triage": {"decision": "true_positive", "status": "applied"}, "expected": {"class": "none", "decision": "confirmed"}},
+    {"name": "no split: a pending request shows its decision without a class", "required": false, "severity": "high", "fpVerdict": null, "triage": {"decision": "accepted_risk", "status": "pending"}, "expected": {"class": "none", "decision": "pending"}},
+    {"name": "a pending true positive is not a valid triage and is ignored", "required": true, "severity": "high", "fpVerdict": null, "triage": {"decision": "true_positive", "status": "pending"}, "expected": {"class": "required", "decision": null}}
+  ]
+}

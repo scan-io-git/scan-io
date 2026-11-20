@@ -7,9 +7,13 @@ The `to-html` command converts sarif, standard sast output format, to a human-fr
 - [Options](#options)
 - [Usage Examples](#usage-examples)
 - [Report features](#report-features)
+  - [Report layout](#report-layout)
   - [Security](#security)
   - [Required and Recommended](#required-and-recommended)
   - [Multiple scanners](#multiple-scanners)
+  - [Repository links without a git checkout](#repository-links-without-a-git-checkout)
+  - [Finding IDs](#finding-ids)
+  - [PR decisions](#pr-decisions)
   - [False-positive review](#false-positive-review)
   - [References](#references)
   - [Filtering](#filtering)
@@ -25,7 +29,7 @@ scanio to-html --input/-i PATH [--input/-i PATH ...] --output/-o PATH [--source/
 |--------|------|----------|---------------|-------------|
 | `--input`, `-i` | string | Yes | `none` | Path to an input sarif report. Repeatable: pass `-i` once per report to merge several scanners into a single consolidated report. Findings are rendered in the order the inputs are given, so a caller iterating an unordered set of tools should sort it for a reproducible report. A missing or unparseable input fails the whole render rather than producing a partial report. |
 | `--output`, `-o` | string | Yes | `none` | Path to output file, html report |
-| `--source`, `-s` | string | No | `none` | Path to source code folder |
+| `--source`, `-s` | string | No | `none` | Path to source code folder. Repository, branch and commit come from its git metadata; when git gives no repository URL (no `.git`, or no origin remote) they come from the input's `versionControlProvenance` (see [Repository links without a git checkout](#repository-links-without-a-git-checkout)) |
 | `--templates-path`, `-t` | string | No | `none` | Path to templates folder |
 | `--pull-request` | string | No | `none` | Pull request ID. Enables PR-aware links: the header pill links to the PR and each finding's "Location in PR" links to the PR diff at the exact line, with a secondary commit-permalink link. When omitted, auto-detected from CI env vars: GITHUB_REF (refs/pull/N/merge), CI_MERGE_REQUEST_IID, BITBUCKET_PR_ID |
 | `--no-supressions` | bool | No | `false` | Enable removing results with suppressions properties |
@@ -161,6 +165,16 @@ When `--required` is absent, the report is identical to the default — no Requi
 
 The generated HTML file is fully self-contained and works offline.
 
+### Report layout
+
+From top to bottom:
+
+- **Header**: report title, then pills for the repository, branch, commit and, in PR mode, the pull request, each linking to the VCS when it is known. With one scanner its name and version follow; with several they are listed in the header menu.
+- **Summary bar**: filter pills `All` and one per severity (Critical, High, Medium, Low, Info), each with its count. With `--required` the `Required` and `Recommended` pills follow; when any finding is excluded by a PR decision an `Excluded` pill follows. A search box, a findings panel toggle and a collapse all button sit beside them.
+- **Scanner tabs**: `All scanners` plus one tab per scanner, only when the report merges several inputs with different scanner names.
+- **Findings**, in sections: `Required` (with `--required`), `Recommended` (with `--required`), `Excluded in this PR` (collapsed, only when a PR decision excluded a finding) and `Suppressed` (collapsed, only when suppressed findings exist). Without `--required` the active findings are one list, followed by the same collapsed sections.
+- **Findings panel**: the outline on the left, with three groupings: `By severity` (priority group, then severity, then file, then finding), `By finding` (rule, then file) and, with several scanners, `By scanner` (scanner, then severity, then file). Excluded and Suppressed findings have their own groups after the active ones in every grouping.
+
 ### Security
 
 Each report is hardened at render time:
@@ -191,7 +205,17 @@ different from a severity listed with no threshold at all, which is a deliberate
 no-threshold policy: every matching finding is Required regardless of confidence, not an
 error.
 
-Each finding is decided by four checks, in order. The first one that applies wins.
+Each finding is decided by the checks below, in order. The first one that applies wins.
+Checks 0a and 0b only fire for findings that carry a PR decision, see [PR decisions](#pr-decisions).
+
+**0a. Was the finding excluded by an applied PR decision?**
+An applied `false_positive` or `accepted_risk` decision makes the finding **Excluded**,
+whatever its severity, verdict or `--required` setting. This also applies without
+`--required`.
+
+**0b. Was the finding confirmed by an applied PR decision?**
+With `--required`, an applied `true_positive` decision makes the finding Required, whatever
+its severity or verdict.
 
 **1. Is the severity a blocker?**
 If the severity is not in the list you passed, the finding is Recommended and nothing
@@ -281,6 +305,45 @@ value is invented.
 A `Likely false positive` verdict always results in Recommended when classification is
 enabled, for every severity. The panel and the classification notice never disagree.
 
+### Repository links without a git checkout
+
+File permalinks, the commit and branch header pills and PR-diff links need the repository,
+commit and branch. They come from the `--source` folder's git metadata. When git gives no
+repository URL (the folder has no `.git`, the repository has no origin remote, or `--source`
+is not set), the report falls back to `runs[].versionControlProvenance[]` in the SARIF. All
+three values are taken from provenance together; a local git commit is never combined with a
+repository URL from the SARIF. When git supplies a repository URL it wins. With neither, or
+with a `repositoryUri` that cannot be parsed, no links are rendered and the report still
+builds. Fields and rules: [SARIF Input Read by to-html](to-html-sarif-input.md#run-level).
+
+### Finding IDs
+
+When a result carries `properties.findingId` (for example `F-3f9a2c1d`), the ID replaces the
+positional `#n` in the card header, the findings panel rows and the chip strips, and is
+searchable. Long IDs are cut with an ellipsis and keep their full value in a hover title.
+Value rules: [properties.findingId](to-html-sarif-input.md#propertiesfindingid).
+
+### PR decisions
+
+A result can carry `properties.triage`, written by a tool that records decisions people made
+about findings in a pull request. The fields and their rules are in
+[properties.triage](to-html-sarif-input.md#propertiestriage); to produce them, follow
+[How to Add Finding IDs and PR Decisions to the HTML Report](../how-to/add-pr-decisions-to-html-report.md).
+
+| decision and status | class | what the card shows |
+|---------------------|-------|---------------------|
+| `false_positive` or `accepted_risk`, `applied` | Excluded | Notice "Excluded in this PR" and a collapsed PR decision panel |
+| `true_positive`, `applied` | Required (with `--required`) | Notice "confirmed real by a reviewer" (plus "overrides the false-positive review" when the verdict was `FALSE_POSITIVE`) and a collapsed PR decision panel |
+| `false_positive` or `accepted_risk`, `pending` | unchanged | The usual notice (with "An exclusion is waiting for approval" on a Required card) and a collapsed amber PR decision panel |
+
+Excluded findings get their own section after Recommended, collapsed by default, an
+"Excluded" filter pill and an "Excluded in this PR" group in every findings panel grouping
+mode. They are not counted in "All", the severity pills or the scanner tab counts. Headers
+of cards carry no decision label; the section a card sits in names its class.
+
+Without `--required` the Excluded section, pill and panel group still appear, and confirmed
+and pending findings get their panel without a Required notice.
+
 ### References
 
 A finding's References list shows the first three links, with a `Show all N references`
@@ -308,5 +371,5 @@ closes. The search box is not remembered.
 
 ### Suppressed findings
 
-Suppressions are shown in a collapsed section at the bottom. If the active filter matches no suppressed findings, the section is hidden entirely.
+Suppressions are shown in a collapsed section at the bottom. If the active filter matches no suppressed findings, the section is hidden entirely. In the findings panel the Suppressed group is split by severity, then file, like the active findings.
 

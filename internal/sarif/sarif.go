@@ -50,6 +50,34 @@ func readSarifReport(inputPath string) (*sarif.Report, error) {
 	return &sarifReport, nil
 }
 
+// normalizeRuns guarantees what the enrichment chain indexes directly: a first run with
+// a tool driver and no null results or rules. An input without runs renders as a run
+// with no results.
+func normalizeRuns(report *sarif.Report) {
+	if len(report.Runs) == 0 {
+		report.Runs = []*sarif.Run{{}}
+	}
+	if report.Runs[0] == nil {
+		report.Runs[0] = &sarif.Run{}
+	}
+	run := report.Runs[0]
+	if run.Tool.Driver == nil {
+		run.Tool.Driver = &sarif.ToolComponent{}
+	}
+	run.Results = dropNil(run.Results)
+	run.Tool.Driver.Rules = dropNil(run.Tool.Driver.Rules)
+}
+
+func dropNil[T any](items []*T) []*T {
+	kept := items[:0]
+	for _, item := range items {
+		if item != nil {
+			kept = append(kept, item)
+		}
+	}
+	return kept
+}
+
 // remove all results with Suppressions property
 func removeSuppressedResults(report *sarif.Report) {
 	for _, run := range report.Runs {
@@ -71,6 +99,8 @@ func ReadReport(inputPath string, logger hclog.Logger, sourceFolder string, noSu
 	if err != nil {
 		return nil, err
 	}
+
+	normalizeRuns(sarifReport)
 
 	if noSuppressions {
 		removeSuppressedResults(sarifReport)
@@ -104,9 +134,11 @@ func (r Report) ExtractToolNameAndVersion() (*ToolMetadata, error) {
 }
 
 // CollectSeverityInfo returns counts per severity bucket (critical/high/medium/low/info/unknown)
-// and a total. Suppressed results are excluded — only active findings are counted.
-// It reads Properties["Severity"] set by EnrichResultsLevelProperty and
-// Properties["Suppressed"] set by EnrichResultsSuppressionProperty.
+// and a total. Suppressed results and results excluded by an applied PR decision
+// are not counted; only active findings are.
+// It reads Properties["Severity"] set by EnrichResultsLevelProperty,
+// Properties["Suppressed"] set by EnrichResultsSuppressionProperty and
+// Properties["Excluded"] set by EnrichResultsTriageProperty.
 func (r Report) CollectSeverityInfo() map[string]int {
 	counts := map[string]int{
 		"critical": 0,
@@ -120,7 +152,7 @@ func (r Report) CollectSeverityInfo() map[string]int {
 
 	for _, run := range r.Runs {
 		for _, result := range run.Results {
-			if result.Properties["Suppressed"] == "true" {
+			if result.Properties["Suppressed"] == "true" || result.Properties["Excluded"] == "true" {
 				continue
 			}
 			sev, _ := result.Properties["Severity"].(string)
@@ -263,14 +295,20 @@ func cap120(s string) string {
 // humanized rule ID. Otherwise use the candidate. Falls back to humanized rule ID
 // (or "Finding") when all candidates are empty.
 func resolveFindingTitle(rule *sarif.ReportingDescriptor, result *sarif.Result) string {
-	ruleID := strings.TrimSpace(rule.ID)
+	var ruleID string
+	if rule != nil {
+		ruleID = strings.TrimSpace(rule.ID)
+	} else if result.RuleID != nil {
+		ruleID = strings.TrimSpace(*result.RuleID)
+	}
 
-	// Build candidate list — skip nil pointer fields safely.
+	// Build candidate list — skip nil pointer fields safely. A nil rule (result with
+	// no ruleId, or a ruleId the driver does not list) leaves only the message.
 	var shortDesc, name, msg string
-	if rule.ShortDescription != nil && rule.ShortDescription.Text != nil {
+	if rule != nil && rule.ShortDescription != nil && rule.ShortDescription.Text != nil {
 		shortDesc = strings.TrimSpace(*rule.ShortDescription.Text)
 	}
-	if rule.Name != nil {
+	if rule != nil && rule.Name != nil {
 		name = strings.TrimSpace(*rule.Name)
 	}
 	if result.Message.Text != nil {
@@ -296,24 +334,24 @@ func resolveFindingTitle(rule *sarif.ReportingDescriptor, result *sarif.Result) 
 	return cap120(fallback)
 }
 
-// EnrichResultsTitleProperty function enriches sarif results properties with title and description values
+// EnrichResultsTitleProperty function enriches sarif results properties with title and description values.
+// Every result gets a title; a result whose rule is missing falls back to its message.
 func (r Report) EnrichResultsTitleProperty() {
-	rulesMap := map[string]*sarif.ReportingDescriptor{}
-	for _, rule := range r.Runs[0].Tool.Driver.Rules {
-		rulesMap[rule.ID] = rule
-	}
+	rulesMap := r.rulesMapForRun0()
 
 	for _, result := range r.Runs[0].Results {
-		if rule, ok := rulesMap[*result.RuleID]; ok {
-			if result.Properties == nil {
-				result.Properties = make(map[string]interface{})
-			}
-			result.Properties["Title"] = resolveFindingTitle(rule, result)
-			if result.Message.Text != nil && *result.Message.Text != "" {
-				result.Properties["Description"] = *result.Message.Text
-			} else if rule.FullDescription != nil && rule.FullDescription.Text != nil {
-				result.Properties["Description"] = *rule.FullDescription.Text
-			}
+		var rule *sarif.ReportingDescriptor
+		if result.RuleID != nil {
+			rule = rulesMap[*result.RuleID]
+		}
+		if result.Properties == nil {
+			result.Properties = make(map[string]interface{})
+		}
+		result.Properties["Title"] = resolveFindingTitle(rule, result)
+		if result.Message.Text != nil && *result.Message.Text != "" {
+			result.Properties["Description"] = *result.Message.Text
+		} else if rule != nil && rule.FullDescription != nil && rule.FullDescription.Text != nil {
+			result.Properties["Description"] = *rule.FullDescription.Text
 		}
 	}
 }
@@ -459,23 +497,80 @@ func (r Report) readLinesFromFile(loc *sarif.PhysicalLocation) ([]string, error)
 	return out, nil
 }
 
+// hasFile reports whether loc names a file. A location with a file but no region is a
+// whole-file finding: the card shows the file without a line.
+func hasFile(loc *sarif.Location) bool {
+	if loc == nil || loc.PhysicalLocation == nil {
+		return false
+	}
+	art := loc.PhysicalLocation.ArtifactLocation
+	return art != nil && art.URI != nil && strings.TrimSpace(*art.URI) != ""
+}
+
+// usableLocation reports whether loc has a file and a region, which a code flow step needs
+// to show code. A step without them is left out of the report rather than half rendered.
+func usableLocation(loc *sarif.Location) bool {
+	return hasFile(loc) && loc.PhysicalLocation.Region != nil
+}
+
+// pruneCodeFlows removes thread flow locations that are not usable, then the thread
+// flows and code flows left empty.
+func pruneCodeFlows(result *sarif.Result) {
+	var flows []*sarif.CodeFlow
+	for _, codeFlow := range result.CodeFlows {
+		if codeFlow == nil {
+			continue
+		}
+		var threadFlows []*sarif.ThreadFlow
+		for _, threadFlow := range codeFlow.ThreadFlows {
+			if threadFlow == nil {
+				continue
+			}
+			var locations []*sarif.ThreadFlowLocation
+			for _, location := range threadFlow.Locations {
+				if location != nil && usableLocation(location.Location) {
+					locations = append(locations, location)
+				}
+			}
+			if len(locations) > 0 {
+				threadFlow.Locations = locations
+				threadFlows = append(threadFlows, threadFlow)
+			}
+		}
+		if len(threadFlows) > 0 {
+			codeFlow.ThreadFlows = threadFlows
+			flows = append(flows, codeFlow)
+		}
+	}
+	result.CodeFlows = flows
+}
+
+// addLocationsAsCodeFlow gives a result without code flows one thread flow per usable location.
+func addLocationsAsCodeFlow(result *sarif.Result) {
+	codeFlow := sarif.NewCodeFlow()
+	for _, location := range result.Locations {
+		if !usableLocation(location) {
+			continue
+		}
+		threadFlow := sarif.NewThreadFlow()
+		threadFlow.Locations = append(threadFlow.Locations, &sarif.ThreadFlowLocation{
+			Location: location,
+		})
+		codeFlow.ThreadFlows = append(codeFlow.ThreadFlows, threadFlow)
+	}
+	if len(codeFlow.ThreadFlows) > 0 {
+		result.CodeFlows = append(result.CodeFlows, codeFlow)
+	}
+}
+
 // EnrichResultsCodeFlowProperty function enriches code flow location properties with source code and URI values
 func (r Report) EnrichResultsCodeFlowProperty(locationWebURLCallback func(artifactLocation *sarif.Location) string) {
 
 	for _, result := range r.Runs[0].Results {
-		if len(result.CodeFlows) == 0 && len(result.Locations) > 0 {
-			//add new code flow
-			codeFlow := sarif.NewCodeFlow()
-			for _, location := range result.Locations {
-				threadFlow := sarif.NewThreadFlow()
-				threadFlow.Locations = append(threadFlow.Locations, &sarif.ThreadFlowLocation{
-					Location: location,
-				})
-				codeFlow.ThreadFlows = append(codeFlow.ThreadFlows, threadFlow)
-			}
-			result.CodeFlows = append(result.CodeFlows, codeFlow)
+		pruneCodeFlows(result)
+		if len(result.CodeFlows) == 0 {
+			addLocationsAsCodeFlow(result)
 		}
-
 		for _, codeflow := range result.CodeFlows {
 			for _, threadflow := range codeflow.ThreadFlows {
 				for _, location := range threadflow.Locations {
@@ -645,19 +740,18 @@ func toFloat64(v interface{}) (float64, bool) {
 // EnrichResultsLocationURIProperty sets the URI property on the first location of every result
 // and calls the provided callbacks to populate WebURL and (optionally) PRWebURL.
 // prDiffURLCallback may be nil, in which case PRWebURL is not set.
+// It also copies what the card header shows onto the result (LocationURI, LocationLine,
+// LocationWebURL, LocationPRWebURL), so the template needs no location when there is none.
 func (r Report) EnrichResultsLocationURIProperty(
 	locationWebURLCallback func(*sarif.Location) string,
 	prDiffURLCallback func(*sarif.Location) string,
 ) {
 	for _, result := range r.Runs[0].Results {
-		if len(result.Locations) == 0 {
+		if len(result.Locations) == 0 || !hasFile(result.Locations[0]) {
 			continue
 		}
 		location := result.Locations[0]
 		artifactLocation := location.PhysicalLocation.ArtifactLocation
-		if artifactLocation.URI == nil {
-			continue
-		}
 
 		if artifactLocation.Properties == nil {
 			artifactLocation.Properties = make(map[string]interface{})
@@ -677,10 +771,24 @@ func (r Report) EnrichResultsLocationURIProperty(
 		if prDiffURLCallback != nil {
 			location.Properties["PRWebURL"] = prDiffURLCallback(location)
 		}
+		stampPrimaryLocation(result, location)
 	}
 }
 
+func stampPrimaryLocation(result *sarif.Result, location *sarif.Location) {
+	if result.Properties == nil {
+		result.Properties = make(map[string]interface{})
+	}
+	result.Properties["LocationURI"] = location.PhysicalLocation.ArtifactLocation.Properties["URI"]
+	if region := location.PhysicalLocation.Region; region != nil && region.StartLine != nil && *region.StartLine > 0 {
+		result.Properties["LocationLine"] = *region.StartLine
+	}
+	result.Properties["LocationWebURL"] = location.Properties["WebURL"]
+	result.Properties["LocationPRWebURL"] = location.Properties["PRWebURL"]
+}
+
 // SortResultsBySeverity sorts results by Severity bucket: critical < high < medium < low < info < unknown.
+// Results excluded by a PR decision come after all others so they render as one trailing section.
 func (r Report) SortResultsBySeverity() {
 	severityOrder := map[string]int{
 		"critical": 0,
@@ -693,6 +801,11 @@ func (r Report) SortResultsBySeverity() {
 
 	for _, run := range r.Runs {
 		sort.Slice(run.Results, func(i, j int) bool {
+			ei := run.Results[i].Properties["Excluded"] == "true"
+			ej := run.Results[j].Properties["Excluded"] == "true"
+			if ei != ej {
+				return ej
+			}
 			si, _ := run.Results[i].Properties["Severity"].(string)
 			sj, _ := run.Results[j].Properties["Severity"].(string)
 			oi, ok := severityOrder[si]
