@@ -73,6 +73,7 @@ func TestMalformedResultsRenderWithoutPanic(t *testing.T) {
 		wantTitle    string
 		wantDesc     string
 		wantLocation bool
+		wantFileOnly bool
 	}{
 		{
 			name:         "result without ruleId",
@@ -104,11 +105,12 @@ func TestMalformedResultsRenderWithoutPanic(t *testing.T) {
 			wantDesc:  "No physical",
 		},
 		{
-			name:      "location without region",
-			rules:     rulesDoc,
-			results:   `[{"ruleId":"py.known-rule","message":{"text":"No region"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"app/main.py"}}}]}]`,
-			wantTitle: "Known rule title",
-			wantDesc:  "No region",
+			name:         "location without region",
+			rules:        rulesDoc,
+			results:      `[{"ruleId":"py.known-rule","message":{"text":"No region"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"app/main.py"}}}]}]`,
+			wantTitle:    "Known rule title",
+			wantDesc:     "No region",
+			wantFileOnly: true,
 		},
 		{
 			name:      "result without locations",
@@ -160,12 +162,22 @@ func TestMalformedResultsRenderWithoutPanic(t *testing.T) {
 			mustNotContain(t, html, "&lt;nil&gt;")
 			mustNotContain(t, html, "&lt;no value&gt;")
 			mustNotContain(t, html, "<nil>")
-			for _, el := range []string{pathChip, locationEl, codeLine} {
-				if got := strings.Contains(html, el); got != tt.wantLocation {
-					t.Errorf("%s present = %v, want %v", el, got, tt.wantLocation)
+			for el, want := range map[string]bool{
+				pathChip:   tt.wantLocation || tt.wantFileOnly,
+				locationEl: tt.wantLocation || tt.wantFileOnly,
+				codeLine:   tt.wantLocation,
+			} {
+				if got := strings.Contains(html, el); got != want {
+					t.Errorf("%s present = %v, want %v", el, got, want)
 				}
 			}
-			if tt.wantLocation {
+			if tt.wantFileOnly {
+				mustContain(t, html, `<span class="finding__path">app/main.py</span>`)
+				mustContain(t, html, `Location: <strong>app/main.py</strong>`)
+				mustNotContain(t, html, lineChip)
+				mustNotContain(t, html, "(line ")
+				mustNotContain(t, html, `class="finding__df-block"`)
+			} else if tt.wantLocation {
 				mustContain(t, html, `app/main.py</span><span class="finding__line">:7</span>`)
 			} else {
 				mustNotContain(t, html, lineChip)
@@ -283,4 +295,47 @@ func TestFailedRenderKeepsPreviousOutputFile(t *testing.T) {
 	if err != nil || string(b) != "previous report" {
 		t.Errorf("previous output was modified: %q, %v", b, err)
 	}
+}
+
+const provenanceRun = `"versionControlProvenance":[{"repositoryUri":"https://github.com/example/demo","revisionId":"0123456789abcdef0123456789abcdef01234567"}]`
+
+func TestWholeFileFindingLinksToFileWithoutAnchor(t *testing.T) {
+	wholeFile := `{"physicalLocation":{"artifactLocation":{"uri":"go.mod"}}}`
+	doc := `{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Example Scanner"}},` + provenanceRun +
+		`,"results":[{"ruleId":"r","message":{"text":"Vulnerable dependency"},"locations":[` + wholeFile + `]}]}]}`
+	html, err := renderRaw(t, doc)
+	if err != nil {
+		t.Fatalf("RunE: %v", err)
+	}
+	mustContain(t, html, `<span class="finding__path">go.mod</span>`)
+	mustContain(t, html, `href="https://github.com/example/demo/blob/0123456789abcdef0123456789abcdef01234567/go.mod"`)
+	mustContain(t, html, `Location in PR: <strong><a href="https://github.com/example/demo/pull/7/files"`)
+	for _, bad := range []string{`class="finding__line"`, "&lt;nil&gt;", "(line ", "go.mod#L", "files#diff-", `class="finding__df-block"`} {
+		mustNotContain(t, html, bad)
+	}
+}
+
+func TestSuppressedWholeFileFindingShowsFile(t *testing.T) {
+	doc := sarifDoc(rulesDoc, `[{"ruleId":"py.known-rule","message":{"text":"Hidden"},"suppressions":[{"kind":"inSource"}],`+
+		`"locations":[{"physicalLocation":{"artifactLocation":{"uri":"go.mod"}}}]}]`)
+	html, err := renderRaw(t, doc)
+	if err != nil {
+		t.Fatalf("RunE: %v", err)
+	}
+	mustContain(t, html, `data-suppressed="true"`)
+	mustContain(t, html, `<span class="finding__path">go.mod</span>`)
+	mustNotContain(t, html, "&lt;nil&gt;")
+	mustNotContain(t, html, `class="finding__df-block"`)
+}
+
+func TestCodeFlowStepWithoutRegionIsDropped(t *testing.T) {
+	flow := `"codeFlows":[{"threadFlows":[{"locations":[{"location":{"physicalLocation":{"artifactLocation":{"uri":"go.mod"}}}},{"location":` + loc + `}]}]}]`
+	doc := sarifDoc(rulesDoc, `[{"ruleId":"py.known-rule","message":{"text":"Flow"},"locations":[`+loc+`],`+flow+`}]`)
+	html, err := renderRaw(t, doc)
+	if err != nil {
+		t.Fatalf("RunE: %v", err)
+	}
+	mustContain(t, html, "run(user_input)")
+	mustNotContain(t, html, "<span>go.mod</span>")
+	mustContain(t, html, "Affected code:")
 }

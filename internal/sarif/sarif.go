@@ -497,15 +497,20 @@ func (r Report) readLinesFromFile(loc *sarif.PhysicalLocation) ([]string, error)
 	return out, nil
 }
 
-// usableLocation reports whether loc has the file and region the report needs to show a
-// location. A location without them is left out of the report rather than half rendered.
-func usableLocation(loc *sarif.Location) bool {
+// hasFile reports whether loc names a file. A location with a file but no region is a
+// whole-file finding: the card shows the file without a line.
+func hasFile(loc *sarif.Location) bool {
 	if loc == nil || loc.PhysicalLocation == nil {
 		return false
 	}
-	pl := loc.PhysicalLocation
-	return pl.Region != nil && pl.ArtifactLocation != nil &&
-		pl.ArtifactLocation.URI != nil && strings.TrimSpace(*pl.ArtifactLocation.URI) != ""
+	art := loc.PhysicalLocation.ArtifactLocation
+	return art != nil && art.URI != nil && strings.TrimSpace(*art.URI) != ""
+}
+
+// usableLocation reports whether loc has a file and a region, which a code flow step needs
+// to show code. A step without them is left out of the report rather than half rendered.
+func usableLocation(loc *sarif.Location) bool {
+	return hasFile(loc) && loc.PhysicalLocation.Region != nil
 }
 
 // pruneCodeFlows removes thread flow locations that are not usable, then the thread
@@ -742,7 +747,7 @@ func (r Report) EnrichResultsLocationURIProperty(
 	prDiffURLCallback func(*sarif.Location) string,
 ) {
 	for _, result := range r.Runs[0].Results {
-		if len(result.Locations) == 0 || !usableLocation(result.Locations[0]) {
+		if len(result.Locations) == 0 || !hasFile(result.Locations[0]) {
 			continue
 		}
 		location := result.Locations[0]
@@ -775,8 +780,8 @@ func stampPrimaryLocation(result *sarif.Result, location *sarif.Location) {
 		result.Properties = make(map[string]interface{})
 	}
 	result.Properties["LocationURI"] = location.PhysicalLocation.ArtifactLocation.Properties["URI"]
-	if line := location.PhysicalLocation.Region.StartLine; line != nil && *line > 0 {
-		result.Properties["LocationLine"] = *line
+	if region := location.PhysicalLocation.Region; region != nil && region.StartLine != nil && *region.StartLine > 0 {
+		result.Properties["LocationLine"] = *region.StartLine
 	}
 	result.Properties["LocationWebURL"] = location.Properties["WebURL"]
 	result.Properties["LocationPRWebURL"] = location.Properties["PRWebURL"]
