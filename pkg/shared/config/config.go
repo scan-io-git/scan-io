@@ -22,6 +22,7 @@ type Config struct {
 	Logger            Logger            `yaml:"logger"`             // Logger configuration settings.
 	HTTPClient        HTTPClient        `yaml:"http_client"`        // HTTP client configuration settings.
 	GitClient         GitClient         `yaml:"git_client"`         // Git client configuration settings.
+	Fetch             Fetch             `yaml:"fetch"`              // Fetch command configuration settings.
 	// VCSHosts maps hostnames to VCS type strings for self-hosted instances.
 	// Valid values: "github", "gitlab", "bitbucket", "generic".
 	// Example: { "git.corp.internal": "bitbucket" }

@@ -73,3 +73,16 @@ http_client:
 git_client:
   insecure_tls: false   # Turning off verification of TLS certificates. Default: false.
   timeout: 10m          # The maximum duration for the Git request before timing it out. Default: 10m.
+
+## Fetch config
+fetch:
+  # Repository-root-relative files or folders copied in full into the diff-lines and
+  # diff-files folders of a PR fetch, whether the PR changed them or not. Every other
+  # file is present only if the PR changed it. Setting this list replaces the defaults;
+  # [] copies nothing. Add .git for git-based scans (for example, semgrep ci) on a diff folder.
+  # Default: [.bandit, .betterleaksignore, .semgrepignore, .trufflehog3.yml]
+  diff_copy_paths:
+    - .bandit
+    - .betterleaksignore
+    - .semgrepignore
+    - .trufflehog3.yml

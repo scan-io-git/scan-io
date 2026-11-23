@@ -21,6 +21,7 @@ In this documentation, we use the following conventions for placeholders:
   - [Common Plugin Configuration](#common-plugin-configuration)
     - [Git Client Configuration](#git-client-configuration)
     - [HTTP Client Configuration](#http-client-configuration)
+    - [Fetch Configuration](#fetch-configuration)
     - [Supported Common Directives by Plugins](#supported-common-directives-by-plugins)
   - [Plugin-Specific Configurations](#plugin-specific-configurations)
     - [Trufflehog3 Plugin](#trufflehog3-plugin)
@@ -158,6 +159,35 @@ The `http_client` directive manages HTTP request behavior for plugins, allowing 
 
 > [!CAUTION]
 > Custom headers will be added to every HTTP request made by any tool or plugin that supports the `http_client` directive.
+
+#### Fetch Configuration
+The `fetch` directive controls what the GitHub, GitLab and Bitbucket plugins put into the `diff-lines` and `diff-files` folders of a PR fetch (`--diff-lines`, `--diff-files`). These folders hold only the files the PR changed: sparse in `diff-lines`, full in `diff-files`. Entries in `diff_copy_paths` are copied in full on top, changed or not, so scanners find their configuration in the scanned folder.
+
+| Directive         | Default Value | Description |
+|-------------------|---------------|-------------|
+| `diff_copy_paths` | see below     | Files or folders, relative to the repository root, copied in full into the diff folders. Exact paths, no globs. Setting the list replaces the defaults; `[]` copies nothing. Entries missing from the repository are skipped. Absolute paths and paths that leave the repository are rejected. |
+
+The defaults are the files supported scanners load from the scan root on their own:
+
+| Entry                | Loaded by |
+|----------------------|-----------|
+| `.bandit`            | Bandit, when run with `-r` (the plugin always passes it). |
+| `.betterleaksignore` | Betterleaks filesystem and git scans. |
+| `.semgrepignore`     | Semgrep, from the project root, which is the scan root outside a git repository. |
+| `.trufflehog3.yml`   | Trufflehog3, when `--config` is not set. |
+
+Scanners that need git metadata in a diff folder, such as `semgrep ci` or Betterleaks `git`, need `.git` in the list. When you list `.git`, Semgrep also applies `.gitignore`, so list it too if your scans rely on it.
+
+```yaml
+fetch:
+  diff_copy_paths:
+    - .semgrepignore
+    - .trufflehog3.yml
+    - .git
+    - .gitignore
+```
+
+A pipeline that needs its own list can point `SCANIO_CONFIG_PATH` at its own config file.
 
 #### Supported Common Directives by Plugins
 Not all plugins support or require shared configuration directives. For instance, the Semgrep plugin does not actively participate in sending HTTP requests or fetching code, so it does not utilize `http_client` or `git_client`.
