@@ -189,10 +189,6 @@ func TestCopyPaths(t *testing.T) {
 	}
 }
 
-func TestCopyDotFilesSymlinks(t *testing.T) {
-	runSymlinkCopyTests(t, CopyDotFiles)
-}
-
 func TestCopyPathsSymlinks(t *testing.T) {
 	runSymlinkCopyTests(t, func(src, dst string, logger hclog.Logger) error {
 		return CopyPaths(src, dst, []string{".agents", ".config", ".env", ".escape"}, logger)

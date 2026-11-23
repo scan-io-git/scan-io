@@ -116,54 +116,6 @@ func (e *UnsafeSymlinkError) Error() string {
 	return fmt.Sprintf("unsafe symlink %q -> %q: %s", e.Link, e.Target, e.Reason)
 }
 
-// CopyDotFiles copies dot-prefixed entries from src to dst using root-scoped ops.
-// Symlinks whose targets would leave dst are skipped with a warning.
-func CopyDotFiles(src, dst string, logger hclog.Logger) error {
-	logger.Debug("copying files starting with a dot", "source", src, "destination", dst)
-	srcRoot, err := os.OpenRoot(src)
-	if err != nil {
-		return fmt.Errorf("failed to open source root %q: %w", src, err)
-	}
-	defer srcRoot.Close()
-
-	if err := os.MkdirAll(dst, os.ModePerm); err != nil {
-		return fmt.Errorf("failed to create destination root %q: %w", dst, err)
-	}
-
-	dstRoot, err := os.OpenRoot(dst)
-	if err != nil {
-		return fmt.Errorf("failed to open destination root %q: %w", dst, err)
-	}
-	defer dstRoot.Close()
-
-	files, err := fs.ReadDir(srcRoot.FS(), ".")
-	if err != nil {
-		return fmt.Errorf("failed to read directory %q: %w", srcRoot.Name(), err)
-	}
-
-	for _, file := range files {
-		if file.Name()[0] == '.' {
-			srcPath := file.Name()
-			dstPath := file.Name()
-
-			err := copyWithRoot(srcRoot, dstRoot, srcPath, dstPath)
-			var unsafeLink *UnsafeSymlinkError
-			switch {
-			case err == nil:
-			case errors.As(err, &unsafeLink):
-				warnSkippedSymlinks(logger, err)
-			case file.IsDir():
-				logger.Error("error copying directory", "srcRoot", srcRoot.Name(), "path", srcPath, "error", err)
-				return err
-			default:
-				logger.Error("error copying file", "srcRoot", srcRoot.Name(), "path", srcPath, "error", err)
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 // CopyPaths copies each path in paths, relative to src, in full to the same
 // relative path under dst, replacing files already there. Paths may name files
 // or folders. Paths missing from src are skipped. Symlinks whose targets would

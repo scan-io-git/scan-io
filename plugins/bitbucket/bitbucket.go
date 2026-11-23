@@ -415,8 +415,8 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRes
 			}
 		}
 
-		if err := files.CopyDotFiles(args.TargetFolder, diffFilesRoot, g.logger); err != nil {
-			return shared.VCSFetchResponse{}, fmt.Errorf("failed to copy dotfiles: %w", err)
+		if err := files.CopyPaths(args.TargetFolder, diffFilesRoot, g.globalConfig.Fetch.CopyPaths(), g.logger); err != nil {
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to copy diff_copy_paths entries: %w", err)
 		}
 		extras["diff_files_root"] = diffFilesRoot
 	}
@@ -441,8 +441,8 @@ func (g *VCSBitbucket) fetchPR(args *shared.VCSFetchRequest) (shared.VCSFetchRes
 			return shared.VCSFetchResponse{}, err
 		}
 
-		if err := files.CopyDotFiles(args.TargetFolder, diffLinesRoot, g.logger); err != nil {
-			return shared.VCSFetchResponse{}, fmt.Errorf("failed to copy dotfiles: %w", err)
+		if err := files.CopyPaths(args.TargetFolder, diffLinesRoot, g.globalConfig.Fetch.CopyPaths(), g.logger); err != nil {
+			return shared.VCSFetchResponse{}, fmt.Errorf("failed to copy diff_copy_paths entries: %w", err)
 		}
 
 		extras["diff_lines_root"] = diffLinesRoot
