@@ -164,6 +164,47 @@ func CopyDotFiles(src, dst string, logger hclog.Logger) error {
 	return nil
 }
 
+// CopyPaths copies each path in paths, relative to src, in full to the same
+// relative path under dst, replacing files already there. Paths may name files
+// or folders. Paths missing from src are skipped. Symlinks whose targets would
+// leave dst are skipped with a warning.
+func CopyPaths(src, dst string, paths []string, logger hclog.Logger) error {
+	srcRoot, err := os.OpenRoot(src)
+	if err != nil {
+		return fmt.Errorf("failed to open source root %q: %w", src, err)
+	}
+	defer srcRoot.Close()
+
+	if err := os.MkdirAll(dst, os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create destination root %q: %w", dst, err)
+	}
+
+	dstRoot, err := os.OpenRoot(dst)
+	if err != nil {
+		return fmt.Errorf("failed to open destination root %q: %w", dst, err)
+	}
+	defer dstRoot.Close()
+
+	for _, path := range paths {
+		if _, err := srcRoot.Lstat(path); errors.Is(err, fs.ErrNotExist) {
+			logger.Debug("skipping path missing from the repository", "path", path)
+			continue
+		}
+
+		err := copyWithRoot(srcRoot, dstRoot, path, path)
+		var unsafeLink *UnsafeSymlinkError
+		switch {
+		case err == nil:
+		case errors.As(err, &unsafeLink):
+			warnSkippedSymlinks(logger, err)
+		default:
+			logger.Error("error copying path", "srcRoot", srcRoot.Name(), "path", path, "error", err)
+			return err
+		}
+	}
+	return nil
+}
+
 // warnSkippedSymlinks logs one warning per UnsafeSymlinkError joined into err.
 func warnSkippedSymlinks(logger hclog.Logger, err error) {
 	if joined, ok := err.(interface{ Unwrap() []error }); ok {

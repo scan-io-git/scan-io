@@ -92,7 +92,117 @@ func TestDetermineFileFullPath(t *testing.T) {
 	}
 }
 
+func TestCopyPaths(t *testing.T) {
+	source := map[string]string{
+		"main.go":                     "package main",
+		".env.example":                "DB_PASSWORD=placeholder\n",
+		".tool.yml":                   "a: 1\nb: 2\n",
+		".github/workflows/ci.yml":    "name: ci\n",
+		"ci/scanner.yaml":             "rules: []\n",
+		"ci/other.yaml":               "other: true\n",
+		".git/HEAD":                   "ref: refs/heads/main\n",
+		".git/objects/aa/placeholder": "object",
+	}
+
+	tests := []struct {
+		name     string
+		paths    []string
+		existing map[string]string
+		want     map[string]string
+	}{
+		{
+			name: "nil list copies nothing",
+			want: map[string]string{},
+		},
+		{
+			name:  "listed file is copied in full and nothing else",
+			paths: []string{".tool.yml"},
+			want:  map[string]string{".tool.yml": "a: 1\nb: 2\n"},
+		},
+		{
+			name:  "listed folder is copied recursively",
+			paths: []string{".git"},
+			want: map[string]string{
+				".git/HEAD":                   "ref: refs/heads/main\n",
+				".git/objects/aa/placeholder": "object",
+			},
+		},
+		{
+			name:  "nested file is copied without its siblings",
+			paths: []string{"ci/scanner.yaml"},
+			want:  map[string]string{"ci/scanner.yaml": "rules: []\n"},
+		},
+		{
+			name:  "missing entry is skipped",
+			paths: []string{".missing.yml", ".tool.yml"},
+			want:  map[string]string{".tool.yml": "a: 1\nb: 2\n"},
+		},
+		{
+			name:     "existing sparse copy is replaced",
+			paths:    []string{".tool.yml"},
+			existing: map[string]string{".tool.yml": "\n\n"},
+			want:     map[string]string{".tool.yml": "a: 1\nb: 2\n"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := t.TempDir()
+			src := filepath.Join(base, "repo")
+			dst := filepath.Join(base, "dst")
+			for rel, content := range source {
+				writeTestFile(t, filepath.Join(src, rel), content)
+			}
+			for rel, content := range tt.existing {
+				writeTestFile(t, filepath.Join(dst, rel), content)
+			}
+
+			if err := CopyPaths(src, dst, tt.paths, hclog.NewNullLogger()); err != nil {
+				t.Fatalf("CopyPaths returned error: %v", err)
+			}
+
+			got := map[string]string{}
+			err := filepath.WalkDir(dst, func(path string, d fs.DirEntry, err error) error {
+				if err != nil || d.IsDir() {
+					return err
+				}
+				rel, relErr := filepath.Rel(dst, path)
+				if relErr != nil {
+					return relErr
+				}
+				data, readErr := os.ReadFile(path)
+				got[filepath.ToSlash(rel)] = string(data)
+				return readErr
+			})
+			if err != nil {
+				t.Fatalf("walking destination: %v", err)
+			}
+			if len(got) != len(tt.want) {
+				t.Errorf("destination files = %v, want %v", got, tt.want)
+			}
+			for rel, want := range tt.want {
+				if got[rel] != want {
+					t.Errorf("%q content = %q, want %q", rel, got[rel], want)
+				}
+			}
+		})
+	}
+}
+
 func TestCopyDotFilesSymlinks(t *testing.T) {
+	runSymlinkCopyTests(t, CopyDotFiles)
+}
+
+func TestCopyPathsSymlinks(t *testing.T) {
+	runSymlinkCopyTests(t, func(src, dst string, logger hclog.Logger) error {
+		return CopyPaths(src, dst, []string{".agents", ".config", ".env", ".escape"}, logger)
+	})
+}
+
+// runSymlinkCopyTests checks that copyFn copies the dot entries of a source
+// tree and skips, with one warning each, the symlinks that would escape it.
+func runSymlinkCopyTests(t *testing.T, copyFn func(src, dst string, logger hclog.Logger) error) {
+	t.Helper()
 	// "{outside}" in a link target is replaced with the path of a file that
 	// exists next to the source tree, outside both the source and destination.
 	tests := []struct {
@@ -192,8 +302,8 @@ func TestCopyDotFilesSymlinks(t *testing.T) {
 
 			var logs bytes.Buffer
 			logger := hclog.New(&hclog.LoggerOptions{Output: &logs, Level: hclog.Warn})
-			if err := CopyDotFiles(src, dst, logger); err != nil {
-				t.Fatalf("CopyDotFiles returned error: %v", err)
+			if err := copyFn(src, dst, logger); err != nil {
+				t.Fatalf("copy returned error: %v", err)
 			}
 
 			for rel, want := range regular {
