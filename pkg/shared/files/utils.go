@@ -141,6 +141,11 @@ func CopyPaths(src, dst string, paths []string, logger hclog.Logger) error {
 		if _, err := srcRoot.Lstat(path); errors.Is(err, fs.ErrNotExist) {
 			logger.Debug("skipping path missing from the repository", "path", path)
 			continue
+		} else if err != nil {
+			// A parent that is a file or a symlink leaving the repository is
+			// repository content, so skip it instead of failing the fetch.
+			logger.Warn("skipping path that cannot be reached inside the repository", "path", path, "error", err)
+			continue
 		}
 
 		err := copyWithRoot(srcRoot, dstRoot, path, path)

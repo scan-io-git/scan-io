@@ -189,6 +189,56 @@ func TestCopyPaths(t *testing.T) {
 	}
 }
 
+func TestCopyPathsUnreachableNestedEntry(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func(t *testing.T, src, outside string)
+	}{
+		{
+			name: "parent folder is a symlink leaving the repository",
+			setup: func(t *testing.T, src, outside string) {
+				if err := os.Symlink(outside, filepath.Join(src, "ci")); err != nil {
+					t.Fatalf("Symlink: %v", err)
+				}
+			},
+		},
+		{
+			name: "parent folder is a regular file",
+			setup: func(t *testing.T, src, _ string) {
+				writeTestFile(t, filepath.Join(src, "ci"), "not a folder")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := t.TempDir()
+			src := filepath.Join(base, "repo")
+			dst := filepath.Join(base, "dst")
+			outside := filepath.Join(base, "outside")
+			writeTestFile(t, filepath.Join(outside, "scanner.yaml"), "rules: []\n")
+			writeTestFile(t, filepath.Join(src, ".tool.yml"), "a: 1\n")
+			tt.setup(t, src, outside)
+
+			var logs bytes.Buffer
+			logger := hclog.New(&hclog.LoggerOptions{Output: &logs, Level: hclog.Warn})
+			if err := CopyPaths(src, dst, []string{"ci/scanner.yaml", ".tool.yml"}, logger); err != nil {
+				t.Fatalf("CopyPaths returned error: %v", err)
+			}
+
+			if _, err := os.Lstat(filepath.Join(dst, "ci")); !os.IsNotExist(err) {
+				t.Errorf("expected ci to be left out, got err=%v", err)
+			}
+			if _, err := os.Stat(filepath.Join(dst, ".tool.yml")); err != nil {
+				t.Errorf("expected .tool.yml to be copied: %v", err)
+			}
+			if !strings.Contains(logs.String(), "ci/scanner.yaml") {
+				t.Errorf("expected a warning naming ci/scanner.yaml, logs:\n%s", logs.String())
+			}
+		})
+	}
+}
+
 func TestCopyPathsSymlinks(t *testing.T) {
 	runSymlinkCopyTests(t, func(src, dst string, logger hclog.Logger) error {
 		return CopyPaths(src, dst, []string{".agents", ".config", ".env", ".escape"}, logger)

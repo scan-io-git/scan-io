@@ -165,7 +165,7 @@ The `fetch` directive controls what the GitHub, GitLab and Bitbucket plugins put
 
 | Directive         | Default Value | Description |
 |-------------------|---------------|-------------|
-| `diff_copy_paths` | see below     | Files or folders, relative to the repository root, copied in full into the diff folders. Exact paths, no globs. Setting the list replaces the defaults; `[]` copies nothing. Entries missing from the repository are skipped. Absolute paths and paths that leave the repository are rejected. |
+| `diff_copy_paths` | see below     | Files or folders, relative to the repository root, copied in full into the diff folders. Exact paths, no globs. Setting the list replaces the defaults; `[]` copies nothing. Entries missing from the repository are skipped; entries under a parent that is a file or a symlink leaving the repository are skipped with a `WARN` log. Absolute paths and paths that leave the repository are rejected. |
 
 The defaults are the files supported scanners load from the scan root on their own:
 
