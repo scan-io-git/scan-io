@@ -25,6 +25,9 @@ func ValidateConfig(cfg *Config) error {
 	if err := ValidateGitConfig(&cfg.GitClient); err != nil {
 		return fmt.Errorf("YAML global config: git_client directive is invalid: %w", err)
 	}
+	if err := ValidateFetchConfig(&cfg.Fetch); err != nil {
+		return fmt.Errorf("YAML global config: fetch directive is invalid: %w", err)
+	}
 	return nil
 }
 

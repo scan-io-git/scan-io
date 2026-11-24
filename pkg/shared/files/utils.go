@@ -116,10 +116,11 @@ func (e *UnsafeSymlinkError) Error() string {
 	return fmt.Sprintf("unsafe symlink %q -> %q: %s", e.Link, e.Target, e.Reason)
 }
 
-// CopyDotFiles copies dot-prefixed entries from src to dst using root-scoped ops.
-// Symlinks whose targets would leave dst are skipped with a warning.
-func CopyDotFiles(src, dst string, logger hclog.Logger) error {
-	logger.Debug("copying files starting with a dot", "source", src, "destination", dst)
+// CopyPaths copies each path in paths, relative to src, in full to the same
+// relative path under dst, replacing files already there. Paths may name files
+// or folders. Paths missing from src are skipped. Symlinks whose targets would
+// leave dst are skipped with a warning.
+func CopyPaths(src, dst string, paths []string, logger hclog.Logger) error {
 	srcRoot, err := os.OpenRoot(src)
 	if err != nil {
 		return fmt.Errorf("failed to open source root %q: %w", src, err)
@@ -136,29 +137,26 @@ func CopyDotFiles(src, dst string, logger hclog.Logger) error {
 	}
 	defer dstRoot.Close()
 
-	files, err := fs.ReadDir(srcRoot.FS(), ".")
-	if err != nil {
-		return fmt.Errorf("failed to read directory %q: %w", srcRoot.Name(), err)
-	}
+	for _, path := range paths {
+		if _, err := srcRoot.Lstat(path); errors.Is(err, fs.ErrNotExist) {
+			logger.Debug("skipping path missing from the repository", "path", path)
+			continue
+		} else if err != nil {
+			// A parent that is a file or a symlink leaving the repository is
+			// repository content, so skip it instead of failing the fetch.
+			logger.Warn("skipping path that cannot be reached inside the repository", "path", path, "error", err)
+			continue
+		}
 
-	for _, file := range files {
-		if file.Name()[0] == '.' {
-			srcPath := file.Name()
-			dstPath := file.Name()
-
-			err := copyWithRoot(srcRoot, dstRoot, srcPath, dstPath)
-			var unsafeLink *UnsafeSymlinkError
-			switch {
-			case err == nil:
-			case errors.As(err, &unsafeLink):
-				warnSkippedSymlinks(logger, err)
-			case file.IsDir():
-				logger.Error("error copying directory", "srcRoot", srcRoot.Name(), "path", srcPath, "error", err)
-				return err
-			default:
-				logger.Error("error copying file", "srcRoot", srcRoot.Name(), "path", srcPath, "error", err)
-				return err
-			}
+		err := copyWithRoot(srcRoot, dstRoot, path, path)
+		var unsafeLink *UnsafeSymlinkError
+		switch {
+		case err == nil:
+		case errors.As(err, &unsafeLink):
+			warnSkippedSymlinks(logger, err)
+		default:
+			logger.Error("error copying path", "srcRoot", srcRoot.Name(), "path", path, "error", err)
+			return err
 		}
 	}
 	return nil

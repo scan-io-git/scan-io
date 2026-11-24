@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 
 	"github.com/scan-io-git/scan-io/pkg/shared/config"
+	sharedfiles "github.com/scan-io-git/scan-io/pkg/shared/files"
 )
 
 func TestAddedLines(t *testing.T) {
@@ -97,6 +98,93 @@ func TestMaterializeDiff(t *testing.T) {
 		if string(b) != want {
 			t.Fatalf("unexpected plain diff contents:\nwant %q\n got %q", want, string(b))
 		}
+	}
+}
+
+// TestMaterializeDiffWithCopyPaths runs the diff folder steps in the order the
+// VCS plugins do: sparse files first, then the configured paths in full.
+func TestMaterializeDiffWithCopyPaths(t *testing.T) {
+	tests := []struct {
+		name      string
+		copyPaths []string
+		want      map[string]string
+	}{
+		{
+			name:      "listed entries are copied in full over sparse files",
+			copyPaths: []string{".trufflehog3.yml", ".tool.yml", ".github"},
+			want: map[string]string{
+				".env.example":             "# comment changed\n\n",
+				".trufflehog3.yml":         "exclude: []\n",
+				".tool.yml":                "a: 1\nb: 3\n",
+				".github/workflows/ci.yml": "name: ci\non: push\n",
+			},
+		},
+		{
+			name: "without a list only changed lines are present",
+			want: map[string]string{
+				".env.example":             "# comment changed\n\n",
+				".tool.yml":                "\nb: 3\n",
+				".github/workflows/ci.yml": "\non: push\n",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repoDir := t.TempDir()
+			repo, err := git.PlainInit(repoDir, false)
+			if err != nil {
+				t.Fatalf("PlainInit: %v", err)
+			}
+			wt, err := repo.Worktree()
+			if err != nil {
+				t.Fatalf("Worktree: %v", err)
+			}
+			base := commitFiles(t, wt, map[string]string{
+				".env.example":             "# comment\nDB_PASSWORD=placeholder\n",
+				".trufflehog3.yml":         "exclude: []\n",
+				".tool.yml":                "a: 1\nb: 2\n",
+				".github/workflows/ci.yml": "name: ci\n",
+			}, "base commit")
+			head := commitFiles(t, wt, map[string]string{
+				".env.example":             "# comment changed\nDB_PASSWORD=placeholder\n",
+				".tool.yml":                "a: 1\nb: 3\n",
+				".github/workflows/ci.yml": "name: ci\non: push\n",
+			}, "head commit")
+
+			diffRoot := filepath.Join(t.TempDir(), "diff")
+			if err := MaterializeDiff(newTestGitClient(), repoDir, diffRoot, base.String(), head.String(), nil); err != nil {
+				t.Fatalf("MaterializeDiff: %v", err)
+			}
+			if err := sharedfiles.CopyPaths(repoDir, diffRoot, tt.copyPaths, hclog.NewNullLogger()); err != nil {
+				t.Fatalf("CopyPaths: %v", err)
+			}
+
+			got := map[string]string{}
+			err = filepath.WalkDir(diffRoot, func(path string, d os.DirEntry, err error) error {
+				if err != nil || d.IsDir() {
+					return err
+				}
+				rel, relErr := filepath.Rel(diffRoot, path)
+				if relErr != nil {
+					return relErr
+				}
+				data, readErr := os.ReadFile(path)
+				got[filepath.ToSlash(rel)] = string(data)
+				return readErr
+			})
+			if err != nil {
+				t.Fatalf("walking diff folder: %v", err)
+			}
+			if len(got) != len(tt.want) {
+				t.Errorf("diff folder files = %v, want %v", got, tt.want)
+			}
+			for rel, want := range tt.want {
+				if got[rel] != want {
+					t.Errorf("%q = %q, want %q", rel, got[rel], want)
+				}
+			}
+		})
 	}
 }
 
